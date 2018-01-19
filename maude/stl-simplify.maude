@@ -1,0 +1,59 @@
+
+fmod BOOLEAN-SIMPLIFY is
+  protecting FORMULA .
+  var F1 : Formula .
+
+  eq True  /\ F1 = F1 .
+  eq True  \/ F1 = True .
+  eq False /\ F1 = False .
+  eq False \/ F1 = F1 .
+endfm
+
+
+
+fmod STL-GT-DIST is
+  protecting STL-GT .
+  var F1 F2 F3 : Formula . 
+  var I K L : Interval .
+
+  eq (F1 /\ F2) U K ~ I F3 = (F1 U K ~ I F3) /\ (F2 U K ~ I F3) .
+  eq F1 U K ~ I (F2 \/ F3) = (F1 U K ~ I F2) \/ (F1 U K ~ I F3) .
+
+  eq [] K ~ I (F1 /\ F2) = ([] K ~ I F1) /\ ([] K ~ I F2) .
+  eq <> K ~ I (F1 \/ F2) = (<> K ~ I F1) \/ (<> K ~ I F2) .
+endfm
+
+
+
+fmod STL-GT-SIMPLIFY is
+  protecting STL-GT .
+
+  var F1 F2 F3 : Formula . 
+  var I K L : Interval .
+
+  eq <> K ~ I (<> L ~ [0,0] F1) = <> (K & L) ~ I F1 .
+  eq [] K ~ I ([] L ~ [0,0] F1) = [] (K & L) ~ I F1 .
+
+  eq [] empty ~ I F1 = True .
+  eq [] K ~ empty F1 = True .
+  eq <> empty ~ I F1 = False .
+  eq <> K ~ empty F1 = False .
+
+  eq F1 U empty ~ I F2 = False .
+  eq F1 U K ~ empty F2 = False .
+  eq F1 R empty ~ I F2 = True .
+  eq F1 R K ~ empty F2 = True .
+endfm
+
+
+fmod STL-GT-SUGAR-SIMPLIFY is
+  protecting STL-GT-SUGAR .
+
+  var F1 F2 F3 : Formula . 
+  var I K L : Interval .
+
+  eq F1 U# empty ~ I F2 = False .
+  eq F1 U# K ~ empty F2 = False .
+  eq F1 R# empty ~ I F2 = True .
+  eq F1 R# K ~ empty F2 = True .
+endfm

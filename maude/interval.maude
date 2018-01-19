@@ -1,0 +1,69 @@
+
+fmod INTERVAL is
+  protecting RAT .
+
+  sort NnRat NnRat? .
+  subsort NnRat < NnRat? .
+  subsort Zero PosRat < NnRat .
+  op inf : -> NnRat? [ctor] .
+
+  sort Interval .
+  op empty : -> Interval [ctor] .
+  op <_,_> : NnRat NnRat? ~> Interval [ctor] .
+  op [_,_> : NnRat NnRat? ~> Interval [ctor] .
+  op <_,_] : NnRat NnRat ~> Interval [ctor] .
+  op [_,_] : NnRat NnRat ~> Interval [ctor] .
+
+  vars R1? R2? R3? R4? : NnRat? .
+  vars R1  R2  R3  R4 : NnRat .
+  vars I J : Interval .
+
+  eq R1  <= inf = true  .
+  eq inf <= R1  = false .
+  eq R1  >= inf = false .
+  eq inf >= R1  = true .
+
+  eq R1  <  inf = true  .
+  eq inf <  R1  = false .
+  eq R1  >  inf = false  .
+  eq inf >  R1  = true .
+
+  eq min(R1,  inf) = R1 .
+  eq min(inf, inf) = inf .
+  eq max(R1,  inf) = inf .
+  eq max(inf, inf) = inf .
+
+  cmb < R1, R1? > : Interval if R1 <  R1? .
+  cmb [ R1, R1? > : Interval if R1 <  R1? .
+  cmb < R1, R2 ] : Interval if R1 <  R2 . 
+  cmb [ R1, R2 ] : Interval if R1 <= R2 .
+
+  ceq < R1, R1? > = empty if R1 >= R1? .
+  ceq [ R1, R1? > = empty if R1 >= R1? .
+  ceq < R1, R2 ] = empty if R1 >= R2 . 
+  ceq [ R1, R2 ] = empty if R1 >  R2 .
+
+  op left  : Interval -> NnRat .
+ ceq left(< R1, R1? >) = R1 if < R1, R1? > : Interval .
+ ceq left([ R1, R1? >) = R1 if [ R1, R1? > : Interval .
+ ceq left(< R1, R2 ]) = R1 if < R1, R2 ] : Interval .
+ ceq left([ R1, R2 ]) = R1 if [ R1, R2 ] : Interval .
+
+  op right : Interval -> NnRat? .
+ ceq right(< R1, R1? >) = R1? if < R1, R1? > : Interval .
+ ceq right([ R1, R1? >) = R1? if [ R1, R1? > : Interval .
+ ceq right(< R1, R2 ]) = R2 if < R1, R2 ] : Interval .
+ ceq right([ R1, R2 ]) = R2 if [ R1, R2 ] : Interval .
+
+  op _&_ : Interval Interval -> Interval [comm assoc] .
+
+  eq I & I = I .
+  eq I & [0, inf > = I .
+  eq I & empty = empty .
+
+--- TODO: for different types
+  eq < R1, R2? > & < R3, R4? > = < max(R1,R3), min(R2?,R4?) > .
+  eq [ R1, R2? > & [ R3, R4? > = [ max(R1,R3), min(R2?,R4?) > .
+  eq < R1, R2  ] & < R3, R4  ] = < max(R1,R3), min(R2,R4) ] .
+  eq [ R1, R2  ] & [ R3, R4  ] = [ max(R1,R3), min(R2,R4) ] .
+endfm
