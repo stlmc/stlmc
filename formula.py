@@ -19,6 +19,8 @@ class NotFormula(Formula, Unary):
 class ConstantFormula(Formula, Atomic):
     def __init__(self, value):
         super().__init__(True if value == 'true' else False)
+    def getValue(self):
+        return self.id
 
 
 class PropositionFormula(Formula, Atomic):

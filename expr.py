@@ -26,6 +26,12 @@ class Constraint:
         return AndConstraint(self,other)
     def __or__(self, other):
         return OrConstraint(self,other)
+    def __rshift__(self, other):
+        return ImpliesConstraint(self, other)
+
+
+class ConstantConstraint(Constraint,Atomic):
+    pass
 
 
 class NegConstraint(Constraint,Unary):
@@ -44,6 +50,10 @@ class OrConstraint(BinaryConstraint):
     op = '|'
 
 
+class ImpliesConstraint(BinaryConstraint):
+    op = '->'
+
+
 class LessConstraint(BinaryConstraint):
     op = '<'
 
@@ -56,7 +66,7 @@ class Expr:
     def __add__(self, other):
         return AddExpr(self, other)
     def __sub__(self, other):
-        return MonusExpr(self, other)
+        return MinusExpr(self, other)
     def __lt__(self, other):
         return LessConstraint(self,other)
     def __le__(self, other):
@@ -87,6 +97,6 @@ class AddExpr(BinaryExpr):
     op = '+'
 
 
-class MonusExpr(BinaryExpr):
+class MinusExpr(BinaryExpr):
     op = '-'
 

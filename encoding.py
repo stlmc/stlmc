@@ -1,24 +1,33 @@
-"""
->>> f = GloballyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
->>> print(_separateUnary(f, 0, [1,2,3]))
-((([]_[1.0,2.0)^[0.0,1) p) /\ ([]_[1.0,2.0)^[1,1] p)) /\ ((([]_[1.0,2.0)^(1,2) p) /\ ([]_[1.0,2.0)^[2,2] p)) /\ ((([]_[1.0,2.0)^(2,3) p) /\ ([]_[1.0,2.0)^[3,3] p)) /\ ([]_[1.0,2.0)^(3,inf) p))))
-
->>> g = FinallyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
->>> print(_separateUnary(g, 0, [1,2,3]))
-(((<>_[1.0,2.0)^[0.0,1) p) \/ (<>_[1.0,2.0)^[1,1] p)) \/ (((<>_[1.0,2.0)^(1,2) p) \/ (<>_[1.0,2.0)^[2,2] p)) \/ (((<>_[1.0,2.0)^(2,3) p) \/ (<>_[1.0,2.0)^[3,3] p)) \/ (<>_[1.0,2.0)^(3,inf) p))))
-
->>> r = UntilFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
->>> print(_separateBinary(r, 0, ['v1','v2']))
-((p U_(1.0,2.0]^[0.0,'v1') q) \/ ((([]_[0,inf)^[0.0,'v1') p) /\ ([]_[0,inf)^['v1','v1'] p)) /\ ((<>_(1.0,2.0]^['v1','v1'] q) \/ ((p U_(1.0,2.0]^('v1','v2') q) \/ ((([]_[0,inf)^('v1','v2') p) /\ ([]_[0,inf)^['v2','v2'] p)) /\ ((<>_(1.0,2.0]^['v2','v2'] q) \/ (p U_(1.0,2.0]^('v2',inf) q)))))))
-
->>> s = ReleaseFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
->>> print(_separateBinary(s, 0, ['v1','v2']))
-((p R_(1.0,2.0]^[0.0,'v1') q) /\ (((<>_[0,inf)^[0.0,'v1') p) \/ (<>_[0,inf)^['v1','v1'] p)) \/ (([]_(1.0,2.0]^['v1','v1'] q) /\ ((p R_(1.0,2.0]^('v1','v2') q) /\ (((<>_[0,inf)^('v1','v2') p) \/ (<>_[0,inf)^['v2','v2'] p)) \/ (([]_(1.0,2.0]^['v2','v2'] q) /\ (p R_(1.0,2.0]^('v2',inf) q)))))))
-"""
 
 from formula import *
 from interval import *
 from expr import *
+
+
+def valuation(f:Formula, j:Interval):
+    if isinstance(f, ConstantFormula):
+        return ConstantConstraint(f.getValue())
+    elif isinstance(f, PropositionFormula):
+        return Atomic((j, f.id))
+    elif isinstance(f, NotFormula):
+        return NegConstraint(valuation(f.child, j))
+    elif isinstance(f, BinaryFormula):
+        op = {AndFormula: AndConstraint, OrFormula: OrConstraint, ImpliesFormula: ImpliesConstraint}
+        return op[f.__class__](valuation(f.left, j), valuation(f.right, j))
+    elif isinstance(f, UnaryTemporalFormula):
+        op = {GloballyFormula: ImpliesConstraint, FinallyFormula: AndConstraint}
+        return op[f.__class__](_intervalConst(j,f.gtime,f.ltime), valuation(f.child, f.gtime))
+    elif isinstance(f, BinaryTemporalFormula):
+        top = {ReleaseFormula: ImpliesConstraint, UntilFormula: AndConstraint}
+        bop = {ReleaseFormula: OrConstraint,      UntilFormula: AndConstraint}
+        return top[f.__class__](_intervalConst(j,f.gtime,f.ltime), \
+                bop[f.__class__](valuation(f.left, f.gtime), valuation(f.right, f.gtime)))
+    else:
+        raise "Something wrong"
+
+
+def _intervalConst(j:Interval, k:Interval, i:Interval):
+    return Atomic((j, k, i))
 
 
 def fullSeparation(f:Formula, pMap):
@@ -40,6 +49,15 @@ def fullSeparation(f:Formula, pMap):
 
 
 def _separateUnary(f:UnaryTemporalFormula, index, partition):
+    """
+    >>> f = GloballyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
+    >>> print(_separateUnary(f, 0, [1,2,3]))
+    ((([]_[1.0,2.0)^[0.0,1) p) /\ ([]_[1.0,2.0)^[1,1] p)) /\ ((([]_[1.0,2.0)^(1,2) p) /\ ([]_[1.0,2.0)^[2,2] p)) /\ ((([]_[1.0,2.0)^(2,3) p) /\ ([]_[1.0,2.0)^[3,3] p)) /\ ([]_[1.0,2.0)^(3,inf) p))))
+
+    >>> g = FinallyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
+    >>> print(_separateUnary(g, 0, [1,2,3]))
+    (((<>_[1.0,2.0)^[0.0,1) p) \/ (<>_[1.0,2.0)^[1,1] p)) \/ (((<>_[1.0,2.0)^(1,2) p) \/ (<>_[1.0,2.0)^[2,2] p)) \/ (((<>_[1.0,2.0)^(2,3) p) \/ (<>_[1.0,2.0)^[3,3] p)) \/ (<>_[1.0,2.0)^(3,inf) p))))
+    """
     assert f.gtime == universeInterval
     ft = f.__class__
     op = {GloballyFormula: AndFormula, FinallyFormula: OrFormula}
@@ -55,6 +73,15 @@ def _separateUnary(f:UnaryTemporalFormula, index, partition):
 
 
 def _separateBinary(f:BinaryTemporalFormula, index, partition):
+    """
+    >>> r = UntilFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
+    >>> print(_separateBinary(r, 0, [1,2]))
+    ((p U_(1.0,2.0]^[0.0,1) q) \/ ((([]_[0,inf)^[0.0,1) p) /\ ([]_[0,inf)^[1,1] p)) /\ ((<>_(1.0,2.0]^[1,1] q) \/ ((p U_(1.0,2.0]^(1,2) q) \/ ((([]_[0,inf)^(1,2) p) /\ ([]_[0,inf)^[2,2] p)) /\ ((<>_(1.0,2.0]^[2,2] q) \/ (p U_(1.0,2.0]^(2,inf) q)))))))
+
+    >>> s = ReleaseFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
+    >>> print(_separateBinary(s, 0, [1,2]))
+    ((p R_(1.0,2.0]^[0.0,1) q) /\ (((<>_[0,inf)^[0.0,1) p) \/ (<>_[0,inf)^[1,1] p)) \/ (([]_(1.0,2.0]^[1,1] q) /\ ((p R_(1.0,2.0]^(1,2) q) /\ (((<>_[0,inf)^(1,2) p) \/ (<>_[0,inf)^[2,2] p)) \/ (([]_(1.0,2.0]^[2,2] q) /\ (p R_(1.0,2.0]^(2,inf) q)))))))
+    """
     assert f.gtime == universeInterval
     ft  = f.__class__
     op1 = {UntilFormula: OrFormula,       ReleaseFormula: AndFormula}

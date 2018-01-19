@@ -5,7 +5,7 @@ from syntax.stlParser import stlParser
 from stlVisitorImpl import stlVisitorImpl
 
 from partition import *
-from separation import *
+from encoding import *
 
 
 def parseFormula(fStr:str):
@@ -33,3 +33,7 @@ if __name__ == '__main__':
     fs = fullSeparation(formula, partition)
     #print(fs)
     print(fs.size())
+
+    result = valuation(fs, Interval(True, 0.0, True, 0.0))
+    print(result)
+    print(result.size())
