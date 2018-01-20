@@ -1,20 +1,14 @@
 
 import itertools
+from base import genId
 from formula import *
 from expr import *
 
 
-def genVarExpr(initial):
-    counter = initial
-    while True:
-        yield VariableExpr('v' + str(counter))
-        counter += 1
-
-
 def guessPartition(formula, baseSize):
     result = {}
-    gen = genVarExpr(0)
-    _guessPartition(formula, [next(gen) for _ in range(baseSize)], gen, result)
+    genVar = genId(0)
+    _guessPartition(formula, [VariableExpr(next(genVar)) for _ in range(baseSize)], genVar, result)
     return result
 
 
@@ -40,8 +34,8 @@ def _guessPartition(formula, baseCase, genVar, result):
         result[formula] = result[formula.left] + result[formula.right]
     elif isinstance(formula, UnaryTemporalFormula):
         csize = len(result[formula.child])
-        result[formula] = [next(genVar) for _ in range(2 * (csize + 2))]
+        result[formula] = [VariableExpr(next(genVar)) for _ in range(2 * (csize + 2))]
     elif isinstance(formula, BinaryTemporalFormula):
         csize = len(result[formula.left]) + len(result[formula.right])
-        result[formula] = [next(genVar) for _ in range(2 * (lsize + rsize + 2))]
+        result[formula] = [VariableExpr(next(genVar)) for _ in range(2 * (lsize + rsize + 2))]
 

@@ -5,6 +5,52 @@ from expr import *
 
 
 def valuation(f:Formula, j:Interval):
+    genPr = genId(0, 'p')
+    fMap  = {}
+    vf    = _valuation(f, j, genPr, fMap)
+
+    return AndConstraint([vf] + [IffConstraint(pf[0], pf[1]) for pf in fMap.values()])
+
+
+
+def _valuation(f:Formula, j:Interval, genPr, fMap):
+    if isinstance(f, ConstantFormula):
+        return ConstantConstraint(f.getValue())
+    elif isinstance(f, PropositionFormula):
+        return Atomic((j, f.id))
+    elif isinstance(f, NotFormula):
+        return NegConstraint(_valuation(f.child,j,genPr,fMap))
+    elif isinstance(f, Multiary):
+        op = {AndFormula: AndConstraint, OrFormula: OrConstraint}
+        return op[f.__class__]([_valuation(c,j,genPr,fMap) for c in f.children])
+    elif isinstance(f, ImpliesFormula):
+        return ImpliesConstraint(_valuation(f.left,j,genPr,fMap), _valuation(f.right,j,genPr,fMap))
+    elif isinstance(f, FinallyFormula):
+        return cachedValuation((f,j), fMap, genPr, \
+                AndConstraint([_intervalConst(j,f.gtime,f.ltime), _valuation(f.child,f.gtime,genPr,fMap)]))
+    elif isinstance(f, GloballyFormula):
+        return cachedValuation((f,j), fMap, genPr, \
+                ImpliesConstraint(_intervalConst(j,f.gtime,f.ltime), _valuation(f.child,f.gtime,genPr,fMap)))
+    elif isinstance(f, UntilFormula):
+        return cachedValuation((f,j), fMap, genPr, \
+                AndConstraint([_intervalConst(j,f.gtime,f.ltime), \
+                    _valuation(f.left,f.gtime,genPr,fMap), _valuation(f.right,f.gtime,genPr,fMap)]))
+    elif isinstance(f, ReleaseFormula):
+        return cachedValuation((f,j), fMap, genPr, \
+                OrConstraint([NegConstraint(_intervalConst(j,f.gtime,f.ltime)), \
+                    _valuation(f.left,f.gtime,genPr,fMap), _valuation(f.right,f.gtime,genPr,fMap)]))
+    else:
+        raise "Something wrong"
+
+
+def cachedValuation(key, fMap, genPr, value):
+    if not key in fMap:
+        np = ConstantConstraint(next(genPr))
+        fMap[key] = (np, value)
+    return fMap[key][0]
+
+
+def valuationSimple(f:Formula, j:Interval):
     if isinstance(f, ConstantFormula):
         return ConstantConstraint(f.getValue())
     elif isinstance(f, PropositionFormula):

@@ -1,3 +1,11 @@
+
+def genId(initial, gid = 'v'):
+    counter = initial
+    while True:
+        yield gid + str(counter)
+        counter += 1
+
+
 class Atomic:
     def __init__(self, id):
         self.id = id

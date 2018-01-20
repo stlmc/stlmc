@@ -50,6 +50,10 @@ class ImpliesConstraint(Binary, Constraint):
     op = '->'
 
 
+class IffConstraint(Binary, Constraint):
+    op = '<->'
+
+
 class LessConstraint(Binary, Constraint):
     op = '<'
 

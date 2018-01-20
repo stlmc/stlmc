@@ -16,6 +16,7 @@ def parseFormula(fStr:str):
     return stlVisitorImpl().visit(tree)
 
 
+
 f1 = "[] [0,1] ~p /\ [] =1 q /\ <> (2.1,inf) true \/ (false U [0,4) q)"
 f2 = "[] [0,1] (p -> <> [1,2] q)"
 f3 = "[] [0,1] (p -> <> [1,2] (q /\ [] [3,4] r))"
@@ -35,5 +36,6 @@ if __name__ == '__main__':
     print(fs.size())
 
     result = valuation(fs, Interval(True, 0.0, True, 0.0))
-    #print(result)
+    print(result)
     print(result.size())
+
