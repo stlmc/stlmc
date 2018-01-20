@@ -37,5 +37,5 @@ def _guessPartition(formula, baseCase, genVar, result):
         result[formula] = [VariableExpr(next(genVar)) for _ in range(2 * (csize + 2))]
     elif isinstance(formula, BinaryTemporalFormula):
         csize = len(result[formula.left]) + len(result[formula.right])
-        result[formula] = [VariableExpr(next(genVar)) for _ in range(2 * (lsize + rsize + 2))]
+        result[formula] = [VariableExpr(next(genVar)) for _ in range(2 * (csize + 2))]
 

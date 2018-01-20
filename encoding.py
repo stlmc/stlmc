@@ -26,19 +26,19 @@ def _valuation(f:Formula, j:Interval, genPr, fMap):
     elif isinstance(f, ImpliesFormula):
         return ImpliesConstraint(_valuation(f.left,j,genPr,fMap), _valuation(f.right,j,genPr,fMap))
     elif isinstance(f, FinallyFormula):
-        return cachedValuation((f,j), fMap, genPr, \
-                AndConstraint([_intervalConst(j,f.gtime,f.ltime), _valuation(f.child,f.gtime,genPr,fMap)]))
+        f1 = cachedValuation((f.child,f.gtime), fMap, genPr, _valuation(f.child,f.gtime,genPr,fMap))
+        return AndConstraint([_intervalConst(j,f.gtime,f.ltime), f1])
     elif isinstance(f, GloballyFormula):
-        return cachedValuation((f,j), fMap, genPr, \
-                ImpliesConstraint(_intervalConst(j,f.gtime,f.ltime), _valuation(f.child,f.gtime,genPr,fMap)))
+        f1 = cachedValuation((f.child,f.gtime), fMap, genPr, _valuation(f.child,f.gtime,genPr,fMap))
+        return ImpliesConstraint(_intervalConst(j,f.gtime,f.ltime), f1)
     elif isinstance(f, UntilFormula):
-        return cachedValuation((f,j), fMap, genPr, \
-                AndConstraint([_intervalConst(j,f.gtime,f.ltime), \
-                    _valuation(f.left,f.gtime,genPr,fMap), _valuation(f.right,f.gtime,genPr,fMap)]))
+        f1 = cachedValuation((f.left,f.gtime), fMap, genPr, _valuation(f.left,f.gtime,genPr,fMap))
+        f2 = cachedValuation((f.right,f.gtime), fMap, genPr, _valuation(f.right,f.gtime,genPr,fMap))
+        return AndConstraint([_intervalConst(j,f.gtime,f.ltime), f1, f2])
     elif isinstance(f, ReleaseFormula):
-        return cachedValuation((f,j), fMap, genPr, \
-                OrConstraint([NegConstraint(_intervalConst(j,f.gtime,f.ltime)), \
-                    _valuation(f.left,f.gtime,genPr,fMap), _valuation(f.right,f.gtime,genPr,fMap)]))
+        f1 = cachedValuation((f.left,f.gtime), fMap, genPr, _valuation(f.left,f.gtime,genPr,fMap))
+        f2 = cachedValuation((f.right,f.gtime), fMap, genPr, _valuation(f.right,f.gtime,genPr,fMap))
+        return OrConstraint([NegConstraint(_intervalConst(j,f.gtime,f.ltime)), f1, f2])
     else:
         raise "Something wrong"
 
