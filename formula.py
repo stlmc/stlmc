@@ -2,48 +2,37 @@
 from base import *
 
 class Formula:
-    def __invert__(self):
-        return NotFormula(self)
-    def __and__(self, other):
-        return AndFormula(self, other)
-    def __or__(self, other):
-        return OrFormula(self, other)
-    def __rshift__(self, other):
-        return ImpliesFormula(self, other)
+    pass
 
 
-class NotFormula(Formula, Unary):
+class NotFormula(Unary, Formula):
     op = '~'
 
 
-class ConstantFormula(Formula, Atomic):
+class ConstantFormula(Atomic, Formula):
     def __init__(self, value):
         super().__init__(True if value == 'true' else False)
     def getValue(self):
         return self.id
 
 
-class PropositionFormula(Formula, Atomic):
+class PropositionFormula(Atomic, Formula):
     pass
 
 
-class BinaryFormula(Formula, Binary):
-    pass
-
-
-class AndFormula(BinaryFormula):
+class AndFormula(Multiary, Formula):
     op = '/\\'
 
 
-class OrFormula(BinaryFormula):
+class OrFormula(Multiary, Formula):
     op = '\\/'
 
 
-class ImpliesFormula(BinaryFormula):
+class ImpliesFormula(Binary, Formula):
     op = '->'
 
 
-class UnaryTemporalFormula(Formula,Unary):
+class UnaryTemporalFormula(Unary, Formula):
     def __init__(self, ltime, gtime, child):
         super().__init__(child)
         self.ltime = ltime
@@ -60,7 +49,7 @@ class FinallyFormula(UnaryTemporalFormula):
     op = '<>'
 
 
-class BinaryTemporalFormula(Formula,Binary):
+class BinaryTemporalFormula(Binary, Formula):
     def __init__(self, ltime, gtime, left, right):
         super().__init__(left, right)
         self.ltime = ltime

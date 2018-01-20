@@ -23,42 +23,38 @@ class Constraint:
     def __invert__(self):
         return NegConstraint(self)
     def __and__(self, other):
-        return AndConstraint(self,other)
+        return AndConstraint([self,other])
     def __or__(self, other):
-        return OrConstraint(self,other)
+        return OrConstraint([self,other])
     def __rshift__(self, other):
         return ImpliesConstraint(self, other)
 
 
-class ConstantConstraint(Constraint,Atomic):
+class ConstantConstraint(Atomic, Constraint):
     pass
 
 
-class NegConstraint(Constraint,Unary):
+class NegConstraint(Unary, Constraint):
     op = '~'
 
 
-class BinaryConstraint(Constraint,Binary):
-    pass
-
-
-class AndConstraint(BinaryConstraint):
+class AndConstraint(Multiary, Constraint):
     op = '&'
 
 
-class OrConstraint(BinaryConstraint):
+class OrConstraint(Multiary, Constraint):
     op = '|'
 
 
-class ImpliesConstraint(BinaryConstraint):
+class ImpliesConstraint(Binary, Constraint):
     op = '->'
 
 
-class LessConstraint(BinaryConstraint):
+class LessConstraint(Binary, Constraint):
     op = '<'
 
 
-class EqualConstraint(BinaryConstraint):
+class EqualConstraint(Binary, Constraint):
     op = '=='
 
 
@@ -81,22 +77,18 @@ class Expr:
         return ~(self <= other)
 
 
-class VariableExpr(Expr,Atomic):
+class VariableExpr(Atomic, Expr):
     pass
 
 
-class ConstantExpr(Expr,Atomic):
+class ConstantExpr(Atomic, Expr):
     pass
 
 
-class BinaryExpr(Expr,Binary):
-    pass
-
-
-class AddExpr(BinaryExpr):
+class AddExpr(Binary, Expr):
     op = '+'
 
 
-class MinusExpr(BinaryExpr):
+class MinusExpr(Binary, Expr):
     op = '-'
 

@@ -26,7 +26,7 @@ if __name__ == '__main__':
     print(formula)
     print()
 
-    partition = guessPartition(formula, 2)
+    partition = guessPartition(formula, 10)
     for (k,v) in partition.items():
         print(str(k) + ': ' + ', '.join([str(x) for x in v]))
 
@@ -35,5 +35,5 @@ if __name__ == '__main__':
     print(fs.size())
 
     result = valuation(fs, Interval(True, 0.0, True, 0.0))
-    print(result)
+    #print(result)
     print(result.size())

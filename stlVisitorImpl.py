@@ -53,9 +53,17 @@ class stlVisitorImpl(stlVisitor):
 
     # Visit a parse tree produced by stlParser#binaryFormula.
     def visitBinaryFormula(self, ctx:stlParser.BinaryFormulaContext):
+        op = ctx.op.text
         left = self.visit(ctx.formula()[0])
         right = self.visit(ctx.formula()[1])
-        return {'/\\': AndFormula, '\\/': OrFormula, '->': ImpliesFormula}[ctx.op.text](left, right)
+        if op == '->':
+            return ImpliesFormula(left,right)
+        elif op == '/\\':
+            return AndFormula([left,right])
+        elif op == '\\/':
+            return OrFormula([left,right])
+        else:
+            raise "something wrong"
 
 
     # Visit a parse tree produced by stlParser#unaryTemporalFormula.

@@ -26,3 +26,18 @@ class Binary:
         return '(' + str(self.left) + ' ' + self.op+ ' ' + str(self.right) + ')'
     def size(self):
         return self.left.size() + self.right.size() + 1
+
+
+class Multiary:
+    def __init__(self, children):
+        self.children = []
+        for c in children:
+            if isinstance(c, self.__class__):
+                self.children.extend(c.children)
+            else:
+                self.children.append(c)
+    def __str__(self):
+        return '(' + (' ' + self.op + ' ').join([str(c) for c in self.children]) + ')'
+    def size(self):
+        return sum([c.size() for c in self.children]) + 1
+
