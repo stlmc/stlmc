@@ -1,6 +1,5 @@
 
 from formula import *
-from interval import *
 from functools import singledispatch
 
 @singledispatch

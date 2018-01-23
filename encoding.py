@@ -1,69 +1,86 @@
 
 from formula import *
-from interval import *
-from expr import *
+from const import *
 from functools import singledispatch
 
 
-def valuation(f:Formula, j:Interval):
-    genPr = genId(0, 'p')
+def baseEncoding(partition:dict):
+    base = {}
+    for (f,par) in partition.items():
+        if isinstance(f, PropositionFormula):
+            genProp = genId(0, "#" + f.id)
+            exPar   = [0.0] + par + [float('inf')]
+            base[f] = [(Interval(True,exPar[i],False,exPar[i+1]), Bool(next(genProp))) for i in range(len(par)+1)]
+    return base
+
+
+def valuation(f:Formula, base:dict, j:Interval):
+    genPr = genId(0, 'chi')
     fMap  = {}
-    vf    = _value(f, j, genPr, fMap)
+    vf    = _value(f, j, genPr, fMap, base)
+    return And([vf] + [pf[0] == pf[1] for pf in fMap.values()])
 
-    return AndConstraint([vf] + [IffConstraint(pf[0], pf[1]) for pf in fMap.values()])
 
-def _cached(key, fMap, genPr, value):
+def _cached(key, fMap, genPr, valueFunc):
     if not key in fMap:
-        np = ConstantConstraint(next(genPr))
-        fMap[key] = (np, value)
+        np = Bool(next(genPr))
+        fMap[key] = (np, valueFunc())
     return fMap[key][0]
 
+
+def _atomEncoding(f:PropositionFormula, j:Interval, base:dict):
+    const = []
+    for (basePartition,prop) in base[f]:
+        const.append(Implies(subInterval(j,basePartition),prop))
+    return And(const)
+
+
 @singledispatch
-def _value(f:Formula, j:Interval, genPr, fMap):
+def _value(f:Formula, j:Interval, genPr, fMap, base):
     raise NotImplementedError('Something wrong')
 
 @_value.register(ConstantFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    return ConstantConstraint(f.getValue())
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    return BoolVal(f.getValue())
 
 @_value.register(PropositionFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    return Atomic((j, f.id))
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    return _cached((f,j), fMap, genPr, lambda: _atomEncoding(f,j,base))
 
 @_value.register(NotFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    return NegConstraint(_value(f.child,j,genPr,fMap))
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    return Not(_value(f.child,j,genPr,fMap,base))
 
 @_value.register(Multiary)
-def _(f:Formula, j:Interval, genPr, fMap):
-    op = {AndFormula: AndConstraint, OrFormula: OrConstraint}
-    return op[f.__class__]([_value(c,j,genPr,fMap) for c in f.children])
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    op = {AndFormula: And, OrFormula: Or}
+    return op[f.__class__]([_value(c,j,genPr,fMap,base) for c in f.children])
 
 @_value.register(ImpliesFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    return ImpliesConstraint(_value(f.left,j,genPr,fMap), _value(f.right,j,genPr,fMap))
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    return Implies(_value(f.left,j,genPr,fMap,base), _value(f.right,j,genPr,fMap,base))
 
 @_value.register(FinallyFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    f1 = _cached((f.child,f.gtime), fMap, genPr, _value(f.child,f.gtime,genPr,fMap))
-    return AndConstraint([_intervalConst(j,f.gtime,f.ltime), f1])
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    f1 = _cached((f.child,f.gtime), fMap, genPr, lambda: _value(f.child,f.gtime,genPr,fMap,base))
+    return And([intervalConst(j,f.gtime,f.ltime), f1])
 
 @_value.register(GloballyFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    f1 = _cached((f.child,f.gtime), fMap, genPr, _value(f.child,f.gtime,genPr,fMap))
-    return ImpliesConstraint(_intervalConst(j,f.gtime,f.ltime), f1)
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    f1 = _cached((f.child,f.gtime), fMap, genPr, lambda: _value(f.child,f.gtime,genPr,fMap,base))
+    return Implies(intervalConst(j,f.gtime,f.ltime), f1)
 
 @_value.register(UntilFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    f1 = _cached((f.left,f.gtime), fMap, genPr, _value(f.left,f.gtime,genPr,fMap))
-    f2 = _cached((f.right,f.gtime), fMap, genPr, _value(f.right,f.gtime,genPr,fMap))
-    return AndConstraint([_intervalConst(j,f.gtime,f.ltime), f1, f2])
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    f1 = _cached((f.left,f.gtime), fMap, genPr, lambda: _value(f.left,f.gtime,genPr,fMap,base))
+    f2 = _cached((f.right,f.gtime), fMap, genPr, lambda: _value(f.right,f.gtime,genPr,fMap,base))
+    return And([intervalConst(j,f.gtime,f.ltime), f1, f2])
 
 @_value.register(ReleaseFormula)
-def _(f:Formula, j:Interval, genPr, fMap):
-    f1 = _cached((f.left,f.gtime), fMap, genPr, _value(f.left,f.gtime,genPr,fMap))
-    f2 = _cached((f.right,f.gtime), fMap, genPr, _value(f.right,f.gtime,genPr,fMap))
-    return OrConstraint([NegConstraint(_intervalConst(j,f.gtime,f.ltime)), f1, f2])
+def _(f:Formula, j:Interval, genPr, fMap, base):
+    f1 = _cached((f.left,f.gtime), fMap, genPr, lambda: _value(f.left,f.gtime,genPr,fMap,base))
+    f2 = _cached((f.right,f.gtime), fMap, genPr, lambda: _value(f.right,f.gtime,genPr,fMap,base))
+    return Or([Not(intervalConst(j,f.gtime,f.ltime)), f1, f2])
 
 
 @singledispatch
@@ -72,7 +89,7 @@ def valuationSimple(f:Formula, j:Interval):
 
 @valuationSimple.register(ConstantFormula)
 def _(f:Formula, j:Interval):
-    return ConstantConstraint(f.getValue())
+    return RealVal(f.getValue())
 
 @valuationSimple.register(PropositionFormula)
 def _(f:Formula, j:Interval):
@@ -80,36 +97,29 @@ def _(f:Formula, j:Interval):
 
 @valuationSimple.register(NotFormula)
 def _(f:Formula, j:Interval):
-    return NegConstraint(valuation(f.child, j))
+    return Not(valuation(f.child, j))
 
 @valuationSimple.register(Multiary)
 def _(f:Formula, j:Interval):
-    op = {AndFormula: AndConstraint, OrFormula: OrConstraint}
+    op = {AndFormula: And, OrFormula: Or}
     return op[f.__class__]([valuation(c, j) for c in f.children])
 
 @valuationSimple.register(ImpliesFormula)
 def _(f:Formula, j:Interval):
-    return ImpliesConstraint(valuation(f.left, j), valuation(f.right, j))
+    return Implies(valuation(f.left, j), valuation(f.right, j))
 
 @valuationSimple.register(FinallyFormula)
 def _(f:Formula, j:Interval):
-    return AndConstraint([_intervalConst(j,f.gtime,f.ltime), valuation(f.child, f.gtime)])
+    return And([intervalConst(j,f.gtime,f.ltime), valuation(f.child, f.gtime)])
 
 @valuationSimple.register(GloballyFormula)
 def _(f:Formula, j:Interval):
-    return ImpliesConstraint(_intervalConst(j,f.gtime,f.ltime), valuation(f.child, f.gtime))
+    return Implies(intervalConst(j,f.gtime,f.ltime), valuation(f.child, f.gtime))
 
 @valuationSimple.register(UntilFormula)
 def _(f:Formula, j:Interval):
-    return AndConstraint([_intervalConst(j,f.gtime,f.ltime), valuation(f.left, f.gtime), valuation(f.right, f.gtime)])
+    return And([intervalConst(j,f.gtime,f.ltime), valuation(f.left, f.gtime), valuation(f.right, f.gtime)])
 
 @valuationSimple.register(ReleaseFormula)
 def _(f:Formula, j:Interval):
-    return OrConstraint([NegConstraint(_intervalConst(j,f.gtime,f.ltime)), valuation(f.left, f.gtime), valuation(f.right, f.gtime)])
-
-
-def _intervalConst(j:Interval, k:Interval, i:Interval):
-    return Atomic((j, k, i))
-
-
-
+    return Or([Not(intervalConst(j,f.gtime,f.ltime)), valuation(f.left, f.gtime), valuation(f.right, f.gtime)])
