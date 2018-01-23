@@ -1,20 +1,8 @@
-import sys
-from antlr4 import *
-from syntax.stlLexer import stlLexer
-from syntax.stlParser import stlParser
-from stlVisitorImpl import stlVisitorImpl
 
+from stl import *
 from partition import *
 from separation import *
 from encoding import *
-
-
-def parseFormula(fStr:str):
-    lexer  = stlLexer(InputStream(fStr))
-    stream = CommonTokenStream(lexer)
-    parser = stlParser(stream)
-    tree   = parser.formula()
-    return stlVisitorImpl().visit(tree)
 
 
 f1 = "[] [0,1] ~p /\ [] =1 q /\ <> (2.1,inf) true \/ (false U [0,4) q)"
@@ -48,7 +36,7 @@ if __name__ == '__main__':
     s = Solver()
     s.add(const)
     s.add(result)
-    print(s.to_smt2())
+#    print(s.to_smt2())
     print (s.check())
     print (s.model())
 

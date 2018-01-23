@@ -2,6 +2,24 @@ import math
 from base import Interval
 from z3 import *
 
+def inIntervalC(x:float, j:Interval):
+    return (x >= j.left  if j.leftend  else x > j.left) and (x <= j.right if j.rightend else x < j.right)
+
+def intervalConstC(j:Interval, k:Interval, i:Interval):
+    if j.leftend and not (k.leftend and i.rightend):
+        if not (j.left >  k.left - i.right):
+            return False
+    else:
+        if not (j.left >= k.left - i.right):
+            return False
+
+    if j.rightend and not (k.rightend and i.leftend):
+        if not (j.right <  k.right - i.left):
+            return False
+    else:
+        if not (j.right <= k.right - i.left):
+            return False
+    return True
 
 def inInterval(x:ArithRef, j:Interval):
     """
