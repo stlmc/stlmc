@@ -1,47 +1,46 @@
+import sys
+import time
 
-import random
 from stl import *
 from concrete import *
 from separation import *
+from randomProp import *
 
+sys.setrecursionlimit(5000)
 
-f1 = "[] [0,1] ~p /\ [] =1 q /\ <> (2.1,inf) true \/ (false U [0,4) q)"
-f2 = "[] [0,1] (p -> <> [1,2] q)"
-f3 = "[] [0,1] (p -> q U [1,2] r)"
-f4 = "(<> (1,3] s) R [0,1] (p -> q U [1,2] r)"
-f5 = "[] [0,1] (p -> <> [1,2] (q /\ [] [3,4] r))"
-f6 = "[] [0,1] (p -> (~r U [1,2] (q /\ [] [3,4] r)))"
-f7 = "(<> (1,2) ~r) U [0,1] (p -> (s U [1,2] (q /\ [] [3,4] r)))"
+testcase = [
+    "[] (0,1) p",
+    "p U [0,4) q",
+    "[] [0,1] (p -> <> [1,2] q)",
+    "[] [0,1] (p -> q U [1,2] r)",
+    "(<> (1,3] s) R [0,1] (p -> q U [1,2] r)",
+    "[] [0,1] (p -> <> [1,2] (q /\ [] [3,4] r))",
+    "[] [0,1] (p -> (~r U [1,2] (q /\ [] [3,4] r)))",
+    "(<> (1,2) ~r) U [0,1] (p -> (s U [1,2] (q /\ [] [3,4] r)))"
+]
 
-def randomBase(size:int):
-    base = [0]
-    for _ in range(size):
-        base.append(base[-1] + random.random()*10)
-    return base
-
-
-def randomProp(partition:dict):
-    bmap = {}
-    for (f,par) in partition.items():
-        if isinstance(f, PropositionFormula):
-            bmap[f] = [bool(random.getrandbits(1)) for _ in range(len(par)+1)]
-    return bmap
+def runTest(formula, k):
+    baseP = randomBase(k)
+    partition = buildPartition(formula, baseP)
+    fs = fullSeparation(formula, partition)
+    baseV = randomProp(partition)
+    result = valuation(fs, Interval(True, 0.0, True, 0.0), baseP, baseV)
+    return (result, fs.size())
 
 
 if __name__ == '__main__':
-    formula = parseFormula(f5)
-    print(formula)
-    print()
+    for f in testcase:
+        formula = parseFormula(f)
+        print("Checking: " + str(formula))
+        
+        for k in range(1,20):
+            print("k = " + str(k)) 
+            
+            stime = time.time()
+            (result,size) = runTest(formula, k)
+            etime = time.time() 
+            
+            print("    Separation: " + str(size)) 
+            print("    Result: " + str(result)) 
+            print("    Time: " + str(etime-stime))
 
-    baseP = randomBase(10)
-    partition = buildPartition(formula, randomBase(10))
-    #for (k,v) in partition.items():
-    #    print(str(k) + ': ' + ', '.join([str(x) for x in v]))
-
-    fs = fullSeparation(formula, partition)
-    #print(fs)
-    print("Separation: " + str(fs.size()))
-
-    baseV = randomProp(partition)
-    result = valuation(fs, Interval(True, 0.0, True, 0.0), baseP, baseV)
-    print(result)

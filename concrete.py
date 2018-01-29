@@ -98,5 +98,5 @@ def _(f:Formula, j:Interval, bp, bv):
 
 @valuation.register(ReleaseFormula)
 def _(f:Formula, j:Interval, bp, bv):
-    return not(intervalConst(j,f.gtime,f.ltime)) or valuation(f.left, f.gtime, bp, bv) or valuation(f.right, f.gtime, bp, bv)
+    return not(intervalConstC(j,f.gtime,f.ltime)) or valuation(f.left, f.gtime, bp, bv) or valuation(f.right, f.gtime, bp, bv)
 
