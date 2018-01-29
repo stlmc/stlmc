@@ -29,6 +29,8 @@ class Atomic:
         return str(self.id)
     def size(self):
         return 1
+    def height(self):
+        return 0
 
 
 class Unary:
@@ -38,6 +40,8 @@ class Unary:
         return '(' + self.op + ' ' + str(self.child) + ')'
     def size(self):
         return self.child.size() + 1
+    def height(self):
+        return 1 + self.child.height()
 
 
 class Binary:
@@ -48,6 +52,8 @@ class Binary:
         return '(' + str(self.left) + ' ' + self.op+ ' ' + str(self.right) + ')'
     def size(self):
         return self.left.size() + self.right.size() + 1
+    def height(self):
+        return 1 + max(self.left.height(),self.right.height())
 
 
 class Multiary:
@@ -62,4 +68,6 @@ class Multiary:
         return '(' + (' ' + self.op + ' ').join([str(c) for c in self.children]) + ')'
     def size(self):
         return sum([c.size() for c in self.children]) + 1
+    def height(self):
+        return 1 + max([c.height() for c in self.children])
 
