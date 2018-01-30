@@ -4,22 +4,11 @@ import base
 from stl import *
 from concrete import *
 from separation import *
-from randomProp import *
+from randomSTL import *
 
-sys.setrecursionlimit(10000)
+from conInput import testcase
 
-testcase = [
-    "[] (0,1) p",
-    "p U [0,4) q",
-    "(<> [1,2] p) U (0.5,3) p",
-    "[] [0,1] (p -> <> [1,2] q)",
-    "[] [0,1] (p -> q U [1,2] r)",
-    "<> (0,0.4) ([] [0,1] (p -> q U [1,2] r))",
-    "[] [0,1] (p -> <> [1,2] (q /\ [] [3,3] r))",
-    "[] [0,1] (p -> (~r U [1,2] (q /\ [] [3,4] r)))",
-    "(<> (1,2) r) U [0,1] (p -> (~s U [1,2] (q /\ [] [3,4] r)))",
-    "([] (1,2) <> (1,2) ~r) U [0,1] (~p -> (s U [1,2] (q /\ [] [3,4] r)))"
-]
+sys.setrecursionlimit(20000)
 
 def runTest(formula, k):
     baseP = randomBase(k)
@@ -32,13 +21,16 @@ def runTest(formula, k):
 
 
 if __name__ == '__main__':
-    for f in testcase:
-        formula = parseFormula(f)
-        print("Checking: " + str(formula))
+    print("id#size#height#formula")
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
+        print("#".join(["f%s"%i, str(base.size(formula)), str(formula.height()), testcase[i]]))
 
-        print("size: %s, height: %s" % (base.size(formula), formula.height()))
+    print()
+    print("id,k,Separation,Result,Time")
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
 
-        print("k,Separation,Result,Time")
         for k in range(100,1001,100):
             gc.disable()
             stime = time.process_time()
@@ -46,5 +38,5 @@ if __name__ == '__main__':
             etime = time.process_time() 
             gc.enable()
             gc.collect()
-            print(",".join([str(k), str(size), str(result), str(etime-stime)]))
+            print(",".join(["f%s"%i, str(k), str(size), str(result), str(etime-stime)]))
 
