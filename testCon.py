@@ -6,16 +6,16 @@ from concrete import *
 from separation import *
 from randomSTL import *
 
-from conInput import testcase
+from testcase import testcase
 
 sys.setrecursionlimit(20000)
 
 def runTest(formula, k):
     baseP = randomBase(k)
-    partition = buildPartition(formula, baseP)
-    fs = fullSeparation(formula, partition[1])
+    (partition,sepMap) = buildPartition(formula, baseP)
+    fs = fullSeparation(formula, sepMap)
     fsize = base.size(fs[0]) + sum([base.size(c) for c in fs[1].values()])
-    baseV = randomProp(partition[0])
+    baseV = randomProp(partition)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseP, baseV)
     return (result, fsize)
 

@@ -1,42 +1,45 @@
+import gc, time
+import base
 
 from stl import *
 from partition import *
 from separation import *
 from encoding import *
 
+from testcaseSym import testcase
 
-f1 = "[] [0,1] ~p /\ [] =1 q /\ <> (2.1,inf) true \/ (false U [0,4) q)"
-f2 = "[] [0,1] (p -> <> [1,2] q)"
-f3 = "[] [0,1] (p -> q U [1,2] r)"
-f4 = "(<> (1,3] s) R [0,1] (p -> q U [1,2] r)"
-f5 = "[] [0,1] (p -> <> [1,2] (q /\ [] [3,4] r))"
-f6 = "[] [0,1] (p -> (~r U [1,2] (q /\ [] [3,4] r)))"
-f7 = "(<> (1,2) ~r) U [0,1] (p -> (s U [1,2] (q /\ [] [3,4] r)))"
+
+def runTest(formula, k):
+    baseP = baseCase(k)
+    (partition,sepMap,const) = guessPartition(formula, baseP)
+    fs = fullSeparation(formula, sepMap)
+    baseV = baseEncoding(partition,baseP)
+    result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
+    return (result, const)
 
 
 if __name__ == '__main__':
-    formula = parseFormula(f3)
-    print(formula)
+    print("id#size#height#formula")
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
+        print("#".join(["f%s"%i, str(base.size(formula)), str(formula.height()), testcase[i]]))
+
     print()
+    print("id,k,Separation,Result,Generation,Solving")
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
 
-    (partition,const) = guessPartition(formula, 7)
-    for (k,v) in partition.items():
-        print(str(k) + ': ' + ', '.join([str(x) for x in v]))
-
-    print("Partition: " + str(sizeAst(And(const))))
-
-    fs = fullSeparation(formula, partition)
-    #print(fs)
-    print("Separation: " + str(fs.size()))
-
-    result = valuation(fs, baseEncoding(partition), Interval(True, 0.0, True, 0.0))
-    #print(result)
-    print("Valuation: " + str(sizeAst(result)))
-
-    s = Solver()
-    s.add(const)
-    s.add(result)
-#    print(s.to_smt2())
-    print (s.check())
-    print (s.model())
+        for k in range(2,21,2):
+            stime1 = time.process_time()
+            (fullSep,const) = runTest(formula, k)
+            etime1 = time.process_time()
+            s = Solver()
+            s.add(const)
+            s.add(fullSep)
+            stime2 = time.process_time()
+            checkResult = s.check()
+            etime2 = time.process_time()
+            print(",".join(["f%s"%i, str(k), str(sizeAst(And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]))
+            #print(s.to_smt2())
+            #print (s.model())
 
