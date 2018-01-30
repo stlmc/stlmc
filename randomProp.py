@@ -13,5 +13,5 @@ def randomProp(partition:dict):
     bmap = {}
     for (f,par) in partition.items():
         if isinstance(f, PropositionFormula):
-            bmap[f] = [bool(random.getrandbits(1)) for _ in range(len(par)+1)]
+            bmap[f] = [bool(random.getrandbits(1)) for _ in range(len(par))]
     return bmap

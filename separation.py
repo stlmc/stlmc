@@ -2,35 +2,46 @@
 from formula import *
 from functools import singledispatch
 
+def fullSeparation(f:Formula, sepMap):
+    fMap = {}
+    gen = genId(0, "@chi")
+    return (_separation(f,sepMap,gen,fMap), fMap)
+
 @singledispatch
-def fullSeparation(f:Formula, pMap):
+def _separation(f:Formula, sepMap, gen, fMap):
     raise NotImplementedError('Something wrong')
 
-@fullSeparation.register(Atomic)
-def _(f:Formula, pMap):
+@_separation.register(Atomic)
+def _(f:Formula, sepMap, gen, fMap):
     return f
 
-@fullSeparation.register(NotFormula)
-def _(f:Formula, pMap):
-    return f.__class__(fullSeparation(f.child, pMap))
+@_separation.register(NotFormula)
+def _(f:Formula, sepMap, gen, fMap):
+    return f.__class__(_separation(f.child,sepMap,gen,fMap))
 
-@fullSeparation.register(Multiary)
-def _(f:Formula, pMap):
-    return f.__class__([fullSeparation(c, pMap) for c in f.children])
+@_separation.register(Multiary)
+def _(f:Formula, sepMap, gen, fMap):
+    return f.__class__([_separation(c,sepMap,gen,fMap) for c in f.children])
 
-@fullSeparation.register(ImpliesFormula)
-def _(f:Formula, pMap):
-    return f.__class__(fullSeparation(f.left, pMap), fullSeparation(f.right, pMap))
+@_separation.register(ImpliesFormula)
+def _(f:Formula, sepMap, gen, fMap):
+    return f.__class__(_separation(f.left,sepMap,gen,fMap), _separation(f.right,sepMap,gen,fMap))
 
-@fullSeparation.register(UnaryTemporalFormula)
-def _(f:Formula, pMap):
-    tf = f.__class__(f.ltime, f.gtime, fullSeparation(f.child, pMap))
-    return _separateUnary(tf, 0, pMap[f])
+@_separation.register(UnaryTemporalFormula)
+def _(f:Formula, sepMap, gen, fMap):
+    np = PropositionFormula(next(gen))
+    fMap[np] = _separation(f.child,sepMap,gen,fMap)
+    tf = f.__class__(f.ltime, f.gtime, np)
+    return _separateUnary(tf, 0, sepMap[f])
 
-@fullSeparation.register(BinaryTemporalFormula)
-def _(f:Formula, pMap):
-    tf = f.__class__(f.ltime, f.gtime, fullSeparation(f.left, pMap), fullSeparation(f.right, pMap))
-    return _separateBinary(tf, 0, pMap[f])
+@_separation.register(BinaryTemporalFormula)
+def _(f:Formula, sepMap, gen, fMap):
+    np1 = PropositionFormula(next(gen))
+    np2 = PropositionFormula(next(gen))
+    fMap[np1] = _separation(f.left,sepMap,gen,fMap)
+    fMap[np2] = _separation(f.right,sepMap,gen,fMap)
+    tf = f.__class__(f.ltime, f.gtime, np1, np2)
+    return _separateBinary(tf, 0, sepMap[f])
 
 
 def _separateUnary(f:UnaryTemporalFormula, index, partition):
