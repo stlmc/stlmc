@@ -30,7 +30,7 @@ def reportTest(formula, filename):
             s.add(const)
             s.add(fullSep)
             stime2 = time.process_time()
-            s.set("timeout", 1000)
+            #s.set("timeout", 1000)
             checkResult = s.check()
             etime2 = time.process_time()
             print(",".join(["f%s"%i, str(k), str(sizeAst(And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
