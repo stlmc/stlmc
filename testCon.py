@@ -6,9 +6,9 @@ from concrete import *
 from separation import *
 from randomSTL import *
 
-from testcase import testcase
+from testcase2 import testcase
 
-sys.setrecursionlimit(20000)
+sys.setrecursionlimit(30000)
 
 def runTest(formula, k):
     baseP = randomBase(k)
@@ -18,6 +18,25 @@ def runTest(formula, k):
     baseV = randomProp(partition)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseP, baseV)
     return (result, fsize)
+
+
+def testGen():
+    error = 0
+    for fs in range(2,11):
+        c = 0
+        while c < 100:
+            formula = randFormula(fs,5)
+            try:
+                (result,size) = runTest(formula, 1000)
+            except RecursionError:
+                error += 1
+                if error > 10:
+                    print ("Abort")
+                    sys.exit(1)
+            else:
+                print("generating %s @ %s" % (fs,c), file=sys.stderr)
+                c += 1
+                print('"%s",' % formula)
 
 
 if __name__ == '__main__':
@@ -33,10 +52,13 @@ if __name__ == '__main__':
 
         for k in range(100,1001,100):
             gc.disable()
-            stime = time.process_time()
-            (result,size) = runTest(formula, k)
-            etime = time.process_time() 
+            try:
+                stime = time.process_time()
+                (result,size) = runTest(formula, k)
+                etime = time.process_time() 
+            except RecursionError:
+                print(",".join(["f%s"%i, str(k), "--"]))
+            else:
+                print(",".join(["f%s"%i, str(k), str(size), str(result), str(etime-stime)]))
             gc.enable()
             gc.collect()
-            print(",".join(["f%s"%i, str(k), str(size), str(result), str(etime-stime)]))
-

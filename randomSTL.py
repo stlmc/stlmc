@@ -63,4 +63,3 @@ def _randBinaryFormula(fs:int, atoms):
     else:
         op = random.choice([AndFormula,OrFormula])
         return op([left, right])
-
