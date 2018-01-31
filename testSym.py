@@ -1,4 +1,4 @@
-import gc, time
+import gc, time, multiprocessing
 import base
 
 from stl import *
@@ -8,7 +8,6 @@ from encoding import *
 
 from testcaseSym import testcase
 from model import Thermostat
-
 
 def runTest(formula, k):
     baseP = baseCase(k)
@@ -20,18 +19,9 @@ def runTest(formula, k):
     const.extend(Thermostat().reach(baseP)) # thermostat model
     return (result, const)
 
-
-if __name__ == '__main__':
-    print("id#size#height#formula")
-    for i in range(len(testcase)):
-        formula = parseFormula(testcase[i])
-        print("#".join(["f%s"%i, str(base.size(formula)), str(formula.height()), testcase[i]]))
-
-    print()
-    print("id,k,Separation,Result,Generation,Solving")
-    for i in range(len(testcase)):
-        formula = parseFormula(testcase[i])
-
+def reportTest(formula, filename):
+    with open(filename, 'w') as fle:
+        print("id,k,Separation,Result,Generation,Solving", file=fle)
         for k in range(2,21,2):
             stime1 = time.process_time()
             (fullSep,const) = runTest(formula, k)
@@ -40,10 +30,24 @@ if __name__ == '__main__':
             s.add(const)
             s.add(fullSep)
             stime2 = time.process_time()
-            #s.set("timeout", 1000)
+            s.set("timeout", 1000)
             checkResult = s.check()
             etime2 = time.process_time()
-            print(",".join(["f%s"%i, str(k), str(sizeAst(And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]))
+            print(",".join(["f%s"%i, str(k), str(sizeAst(And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
             #print(s.to_smt2())
             #print (s.model())
 
+
+if __name__ == '__main__':
+    print("id#size#height#formula")
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
+        print("#".join(["f%s"%i, str(base.size(formula)), str(formula.height()), testcase[i]]))
+
+    print()
+    for i in range(len(testcase)):
+        formula = parseFormula(testcase[i])
+        print ("scheduleing f%s: "%i + str(formula))
+        p = multiprocessing.Process(target = reportTest, args=(formula, "output-f%s"%i))
+        p.start()
+    
