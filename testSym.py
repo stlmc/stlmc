@@ -9,6 +9,8 @@ from encoding import *
 from testcaseSym import testcase
 from model import Thermostat
 
+sys.setrecursionlimit(30000)
+
 def runTest(formula, k):
     baseP = baseCase(k)
     (partition,sepMap,const) = guessPartition(formula, baseP)
