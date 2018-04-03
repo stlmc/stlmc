@@ -22,9 +22,10 @@ def runTest(formula, k):
     return (result, const)
 
 def reportTest(formula, filename):
-    with open(filename, 'w') as fle:
+    with open(filename, 'a+') as fle:
         print("id,k,Separation,Result,Generation,Solving", file=fle)
-        for k in range(2,21,2):
+    for k in range(2,101,2):
+        with open(filename, 'a+') as fle:
             stime1 = time.process_time()
             (fullSep,const) = runTest(formula, k)
             etime1 = time.process_time()
