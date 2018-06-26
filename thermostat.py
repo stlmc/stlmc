@@ -37,8 +37,8 @@ class Thermostat:
         const = []
         const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0]))
 
-        const.append(ts[0] >= RealVal(0))
-
+        const.append(ts[0] <= RealVal(0))
+        
         for i in range(k):
             const.append(self.jump(qf[i], qs[i], qt[i], x1.end[i], x2.end[i], x3.end[i], qf[i+1], qs[i+1], qt[i+1], x1.start[i+1], x2.start[i+1], x3.start[i+1]))
 
@@ -46,6 +46,7 @@ class Thermostat:
         for i in range(len(const)):
             variables += const[i].getVars()
         variables =removeDup(variables)
+        return const 
 
     def init(self, fs, ss, ts, fv0, sv0, tv0):
         return And(And(fs == self.qOff, ss == self.qOff, ts == self.qOff), fv0 >= gT - RealVal(1), fv0 <= gT + RealVal(1), sv0 >= gT - RealVal(1), sv0 <= gT + RealVal(1), tv0 >= gT - RealVal(1), tv0 <= gT + RealVal(1))
@@ -64,6 +65,12 @@ class Thermostat:
 
 if __name__ == '__main__':
     const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)])
+    s = z3.Solver()
+    s.add(const[0].z3Obj())
+    print(s.to_smt2())
+    print(s.check())
+ 
+
 
 
 
