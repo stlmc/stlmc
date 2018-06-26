@@ -1,6 +1,7 @@
 from error import *
 from mode import *
-from typeEnum import *
+from TYPE import *
+import z3
 
 class Node:
     def __init__(self, nodeType, nodeVars):
@@ -52,15 +53,22 @@ class BoolVal(Constant):
            raise TypeError()
         self.value = 'true' if value == True else 'false'
         super().__init__(Type.BOOL, self.value)
+    def z3Obj(self):
+        return z3.BoolVal(self.value)        
 
 class RealVal(Constant):
     def __init__(self, value):
+        self.value = value
         super().__init__(Type.REAL, value)
+    def z3Obj(self):
+        return z3.RealVal(self.value)
 
 class IntVal(Constant):
     def __init__(self, value):
+        self.value = value
         super().__init__(Type.INT, value)
-
+    def z3Obj(self):
+        return z3.IntVal(self.value)
 
 class Variable(Leaf):
     def __init__(self, varType, var):
@@ -75,6 +83,8 @@ class Bool(Variable):
         super().__init__(Type.BOOL, self)
     def __repr__(self):
         return str(self.id)
+    def z3Obj(self):
+        return z3.Bool(self.id)
 
 class Real(Variable):
     def __init__(self, id):
@@ -82,6 +92,8 @@ class Real(Variable):
         super().__init__(Type.REAL, self)
     def __repr__(self):
         return str(self.id)
+    def z3Obj(self):
+        return z3.Real(self.id)
 
 class Int(Variable):
     def __init__(self, id):
@@ -89,6 +101,8 @@ class Int(Variable):
         super().__init__(Type.INT, self)
     def __repr__(self):
         return str(self.id)
+    def z3Obj(self):
+        return z3.Int(self.id)
 
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
@@ -122,6 +136,22 @@ class Relational(nonLeaf):
         super().__init__(op, Type.BOOL, [left, right]) 
     def getVars(self):
         return self.left.getVars() + self.right.getVars()
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        if self.op == '>=':
+            return x >= y
+        elif self.op == '<=':
+            return x <= y
+        elif self.op == '>':
+            return x > y
+        elif self.op == '<':
+            return x < y
+        elif self.op == '=':
+            return x == y
+        else:
+            raise Z3OpError()
+
 
 class Ge(Relational):
     def __init__(self, left, right):
@@ -152,6 +182,19 @@ class BinaryArithmetic(nonLeaf):
         super().__init__(op, left.getType(), [left, right])
     def getVars(self):
         return self.left.getVars() + self.right.getVars()
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        if self.op == '+':
+            return x + y
+        elif self.op == '-':
+            return x - y
+        elif self.op == '*':
+            return x * y
+        elif self.op == '/':
+            return x / y
+        else:
+            raise Z3OpError()
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):
@@ -181,6 +224,12 @@ class UnaryArithmetic(nonLeaf):
         super().__init__(op, num.getType(), result)
     def getVars(self):
         return self.num.getVars()
+    def z3Obj(self):
+        x = self.num.z3Obj()
+        if self.op == '-':
+            return -x
+        else:
+            raise Z3OpError()
 
 class Neg(UnaryArithmetic):
     def __init__(self, num):
@@ -198,6 +247,23 @@ class Logical(nonLeaf):
         for i in range(len(self.args)):
              variables += self.args[i].getVars()
         return variables
+    def z3Obj(self):
+        z3args = []
+        for i in range(len(self.args)):
+            z3args.append(self.args[i].z3Obj())
+        if self.op == 'and':
+            return z3.And(z3args)
+        elif self.op == 'or':
+            return z3.Or(z3args)
+        elif self.op == 'Implies':
+            return z3.Implies(z3args)
+        elif self.op == 'Not':
+            return z3.Not(z3args)
+        elif self.op == '=':
+             return z3args[0] == z3args[1]
+        else:
+            raise Z3OpError()
+
 
 class And(Logical):
     def __init__(self, *args):
@@ -240,6 +306,7 @@ class stateDeclare:
     def __init__(self, name, k):
         self.start = []
         self.end = []
+        self.id = name
         for i in range(k+1):
             self.start.append(Real((name + '_' + str(i) + '_0')))
             self.end.append(Real((name + '_' + str(i) + '_t')))
@@ -247,6 +314,10 @@ class stateDeclare:
         return self.start
     def endVar(self):
         return self.end
+
+
+
+
 
 
 
