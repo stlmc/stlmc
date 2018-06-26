@@ -46,6 +46,8 @@ class Constant(Leaf):
         self.value = value
     def __repr__(self):
         return str(self.value)
+    def substitution(self, k):
+        return self
 
 class BoolVal(Constant):
     def __init__(self, value):
@@ -76,7 +78,7 @@ class Variable(Leaf):
         self.var = var
     def __repr__(self):
         return str(self.var)
-
+    
 class Bool(Variable):
     def __init__(self, id):
         self.id = id
@@ -85,7 +87,12 @@ class Bool(Variable):
         return str(self.id)
     def z3Obj(self):
         return z3.Bool(self.id)
-
+    def substitution(self, k):
+        if 'const' in self.id:
+           return Bool(self.id[5:] + '_' + str(k) + '_0')
+        else:
+            return self
+ 
 class Real(Variable):
     def __init__(self, id):
         self.id = id
@@ -94,6 +101,11 @@ class Real(Variable):
         return str(self.id)
     def z3Obj(self):
         return z3.Real(self.id)
+    def substitution(self, k):
+        if 'const' in self.id:
+           return Real(self.id[5:] + '_' + str(k) + '_0')
+        else:
+            return self
 
 class Int(Variable):
     def __init__(self, id):
@@ -103,15 +115,24 @@ class Int(Variable):
         return str(self.id)
     def z3Obj(self):
         return z3.Int(self.id)
+    def substitution(self, k):
+        if 'const' in self.id:
+           return Int(self.id[5:] + '_' + str(k) + '_0')
+        else:
+            return self
 
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
         self.op = op
         self.children = []
-        self.children += args
+        if isinstance(args, Forall) or isinstance(args, Integral):
+            self.children.append(args)
+        else:
+            self.children += args
         variables = []
-        for i in range(len(args)):
-            variables += args[i].getVars()
+        if not(isinstance(args, Forall) or isinstance(args, Integral)):
+            for i in range(len(args)):
+                variables += args[i].getVars()
         super().__init__(nonLeafType, variables)
     def size(self):
         size = 1
@@ -136,42 +157,66 @@ class Relational(nonLeaf):
         super().__init__(op, Type.BOOL, [left, right]) 
     def getVars(self):
         return self.left.getVars() + self.right.getVars()
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        if self.op == '>=':
-            return x >= y
-        elif self.op == '<=':
-            return x <= y
-        elif self.op == '>':
-            return x > y
-        elif self.op == '<':
-            return x < y
-        elif self.op == '=':
-            return x == y
-        else:
-            raise Z3OpError()
-
 
 class Ge(Relational):
     def __init__(self, left, right):
         super().__init__('>=', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x >= y
+    def substitution(self, k):
+        return Ge(self.left.substitution(k), self.right.substitution(k))
 
 class Gt(Relational):
     def __init__(self, left, right):
         super().__init__('>', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x > y
+    def substitution(self, k):
+        return Gt(self.left.substitution(k), self.right.substitution(k))
 
 class Le(Relational):
     def __init__(self, left, right):
         super().__init__('<=', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x <= y
+    def substitution(self, k):
+        return Le(self.left.substitution(k), self.right.substitution(k))
 
 class Lt(Relational):
     def __init__(self, left, right):
         super().__init__('<', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x < y
+    def substitution(self, k):
+        return Lt(self.left.substitution(k), self.right.substitution(k))
 
 class Numeq(Relational):
     def __init__(self, left, right):
         super().__init__('=', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x == y
+    def substitution(self, k):
+        return Numeq(self.left.substitution(k), self.right.substitution(k))
 
 class BinaryArithmetic(nonLeaf):
     def __init__(self, op, left, right):
@@ -182,35 +227,54 @@ class BinaryArithmetic(nonLeaf):
         super().__init__(op, left.getType(), [left, right])
     def getVars(self):
         return self.left.getVars() + self.right.getVars()
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        if self.op == '+':
-            return x + y
-        elif self.op == '-':
-            return x - y
-        elif self.op == '*':
-            return x * y
-        elif self.op == '/':
-            return x / y
-        else:
-            raise Z3OpError()
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('+', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x + y
+    def substitution(self, k):
+        return Plus(self.left.substitution(k), self.right.substitution(k))
 
 class Minus(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('-', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x - y
+    def substitution(self, k):
+        return Minus(self.left.substitution(k), self.right.substitution(k))
 
 class Mul(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('*', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x * y
+    def substitution(self, k):
+        return Mul(self.left.substitution(k), self.right.substitution(k))
 
 class Div(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('/', left, right)
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x / y
+    def substitution(self, k):
+        return Div(self.left.substitution(k), self.right.substitution(k))
 
 class UnaryArithmetic(nonLeaf):
     def __init__(self, op, num):
@@ -224,16 +288,16 @@ class UnaryArithmetic(nonLeaf):
         super().__init__(op, num.getType(), result)
     def getVars(self):
         return self.num.getVars()
-    def z3Obj(self):
-        x = self.num.z3Obj()
-        if self.op == '-':
-            return -x
-        else:
-            raise Z3OpError()
 
 class Neg(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('-', num)
+        self.num = num
+    def z3Obj(self):
+        x = self.num.z3Obj()
+        return -x
+    def substitution(self, k):
+        return Neg(self.num.substitution(k))
 
 class Logical(nonLeaf):
     def __init__(self, op, args):
@@ -247,49 +311,104 @@ class Logical(nonLeaf):
         for i in range(len(self.args)):
              variables += self.args[i].getVars()
         return variables
-    def z3Obj(self):
-        z3args = []
-        for i in range(len(self.args)):
-            z3args.append(self.args[i].z3Obj())
-        if self.op == 'and':
-            return z3.And(z3args)
-        elif self.op == 'or':
-            return z3.Or(z3args)
-        elif self.op == 'Implies':
-            return z3.Implies(z3args)
-        elif self.op == 'Not':
-            return z3.Not(z3args)
-        elif self.op == '=':
-             return z3args[0] == z3args[1]
-        else:
-            raise Z3OpError()
-
 
 class And(Logical):
     def __init__(self, *args):
         super().__init__('and', args)
-
+        self.args = args
+    def z3Obj(self):
+        z3args = []
+        for i in range(len(self.args)):
+            z3args.append(self.args[i].z3Obj())
+        return z3.And(z3args)
+    def substitution(self):
+        subargs = [element.substitution(k) for element in self.args]
+        return And(subargs)
+ 
 class Or(Logical):
     def __init__(self, *args):
         super().__init__('or', args)
+        self.args = args
+    def z3Obj(self):
+        z3args = []
+        for i in range(len(self.args)):
+            z3args.append(self.args[i].z3Obj())
+        return z3.Or(z3args)
+    def substitution(self):
+        subargs = [element.substitution(k) for element in self.args]
+        return Or(subargs)
 
 class Implies(Logical):
     def __init__(self, left, right):
         super().__init__('=>', [left, right])
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return z3.Implies(x, y)
+    def substitution(self, k):
+        return Implies(self.left.substitution(k), self.right.substitution(k))
 
 class Beq(Logical):
     def __init__(self, left, right):
         super().__init__('=', [left, right])
+        self.left = left
+        self.right = right
+    def z3Obj(self):
+        x = self.left.z3Obj()
+        y = self.right.z3Obj()
+        return x == y
+    def substitution(self, k):
+        return Beq(self.left.substitution(k), self.right.substitution(k))
 
 class Not(Logical):
     def __init__(self, prop):
         super().__init__('not', [prop])
+        self.prop = prop
+    def z3Obj(self):
+        x = self.prop.z3Obj()
+        return z3.Not(x)
+    def substitution(self, k):
+        return Not(self.prop.substitution(k))
 
 class Integral(nonLeaf):
-    pass
+    def __init__(self, endList, startList, time, flow, flowIndex, variables, k):
+        self.endList = endList
+        self.startList = startList 
+        self.time = time
+        self.flow = flow
+        self.flowIndex = flowIndex
+        self.variables = variables
+        self.k = k
+        super().__init__('integral', Type.BOOL, self)
+    def __repr__(self):
+        result = '(= ' + " ".join(self.endList) + '\n  (integral 0.' + str(self.time) + ' ' + " ".join(self.startList) + ' flow_' + str(self.flowIndex) + '))\n'
+        return result
+    def z3Obj(self):
+        result = []
+        for i in range(len(self.endList)):
+            result.append(self.endList[i] == self.startList[i] + self.flow[self.variables[i]].substitution(self.k) * self.time)
+        z3result = []
+        for i in range(len(result)):
+            z3result.append(result[i].z3Obj())
+        return z3.And(z3result)
+    def substitution(self, k):
+        return self
 
 class Forall(nonLeaf):
-    pass
+    def __init__(self, flowIndex, time, condition):
+        self.flowIndex = flowIndex
+        self.time = time
+        self.condition = condition
+        super().__init__('forall', Type.BOOL, self)
+    def __repr__(self):
+        result = '(forall_t ' + str(self.flowIndex) + ' [0. ' + str(self.time) + '] ' + str(self.condition) + ')'
+        return result
+    def z3Obj(self):
+        return self.condition.z3Obj()
+    def substitution(self, k):
+        return self
 
 def removeDup(variables):
     i = 0
