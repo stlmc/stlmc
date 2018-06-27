@@ -1,4 +1,4 @@
-from inter import *
+from interface import *
 
 gT = RealVal(20)
 LB = RealVal(16)
@@ -66,13 +66,13 @@ class Thermostat:
 
         # reachability
         const = []
-        const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0]))
+#        const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0]))
 
-        const.append(ts[0] <= RealVal(0))
+#        const.append(ts[0] <= RealVal(0))
         
         for i in range(k):
-            const.append(self.flow(qf[i], qs[i], qt[i], x1, x2, x3, ts[i+1] - ts[i], defineODE, i))
-            const.append(self.jump(qf[i], qs[i], qt[i], x1.end[i], x2.end[i], x3.end[i], qf[i+1], qs[i+1], qt[i+1], x1.start[i+1], x2.start[i+1], x3.start[i+1]))
+#            const.append(self.flow(qf[i], qs[i], qt[i], x1, x2, x3, ts[i+1] - ts[i], defineODE, i))
+#            const.append(self.jump(qf[i], qs[i], qt[i], x1.end[i], x2.end[i], x3.end[i], qf[i+1], qs[i+1], qt[i+1], x1.start[i+1], x2.start[i+1], x3.start[i+1]))
             const.append(self.inv(qf[i], qs[i], qt[i], x1, x2, x3, ts[i+1] - ts[i], i))
 
         variables = []
@@ -83,14 +83,18 @@ class Thermostat:
         return const 
 
     def inv(self, qf, qs, qt, s1, s2, s3, time, k):
-        invFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Forall(1, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10)))) 
-        invFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Forall(2, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30))))
-        invFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Forall(3, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] > RealVal(30))))
-        invFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Forall(4, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30))))
-        invOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Forall(5, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10))))
-        invOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Forall(6, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30))))
-        invOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Forall(7, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] > RealVal(10))))
-        invOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Forall(8, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30))))
+        invFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Forall(1, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]])) 
+        invFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Forall(2, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Forall(3, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] > RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Forall(4, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Forall(5, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Forall(6, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Forall(7, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        invOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Forall(8, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
+        if k == 0:
+            s = z3.Solver()
+            s.add(invFOF.z3Obj())
+            print(s.to_smt2())
         return And(invFFF, invFFO, invFOF, invFOO, invOFF, invOFO, invOOF, invOOO)
 
     def flow(self, qf, qs, qt, s1, s2, s3, time, ODElist, k):
@@ -106,7 +110,7 @@ class Thermostat:
             s = z3.Solver()
             s.add(toFOF.z3Obj())
 #            print(s.to_smt2())
-            print(str(toFOF))
+#            print(str(toFOF))
         return And(toFFF, toFFO, toFOF, toFOO, toOFF, toOFO, toOOF, toOOO)
 
     def init(self, fs, ss, ts, fv0, sv0, tv0):

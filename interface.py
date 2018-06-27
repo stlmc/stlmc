@@ -314,29 +314,31 @@ class Logical(nonLeaf):
 
 class And(Logical):
     def __init__(self, *args):
-        super().__init__('and', args)
-        self.args = args
+        self.args = []
+        self.args += args
+        super().__init__('and', self.args)
     def z3Obj(self):
         z3args = []
         for i in range(len(self.args)):
             z3args.append(self.args[i].z3Obj())
         return z3.And(z3args)
-    def substitution(self):
+    def substitution(self, pre, post):
         subargs = [element.substitution(pre, post) for element in self.args]
-        return And(subargs)
+        return And(*subargs)
  
 class Or(Logical):
     def __init__(self, *args):
+        self.args = []
+        self.args += args
         super().__init__('or', args)
-        self.args = args
     def z3Obj(self):
         z3args = []
         for i in range(len(self.args)):
             z3args.append(self.args[i].z3Obj())
         return z3.Or(z3args)
-    def substitution(self):
+    def substitution(self, pre, post):
         subargs = [element.substitution(pre, post) for element in self.args]
-        return Or(subargs)
+        return Or(*subargs)
 
 class Implies(Logical):
     def __init__(self, left, right):
@@ -409,16 +411,22 @@ class Integral(nonLeaf):
         return self
 
 class Forall(nonLeaf):
-    def __init__(self, flowIndex, time, condition):
+    def __init__(self, flowIndex, time, condition, start, end):
         self.flowIndex = flowIndex
         self.time = time
         self.condition = condition
+        self.start = start
+        self.end = end
         super().__init__('forall', Type.BOOL, self)
     def __repr__(self):
         result = '(forall_t ' + str(self.flowIndex) + ' [0. ' + str(self.time) + '] ' + str(self.condition) + ')'
         return result
     def z3Obj(self):
-        return self.condition.z3Obj()
+        endCond = self.condition.z3Obj()
+        startCond = self.condition
+        for i in range(len(self.end)):
+            startCond = startCond.substitution(self.end[i], self.start[i])
+        return z3.And(endCond, startCond.z3Obj())
     def substitution(self, pre, post):
         return self
 
@@ -468,6 +476,7 @@ class ODE:
                 else:
                     raise z3constODEerror()
         return result
+
 
 
 
