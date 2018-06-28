@@ -66,14 +66,14 @@ class Thermostat:
 
         # reachability
         const = []
-#        const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0]))
+        const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0]))
 
-#        const.append(ts[0] <= RealVal(0))
+        const.append(ts[0] <= RealVal(0))
         
-        for i in range(k):
-#            const.append(self.flow(qf[i], qs[i], qt[i], x1, x2, x3, ts[i+1] - ts[i], defineODE, i))
-#            const.append(self.jump(qf[i], qs[i], qt[i], x1.end[i], x2.end[i], x3.end[i], qf[i+1], qs[i+1], qt[i+1], x1.start[i+1], x2.start[i+1], x3.start[i+1]))
-            const.append(self.inv(qf[i], qs[i], qt[i], x1, x2, x3, ts[i+1] - ts[i], i))
+        for i in range(1):
+            const.append(self.flow(qf[i], qs[i], qt[i], [x1.start[i], x2.start[i], x3.start[i]], [x1.end[i], x2.end[i], x3.end[i]], ts[i+1] - ts[i], defineODE))
+            const.append(self.jump(qf[i], qs[i], qt[i], x1.end[i], x2.end[i], x3.end[i], qf[i+1], qs[i+1], qt[i+1], x1.start[i+1], x2.start[i+1], x3.start[i+1]))
+            const.append(self.inv(qf[i], qs[i], qt[i], [x1.id, x2.id, x3.id], [x1.start[i], x2.start[i], x3.start[i]], [x1.end[i], x2.end[i], x3.end[i]], ts[i+1] - ts[i]))
 
         variables = []
         for i in range(len(const)):
@@ -82,35 +82,41 @@ class Thermostat:
 
         return const 
 
-    def inv(self, qf, qs, qt, s1, s2, s3, time, k):
-        invFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Forall(1, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]])) 
-        invFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Forall(2, time, And(s1.end[k] > RealVal(10), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Forall(3, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] > RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Forall(4, time, And(s1.end[k] > RealVal(10), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Forall(5, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Forall(6, time, And(s1.end[k] < RealVal(30), s2.end[k] > RealVal(10), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Forall(7, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] > RealVal(10)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        invOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Forall(8, time, And(s1.end[k] < RealVal(30), s2.end[k] < RealVal(30), s3.end[k] < RealVal(30)), [s1.start[k], s2.start[k], s3.start[k]], [s1.end[k], s2.end[k], s3.end[k]]))
-        if k == 0:
-            s = z3.Solver()
-            s.add(invFOF.z3Obj())
-            print(s.to_smt2())
+    def inv(self, qf, qs, qt, variables, start, end, time):
+        startDict = {}
+        endDict = {}
+        for i in range(len(variables)):
+            startDict[variables[i]] = start[i]
+            endDict[variables[i]] = end[i]
+        x1var = Real(variables[0])
+        x2var = Real(variables[1])
+        x3var = Real(variables[2])
+        invFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Forall(1, time, And(x1var > RealVal(10), x2var > RealVal(10), x3var > RealVal(10)), startDict, endDict))
+        invFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Forall(2, time, And(x1var > RealVal(10), x2var > RealVal(10), x3var < RealVal(30)), startDict, endDict))
+        invFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Forall(3, time, And(x1var > RealVal(10), x2var < RealVal(30), x3var > RealVal(30)), startDict, endDict))
+        invFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Forall(4, time, And(x1var > RealVal(10), x2var < RealVal(30), x3var < RealVal(30)), startDict, endDict))
+        invOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Forall(5, time, And(x1var < RealVal(30), x2var > RealVal(10), x3var > RealVal(10)), startDict, endDict))
+        invOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Forall(6, time, And(x1var < RealVal(30), x2var > RealVal(10), x3var < RealVal(30)), startDict, endDict))
+        invOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Forall(7, time, And(x1var < RealVal(30), x2var < RealVal(30), x3var > RealVal(10)), startDict, endDict))
+        invOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Forall(8, time, And(x1var < RealVal(30), x2var < RealVal(30), x3var < RealVal(30)), startDict, endDict)) 
+        s = z3.Solver()
+        s.add(invFOF.z3Obj())
+        print(s.to_smt2())
         return And(invFFF, invFFO, invFOF, invFOO, invOFF, invOFO, invOOF, invOOO)
 
-    def flow(self, qf, qs, qt, s1, s2, s3, time, ODElist, k):
-        toFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[0]))
-        toFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[1]))
-        toFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[2]))
-        toFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[3])) 
-        toOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[4]))
-        toOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[5]))
-        toOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[6]))
-        toOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Integral([s1.end[k], s2.end[k], s3.end[k]], [s1.start[k], s2.start[k], s3.start[k]], time, ODElist[7]))
-        if k == 0:
-            s = z3.Solver()
-            s.add(toFOF.z3Obj())
-#            print(s.to_smt2())
-#            print(str(toFOF))
+    def flow(self, qf, qs, qt, start, end, time, ODElist):
+        toFFF  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOff), Integral(end, start, time, ODElist[0]))
+        toFFO  = Implies(And(qf == self.qOff, qs == self.qOff, qt == self.qOn), Integral(end, start, time, ODElist[1]))
+        toFOF  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOff), Integral(end, start, time, ODElist[2]))
+        toFOO  = Implies(And(qf == self.qOff, qs == self.qOn, qt == self.qOn), Integral(end, start, time, ODElist[3]))
+        toOFF  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOff), Integral(end, start, time, ODElist[4]))
+        toOFO  = Implies(And(qf == self.qOn, qs == self.qOff, qt == self.qOn), Integral(end, start, time, ODElist[5]))
+        toOOF  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOff), Integral(end, start, time, ODElist[6]))
+        toOOO  = Implies(And(qf == self.qOn, qs == self.qOn, qt == self.qOn), Integral(end, start, time, ODElist[7]))
+        s = z3.Solver()
+        s.add(toFOF.z3Obj())
+#        print(s.to_smt2())
+#        print(str(toFOF))
         return And(toFFF, toFFO, toFOF, toFOO, toOFF, toOFO, toOOF, toOOO)
 
     def init(self, fs, ss, ts, fv0, sv0, tv0):
