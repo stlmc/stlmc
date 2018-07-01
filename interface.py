@@ -1,6 +1,7 @@
 from error import *
 from TYPE import *
 import z3
+import itertools
 
 class Node:
     def __init__(self, nodeType, nodeVars):
@@ -135,7 +136,11 @@ class nonLeaf(Node):
         variables = []
         if not(isinstance(args, Forall) or isinstance(args, Integral)):
             for i in range(len(args)):
-                variables += args[i].getVars()
+                if isinstance(args[i], list):
+                    for j in range(len(args[i])):
+                        variables += args[i][j].getVars()
+                else:
+                    variables += args[i].getVars()
         super().__init__(nonLeafType, variables)
     def size(self):
         size = 1
@@ -304,10 +309,17 @@ class Neg(UnaryArithmetic):
 
 class Logical(nonLeaf):
     def __init__(self, op, args):
+        unnested = []
         for i in range(len(args)):
-             if not(args[i].getType() == Type.BOOL):
+            if isinstance(args[i], list):
+                unnested += args[i]
+            else:
+                unnested.append(args[i])
+        for i in range(len(unnested)):
+             if not(unnested[i].getType() == Type.BOOL):
                  raise TypeError()
-        self.args = args 
+
+        self.args = unnested
         super().__init__(op, Type.BOOL, args)
     def getVars(self):
         variables = []

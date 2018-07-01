@@ -24,30 +24,39 @@ def runTest(formula, k):
     baseV = baseEncoding(partition,baseP)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
 
-    filename=os.path.basename(os.path.realpath(sys.argv[0]))
-    filename = filename[:-2]
-    filename += 'smt2'
-    z3constTemp = Thermostat().reach(baseCaseI(k), filename)
+    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
+    dRealname = dRealname[:-3]
+    dRealname += '_' + str(k) + '.smt2'
+    z3constTemp = Thermostat().reach(baseCaseI(k), dRealname)
     z3const = []
     for i in range(len(z3constTemp)):
         z3const.append(z3constTemp[i].z3Obj())
     const.extend(z3const) # thermostat model
-     
+
+    f = open(dRealname, 'a+')
+    for i in range(len(z3constTemp)):
+        f.write("(assert " + repr(z3constTemp[i]) + ")\n")
+    f.write("\n(check-sat)\n(exit)")
+ 
+    z3fs = []
+    for i in range(len(fs)):
+        z3fs.append(fs[i].z3Obj())
+
     return (result, const)
 
 def reportTest(formula, filename):
     with open(filename, 'a+') as fle:
         print("id,k,Separation,Result,Generation,Solving", file=fle)
-    for k in range(2,20,2):
+    for k in range(2, 8,2):
         with open(filename, 'a+') as fle:
             stime1 = time.process_time()
             (fullSep,const) = runTest(formula, k)
             etime1 = time.process_time()
             s = z3.Solver()
-#            s.add(const)
-            s.add(fullSep)
-            f = open("test.smt2", 'w')
-            f.write(s.to_smt2())
+            s.add(const)
+#            s.add(fullSep)
+#            f = open("test.smt2", 'w')
+#            f.write(s.to_smt2())
             stime2 = time.process_time()
             #s.set("timeout", 1000)
             checkResult = s.check()

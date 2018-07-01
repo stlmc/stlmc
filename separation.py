@@ -30,9 +30,14 @@ def _(f:Formula, sepMap, gen, fMap):
 @_separation.register(UnaryTemporalFormula)
 def _(f:Formula, sepMap, gen, fMap):
     np = PropositionFormula(next(gen))
+#    print(f)         #testcaseSym formula
+#    print(sepMap)    #{f: [v0, v1]}
+#    print(fMap)      #{}
+#    print(np)        #@chi0
     fMap[np] = _separation(f.child,sepMap,gen,fMap)
     tf = f.__class__(f.ltime, f.gtime, np)
-    return _separateUnary(tf, 0, sepMap[f])
+#    print(type(tf))
+    return _separateUnary(tf, 0, sepMap[str(f)])
 
 @_separation.register(BinaryTemporalFormula)
 def _(f:Formula, sepMap, gen, fMap):
