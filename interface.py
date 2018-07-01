@@ -487,6 +487,64 @@ class ODE:
         return result
 
 
+class printHandler:
+    def __init__(self, const, filename, varRange, defineODE):
+        self.const = const
+        self.defineODE = defineODE
+        self.filename = filename
+        self.varRange = varRange
+    def varsDeclareHandler(self):
+        f = open(self.filename, 'a+')
+        variables = []
+        for i in range(len(self.const)):
+            variables += self.const[i].getVars()
+        variables =removeDup(variables)
+        for i in range(len(variables)):
+            f.write("(declare-fun ")
+            f.write(str(variables[i]))
+            f.write(" () ")
+            typeName = str(type(variables[i]))
+            keyIndex = str(variables[i]).find('_')
+            f.write(typeName[-6: -2])
+            key = str(variables[i])[:keyIndex]
+            if key in self.varRange.keys():
+                f.write(" [" + str(self.varRange[key][0]) + ", " + str(self.varRange[key][1]) + "]")
+            elif typeName[-6: -2] == 'Real':
+                f.write(" [0.0000, 1000.0000]")
+            f.write(")\n")
+        f.close()
+
+    def ODEDeclareHandler(self):
+        f = open(self.filename, 'w')
+        f.write("(set-logic QF_NRA_ODE)\n")
+        for i in self.varRange.keys():
+            f.write("(declare-fun ")
+            f.write(i)      
+            f.write(" () Real [" + str(self.varRange[i][0]) + ", " + str(self.varRange[i][1]) + "])\n")
+        for i in range(len(self.defineODE)):
+            f.write("(define-ode flow_" + str(i+1) + " (")
+            for j in self.defineODE[i].flow.keys():
+                f.write("(= d/dt[" + j + "] " + str(self.defineODE[i].flow[j]) + ")\n                 ")
+            f.write("))\n")
+        f.close()
+    
+    def assertDeclareHandler(self):
+        f = open(self.filename, 'a+')
+        for i in range(len(self.const)):
+            f.write("(assert " + repr(self.const[i]) + ")\n")
+        f.close()
+
+    def satHandler(self):
+        f = open(self.filename, 'a+')
+        f.write("(check-sat)\n")
+        f.close()
+
+    
+    def exitHandler(self):
+        f = open(self.filename, 'a+')
+        f.write("(exit)\n")
+        f.close()
+
 
 
 
