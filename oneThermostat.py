@@ -87,8 +87,12 @@ class Thermostat:
             f.write(" () ")
             typeName = str(type(variables[i]))
             f.write(typeName[-6: -2])
+            if str(variables[i])[:-4] in flow_1.keys():
+                f.write(" [-20.000000, 100.000000]")
+            elif typeName[-6: -2] == 'Real':
+                f.write(" [0.0000, 1000.0000]")
             f.write(")\n")
-
+        f.close()
         return const
 
 

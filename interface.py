@@ -474,9 +474,6 @@ class ODE:
 #        for i in subDict.keys():
 #            if not(self.flow[i] == RealVal(0)):
 #                raise z3constODEerror()
-        for i in subDict.keys():
-            if not(self.flow[i] == RealVal(0)):
-                raise z3constODEerror()
         for i in result.keys():
             subvariables = result[i].getVars()
             for j in range(len(subvariables)):
