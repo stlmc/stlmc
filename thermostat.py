@@ -73,7 +73,7 @@ class Thermostat:
         const = []
         const.append(self.init(qf[0], qs[0], qt[0], x1.start[0], x2.start[0], x3.start[0], constx1.start[0], constx2.start[0], constx3.start[0]))
 
-        const.append(ts[0] <= RealVal(0))
+        const.append(ts[0] >= RealVal(0))
         
         for i in range(k):
             start = [x1.start[i], x2.start[i], x3.start[i], constx1.start[i], constx2.start[i], constx3.start[i]]
@@ -118,6 +118,10 @@ class Thermostat:
             f.write(" () ")
             typeName = str(type(variables[i]))
             f.write(typeName[-6: -2])
+            if str(variables[i])[:-4] in flow_1.keys():
+                f.write(" [-20.000000, 100.000000]")
+            elif typeName[-6: -2] == 'Real':
+                f.write(" [0.0000, 1000.0000]")
             f.write(")\n")
         f.close()
         return const 
