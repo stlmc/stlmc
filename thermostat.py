@@ -1,7 +1,6 @@
 from interface import *
 import os, sys
 
-
 gT = RealVal(20)
 LB = RealVal(16)
 UB = RealVal(24)
