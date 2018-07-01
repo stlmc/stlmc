@@ -65,7 +65,7 @@ if __name__ == '__main__':
     const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)])
     s = Solver()
     s.add(const)
-    print(s.to_smt2())
-    print(s.check())
-    print (s.model())
+#    print(s.to_smt2())
+#    print(s.check())
+#    print (s.model())
 

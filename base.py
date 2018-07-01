@@ -1,5 +1,3 @@
-
-
 def genId(initial, gid = 'v'):
     counter = initial
     while True:

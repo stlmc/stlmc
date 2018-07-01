@@ -1,4 +1,3 @@
-
 from formula import *
 from const import *
 from functools import singledispatch
