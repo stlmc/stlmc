@@ -21,7 +21,7 @@ def intervalConstC(j:Interval, k:Interval, i:Interval):
             return False
     return True
 
-def inInterval(x:ArithRef, j:Interval):
+def inInterval(x:z3.ArithRef, j:Interval):
     """
     return a z3 constraint for x \in j
 
@@ -33,10 +33,10 @@ def inInterval(x:ArithRef, j:Interval):
     1 >= 0
     """
 
-    cl = x >= RealVal(j.left) if j.leftend else x >  RealVal(j.left)
+    cl = x >= z3.RealVal(j.left) if j.leftend else x >  z3.RealVal(j.left)
 
     if math.isfinite(j.right):
-        return And(cl, x <= RealVal(j.right) if j.rightend else x < RealVal(j.right))
+        return z3.And(cl, x <= z3.RealVal(j.right) if j.rightend else x < z3.RealVal(j.right))
     else:
         return cl
 
@@ -56,15 +56,15 @@ def subInterval(i:Interval, j:Interval):
                 const.append(_real(i.right) <= _real(j.left))
     else:
         if not (isinstance(j.right, float) and math.isinf(j.right)):
-            return BoolVal(False)
+            return z3.BoolVal(False)
 
-    return And(const)
+    return z3.And(const)
 
 
 def intervalConst(j:Interval, k:Interval, i:Interval):
     const = []
 
-    if isinstance(j.left, ArithRef):
+    if isinstance(j.left, z3.ArithRef):
         const.append(_real(j.left) >= 0)
 
     if math.isfinite(i.right):
@@ -81,21 +81,21 @@ def intervalConst(j:Interval, k:Interval, i:Interval):
                 const.append(_real(j.right) <= _real(k.right - i.left))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
-            return BoolVal(False)
+            return z3.BoolVal(False)
 
-    return And(const)
+    return z3.And(const)
 
 
 def _real(x):
-    if isinstance(x, ArithRef):
+    if isinstance(x, z3.ArithRef):
         return x
     elif isinstance(x, float):
-        return RealVal(x)
+        return z3.RealVal(x)
     elif type(x) is str:
-        return Real(x)
+        return z3.Real(x)
     else:
         raise RuntimeError("Invalid partition : " + str(x)) 
 
 
-def sizeAst(node:AstRef):
+def sizeAst(node:z3.AstRef):
     return 1 + sum([sizeAst(c) for c in node.children()])
