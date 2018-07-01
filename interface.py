@@ -407,12 +407,14 @@ class Integral(nonLeaf):
     def z3Obj(self):
         subDict = {}
         for i in range(len(self.endList)):
-            keyValue = str(self.endList[i])[:-4]
-            subDict['const' + keyValue] = self.startList[i]
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            subDict[keyValue] = self.startList[i]
         substitutionExp = self.ode.constantReplace(subDict)
         result = []
         for i in range(len(self.endList)):
-            keyValue = str(self.endList[i])[:-4]
+            keyIndex = str(self.endList[i]).find('_') 
+            keyValue = str(self.endList[i])[0:keyIndex]
             result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
         z3result = []
         for i in range(len(result)):
@@ -471,13 +473,15 @@ class ODE:
         self.variables = flow.keys()
     def constantReplace(self, subDict):
         result = self.flow.copy()
-#        for i in subDict.keys():
-#            if not(self.flow[i] == RealVal(0)):
-#                raise z3constODEerror()
         for i in result.keys():
             subvariables = result[i].getVars()
             for j in range(len(subvariables)):
-                if not(str(subvariables[j]) in subDict.keys()):
+                if (str(subvariables[j]) in self.flow.keys()):
+                    if self.flow[str(subvariables[j])] == RealVal(0):
+                        pass
+                    else:
+                        raise z3constODEerror()
+                else:
                     raise z3constODEerror()
             result[i] = result[i].substitution(subDict)
         return result
