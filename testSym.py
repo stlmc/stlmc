@@ -24,19 +24,15 @@ def runTest(formula, k):
         const[i] = const[i].z3Obj()
 
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-2]
-    dRealname += 'smt2'
+    dRealname = dRealname[:-3]
+    dRealname += '_' + str(k) + '.smt2'
     (z3constTemp, printObject) = Thermostat().reach(baseCase(k), dRealname)
     z3const = []
     for i in range(len(z3constTemp)):
         z3const.append(z3constTemp[i].z3Obj())
     const.extend(z3const) # thermostat model
 
-    printObject.ODEDeclareHandler()
-    printObject.varsDeclareHandler()
-    printObject.assertDeclareHandler()
-    printObject.satHandler()
-    printObject.exitHandler()
+    printObject.callAll()
     
     return (result.z3Obj(), const)
 
@@ -46,9 +42,9 @@ def reportTest(formula):
 
         s = z3.Solver()
         s.add(const)
-#        s.add(fullSep)
+        s.add(fullSep)
 #        print(s.to_smt2())
-#        s.set("timeout", 1000)
+        s.set("timeout", 1000)
         checkResult = s.check()
         print(checkResult)
 #         print(",".join(["f%s"%i, str(k), str(sizeAst(z3.And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)

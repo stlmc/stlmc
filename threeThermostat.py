@@ -43,21 +43,21 @@ class Thermostat:
         prPT = [Bool("pt_%s"%i)  for i in range(k)] # pt holds if tx <= 17
         prQT = [Bool("qt_%s"%i)  for i in range(k)] # qt holds if tx >= 20
         
-        fxOff = -S1 * (Real(constx1.id) - (D1 * Real(constx2.id)))
-        fxOn = S1 * (H1 -(Real(constx1.id) - (D1 * Real(constx2.id))))
-        sxOff = -S2 * (Real(constx2.id) -(D1 * Real(constx1.id) + D2 * Real(constx3.id)))
-        sxOn = S2 * (H2 - (Real(constx2.id) - (D1 * Real(constx1.id) + D2 * Real(constx3.id))))
-        txOff = -S3 * (Real(constx3.id) - (D2 * Real(constx2.id)))
-        txOn = S3 * (H3 - (Real(constx3.id) - (D2 * Real(constx2.id))))
+        fxOff = -S1 * (Real('const' + x1.id) - (D1 * Real('const' + x2.id)))
+        fxOn = S1 * (H1 -(Real('const' + x1.id) - (D1 * Real('const' + x2.id))))
+        sxOff = -S2 * (Real('const' + x2.id) -(D1 * Real('const' + x1.id) + D2 * Real('const' + x3.id)))
+        sxOn = S2 * (H2 - (Real('const' + x2.id) - (D1 * Real('const' + x1.id) + D2 * Real('const' + x3.id))))
+        txOff = -S3 * (Real('const' + x3.id) - (D2 * Real('const' + x2.id)))
+        txOn = S3 * (H3 - (Real('const' + x3.id) - (D2 * Real('const' + x2.id))))
 
-        flow_1 = {x1.id: fxOff, x2.id: sxOff, x3.id: txOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_2 = {x1.id: fxOff, x2.id: sxOff, x3.id: txOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_3 = {x1.id: fxOff, x2.id: sxOn, x3.id: txOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_4 = {x1.id: fxOff, x2.id: sxOn, x3.id: txOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_5 = {x1.id: fxOn, x2.id: sxOff, x3.id: txOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_6 = {x1.id: fxOn, x2.id: sxOff, x3.id: txOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_7 = {x1.id: fxOn, x2.id: sxOn, x3.id: txOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
-        flow_8 = {x1.id: fxOn, x2.id: sxOn, x3.id: txOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0), (constx3.id): RealVal(0)}
+        flow_1 = {x1.id: fxOff, x2.id: sxOff, x3.id: txOff, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_2 = {x1.id: fxOff, x2.id: sxOff, x3.id: txOn, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_3 = {x1.id: fxOff, x2.id: sxOn, x3.id: txOff, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_4 = {x1.id: fxOff, x2.id: sxOn, x3.id: txOn, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_5 = {x1.id: fxOn, x2.id: sxOff, x3.id: txOff, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_6 = {x1.id: fxOn, x2.id: sxOff, x3.id: txOn, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_7 = {x1.id: fxOn, x2.id: sxOn, x3.id: txOff, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
+        flow_8 = {x1.id: fxOn, x2.id: sxOn, x3.id: txOn, ('const' + x1.id): RealVal(0), ('const' + x2.id): RealVal(0), ('const' + x3.id): RealVal(0)}
         
         ODE_1 = ODE(1, flow_1)
         ODE_2 = ODE(2, flow_2)
@@ -69,7 +69,6 @@ class Thermostat:
         ODE_8 = ODE(8, flow_8)
 
         defineODE = [ODE_1, ODE_2, ODE_3, ODE_4, ODE_5, ODE_6, ODE_7, ODE_8]
-        varRange = {x1.id: (-20, 100), x2.id: (-20, 100), x3.id: (-20, 100), constx1.id: (-20, 100), constx2.id: (-20, 100), constx3.id: (-20, 100)}
 
         # reachability
         const = []
@@ -92,8 +91,41 @@ class Thermostat:
             const.append(self.propPF(prPF[i], qf[i], qs[i], qt[i], [x1.id, x2.id, x3.id], [x1.start[i], x2.start[i], x3.start[i]], [x1.end[i], x2.end[i], x3.end[i]], Real('time' + str(i))))
             const.append(self.propQF(prQF[i], qf[i], qs[i], qt[i], [x1.id, x2.id, x3.id], [x1.start[i], x2.start[i], x3.start[i]], [x1.end[i], x2.end[i], x3.end[i]], Real('time' + str(i))))
 
-        printObject = printHandler(const, filename, varRange, defineODE)
-        return (const, printObject) 
+
+        variables = []
+        for i in range(len(const)):
+            variables += const[i].getVars()
+        variables =removeDup(variables)
+
+        
+
+        f = open(filename, 'w')
+        f.write("(set-logic QF_NRA_ODE)\n")
+        for i in flow_1.keys():
+            f.write("(declare-fun ")
+            f.write(i)
+            f.write(" () Real [-20.000000, 100.000000])\n")
+
+        for i in range(len(defineODE)):
+            f.write("(define-ode flow_" + str(i+1) + " (")
+            for j in defineODE[i].flow.keys():
+                f.write("(= d/dt[" + j + "] " + str(defineODE[i].flow[j]) + ")\n                 ")
+            f.write("))\n") 
+           
+
+        for i in range(len(variables)):
+            f.write("(declare-fun ")
+            f.write(str(variables[i]))
+            f.write(" () ")
+            typeName = str(type(variables[i]))
+            f.write(typeName[-6: -2])
+            if str(variables[i])[:-4] in flow_1.keys():
+                f.write(" [-20.000000, 100.000000]")
+            elif typeName[-6: -2] == 'Real':
+                f.write(" [0.0000, 1000.0000]")
+            f.write(")\n")
+        f.close()
+        return const 
 
     def inv(self, qf, qs, qt, variables, start, end, time):
         startDict = {}
@@ -182,18 +214,18 @@ if __name__ == '__main__':
     filename=os.path.basename(os.path.realpath(sys.argv[0]))
     filename = filename[:-2]
     filename += 'smt2'
-    const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[0]
-    printObject = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[1]
+    const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)
     s = z3.Solver()
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
 #    print(s.check())
-    printObject.ODEDeclareHandler()
-    printObject.varsDeclareHandler()
-    printObject.assertDeclareHandler()
-    printObject.satHandler()
-    printObject.exitHandler() 
+    f = open(filename, 'a+')
+    for i in range(len(const)):
+        f.write("(assert " + repr(const[i]) + ")\n")
+    f.write("\n(check-sat)\n(exit)")
+    f.close()
+ 
 
 
 
