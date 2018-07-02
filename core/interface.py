@@ -4,10 +4,8 @@ import z3
 import itertools
 
 class Node:
-    def __init__(self, nodeType, nodeVars):
-        self.nodeVars = set()
+    def __init__(self, nodeType):
         self.nodeType = nodeType
-        self.nodeVars = self.nodeVars.union(nodeVars)
     def __sub__(self, num):
         return Minus(self, num)
     def __add__(self, num):
@@ -33,8 +31,6 @@ class Node:
         return Neg(self)
     def getType(self):
         return self.nodeType
-    def getVars(self):
-        return self.nodeVars
 
 class Leaf(Node):
     def size(self):
@@ -45,7 +41,7 @@ class ArithRef(Leaf):
 
 class Constant(Leaf):
     def __init__(self, constType, value):
-        super().__init__(constType, set())
+        super().__init__(constType)
         self.value = value
     def __repr__(self):
         return str(self.value)
@@ -58,6 +54,8 @@ class Constant(Leaf):
         else:
             value = str(self.value)
         return op[self.getType()](value)
+    def getVars(self):
+        return set()
 
 class BoolVal(Constant):
     def __init__(self, value):
@@ -78,7 +76,7 @@ class IntVal(Constant, ArithRef):
 
 class Variable(Leaf):
     def __init__(self, varType, var):
-        super().__init__(varType, set([var]))
+        super().__init__(varType)
         self.var = var
         self.id = var.id
     def __hash__(self):
@@ -94,6 +92,8 @@ class Variable(Leaf):
             return op[self.getType()](subDict[self.id])
         else:
             return self
+    def getVars(self):
+        return set([self.var])
 
 class Bool(Variable):
     def __init__(self, id):
@@ -113,12 +113,8 @@ class Int(Variable, ArithRef):
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
         self.op = op
-        self.children = []
-        self.children += args
-        variables = set()
-        for i in range(len(args)):
-            variables = variables.union(args[i].getVars())
-        super().__init__(nonLeafType, variables)
+        self.children = args
+        super().__init__(nonLeafType)
     def size(self):
         size = 1
         for i in range(len(self.children)):
@@ -142,7 +138,7 @@ class Relational(nonLeaf):
         self.op = op
         super().__init__(op, Type.BOOL, [left, right]) 
     def getVars(self):
-        return self.left.getVars().union(self.right.getVars())
+        return self.left.getVars() | self.right.getVars()
     def substitution(self, subDict):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
         return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
@@ -206,7 +202,7 @@ class BinaryArithmetic(nonLeaf):
         self.op = op
         super().__init__(op, left.getType(), [left, right])
     def getVars(self):
-        return self.left.getVars().union(self.right.getVars())
+        return self.left.getVars() | self.right.getVars()
     def substitution(self, subDict):
         opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
         return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
@@ -354,9 +350,12 @@ class Implies(Logical):
 
 class Beq(Logical):
     def __init__(self, left, right):
-        super().__init__('=', [left, right])
         self.left = left
         self.right = right
+        super().__init__('=', [left, right])
+    def __repr__(self):
+        result = '(= ' + str(self.left) + ' ' + str(self.right) + ')\n       '
+        return result
     def z3Obj(self):
         x = self.left.z3Obj()
         y = self.right.z3Obj()
@@ -368,6 +367,9 @@ class Not(Logical):
     def __init__(self, prop):
         super().__init__('not', [prop])
         self.prop = prop
+    def __repr__(self):
+        result = '(not ' + str(self.prop) + ')\n       '
+        return result
     def z3Obj(self):
         x = self.prop.z3Obj()
         return z3.Not(x)
@@ -480,12 +482,15 @@ class printHandler:
         self.defineODE = defineODE
         self.filename = filename
         self.varRange = varRange
+    def addConst(self, constList):
+        self.const += constList
+
     def varsDeclareHandler(self):
         f = open(self.filename, 'a+')
-        variables = set()
-        for i in range(len(self.const)):
-            variables = variables.union(self.const[i].getVars())
+
+        variables = set().union(*[c.getVars() for c in self.const])
         variables = list(variables)
+
         for i in range(len(variables)):
             f.write("(declare-fun ")
             f.write(str(variables[i]))

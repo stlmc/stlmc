@@ -20,31 +20,32 @@ def runTest(formula, k):
     baseV = baseEncoding(partition,baseP)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
 
+    z3const = []
     for i in range(len(const)):
-        const[i] = const[i].z3Obj()
+        z3const.append(const[i].z3Obj())
 
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
     dRealname = dRealname[:-3]
     dRealname += '_' + str(k) + '.smt2'
-    (z3constTemp, printObject) = Thermostat().reach(baseCase(k), dRealname)
-    z3const = []
-    for i in range(len(z3constTemp)):
-        z3const.append(z3constTemp[i].z3Obj())
-    const.extend(z3const) # thermostat model
+    (constTemp, printObject) = Thermostat().reach(baseCase(k), dRealname)
+    
+    for i in range(len(constTemp)):
+        z3const.append(constTemp[i].z3Obj())
 
+    printObject.addConst([result])
+    printObject.addConst(const)
     printObject.callAll()
     
-    return (result.z3Obj(), const)
+    return (result.z3Obj(), z3const)
 
 def reportTest(formula):
     for k in range(2,10,2):
         (fullSep,const) = runTest(formula, k)
-
         s = z3.Solver()
         s.add(const)
         s.add(fullSep)
 #        print(s.to_smt2())
-        s.set("timeout", 1000)
+        s.set("timeout", 5000)
         checkResult = s.check()
         print(checkResult)
 #         print(",".join(["f%s"%i, str(k), str(sizeAst(z3.And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
