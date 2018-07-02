@@ -1,6 +1,6 @@
 import math
-from base import Interval
-from interface import *
+from .base import Interval
+from .interface import *
 
 def inIntervalC(x:float, j:Interval):
     return (x >= j.left  if j.leftend  else x > j.left) and (x <= j.right if j.rightend else x < j.right)
@@ -21,9 +21,9 @@ def intervalConstC(j:Interval, k:Interval, i:Interval):
             return False
     return True
 
-def inInterval(x:z3.ArithRef, j:Interval):
+def inInterval(x:ArithRef, j:Interval):
     """
-    return a z3 constraint for x \in j
+    return a constraint for x \in j
 
     >>> inInterval(RealVal(1.5), Interval(True, 1.0, True,  2.0))
     And(3/2 >= 1, 3/2 <= 2)
@@ -33,10 +33,10 @@ def inInterval(x:z3.ArithRef, j:Interval):
     1 >= 0
     """
 
-    cl = x >= z3.RealVal(j.left) if j.leftend else x >  z3.RealVal(j.left)
+    cl = x >= RealVal(j.left) if j.leftend else x >  RealVal(j.left)
 
     if math.isfinite(j.right):
-        return z3.And(cl, x <= z3.RealVal(j.right) if j.rightend else x < z3.RealVal(j.right))
+        return And(cl, x <= RealVal(j.right) if j.rightend else x < RealVal(j.right))
     else:
         return cl
 
@@ -56,46 +56,47 @@ def subInterval(i:Interval, j:Interval):
                 const.append(_real(i.right) <= _real(j.left))
     else:
         if not (isinstance(j.right, float) and math.isinf(j.right)):
-            return z3.BoolVal(False)
+            return BoolVal(False)
 
-    return z3.And(const)
+    return And(const)
 
 
 def intervalConst(j:Interval, k:Interval, i:Interval):
     const = []
 
-    if isinstance(j.left, z3.ArithRef):
+    if isinstance(j.left, ArithRef):
         const.append(_real(j.left) >= 0)
 
     if math.isfinite(i.right):
         if j.leftend and not (k.leftend and i.rightend):
-            const.append(_real(j.left) >  _real(k.left - i.right))
+            const.append(_real(j.left) >  (_real(k.left) - _real(i.right)))
         else:
-            const.append(_real(j.left) >= _real(k.left - i.right))
+            const.append(_real(j.left) >= (_real(k.left) - _real(i.right)))
 
     if not isinstance(j.right, float) or math.isfinite(j.right):
         if not isinstance(k.right, float) or math.isfinite(k.right):
             if j.rightend and not (k.rightend and i.leftend):
-                const.append(_real(j.right) <  _real(k.right - i.left))
+                const.append(_real(j.right) <  (_real(k.right) - _real(i.left)))
             else:
-                const.append(_real(j.right) <= _real(k.right - i.left))
+                const.append(_real(j.right) <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
-            return z3.BoolVal(False)
+            return BoolVal(False)
 
-    return z3.And(const)
+    return And(const)
 
 
 def _real(x):
-    if isinstance(x, z3.ArithRef):
+    if isinstance(x, ArithRef):
         return x
     elif isinstance(x, float):
-        return z3.RealVal(x)
+        return RealVal(x)
     elif type(x) is str:
-        return z3.Real(x)
+        return Real(x)
     else:
         raise RuntimeError("Invalid partition : " + str(x)) 
 
 
-def sizeAst(node:z3.AstRef):
-    return 1 + sum([sizeAst(c) for c in node.children()])
+def sizeAst(node:Node):
+    return 0
+#    return 1 + sum([sizeAst(c) for c in node.children()])

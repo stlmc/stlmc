@@ -1,5 +1,5 @@
 
-from formula import *
+from .formula import *
 from functools import singledispatch
 
 def fullSeparation(f:Formula, sepMap):

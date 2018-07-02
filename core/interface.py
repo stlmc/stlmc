@@ -39,6 +39,9 @@ class Leaf(Node):
     def size(self):
         return 0
 
+class ArithRef(Leaf):
+    pass
+
 class Constant(Leaf):
     def __init__(self, constType, value):
         super().__init__(constType, [])
@@ -61,14 +64,14 @@ class BoolVal(Constant):
             return z3.BoolVal(False)        
         return z3.BoolVal(str(self.value))        
 
-class RealVal(Constant):
+class RealVal(Constant, ArithRef):
     def __init__(self, value):
         self.value = value
         super().__init__(Type.REAL, value)
     def z3Obj(self):
         return z3.RealVal(str(self.value))
 
-class IntVal(Constant):
+class IntVal(Constant, ArithRef):
     def __init__(self, value):
         self.value = value
         super().__init__(Type.INT, value)
@@ -79,6 +82,9 @@ class Variable(Leaf):
     def __init__(self, varType, var):
         super().__init__(varType, [var])
         self.var = var
+        self.id = var.id
+    def __hash__(self):
+        return hash(self.id)
     def __repr__(self):
         return str(self.var)
     
@@ -96,7 +102,7 @@ class Bool(Variable):
         else:
             return self
  
-class Real(Variable):
+class Real(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
         super().__init__(Type.REAL, self)
@@ -110,7 +116,7 @@ class Real(Variable):
         else:
             return self
 
-class Int(Variable):
+class Int(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
         super().__init__(Type.INT, self)
@@ -304,11 +310,17 @@ class Neg(UnaryArithmetic):
 
 class Logical(nonLeaf):
     def __init__(self, op, args):
+        unnested = []
         for i in range(len(args)):
-             if not(args[i].getType() == Type.BOOL):
+            if isinstance(args[i], list):
+                unnested += args[i]
+            else:
+                unnested.append(args[i])
+        for i in range(len(unnested)):
+             if not(unnested[i].getType() == Type.BOOL):
                  raise TypeError()
-        self.args = args 
-        super().__init__(op, Type.BOOL, args)
+        self.args = unnested
+        super().__init__(op, Type.BOOL, self.args) 
     def getVars(self):
         variables = []
         for i in range(len(self.args)):
@@ -320,6 +332,14 @@ class And(Logical):
         self.args = []
         self.args += args
         super().__init__('and', self.args)
+    def __repr__(self):
+        result = '(and '
+        for i in range(len(self.args)):
+            result += str(self.args[i])
+            if i != len(self.args)-1:
+                result += ' '
+        result += ')'
+        return result
     def z3Obj(self):
         z3args = []
         for i in range(len(self.args)):
@@ -334,6 +354,14 @@ class Or(Logical):
         self.args = []
         self.args += args
         super().__init__('or', args)
+    def __repr__(self):
+        result = '(or '
+        for i in range(len(self.args)):
+            result += str(self.args[i])
+            if i != len(self.args)-1:
+                result += ' '
+        result += ')'
+        return result
     def z3Obj(self):
         z3args = []
         for i in range(len(self.args)):

@@ -119,7 +119,7 @@ if __name__ == '__main__':
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
-#    print(s.check())
+    print(s.check())
 
 
 
