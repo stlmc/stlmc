@@ -1,5 +1,5 @@
-from error import *
-from TYPE import *
+from .error import *
+from .TYPE import *
 import z3
 
 class Node:

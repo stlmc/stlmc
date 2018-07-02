@@ -1,4 +1,4 @@
-from interface import *
+from core.interface import *
 import os, sys
 
 gT = RealVal(20)
