@@ -10,6 +10,7 @@ def baseEncoding(partition:dict, baseCase):
             genProp = genId(0, f.id+"_")
             exPar   = [0.0] + baseCase + [float('inf')]
             base[f] = [(Interval(True,exPar[i],False,exPar[i+1]), Bool(next(genProp))) for i in range(len(baseCase)+1)]
+    print(base)
     return base
 
 
@@ -30,10 +31,6 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 
 @_value.register(PropositionFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
-    print(f)
-    print(sub)
-    print(j)
-    print(fMap)
     if f in sub:
         if not (f,j) in fMap:
             np = Bool(next(genPr))
