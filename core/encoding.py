@@ -1,5 +1,5 @@
-from formula import *
-from const import *
+from .formula import *
+from .const import *
 from functools import singledispatch
 
 
@@ -10,7 +10,6 @@ def baseEncoding(partition:dict, baseCase):
             genProp = genId(0, f.id+"_")
             exPar   = [0.0] + baseCase + [float('inf')]
             base[f] = [(Interval(True,exPar[i],False,exPar[i+1]), Bool(next(genProp))) for i in range(len(baseCase)+1)]
-    print(base)
     return base
 
 
