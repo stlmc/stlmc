@@ -141,21 +141,19 @@ if __name__ == '__main__':
     filename=os.path.basename(os.path.realpath(sys.argv[0]))
     filename = filename[:-2]
     filename += 'smt2'
-    const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[0]
-    printObject = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[1]
+    const = Thermostat().reach([Real("tau_%s"%i) for i in range(7)], filename)[0]
+    printObject = Thermostat().reach([Real("tau_%s"%i) for i in range(7)], filename)[1]
     s = z3.Solver()
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
 #    print(s.check())
+
     printObject.ODEDeclareHandler()
     printObject.varsDeclareHandler()
     printObject.assertDeclareHandler()
     printObject.satHandler()
     printObject.exitHandler()
-
-
-
 
 
 
