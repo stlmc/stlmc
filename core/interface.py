@@ -31,8 +31,6 @@ class Node:
         return Neg(self)
     def getType(self):
         return self.nodeType
-    def nextSub(self, subDict):
-        return self
 
 
 class Leaf(Node):
@@ -59,6 +57,8 @@ class Constant(Leaf):
         return op[self.getType()](value)
     def getVars(self):
         return set()
+    def nextSub(self, subDict):
+        return self
 
 class BoolVal(Constant):
     def __init__(self, value):
@@ -116,17 +116,23 @@ class Bool(Variable):
     def __init__(self, id):
         self.id = id
         super().__init__(Type.Bool, self)
+    def nextSub(self, subDict):
+        return self
  
 class Real(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
         super().__init__(Type.Real, self)
-
+    def nextSub(self, subDict):
+        return self
+        
 class Int(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
         super().__init__(Type.Int, self)
-
+    def nextSub(self, subDict):
+        return self
+        
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
         self.op = op
@@ -147,7 +153,7 @@ class nonLeaf(Node):
                 result += ' '
         result += ')'
         return result
- 
+
 class Relational(nonLeaf):
     def __init__(self, op, left, right):
         if not(left.getType() == right.getType() == Type.Int or left.getType() == right.getType() == Type.Real):
@@ -161,6 +167,9 @@ class Relational(nonLeaf):
     def substitution(self, subDict):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
         return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
+    def nextSub(self, subDict):
+        opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
+        return opdict[self.op](self.left.nextSub(subDict), self.right.nextSub(subDict))
 
 class Ge(Relational):
     def __init__(self, left, right):
@@ -225,6 +234,9 @@ class BinaryArithmetic(nonLeaf):
     def substitution(self, subDict):
         opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
         return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
+    def nextSub(self, subDict):
+        opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
+        return opdict[self.op](self.left.nextSub(subDict), self.right.nextSub(subDict))
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):
@@ -288,14 +300,21 @@ class Neg(UnaryArithmetic):
         return -x
     def substitution(self, subDict):
         return Neg(self.num.substitution(subDict))
+    def nextSub(self, subDict):
+        return Neg(self.num.nextSub(subDict))
 
 class Logical(nonLeaf):
     def __init__(self, op, args):
-        argsList = list(args)
-        for i in range(len(argsList)):
-             if not(argsList[i].getType() == Type.Bool):
+        unnested = []
+        for i in range(len(args)):
+            if isinstance(args[i], list):
+                unnested += args[i]
+            else:
+                unnested.append(args[i])
+        for i in range(len(unnested)):
+             if not(unnested[i].getType() == Type.Bool):
                  raise TypeError()
-        self.args = argsList
+        self.args = unnested
         super().__init__(op, Type.Bool, self.args) 
     def getVars(self):
         variables = set()
@@ -305,7 +324,7 @@ class Logical(nonLeaf):
 
 class And(Logical):
     def __init__(self, *args):
-        self.args = args
+        self.args = list(args)
         super().__init__('and', self.args)
     def __repr__(self):
         result = '(and '
@@ -323,12 +342,14 @@ class And(Logical):
     def substitution(self, subDict):
         subargs = [element.substitution(subDict) for element in self.args]
         return And(*subargs)
- 
+    def nextSub(self, subDict):
+        subargs = [element.nextSub(subDict) for element in self.args]
+        return And(*subargs) 
+
 class Or(Logical):
     def __init__(self, *args):
-        self.args = []
-        self.args += args
-        super().__init__('or', args)
+        self.args = list(args)
+        super().__init__('or', self.args)
     def __repr__(self):
         result = '(or '
         for i in range(len(self.args)):
@@ -345,6 +366,9 @@ class Or(Logical):
     def substitution(self, subDict):
         subargs = [element.substitution(subDict) for element in self.args]
         return Or(*subargs)
+    def nextSub(self, subDict):
+        subargs = [element.nextSub(subDict) for element in self.args]
+        return Or(*subargs)
 
 class Implies(Logical):
     def __init__(self, left, right):
@@ -360,6 +384,8 @@ class Implies(Logical):
         return z3.Implies(x, y)
     def substitution(self, subDict):
         return Implies(self.left.substitution(subDict), self.right.substitution(subDict))
+    def nextSub(self, subDict):
+        return Implies(self.left.nextSub(subDict), self.right.nextSub(subDict))
 
 class Beq(Logical):
     def __init__(self, left, right):
@@ -375,6 +401,8 @@ class Beq(Logical):
         return x == y
     def substitution(self, subDict):
         return Beq(self.left.substitution(subDict), self.right.substitution(subDict))
+    def nextSub(self, subDict):
+        return Beq(self.left.nextSub(subDict), self.right.nextSub(subDict))
 
 class Not(Logical):
     def __init__(self, prop):
@@ -388,6 +416,8 @@ class Not(Logical):
         return z3.Not(x)
     def substitution(self, subDict):
         return Not(self.prop.substitution(subDict))
+    def nextSub(self, subDict):
+        return Not(self.prop.nextSub(subDict))
 
 class Integral(nonLeaf):
     def __init__(self, endList, startList, time, index, ode):
@@ -445,6 +475,8 @@ class Integral(nonLeaf):
         return set(self.startList + self.endList)
     def substitution(self, subDict):
         return self
+    def nextSub(self, subDict):
+        return self
 
 class Forall(nonLeaf):
     def __init__(self, flowIndex, time, condition, start, end):
@@ -465,6 +497,8 @@ class Forall(nonLeaf):
     def getVars(self):
         return set()
     def substitution(self, subDict):
+        return self
+    def nextSub(self, subDict):
         return self
 
 class stateDeclare:
@@ -529,7 +563,8 @@ class printHandler:
 
         variables = set().union(*[c.getVars() for c in self.const])
         for i in self.varRange.keys():
-            variables.remove(i)
+            if i in variables:
+                variables.remove(i)
         variables = list(variables)
 
         for i in range(len(variables)):

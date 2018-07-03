@@ -34,7 +34,7 @@ class Thermostat(Model):
     proPF = Bool('pf')
     proQF = Bool('qf')
 
-    def reach(self, bound):
+    def reach(self, bound, filename):
         self.mode = [self.qf, self.qs]
         self.vars = {self.fx: (-20, 100), self.sx: (-20, 100), self.constfx: (-20, 100), self.constsx: (-20, 100)}
         self.init = And(And(self.qf == self.qOff, self.qs == self.qOff), self.fx >= gT - RealVal(1), self.fx <= gT + RealVal(1), self.sx >= gT - RealVal(1), self.sx <= gT + RealVal(1), And(self.constfx == self.fx, self.constsx == self.sx))
@@ -53,16 +53,9 @@ class Thermostat(Model):
                     And(self.qf == self.qOff, self.qs == self.qOn): And(self.fx > RealVal(10), self.sx < RealVal(30)), \
                     And(self.qf == self.qOn, self.qs == self.qOff): And(self.fx < RealVal(30), self.sx > RealVal(10)), \
                     And(self.qf == self.qOn, self.qs == self.qOn):  And(self.fx < RealVal(30), self.sx < RealVal(30))}
-        '''
-        self.jump = [And(self.qf == self.qOn, self.fx > UB, self.qfNext == self.qOff, self.fxNext == self.fx, self.constfxNext == self.fx), \
-                     And(self.qf == self.qOff, self.fx < LB, self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
-                     And(LB <= self.fx, self.fx <= UB, self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx), \
-                     And(self.qs == self.qOn, self.sx > UB, self.qsNext == self.qOff, self.sxNext == self.sx, self.constsxNext == self.sx), \
-                     And(self.qs == self.qOff, self.sx < LB, self.qsNext == self.qOn, self.sxNext == self.sx, self.constsxNext == self.sx), \
-                     And(self.sx >= LB, self.sx <= UB, self.qsNext == self.qs, self.sxNext == self.sx, self.constsxNext == self.sx)]
-        '''
-        self.jump = {And(self.qf == self.qOn, self.fx > UB, self.qfNext == self.qOff): And(self.fxNext == self.fx, self.constfxNext == self.fx), \
-                     And(self.qf == self.qOff, self.fx < LB, self.qfNext == self.qOn): And(self.fxNext == self.fx, self.constfxNext == self.fx), \
+
+        self.jump = {And(self.qf == self.qOn, self.fx > UB):  And(self.qfNext == self.qOff, self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(self.qf == self.qOff, self.fx < LB): And(self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(LB <= self.fx, self.fx <= UB): And(self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(self.qs == self.qOn, self.sx > UB): And(self.qsNext == self.qOff, self.sxNext == self.sx, self.constsxNext == self.sx), \
                      And(self.qs == self.qOff, self.sx < LB): And(self.qsNext == self.qOn, self.sxNext == self.sx, self.constsxNext == self.sx), \
@@ -71,17 +64,17 @@ class Thermostat(Model):
 
         self.prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.fx <=  RealVal(17)}
        
-        (const, printObject) = Model().making(self.mode, self.vars, self.init, self.flow, self.inv, self.jump, self.prop, bound, 'TwoThermostat.smt2')
+        (const, printObject) = Model().making(self.mode, self.vars, self.init, self.flow, self.inv, self.jump, self.prop, bound, filename)
 
-        return const
+        return (const, printObject)
 
 if __name__ == '__main__':
-    const = Thermostat().reach(4)
+    (const, printObject) = Thermostat().reach(4, 'TwoThermostat.smt2')
     s = z3.Solver()
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
-#    print(s.check())
+    print(s.check())
 
 
 

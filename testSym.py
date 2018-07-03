@@ -9,7 +9,7 @@ from core.separation import *
 from core.encoding import *
 
 from testcaseSym import testcase
-from oneThermostat import Thermostat
+from twoThermostat import Thermostat
 
 sys.setrecursionlimit(30000)
 
@@ -20,14 +20,12 @@ def runTest(formula, k):
     baseV = baseEncoding(partition,baseP)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
 
-    z3const = []
-    for i in range(len(const)):
-        z3const.append(const[i].z3Obj())
+    z3const = [i.z3Obj() for i in const]
 
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
     dRealname = dRealname[:-3]
     dRealname += '_' + str(k) + '.smt2'
-    (constTemp, printObject) = Thermostat().reach(baseCase(k), dRealname)
+    (constTemp, printObject) = Thermostat().reach(k, dRealname)
     
     for i in range(len(constTemp)):
         z3const.append(constTemp[i].z3Obj())
