@@ -1,5 +1,6 @@
-from interface import *
+from core.interface import *
 import os, sys
+from model import *
 
 gT = RealVal(20)
 LB = RealVal(16)
@@ -15,144 +16,72 @@ H3 = RealVal(2)
 D1 = RealVal(2)
 D2 = RealVal(2)
 
-class Thermostat:
+class Thermostat(Model):
     qOn  = BoolVal(True)
     qOff = BoolVal(False)
+    qf = Bool('mf')
+    qs = Bool('ms')
+    fx = Real('fx')
+    sx = Real('sx')
+    constfx = Real('constfx')
+    constsx = Real('constsx')
+    qfNext = NextVar(qf)
+    qsNext = NextVar(qs)
+    fxNext = NextVar(fx)
+    sxNext = NextVar(sx)
+    constfxNext = NextVar(constfx)
+    constsxNext = NextVar(constsx)
+    proPF = Bool('pf')
+    proQF = Bool('qf')
 
-    def reach(self, ts, filename):
-        k   = len(ts) - 1
-        qf   = [Bool("mf_%s"%i)   for i in range(k+1)]
-        qs   = [Bool("ms_%s"%i)   for i in range(k+1)]
+    def reach(self, bound):
+        self.mode = [self.qf, self.qs]
+        self.vars = {self.fx: (-20, 100), self.sx: (-20, 100), self.constfx: (-20, 100), self.constsx: (-20, 100)}
+        self.init = And(And(self.qf == self.qOff, self.qs == self.qOff), self.fx >= gT - RealVal(1), self.fx <= gT + RealVal(1), self.sx >= gT - RealVal(1), self.sx <= gT + RealVal(1), And(self.constfx == self.fx, self.constsx == self.sx))
 
-        x1 = stateDeclare('fx', k)
-        x2 = stateDeclare('sx', k)
+        fxOff = -S1 * (self.constfx - (D1 * self.constsx))
+        fxOn = S1 * (H1 -(self.constfx - (D1 * self.constsx)))
+        sxOff = -S2 * (self.constsx -D1 * self.constfx)
+        sxOn = S2 * (H2 - (self.constsx - D1 * self.constfx))
 
-        constx1 = stateDeclare('constfx', k)
-        constx2 = stateDeclare('constsx', k)
+        self.flow = {And(self.qf == self.qOff, self.qs == self.qOff): {self.fx: fxOff, self.sx: sxOff, self.constfx: RealVal(0), self.constsx: RealVal(0)}, \
+                   And(self.qf == self.qOff, self.qs == self.qOn): {self.fx: fxOff, self.sx: sxOn, self.constfx: RealVal(0), self.constsx: RealVal(0)}, \
+                   And(self.qf == self.qOn, self.qs == self.qOff): {self.fx: fxOn, self.sx: sxOff, self.constfx: RealVal(0), self.constsx: RealVal(0)}, \
+                   And(self.qf == self.qOn, self.qs == self.qOn): {self.fx: fxOn, self.sx: sxOn, self.constfx: RealVal(0), self.constsx: RealVal(0)}}
 
-        prPF = [Bool("pf_%s"%i)  for i in range(k)] # pf holds if fx <= 17
-        prQF = [Bool("qf_%s"%i)  for i in range(k)] # qf holds if fx >= 20
-
-        prPS = [Bool("ps_%s"%i)  for i in range(k)] # ps holds if sx <= 17
-        prQS = [Bool("qs_%s"%i)  for i in range(k)] # qs holds if sx >= 20
-
-        fxOff = -S1 * (Real(constx1.id) - (D1 * Real(constx2.id)))
-        fxOn = S1 * (H1 -(Real(constx1.id) - (D1 * Real(constx2.id))))
-        sxOff = -S2 * (Real(constx2.id) -D1 * Real(constx1.id))
-        sxOn = S2 * (H2 - (Real(constx2.id) - D1 * Real(constx1.id)))
-
-        flow_1 = {x1.id: fxOff, x2.id: sxOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0)}
-        flow_2 = {x1.id: fxOff, x2.id: sxOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0)}
-        flow_3 = {x1.id: fxOn, x2.id: sxOff, (constx1.id): RealVal(0), (constx2.id): RealVal(0)}
-        flow_4 = {x1.id: fxOn, x2.id: sxOn, (constx1.id): RealVal(0), (constx2.id): RealVal(0)}
-
-        varRange = {x1.id: (-20, 100), x2.id: (-20, 100), constx1.id: (-20, 100), constx2.id: (-20, 100)}
-
-
-        ODE_1 = ODE(1, flow_1)
-        ODE_2 = ODE(2, flow_2)
-        ODE_3 = ODE(3, flow_3)
-        ODE_4 = ODE(4, flow_4)
-
-        defineODE = [ODE_1, ODE_2, ODE_3, ODE_4]
-
-        const = []
-        const.append(self.init(qf[0], qs[0], x1.start[0], x2.start[0], constx1.start[0], constx2.start[0]))
-
-        const.append(ts[0] >= RealVal(0))
-
-        for i in range(k):
-            start = [x1.start[i], x2.start[i], constx1.start[i], constx2.start[i]]
-            end = [x1.end[i], x2.end[i],  constx1.end[i],  constx2.end[i]]
-            const.append(Real('time' + str(i)) == (ts[i+1] - ts[i]))
-            const.append(self.flow(qf[i], qs[i], start, end, Real('time' + str(i)), defineODE))
-            const.append(self.jump(qf[i], qs[i], x1.end[i], x2.end[i], qf[i+1], qs[i+1], x1.start[i+1], x2.start[i+1], constx1.start[i+1], constx2.start[i+1]))
-            const.append(self.inv(qf[i], qs[i], [x1.id, x2.id], [x1.start[i], x2.start[i]], [x1.end[i], x2.end[i]], Real('time' + str(i))))
-            const.append(ts[i] < ts[i+1])
-            const.append(And(constx1.start[i] == constx1.end[i], constx2.start[i] == constx2.end[i]))
-
-        # STL props
-        for i in range(k):
-            const.append(self.propPF(prPF[i], qf[i], qs[i], [x1.id, x2.id], [x1.start[i], x2.start[i]], [x1.end[i], x2.end[i]], Real('time' + str(i))))
-            const.append(self.propQF(prQF[i], qf[i], qs[i], [x1.id, x2.id], [x1.start[i], x2.start[i]], [x1.end[i], x2.end[i]], Real('time' + str(i))))
+        self.inv = {And(self.qf == self.qOff, self.qs == self.qOff): And(self.fx > RealVal(10), self.sx > RealVal(10)), \
+                    And(self.qf == self.qOff, self.qs == self.qOn): And(self.fx > RealVal(10), self.sx < RealVal(30)), \
+                    And(self.qf == self.qOn, self.qs == self.qOff): And(self.fx < RealVal(30), self.sx > RealVal(10)), \
+                    And(self.qf == self.qOn, self.qs == self.qOn):  And(self.fx < RealVal(30), self.sx < RealVal(30))}
+        '''
+        self.jump = [And(self.qf == self.qOn, self.fx > UB, self.qfNext == self.qOff, self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(self.qf == self.qOff, self.fx < LB, self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(LB <= self.fx, self.fx <= UB, self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(self.qs == self.qOn, self.sx > UB, self.qsNext == self.qOff, self.sxNext == self.sx, self.constsxNext == self.sx), \
+                     And(self.qs == self.qOff, self.sx < LB, self.qsNext == self.qOn, self.sxNext == self.sx, self.constsxNext == self.sx), \
+                     And(self.sx >= LB, self.sx <= UB, self.qsNext == self.qs, self.sxNext == self.sx, self.constsxNext == self.sx)]
+        '''
+        self.jump = {And(self.qf == self.qOn, self.fx > UB, self.qfNext == self.qOff): And(self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(self.qf == self.qOff, self.fx < LB, self.qfNext == self.qOn): And(self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(LB <= self.fx, self.fx <= UB): And(self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx), \
+                     And(self.qs == self.qOn, self.sx > UB): And(self.qsNext == self.qOff, self.sxNext == self.sx, self.constsxNext == self.sx), \
+                     And(self.qs == self.qOff, self.sx < LB): And(self.qsNext == self.qOn, self.sxNext == self.sx, self.constsxNext == self.sx), \
+                     And(self.sx >= LB, self.sx <= UB): And(self.qsNext == self.qs, self.sxNext == self.sx, self.constsxNext == self.sx)}
 
 
-        printObject = printHandler(const, filename, varRange, defineODE)
+        self.prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.fx <=  RealVal(17)}
+       
+        (const, printObject) = Model().making(self.mode, self.vars, self.init, self.flow, self.inv, self.jump, self.prop, bound, 'TwoThermostat.smt2')
 
-        return (const, printObject)
-
-
-    def inv(self, qf, qs, variables, start, end, time):
-        startDict = {}
-        endDict = {}
-        for i in range(len(variables)):
-            startDict[variables[i]] = start[i]
-            endDict[variables[i]] = end[i]
-        x1var = Real(variables[0])
-        x2var = Real(variables[1])
-        invFF  = Implies(And(qf == self.qOff, qs == self.qOff), Forall(1, time, And(x1var > RealVal(10), x2var > RealVal(10)), startDict, endDict))
-        invFO  = Implies(And(qf == self.qOff, qs == self.qOn), Forall(2, time, And(x1var > RealVal(10), x2var < RealVal(30)), startDict, endDict))
-        invOF  = Implies(And(qf == self.qOn, qs == self.qOff), Forall(3, time, And(x1var < RealVal(30), x2var > RealVal(10)), startDict, endDict))
-        invOO  = Implies(And(qf == self.qOn, qs == self.qOn), Forall(4, time, And(x1var < RealVal(30), x2var < RealVal(30)), startDict, endDict))
-        return And(invFF, invFO, invOF, invOO)
-
-    def flow(self, qf, qs, start, end, time, ODElist):
-        toFF  = Implies(And(qf == self.qOff, qs == self.qOff), Integral(end, start, time, ODElist[0]))
-        toOF  = Implies(And(qf == self.qOff, qs == self.qOn), Integral(end, start, time, ODElist[1]))
-        toFO  = Implies(And(qf == self.qOn, qs == self.qOff), Integral(end, start, time, ODElist[2]))
-        toOO  = Implies(And(qf == self.qOn, qs == self.qOn), Integral(end, start, time, ODElist[3]))
-        return And(toFF, toFO, toOF, toOO)
-
-    def init(self, fs, ss, fv0, sv0, conx1, conx2):
-        return And(And(fs == self.qOff, ss == self.qOff), fv0 >= gT - RealVal(1), fv0 <= gT + RealVal(1), sv0 >= gT - RealVal(1), sv0 <= gT + RealVal(1), And(conx1 == fv0, conx2 == sv0))
-
-    def jump(self, qf, qs, fx, sx, nqf, nqs, nfx, nsx, conx1, conx2):
-        toQFF  = Implies(fx > UB, nqf == self.qOff)
-        toQFO  = Implies(fx < LB, nqf == self.qOn)
-        toQFS  = Implies(And(LB <= fx, fx <= UB), nqf == qf)
-        toQSF  = Implies(sx > UB, nqs == self.qOff)
-        toQSO  = Implies(sx < LB, nqs == self.qOn)
-        toQSS  = Implies(And(LB <= sx, sx <= UB), nqs == qs)
-        return And(And(conx1 == fx, conx2 == sx), toQFF, toQFO, toQFS, toQSF, toQSO, toQSS, nfx == fx, nsx == sx)
-
-    def propPF(self, prp, qf, qs, variables, start, end, time):
-        startDict = {}
-        endDict = {}
-        for i in range(len(variables)):
-            startDict[variables[i]] = start[i]
-            endDict[variables[i]] = end[i]
-        x1var = Real(variables[0])
-        x2var = Real(variables[1])
-        c1  = Implies(And(prp, qf == self.qOff, qs == self.qOff), Forall(1, time, x1var >= RealVal(20), startDict, endDict))
-        c2  = Implies(And(prp, qf == self.qOff, qs == self.qOn), Forall(2, time, x1var >= RealVal(20), startDict, endDict))
-        c3  = Implies(And(prp, qf == self.qOn, qs == self.qOff), Forall(3, time, x1var >= RealVal(20), startDict, endDict))
-        c4  = Implies(And(prp, qf == self.qOn, qs == self.qOn), Forall(4, time, x1var >= RealVal(20), startDict, endDict))
-
-        c5  = Implies(And(Not(prp), qf == self.qOff, qs == self.qOff), Forall(1, time, x1var < RealVal(20), startDict, endDict))
-        c6  = Implies(And(Not(prp), qf == self.qOff, qs == self.qOn), Forall(2, time, x1var < RealVal(20), startDict, endDict))
-        c7  = Implies(And(Not(prp), qf == self.qOn, qs == self.qOff), Forall(3, time, x1var < RealVal(20), startDict, endDict))
-        c8  = Implies(And(Not(prp), qf == self.qOn, qs == self.qOn), Forall(4, time, x1var < RealVal(20), startDict, endDict))
-        return And(c1, c2, c3, c4, c5, c6, c7, c8)
-
-    def propQF(self, prq, qf, qs, variables, start, end, time):
-        return prq == qf
+        return const
 
 if __name__ == '__main__':
-    filename=os.path.basename(os.path.realpath(sys.argv[0]))
-    filename = filename[:-2]
-    filename += 'smt2'
-    const = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[0]
-    printObject = Thermostat().reach([Real("tau_%s"%i) for i in range(10)], filename)[1]
+    const = Thermostat().reach(4)
     s = z3.Solver()
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
 #    print(s.check())
-    printObject.ODEDeclareHandler()
-    printObject.varsDeclareHandler()
-    printObject.assertDeclareHandler()
-    printObject.satHandler()
-    printObject.exitHandler()
 
 
 

@@ -15,7 +15,7 @@ class Node:
     def __truediv__(self, num):
         return Div(self, num)
     def __eq__(self, num):
-        if num.getType() == Type.BOOL:
+        if num.getType() == Type.Bool:
             return Beq(self, num)
         else:
             return Numeq(self, num)
@@ -31,6 +31,9 @@ class Node:
         return Neg(self)
     def getType(self):
         return self.nodeType
+    def nextSub(self, subDict):
+        return self
+
 
 class Leaf(Node):
     def size(self):
@@ -48,8 +51,8 @@ class Constant(Leaf):
     def substitution(self, subDict):
         return self
     def z3Obj(self):
-        op = {Type.BOOL: z3.BoolVal, Type.REAL: z3.RealVal, Type.INT: z3.IntVal}
-        if self.getType() == Type.BOOL:
+        op = {Type.Bool: z3.BoolVal, Type.Real: z3.RealVal, Type.Int: z3.IntVal}
+        if self.getType() == Type.Bool:
             value = True if self.value == 'true' else False
         else:
             value = str(self.value)
@@ -62,17 +65,17 @@ class BoolVal(Constant):
         if not(isinstance(value, bool)):
            raise TypeError()
         self.value = 'true' if value == True else 'false'
-        super().__init__(Type.BOOL, self.value)
+        super().__init__(Type.Bool, self.value)
 
 class RealVal(Constant, ArithRef):
     def __init__(self, value):
         self.value = value
-        super().__init__(Type.REAL, value)
+        super().__init__(Type.Real, value)
 
 class IntVal(Constant, ArithRef):
     def __init__(self, value):
         self.value = value
-        super().__init__(Type.INT, value)
+        super().__init__(Type.Int, value)
 
 class Variable(Leaf):
     def __init__(self, varType, var):
@@ -80,14 +83,14 @@ class Variable(Leaf):
         self.var = var
         self.id = var.id
     def __hash__(self):
-        return hash(self.id)
+        return hash(str(self.id))
     def __repr__(self):
         return str(self.id)
     def z3Obj(self):
-        op = {Type.BOOL: z3.Bool, Type.REAL: z3.Real, Type.INT: z3.Int}
+        op = {Type.Bool: z3.Bool, Type.Real: z3.Real, Type.Int: z3.Int}
         return  op[self.getType()](str(self.id))
     def substitution(self, subDict):
-        op = {Type.BOOL: Bool, Type.REAL: Real, Type.INT: Int}
+        op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
         if self.id in subDict.keys():
             return op[self.getType()](subDict[self.id])
         else:
@@ -95,26 +98,42 @@ class Variable(Leaf):
     def getVars(self):
         return set([self.var])
 
+class NextVar(Variable):
+    def __init__(self, var):
+        self.var = var
+        self.id = var.id
+        super().__init__(self.var.getType(), self)
+    def nextSub(self, subDict):
+        op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
+        if self.id in subDict.keys():
+            return op[self.getType()](subDict[self.id])
+        else:
+            return self
+    def substitution(self, subDict):
+        return self
+
 class Bool(Variable):
     def __init__(self, id):
         self.id = id
-        super().__init__(Type.BOOL, self)
+        super().__init__(Type.Bool, self)
  
 class Real(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
-        super().__init__(Type.REAL, self)
+        super().__init__(Type.Real, self)
 
 class Int(Variable, ArithRef):
     def __init__(self, id):
         self.id = id
-        super().__init__(Type.INT, self)
+        super().__init__(Type.Int, self)
 
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
         self.op = op
         self.children = args
         super().__init__(nonLeafType)
+    def __hash__(self):
+        return hash(str(self))
     def size(self):
         size = 1
         for i in range(len(self.children)):
@@ -131,12 +150,12 @@ class nonLeaf(Node):
  
 class Relational(nonLeaf):
     def __init__(self, op, left, right):
-        if not(left.getType() == right.getType() == Type.INT or left.getType() == right.getType() == Type.REAL):
+        if not(left.getType() == right.getType() == Type.Int or left.getType() == right.getType() == Type.Real):
             raise TypeError()
         self.left = left
         self.right = right
         self.op = op
-        super().__init__(op, Type.BOOL, [left, right]) 
+        super().__init__(op, Type.Bool, [left, right]) 
     def getVars(self):
         return self.left.getVars() | self.right.getVars()
     def substitution(self, subDict):
@@ -195,7 +214,7 @@ class Numeq(Relational):
 
 class BinaryArithmetic(nonLeaf):
     def __init__(self, op, left, right):
-        if not(left.getType() == right.getType() == Type.INT or left.getType() == right.getType() == Type.REAL):
+        if not(left.getType() == right.getType() == Type.Int or left.getType() == right.getType() == Type.Real):
             raise TypeError()
         self.left = left
         self.right = right
@@ -249,10 +268,10 @@ class Div(BinaryArithmetic):
 
 class UnaryArithmetic(nonLeaf):
     def __init__(self, op, num):
-        if not(num.getType() == Type.INT or num.getType() == Type.REAL):
+        if not(num.getType() == Type.Int or num.getType() == Type.Real):
             raise TypeError()
         self.num = num
-        if num.getType() == Type.INT:
+        if num.getType() == Type.Int:
             result = [InTVal(0), num]
         else:
             result = [RealVal(0), num]
@@ -272,17 +291,12 @@ class Neg(UnaryArithmetic):
 
 class Logical(nonLeaf):
     def __init__(self, op, args):
-        unnested = []
-        for i in range(len(args)):
-            if isinstance(args[i], list):
-                unnested += args[i]
-            else:
-                unnested.append(args[i])
-        for i in range(len(unnested)):
-             if not(unnested[i].getType() == Type.BOOL):
+        argsList = list(args)
+        for i in range(len(argsList)):
+             if not(argsList[i].getType() == Type.Bool):
                  raise TypeError()
-        self.args = unnested
-        super().__init__(op, Type.BOOL, self.args) 
+        self.args = argsList
+        super().__init__(op, Type.Bool, self.args) 
     def getVars(self):
         variables = set()
         for i in range(len(self.args)):
@@ -291,8 +305,7 @@ class Logical(nonLeaf):
 
 class And(Logical):
     def __init__(self, *args):
-        self.args = []
-        self.args += args
+        self.args = args
         super().__init__('and', self.args)
     def __repr__(self):
         result = '(and '
@@ -377,15 +390,16 @@ class Not(Logical):
         return Not(self.prop.substitution(subDict))
 
 class Integral(nonLeaf):
-    def __init__(self, endList, startList, time, ode):
-        self.endList = endList
-        self.startList = startList
+    def __init__(self, endList, startList, time, index, ode):
+        self.startList = []
+        self.endList = []
+        for i in endList.keys():
+            self.startList.append(startList[i])
+            self.endList.append(endList[i])
         self.ode = ode
         self.time = time
-        self.flow = ode.flow
-        self.flowIndex = ode.modeID
-        self.variables = ode.variables
-        super().__init__('integral', Type.BOOL, [self])
+        self.flowIndex = str(index)
+        super().__init__('integral', Type.Bool, [self])
     def __repr__(self):
         start = '['
         end = '['
@@ -397,8 +411,7 @@ class Integral(nonLeaf):
                end += ' '
         start += ']'
         end += ']'
-        result = '\n         (= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' ' + self.flowIndex + '))\n'
-        result = '(= ' + start + '\n  (integral 0. ' + str(self.time) + ' ' + end + ' ' + self.flowIndex + '))\n'
+        result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
         return result
     def z3Obj(self):
         subDict = {}
@@ -406,7 +419,19 @@ class Integral(nonLeaf):
             keyIndex = str(self.endList[i]).find('_')
             keyValue = str(self.endList[i])[0:keyIndex]
             subDict[keyValue] = self.startList[i]
-        substitutionExp = self.ode.constantReplace(subDict)
+        for i in self.ode.values():
+            subvariables = list(i.getVars())
+            for j in range(len(subvariables)):
+                if subvariables[j] in self.ode.keys():
+                    if self.ode[subvariables[j]] == RealVal(0):
+                        pass
+                    else:
+                        raise z3constODEerror()
+                else:
+                    raise z3constODEerror()
+        substitutionExp = {}
+        for i in self.ode.keys():
+            substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
         result = []
         for i in range(len(self.endList)):
             keyIndex = str(self.endList[i]).find('_') 
@@ -417,21 +442,21 @@ class Integral(nonLeaf):
             z3result.append(result[i].z3Obj())
         return z3.And(z3result) 
     def getVars(self):
-        return set()
+        return set(self.startList + self.endList)
     def substitution(self, subDict):
         return self
 
 class Forall(nonLeaf):
     def __init__(self, flowIndex, time, condition, start, end):
-        self.flowIndex = flowIndex
+        self.flowIndex = str(flowIndex)
         self.time = time
         self.condition = condition
         self.startDict = start
         self.endDict = end
-        super().__init__('forall', Type.BOOL, [self])
+        super().__init__('forall', Type.Bool, [self])
     def __repr__(self):
-        result = '\n       (forall_t ' + str(self.flowIndex) + ' [0 ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
-        result = '(forall_t ' + str(self.flowIndex) + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
+        result = '\n       (forall_t ' + self.flowIndex + ' [0 ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
+        result = '(forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
         return result
     def z3Obj(self):
         endCond = self.condition.substitution(self.endDict).z3Obj()
@@ -485,41 +510,46 @@ class printHandler:
     def addConst(self, constList):
         self.const += constList
 
+    def ODEDeclareHandler(self):
+        f = open(self.filename, 'w')
+        f.write("(set-logic QF_NRA_ODE)\n")
+        for i in self.varRange.keys():
+            f.write("(declare-fun ")
+            f.write(str(i.id))
+            f.write(" () Real [" + str(self.varRange[i][0]) + ", " + str(self.varRange[i][1]) + "])\n")
+        for i in range(len(self.defineODE)):
+            f.write("(define-ode flow_" + str(self.defineODE[i][1]) + " (")
+            for j in self.defineODE[i][0].keys():
+                f.write("(= d/dt[" + str(j) + "] " + str(self.defineODE[i][0][j]) + ")\n                 ")
+            f.write("))\n")
+        f.close()
+
     def varsDeclareHandler(self):
         f = open(self.filename, 'a+')
 
         variables = set().union(*[c.getVars() for c in self.const])
+        for i in self.varRange.keys():
+            variables.remove(i)
         variables = list(variables)
 
         for i in range(len(variables)):
             f.write("(declare-fun ")
             f.write(str(variables[i]))
             f.write(" () ")
-            typeName = str(type(variables[i]))
+            typeName = str(variables[i].getType().name)
             keyIndex = str(variables[i]).find('_')
-            f.write(typeName[-6: -2])
+            f.write(typeName)
             key = str(variables[i])[:keyIndex]
-            if key in self.varRange.keys():
-                f.write(" [" + str(self.varRange[key][0]) + ", " + str(self.varRange[key][1]) + "]")
-            elif typeName[-6: -2] == 'Real':
+            strRange = {}
+            for i in self.varRange.keys():
+                strRange[str(i.id)] = self.varRange[i]
+            if key in strRange.keys():
+                f.write(" [" + str(strRange[key][0]) + ", " + str(strRange[key][1]) + "]")
+            elif typeName == 'Real':
                 f.write(" [0.0000, 1000.0000]")
             f.write(")\n")
         f.close()
 
-    def ODEDeclareHandler(self):
-        f = open(self.filename, 'w')
-        f.write("(set-logic QF_NRA_ODE)\n")
-        for i in self.varRange.keys():
-            f.write("(declare-fun ")
-            f.write(i)      
-            f.write(" () Real [" + str(self.varRange[i][0]) + ", " + str(self.varRange[i][1]) + "])\n")
-        for i in range(len(self.defineODE)):
-            f.write("(define-ode flow_" + str(i+1) + " (")
-            for j in self.defineODE[i].flow.keys():
-                f.write("(= d/dt[" + j + "] " + str(self.defineODE[i].flow[j]) + ")\n                 ")
-            f.write("))\n")
-        f.close()
-    
     def assertDeclareHandler(self):
         f = open(self.filename, 'a+')
         for i in range(len(self.const)):

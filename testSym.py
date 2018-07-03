@@ -39,12 +39,12 @@ def runTest(formula, k):
     return (result.z3Obj(), z3const)
 
 def reportTest(formula):
-    for k in range(2,10,2):
+    for k in range(5,6,2):
         (fullSep,const) = runTest(formula, k)
         s = z3.Solver()
         s.add(const)
         s.add(fullSep)
-#        print(s.to_smt2())
+        print(s.to_smt2())
         s.set("timeout", 5000)
         checkResult = s.check()
         print(checkResult)
