@@ -1,10 +1,10 @@
 from core.interface import *
 import os, sys, io
 
-from core.stl import *
-from core.partition import *
-from core.separation import *
-from core.encoding import *
+#from core.stl import *
+#from core.partition import *
+#from core.separation import *
+#from core.encoding import *
 
 
 class Model:
@@ -102,15 +102,20 @@ class Model:
         return const
          
     def invHandler(self, time, k):
-        const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1))) for i in self.inv.keys()]
+        const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.inv.keys()]
         return const
 
     def propHandler(self, time, k):
         const = []
         for i in self.prop.keys():
+            proconst = []
+            notproconst = []
             for j in self.flow.keys():
-                const.append(Implies(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1))))
-                const.append(Implies(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1))))
+                proconst.append(And(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
+                notproconst.append(And(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
+            const.append(Or(proconst))
+            const.append(Or(notproconst))
+
         return const
   
 

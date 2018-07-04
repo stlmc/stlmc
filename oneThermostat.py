@@ -1,7 +1,7 @@
 from core.interface import *
 from core.dRealHandler import *
 from model import *
-import os, sys
+import os, sys, io
 
 gT = RealVal(20)
 LB = RealVal(16)
@@ -46,19 +46,21 @@ class Thermostat(Model):
                      And(self.qf == self.qOff, self.fx < LB): And(self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(LB <= self.fx, self.fx <= UB): And(self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx)}
 
-        prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.fx <=  RealVal(17)}
+        prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.qf == self.qOn}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Thermostat()
-    const = model.reach(15)
+    const = model.reach(2)
 
     output = io.StringIO()
     printObject = dRealHandler(const, output, model.variables, model.flowDict)
     printObject.callAll()
-    print (output.getvalue())
+    f = open('test.smt2', 'w')
+    f.write(output.getvalue())
+    f.close()
 
     s = z3.Solver()
     for i in range(len(const)):

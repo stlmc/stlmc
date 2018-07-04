@@ -479,21 +479,34 @@ class Integral(nonLeaf):
         return self
 
 class Forall(nonLeaf):
-    def __init__(self, flowIndex, time, condition, start, end):
+    def __init__(self, flowIndex, time, condition, start, end, mode):
         self.flowIndex = str(flowIndex)
         self.time = time
         self.condition = condition
         self.startDict = start
         self.endDict = end
+        self.modeDict = mode
         super().__init__('forall', Type.Bool, [self])
     def __repr__(self):
-        result = '\n       (forall_t ' + self.flowIndex + ' [0 ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
-        result = '(forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + ')'
+        typeList = [i.getType() for i in self.condition.getVars()]
+        if not(Type.Real in typeList):
+            subCondition = self.condition.substitution(self.modeDict)
+            result = str(subCondition)
+        else:
+            endCond = self.condition.substitution(self.endDict)
+            startCond = self.condition.substitution(self.startDict)
+            constraint = And(endCond, startCond)
+            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + '))'
         return result
     def z3Obj(self):
-        endCond = self.condition.substitution(self.endDict).z3Obj()
-        startCond = self.condition.substitution(self.startDict).z3Obj()
-        return z3.And(endCond, startCond)
+        typeList = [i.getType() for i in self.condition.getVars()]
+        if not(Type.Real in typeList):
+            subCondition = self.condition.substitution(self.modeDict).z3Obj()
+            return subCondition
+        else:
+            endCond = self.condition.substitution(self.endDict).z3Obj()
+            startCond = self.condition.substitution(self.startDict).z3Obj()
+            return z3.And(endCond, startCond)
     def getVars(self):
         return set()
     def substitution(self, subDict):
