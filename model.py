@@ -1,6 +1,12 @@
 from core.interface import *
 import os, sys, io
 
+from core.stl import *
+from core.partition import *
+from core.separation import *
+from core.encoding import *
+
+
 class Model:
     def __init__(self, mode, variables, init, flow, inv, jump, prop):
         self.mode = mode
@@ -13,6 +19,19 @@ class Model:
 
         self.flowDict = self.defineFlowDict()
         self.varList = list(self.variables.keys())
+
+
+    def modelCheck(self, formula, bound):
+        baseP = baseCase(bound)
+        (partition,sepMap,partitionConsts) = guessPartition(formula, baseP)
+
+        fs = fullSeparation(formula, sepMap)
+        baseV = baseEncoding(partition,baseP)
+
+        formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
+        modelConsts = self.reach(bound)
+
+        return partitionConsts + modelConsts + [formulaConst] 
 
 
     def reach(self, bound):
