@@ -1,10 +1,10 @@
 from core.interface import *
 import os, sys, io
 
-#from core.stl import *
-#from core.partition import *
-#from core.separation import *
-#from core.encoding import *
+from core.stl import *
+from core.partition import *
+from core.separation import *
+from core.encoding import *
 
 
 class Model:
