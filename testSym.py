@@ -1,7 +1,8 @@
-import gc, time, multiprocessing
-import core.base
-
 import os, sys
+import gc, time, multiprocessing
+
+from core.dRealHandler import *
+import core.base
 
 from core.stl import *
 from core.partition import *
@@ -20,20 +21,25 @@ def runTest(formula, k):
     baseV = baseEncoding(partition,baseP)
     result = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
 
-    z3const = [i.z3Obj() for i in const]
+    model = Thermostat()
+    constTemp = model.reach(k)
 
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '_' + str(k) + '.smt2'
-    (constTemp, printObject) = Thermostat().reach(k, dRealname)
-    
+    # z3
+    z3const = [i.z3Obj() for i in const]
     for i in range(len(constTemp)):
         z3const.append(constTemp[i].z3Obj())
 
-    printObject.addConst([result])
-    printObject.addConst(const)
-    printObject.callAll()
+    # dReal
+    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
+    dRealname = dRealname[:-3]
+    dRealname += '_' + str(k) + '.smt2'
     
+    with open(dRealname, 'w') as fle:
+        printObject = dRealHandler(const, fle, model.variables, model.flowDict)
+        printObject.addConst([result])
+        printObject.addConst(const)
+        printObject.callAll()
+
     return (result.z3Obj(), z3const)
 
 def reportTest(formula):

@@ -1,23 +1,27 @@
 from core.interface import *
-import os, sys
+import os, sys, io
 
 class Model:
-
-    def making(self, mode, variables, init, flow, inv, jump, prop, bound, filename):
+    def __init__(self, mode, variables, init, flow, inv, jump, prop):
         self.mode = mode
+        self.variables = variables
+        self.init = init
         self.flow = flow
         self.inv = inv
         self.jump = jump
         self.prop = prop
 
         self.flowDict = self.defineFlowDict()
+        self.varList = list(self.variables.keys())
+
+
+    def reach(self, bound):
+        const = []
+
+        combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, 0))
+        const.append(self.init.substitution(combine))
 
         ts = [Real("tau_%s"%i) for i in range(bound)]
-
-        self.varList = list(variables.keys())
-        const = []
-        combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, 0))
-        const.append(init.substitution(combine))
         const.append(ts[0] >= RealVal(0))
 
         for i in range(bound - 1):
@@ -27,12 +31,8 @@ class Model:
             const.extend(self.jumpHandler(i))
             const.append(ts[i] < ts[i+1])
             const.extend(self.propHandler(Real('time' + str(i)), i))
-       
 
-        
-        printObject = printHandler(const, filename, variables, self.flowDict)
-#        printObject.callAll()
-        return (const, printObject)
+        return const
 
 
     def combineDict(self, dict1, dict2):
@@ -101,19 +101,4 @@ class Model:
         const = [Implies(i.substitution(combineSub), self.jump[i].substitution(combineSub)) for i in self.jump.keys()]
         result = [i.nextSub(nextSub) for i in const]
         return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

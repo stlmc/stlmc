@@ -1,6 +1,7 @@
 from core.interface import *
-import os, sys
+from core.dRealHandler import *
 from model import *
+import os, sys
 
 gT = RealVal(20)
 LB = RealVal(16)
@@ -28,47 +29,40 @@ class Thermostat(Model):
     proPF = Bool('pf')
     proQF = Bool('qf')
 
-    def reach(self, bound, filename):
-        self.mode = [self.qf]
-        self.vars = {self.fx: (-20, 100), self.constfx: (-20, 100)}
-        self.init = And(self.qf == self.qOff, self.fx >= gT - RealVal(1), self.fx <= gT + RealVal(1), self.constfx == self.fx)
+    def __init__(self):
+        mode = [self.qf]
+        vars = {self.fx: (-20, 100), self.constfx: (-20, 100)}
+        init = And(self.qf == self.qOff, self.fx >= gT - RealVal(1), self.fx <= gT + RealVal(1), self.constfx == self.fx)
 
         fxOff = -S1 * (self.constfx)
         fxOn = S1 * (H1 -self.constfx)
 
-        self.flow = {self.qf == self.qOff: {self.fx: fxOff, self.constfx: RealVal(0)}, \
-                    self.qf == self.qOn: {self.fx: fxOn, self.constfx: RealVal(0)}}
-        self.inv = {self.qf == self.qOff: self.fx > RealVal(10), \
-                    self.qf == self.qOn: self.fx < RealVal(30)}
+        flow = {self.qf == self.qOff: {self.fx: fxOff, self.constfx: RealVal(0)}, \
+                self.qf == self.qOn: {self.fx: fxOn, self.constfx: RealVal(0)}}
+        inv = {self.qf == self.qOff: self.fx > RealVal(10), \
+               self.qf == self.qOn: self.fx < RealVal(30)}
 
-        self.jump = {And(self.qf == self.qOn, self.fx > UB): And(self.qfNext == self.qOff, self.fxNext == self.fx, self.constfxNext == self.fx), \
+        jump = {And(self.qf == self.qOn, self.fx > UB): And(self.qfNext == self.qOff, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(self.qf == self.qOff, self.fx < LB): And(self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(LB <= self.fx, self.fx <= UB): And(self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx)}
 
-        self.prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.fx <=  RealVal(17)}
-       
-        (const, printObject) = Model().making(self.mode, self.vars, self.init, self.flow, self.inv, self.jump, self.prop, bound, filename)
+        prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.fx <=  RealVal(17)}
 
-        return (const, printObject)
+        super().__init__(mode, vars, init, flow, inv, jump, prop)
+
 
 if __name__ == '__main__':
-    (const, printObject) = Thermostat().reach(15, 'OneThermostat.smt2')
+    model = Thermostat()
+    const = model.reach(15)
+
+    output = io.StringIO()
+    printObject = dRealHandler(const, output, model.variables, model.flowDict)
     printObject.callAll()
+    print (output.getvalue())
+
     s = z3.Solver()
     for i in range(len(const)):
         s.add(const[i].z3Obj())
 #    print(s.to_smt2())
     print(s.check())
-
-
-
-
-
-
-
-
-
-
-
-
 

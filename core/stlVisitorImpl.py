@@ -1,7 +1,7 @@
 
 from antlr4 import *
-from syntax.stlParser import stlParser
-from syntax.stlVisitor import stlVisitor
+from .syntax.stlParser import stlParser
+from .syntax.stlVisitor import stlVisitor
 from .formula import *
 
 class stlVisitorImpl(stlVisitor):

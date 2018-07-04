@@ -1,7 +1,7 @@
 
 from antlr4 import *
-from syntax.stlLexer import stlLexer
-from syntax.stlParser import stlParser
+from .syntax.stlLexer import stlLexer
+from .syntax.stlParser import stlParser
 from .stlVisitorImpl import stlVisitorImpl
 
 def parseFormula(fStr:str):
