@@ -3,6 +3,9 @@ from .TYPE import *
 import z3
 import itertools
 
+def Sqrt(a):
+    return a * RealVal(0.5)
+
 class Node:
     def __init__(self, nodeType):
         self.nodeType = nodeType
@@ -71,6 +74,28 @@ class RealVal(Constant, ArithRef):
     def __init__(self, value):
         self.value = value
         super().__init__(Type.Real, value)
+
+class cos(Constant):
+    def __init__(self, value):
+        self.value = value
+        super().__init__(Type.Real, value)
+    def __repr__(self):
+        return '(cos ' + str(self.value) + ')'
+
+class sin(Constant):
+    def __init__(self, value):
+        self.value = value
+        super().__init__(Type.Real, value)
+    def __repr__(self):
+        return '(sin ' + str(self.value) + ')'
+
+class tan(Constant):
+    def __init__(self, value):
+        self.value = value
+        super().__init__(Type.Real, value)
+    def __repr__(self):
+        return '(tan ' + str(self.value) + ')'
+
 
 class IntVal(Constant, ArithRef):
     def __init__(self, value):
@@ -453,7 +478,7 @@ class Integral(nonLeaf):
             subvariables = list(i.getVars())
             for j in range(len(subvariables)):
                 if subvariables[j] in self.ode.keys():
-                    if self.ode[subvariables[j]] == RealVal(0):
+                    if str(self.ode[subvariables[j]]) == str(RealVal(0)):
                         pass
                     else:
                         raise z3constODEerror()
@@ -514,36 +539,4 @@ class Forall(nonLeaf):
     def nextSub(self, subDict):
         return self
 
-class stateDeclare:
-    def __init__(self, name, k):
-        self.start = []
-        self.end = []
-        self.id = name
-        for i in range(k+1):
-            self.start.append(Real((name + '_' + str(i) + '_0')))
-            self.end.append(Real((name + '_' + str(i) + '_t')))
-    def startVar(self):
-        return self.start
-    def endVar(self):
-        return self.end
-
-class ODE:
-    def __init__(self, modeID, flow):
-        self.modeID = 'flow_' + str(modeID)
-        self.flow = flow
-        self.variables = flow.keys()
-    def constantReplace(self, subDict):
-        result = self.flow.copy()
-        for i in result.keys():
-            subvariables = list(result[i].getVars())
-            for j in range(len(subvariables)):
-                if (str(subvariables[j]) in self.flow.keys()):
-                    if self.flow[str(subvariables[j])] == RealVal(0):
-                        pass
-                    else:
-                        raise z3constODEerror()
-                else:
-                    raise z3constODEerror()
-            result[i] = result[i].substitution(subDict)
-        return result
 

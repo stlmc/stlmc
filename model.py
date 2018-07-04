@@ -108,14 +108,11 @@ class Model:
     def propHandler(self, time, k):
         const = []
         for i in self.prop.keys():
-            proconst = []
-            notproconst = []
+            positive = []
+            negative = []
             for j in self.flow.keys():
-                proconst.append(And(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
-                notproconst.append(And(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
-            const.append(Or(proconst))
-            const.append(Or(notproconst))
-
+                const.append(Implies(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
+                const.append(Implies(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
         return const
   
 

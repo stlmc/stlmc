@@ -1,7 +1,7 @@
 import z3
 import os, sys
 import gc, time, multiprocessing
-
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import core.base
 from core.stl import *
 from core.dRealHandler import *

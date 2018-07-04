@@ -1,7 +1,8 @@
+import os, sys, io
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.interface import *
 from core.dRealHandler import *
 from model import *
-import os, sys, io
 
 gT = RealVal(20)
 LB = RealVal(16)
@@ -46,7 +47,7 @@ class Thermostat(Model):
                      And(self.qf == self.qOff, self.fx < LB): And(self.qfNext == self.qOn, self.fxNext == self.fx, self.constfxNext == self.fx), \
                      And(LB <= self.fx, self.fx <= UB): And(self.qfNext == self.qf, self.fxNext == self.fx, self.constfxNext == self.fx)}
 
-        prop = {self.proPF: self.fx >= RealVal(20), (self.proQF): self.qf == self.qOn}
+        prop = {self.proPF: self.fx <= RealVal(5), (self.proQF): self.fx <= RealVal(0)}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 

@@ -82,12 +82,14 @@ if __name__ == '__main__':
     f = open(dRealname, 'w')
     f.write(output.getvalue())
     f.close()
-    s = z3.Solver()
-    for i in range(len(const)):
-        s.add(const[i].z3Obj())
-#    print(s.to_smt2())
-    print(s.check())
-
+    try:
+        s = z3.Solver()
+        for i in range(len(const)):
+            s.add(const[i].z3Obj())
+#        print(s.to_smt2())
+        print(s.check())
+    except z3constODEerror:
+        print("receive nonlinear ODE")
 
 
 
