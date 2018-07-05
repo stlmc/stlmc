@@ -27,10 +27,20 @@ class Model:
 
         fs = fullSeparation(formula, sepMap)
         baseV = baseEncoding(partition,baseP)
+        print("partition!!!!!!!!!!!!!!!!!!!!")
+
+        print(partition)
+        print("full separation!!!!!!!!!!!!!!!!!!!!")
+        print(fs)
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
         modelConsts = self.reach(bound)
-
+        print("model!!!!!!!!!!!!!!!!!!!!")
+        print(modelConsts)
+        print("formula!!!!!!!!!!!!!!!!!!!!")
+        print(formulaConst)
+        print("partitionConst!!!!!!!!!!!!!!!!!!!!")
+        print(partitionConsts)
         return partitionConsts + modelConsts + [formulaConst] 
 
 

@@ -73,10 +73,10 @@ class Airplane(Model):
               ma == RealVal(3): And(tau >= RealVal(0), tau <= RealVal(0.5)), \
               ma == RealVal(4): And(tau >= RealVal(0), tau <= RealVal(0.5))} 
 
-        jump = {And(tau == RealVal(0.5), gRDR >= xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR < xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR >= xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO)}
+        jump = {And(tau == RealVal(0.5), gRDR >= xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR < xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR >= xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO)}
 
         prop = {proPF: And(beta > RealVal(0.2), beta < RealVal(0.2))}
  
