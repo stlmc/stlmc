@@ -14,6 +14,7 @@ CLOSE = RealVal(2)
 
 V = RealVal(3)
 
+
 #Far: 1, approach: 2, Near: 3, Past: 4
 
 class Railroad(Model):
@@ -22,24 +23,29 @@ class Railroad(Model):
         bm = Real('bm')   #bar mode
         tx = Real('tx')   #train position
         bx = Real('bx')   #angualr 90: open, 0: close
+        vbx = Real('vbx')
+        
+
         tmNext = NextVar(tm)
         txNext = NextVar(tx)
         bmNext = NextVar(bm)
         bxNext = NextVar(bx)
+        vbxNext = NextVar(vbx)
+
         proPF = Bool('pf')
         proQF = Bool('qf')
         mode = [tm, bm]
-        vars = {tx: (-20, 100), bx: (0, 90)}
-        init = And(tm == FAR, bm == CLOSE, bx == RealVal(0), tx >= RealVal(5), tx <= RealVal(8))
+        vars = {vbx: (-20, 20), tx: (-20, 100), bx: (0, 90)}
+        init = And(tm == FAR, bm == CLOSE, vbx == RealVal(0), bx == RealVal(0), tx >= RealVal(5), tx <= RealVal(8))
 
-        flow = {And(tm == FAR, bm == CLOSE): {tx: V, bx: RealVal(0)}, \
-                And(tm == FAR, bm == OPEN): {tx: V, bx: RealVal(0)}, \
-                And(tm == APPROACH, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == APPROACH, bm == OPEN): {tx: V, bx: RealVal(5)}, \
-                And(tm == NEAR, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == NEAR, bm == OPEN): {tx: V, bx: RealVal(5)}, \
-                And(tm == PAST, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == PAST, bm == OPEN): {tx: V, bx: RealVal(5)}}
+        flow = {And(tm == FAR, bm == CLOSE): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
+                And(tm == FAR, bm == OPEN): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
+                And(tm == APPROACH, bm == CLOSE): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
+                And(tm == APPROACH, bm == OPEN): {tx: V, bx: vbx, vbx: RealVal(5)}, \
+                And(tm == NEAR, bm == CLOSE): {tx: V, bx: vbx, vbx: -RealVal(5)}, \
+                And(tm == NEAR, bm == OPEN): {tx: V, bx: vbx, vbx: RealVal(10)}, \
+                And(tm == PAST, bm == CLOSE): {tx: V, bx: vbx, vbx: -RealVal(5)}, \
+                And(tm == PAST, bm == OPEN): {tx: V, bx: RealVal(0), vbx: RealVal(0)}}
 
 
         inv = {And(tm == FAR, bm == CLOSE): And(tx >= RealVal(40), tx <= RealVal(95), bx >= RealVal(0), bx < RealVal(90)), \
@@ -53,12 +59,12 @@ class Railroad(Model):
 bx > RealVal(0), bx <= RealVal(90))}
 
 
-        jump = {And(bm == CLOSE, tm == APPROACH): And(bmNext == OPEN, bxNext == bx, tmNext == tm, txNext == tx), \
-                And(bm == OPEN, tm == PAST): And(bmNext == CLOSE, tmNext == tm, bxNext == bx), \
-                And(tm == NEAR, tx < RealVal(5)): And(tmNext == PAST, bxNext == bx, txNext == tx, bmNext == bm), \
-                And(tm == PAST, tx < -RealVal(5)): And(tmNext == FAR, bxNext == bx, txNext == RealVal(85), bmNext == bm), \
-                And(tm == FAR, tx < RealVal(40)): And(tmNext == APPROACH, bxNext == bx, txNext == tx, bmNext == bm), \
-                And(tm == APPROACH,tx < RealVal(2)): And(tmNext == NEAR, bxNext == bx, txNext == tx, bmNext == bm)} 
+        jump = {And(bm == CLOSE, tm == APPROACH): And(bmNext == OPEN, vbxNext == vbx, bxNext == bx, tmNext == tm, txNext == tx), \
+                And(bm == OPEN, tm == PAST): And(bmNext == CLOSE, tmNext == tm, vbxNext == vbx, bxNext == bx), \
+                And(tm == NEAR, tx < RealVal(5)): And(tmNext == PAST, bxNext == bx, vbxNext == vbx, txNext == tx, bmNext == bm), \
+                And(tm == PAST, tx < -RealVal(5)): And(tmNext == FAR, bxNext == bx, txNext == RealVal(85), vbxNext == vbx, bmNext == bm), \
+                And(tm == FAR, tx < RealVal(40)): And(tmNext == APPROACH, bxNext == bx, txNext == tx, vbxNext == vbx, bmNext == bm), \
+                And(tm == APPROACH,tx < RealVal(2)): And(tmNext == NEAR, bxNext == bx, txNext == tx, vbxNext == vbx, bmNext == bm)} 
 
         prop = {}
 
@@ -79,9 +85,3 @@ if __name__ == '__main__':
     f.write(output.getvalue())
     f.close()
 
-    s = z3.Solver()
-    for i in range(len(const)):
-        s.add(const[i].z3Obj())
-#    print(s.to_smt2())
-    print(s.check())
-#    print(s.model())
