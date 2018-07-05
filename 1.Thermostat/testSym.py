@@ -31,17 +31,17 @@ def runTest(formula, k):
     return z3const
 
 def reportTest(formula):
-    for k in range(2,7,2):
+    for k in range(1,2):
         const = runTest(formula, k)
         s = z3.Solver()
         s.add(const)
-#        print(s.to_smt2())
+        print(s.to_smt2())
         s.set("timeout", 10000)
         checkResult = s.check()
         print(checkResult)
 #         print(",".join(["f%s"%i, str(k), str(sizeAst(z3.And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
 #        print(s.to_smt2())
-#        print (s.model())
+        print (s.model())
 
 
 if __name__ == '__main__':

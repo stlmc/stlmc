@@ -11,45 +11,45 @@ C = RealVal(0.166)
 #On: 1, Off: 0, Dead: -1
 
 class Battery(Model):
-    mb1 = Real('mb1')
-    mb2 = Real('mb2')
-    d1 = Real('d1')
-    d2 = Real('d2')
-    g1 = Real('g1')
-    g2 = Real('g2')
-    constd1 = Real('constd1')
-    constd2 = Real('constd2')
-    mb1Next = NextVar(mb1)
-    mb2Next = NextVar(mb2)
-    d1Next = NextVar(d1)
-    d2Next = NextVar(d2)
-    g1Next = NextVar(g1)
-    g2Next = NextVar(g2)
-    constd1Next = NextVar(constd1)
-    constd2Next = NextVar(constd2)
-    proPF = Bool('pf')
-    proQF = Bool('qf')
-
     def __init__(self):
-        mode = [self.mb1, self.mb2]
-        vars = {self.d1: (-10, 10), self.d2: (-10, 10), self.g1: (-10, 10), self.g2: (-10, 10), self.constd1: (-10, 10), self.constd2: (-10, 10)}
-        init = And(And(self.mb1 == RealVal(1), self.mb2 == RealVal(1)), self.g1 == RealVal(8.5), self.d1 == RealVal(0), self.g2 == RealVal(7.5), self.d2 == RealVal(0), And(self.constd1 == self.d1, self.constd2 == self.d2))
+        mb1 = Real('mb1')
+        mb2 = Real('mb2')
+        d1 = Real('d1')
+        d2 = Real('d2')
+        g1 = Real('g1')
+        g2 = Real('g2')
+        constd1 = Real('constd1')
+        constd2 = Real('constd2')
+        mb1Next = NextVar(mb1)
+        mb2Next = NextVar(mb2)
+        d1Next = NextVar(d1)
+        d2Next = NextVar(d2)
+        g1Next = NextVar(g1)
+        g2Next = NextVar(g2)
+        constd1Next = NextVar(constd1)
+        constd2Next = NextVar(constd2)
+        proPF = Bool('pf')
+        proQF = Bool('qf')
 
-        flow = {And(self.mb1 == RealVal(1), self.mb2 == RealVal(1)): {self.d1: (RealVal(0.5) / C) - (K * self.d1), self.d2: (RealVal(0.5) / C) - (K * self.d2), self.g1: -RealVal(0.5), self.g2: -RealVal(0.5), self.constd1: RealVal(0), self.constd2: RealVal(0)}, \
-               And(self.mb1 == RealVal(1), self.mb2 == RealVal(0)): {self.d1: (RealVal(1) / C) - (K * self.d1), self.d2: -(K * self.d2), self.g1: -RealVal(1), self.g2: RealVal(0), self.constd1: RealVal(0), self.constd2: RealVal(0)}, \
-               And(self.mb1 == RealVal(0), self.mb2 == RealVal(1)): {self.d1: -(K * self.d1), self.d2: (RealVal(1) / C) - (K * self.d2), self.g1: RealVal(0), self.g2: -RealVal(1), self.constd1: RealVal(0), self.constd2: RealVal(0)}, \
-               And(self.mb1 == -RealVal(1), self.mb2 == RealVal(1)): {self.d1: RealVal(0), self.d2: (RealVal(1) / C) - (K * self.d2), self.g1: RealVal(0), self.g2: -RealVal(1), self.constd1: RealVal(0), self.constd2: RealVal(0)}, \
-               And(self.mb1 == RealVal(1), self.mb2 == -RealVal(1)): {self.d1: (RealVal(1) / C) - (K * self.d1), self.d2: RealVal(0), self.g1: -RealVal(1), self.g2: RealVal(0), self.constd1: RealVal(0), self.constd2: RealVal(0)}, \
-               And(self.mb1 == -RealVal(1), self.mb2 == -RealVal(1)): {self.d1: RealVal(0), self.d2: RealVal(0), self.g1: RealVal(0), self.g2: RealVal(0), self.constd1: RealVal(0), self.constd2: RealVal(0)}}
+        mode = [mb1, mb2]
+        vars = {d1: (-10, 10), d2: (-10, 10), g1: (-10, 10), g2: (-10, 10), constd1: (-10, 10), constd2: (-10, 10)}
+        init = And(And(mb1 == RealVal(1), mb2 == RealVal(1)), g1 == RealVal(8.5), d1 == RealVal(0), g2 == RealVal(7.5), d2 == RealVal(0), And(constd1 == d1, constd2 == d2))
+
+        flow = {And(mb1 == RealVal(1), mb2 == RealVal(1)): {d1: (RealVal(0.5) / C) - (K * d1), d2: (RealVal(0.5) / C) - (K * d2), g1: -RealVal(0.5), g2: -RealVal(0.5), constd1: RealVal(0), constd2: RealVal(0)}, \
+               And(mb1 == RealVal(1), mb2 == RealVal(0)): {d1: (RealVal(1) / C) - (K * d1), d2: -(K * d2), g1: -RealVal(1), g2: RealVal(0), constd1: RealVal(0), constd2: RealVal(0)}, \
+               And(mb1 == RealVal(0), mb2 == RealVal(1)): {d1: -(K * d1), d2: (RealVal(1) / C) - (K * d2), g1: RealVal(0), g2: -RealVal(1), constd1: RealVal(0), constd2: RealVal(0)}, \
+               And(mb1 == -RealVal(1), mb2 == RealVal(1)): {d1: RealVal(0), d2: (RealVal(1) / C) - (K * d2), g1: RealVal(0), g2: -RealVal(1), constd1: RealVal(0), constd2: RealVal(0)}, \
+               And(mb1 == RealVal(1), mb2 == -RealVal(1)): {d1: (RealVal(1) / C) - (K * d1), d2: RealVal(0), g1: -RealVal(1), g2: RealVal(0), constd1: RealVal(0), constd2: RealVal(0)}, \
+               And(mb1 == -RealVal(1), mb2 == -RealVal(1)): {d1: RealVal(0), d2: RealVal(0), g1: RealVal(0), g2: RealVal(0), constd1: RealVal(0), constd2: RealVal(0)}}
   
         inv = {}
 
-        jump = {And(self.g1 > (RealVal(1) - C) * self.d1, self.g2 > (RealVal(1) - C) * self.d2): And(And(self.mb1Next == RealVal(1), self.mb2Next == RealVal(1)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2), \
-               And(self.g1 > (RealVal(1) - C) * self.d1, self.g2 > (RealVal(1) - C) * self.d2): And(And(self.mb1Next == RealVal(1), self.mb2Next == RealVal(0)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2), \
-               And(self.g1 > (RealVal(1) - C) * self.d1, self.g2 > (RealVal(1) - C) * self.d2): And(And(self.mb1Next == RealVal(0), self.mb2Next == RealVal(1)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2), \
-               And(self.g1 <= (RealVal(1) - C) * self.d1, self.g2 > (RealVal(1) - C) * self.d2): And(And(self.mb1Next == -RealVal(1), self.mb2Next == RealVal(1)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2), \
-               And(self.g1 > (RealVal(1) - C) * self.d1, self.g2 <= (RealVal(1) - C) * self.d2): And(And(self.mb1Next == RealVal(1), self.mb2Next == -RealVal(1)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2), \
-               And(self.g1 <= (RealVal(1) - C) * self.d1, self.g2 <= (RealVal(1) - C) * self.d2): And(And(self.mb1Next == -RealVal(1), self.mb2Next == -RealVal(1)), self.d1Next == self.d1, self.g1Next == self.g1, self.d2Next == self.d2, self.g2Next == self.g2, self.constd1Next == self.d1, self.constd2Next == self.d2)}
+        jump = {And(g1 > (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(And(mb1Next == RealVal(1), mb2Next == RealVal(1)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
+               And(g1 > (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(And(mb1Next == RealVal(1), mb2Next == RealVal(0)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
+               And(g1 > (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(And(mb1Next == RealVal(0), mb2Next == RealVal(1)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
+               And(g1 <= (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(And(mb1Next == -RealVal(1), mb2Next == RealVal(1)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
+               And(g1 > (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(And(mb1Next == RealVal(1), mb2Next == -RealVal(1)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
+               And(g1 <= (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(And(mb1Next == -RealVal(1), mb2Next == -RealVal(1)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2)}
 
         prop = {}
 
