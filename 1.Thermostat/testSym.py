@@ -31,7 +31,7 @@ def runTest(formula, k):
     return z3const
 
 def reportTest(formula):
-    for k in range(2,4,2):
+    for k in range(2,7,2):
         const = runTest(formula, k)
         s = z3.Solver()
         s.add(const)

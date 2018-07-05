@@ -45,7 +45,7 @@ class dRealHandler:
             if key in strRange.keys():
                 self.output.write(" [" + str(strRange[key][0]) + ", " + str(strRange[key][1]) + "]")
             elif typeName == 'Real':
-                self.output.write(" [0.0000, 1000.0000]")
+                self.output.write(" [-50.0000, 100.0000]")
             self.output.write(")\n")
 
     def assertDeclareHandler(self):

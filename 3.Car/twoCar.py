@@ -1,8 +1,8 @@
+import os, sys, io
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.interface import *
 from core.dRealHandler import *
-import os, sys
 from model import *
-import math 
 
 L1 = RealVal(1)
 L2 = RealVal(1.5)
