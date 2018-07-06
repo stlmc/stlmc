@@ -78,7 +78,7 @@ class Powertrain(Model):
         fcP = (mCf(w,pe) / c11P)
         fcC = ((RealVal(1) + i + c13 * (c24 * lambdas - c11)) * mCf(w,pe) / c11) 
 
-        mode = [mt]
+        mode = {mt: (1, 4)}
         vars = {theta: (0, 180), p: (0, 10), lambdas: (0, 100), pe: (0, 10), i: (0, 100), tau: (0, 100), \
                thetaI: (0, 180), w: (0, 150)}
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     const = model.reach(2)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
     dRealname = dRealname[:-3]

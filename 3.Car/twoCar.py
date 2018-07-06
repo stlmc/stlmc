@@ -27,7 +27,7 @@ class Car(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [mx1, mx2]
+        mode = {mx1: (-1, 1), mx2: (-1, 1)}
         vars = {x1: (0, 100), x2: (0, 100)}
         init = And(And(mx1 == RealVal(1), mx2 == RealVal(1)), x1 == RealVal(0), x2 == RealVal(3))
 
@@ -68,9 +68,8 @@ class Car(Model):
 if __name__ == '__main__':
     model = Car()
     const = model.reach(4)
-
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

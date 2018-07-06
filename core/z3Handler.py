@@ -66,6 +66,12 @@ def _(const):
     y = z3Obj(const.right())
     return x - y
 
+@z3Obj.register(Pow)
+def _(const):
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
+    return x**y
+
 @z3Obj.register(Mul)
 def _(const):
     x = z3Obj(const.left())

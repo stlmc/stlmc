@@ -44,7 +44,7 @@ class Space(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [ms]
+        mode = {ms: (1, 3)}
         vars = {tmr: (0, 100), x: (0, 150), vx: (0, 150), ax: (0, 150), y: (0, 150), vy: (0, 150), ay: (0, 150)}
 
         init = And(tmr == RealVal(0), ms == RealVal(1), x >= RealVal(90), x <= RealVal(120), y >= RealVal(90), y <= RealVal(120), And(vx >= RealVal(10), vx <= RealVal(12), vy >= RealVal(10), vy <= RealVal(12)), And(ax >= RealVal(2), ax <= RealVal(4), ay >= RealVal(2), ay <= RealVal(4)))
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     const = model.reach(2)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

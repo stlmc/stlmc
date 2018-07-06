@@ -53,7 +53,7 @@ class Airplane(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [ma]
+        mode = {ma: (1, 4)}
         valrange1 = (-1.5, 1.5)
         valrange = (-3.14159, 3.14159)
         vars = {tau: (0, 0.5), beta: valrange1, p: valrange1, r: valrange1, phi: valrange1, psi: valrange1, xAIL: valrange, xRDR: valrange, gAIL: valrange, gRDR: valrange, gDir: valrange}
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     const = model.reach(2)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

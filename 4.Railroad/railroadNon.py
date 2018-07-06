@@ -35,7 +35,7 @@ class Railroad(Model):
 
         proPF = Bool('pf')
         proQF = Bool('qf')
-        mode = [tm, bm]
+        mode = {tm: (1,4), bm: (1,2)}
         vars = {vbx: (-20, 20), tx: (-20, 100), bx: (0, 90)}
         init = And(tm == FAR, bm == CLOSE, vbx == RealVal(0), bx == RealVal(0), tx >= RealVal(5), tx <= RealVal(8))
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     const = model.reach(2)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
     dRealname = dRealname[:-3]

@@ -53,7 +53,8 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 
 @_value.register(FinallyFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
-    return And([intervalConst(j,f.gtime,f.ltime), _value(f.child,sub,f.gtime,base,genPr,fMap)])
+    args = [intervalConst(j,f.gtime,f.ltime), _value(f.child,sub,f.gtime,base,genPr,fMap)]
+    return And(*args)
 
 @_value.register(GloballyFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):

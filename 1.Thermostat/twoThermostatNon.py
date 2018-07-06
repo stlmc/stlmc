@@ -5,73 +5,68 @@ from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
 
+K1 = RealVal(0.015)
+K2 = RealVal(0.045)
+h1 = RealVal(100.0)
+h2 = RealVal(200.0)
+c = RealVal(0.01)
+
 gT = RealVal(20)
-LB = RealVal(16)
-UB = RealVal(24)
-MAX = RealVal(30)
-MIN = RealVal(10)
-S1 = RealVal(5)
-S2 = RealVal(7)
-S3 = RealVal(6)
-H1 = RealVal(3)
-H2 = RealVal(5)
-H3 = RealVal(2)
-D1 = RealVal(2)
-D2 = RealVal(2)
 
 class Thermostat(Model):
     def __init__(self):
-        qOn  = BoolVal(True)
-        qOff = BoolVal(False)
-        qf = Bool('mf')
-        qs = Bool('ms')
+        m = Real('mode')
         fx = Real('fx')
         sx = Real('sx')
-        qfNext = NextVar(qf)
-        qsNext = NextVar(qs)
+ 
+        modeNext = NextVar(m)
         fxNext = NextVar(fx)
         sxNext = NextVar(sx)
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proMF = Bool('proMF')
 
-        mode = [qf, qs]
+        proPS = Bool('ps')
+        proQS = Bool('qs')
+        proMS = Bool('proMS')
+
+        mode = {m: (1, 4)}
         vars = {fx: (-20, 100), sx: (-20, 100)}
-        init = And(And(qf == qOff, qs == qOff), fx >= gT - RealVal(1), fx <= gT + RealVal(1), sx >= gT - RealVal(1), sx <= gT + RealVal(1))
+        init = And(m == RealVal(4), fx >= gT - RealVal(1), fx <= gT + RealVal(1), sx >= gT - RealVal(1), sx <= gT + RealVal(1))
 
-        fxOff = -S1 * (fx - (D1 * sx))
-        fxOn = S1 * (H1 -(fx - (D1 * sx)))
-        sxOff = -S2 * (sx -D1 * fx)
-        sxOn = S2 * (H2 - (sx - D1 * fx))
+        fxOff = -K1 * ((RealVal(1) - c) * fx + c * sx) 
+        fxOn = K2 * (h1 -((RealVal(1) - c) * fx + c * sx))
+        sxOff = -K2 * ((RealVal(1) - c) * sx + c * fx) 
+        sxOn = K2 * (h2 -((RealVal(1) - c) * sx + c * fx))
 
-        flow = {And(qf == qOff, qs == qOff): {fx: fxOff, sx: sxOff}, \
-                   And(qf == qOff, qs == qOn): {fx: fxOff, sx: sxOn}, \
-                   And(qf == qOn, qs == qOff): {fx: fxOn, sx: sxOff}, \
-                   And(qf == qOn, qs == qOn): {fx: fxOn, sx: sxOn}}
+        flow = {m == RealVal(4): {fx: fxOff, sx: sxOff}, \
+                 m == RealVal(3): {fx: fxOff, sx: sxOn}, \
+                   m == RealVal(2): {fx: fxOn, sx: sxOff}, \
+                   m == RealVal(1): {fx: fxOn, sx: sxOn}}
 
-        inv = {And(qf == qOff, qs == qOff): And(fx > RealVal(10), sx > RealVal(10)), \
-                    And(qf == qOff, qs == qOn): And(fx > RealVal(10), sx < RealVal(30)), \
-                    And(qf == qOn, qs == qOff): And(fx < RealVal(30), sx > RealVal(10)), \
-                    And(qf == qOn, qs == qOn):  And(fx < RealVal(30), sx < RealVal(30))}
+        inv = {m == RealVal(4): And(fx > RealVal(10), sx > RealVal(10)), \
+               m == RealVal(3): And(fx > RealVal(10), sx < RealVal(30)), \
+               m == RealVal(2): And(fx < RealVal(30), sx > RealVal(10)), \
+               m == RealVal(1):  And(fx < RealVal(30), sx < RealVal(30))}
 
-        jump = {And(qf == qOn, fx > UB):  And(qfNext == qOff, fxNext == fx), \
-                     And(qf == qOff, fx < LB): And(qfNext == qOn, fxNext == fx), \
-                     And(LB <= fx, fx <= UB): And(qfNext == qf, fxNext == fx), \
-                     And(qs == qOn, sx > UB): And(qsNext == qOff, sxNext == sx), \
-                     And(qs == qOff, sx < LB): And(qsNext == qOn, sxNext == sx), \
-                     And(sx >= LB, sx <= UB): And(qsNext == qs, sxNext == sx)}
+        jump = {And(fx > gT, sx > gT):  And(modeNext == RealVal(4), sxNext == sx, fxNext == fx), \
+                     And(fx <= gT, sx <= gT): And(modeNext == RealVal(1), fxNext == fx, sxNext == sx), \
+                     And(fx > gT, sx <= gT): And(modeNext == RealVal(3), sxNext == sx, fxNext == fx), \
+                     And(fx <= gT, sx > gT): And(modeNext == RealVal(2), sxNext == sx, fxNext == fx)}
 
 
-        prop = {proPF: fx >= RealVal(10), (proQF): fx <=  RealVal(10)}
+        prop = {proPF: fx < gT - RealVal(1), (proQF): fx >  gT + RealVal(1), proMF: m == RealVal(4),  \
+               proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(4)}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Thermostat()
-    const = model.reach(2)
+    const = model.reach(5)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
@@ -80,14 +75,6 @@ if __name__ == '__main__':
     f = open(dRealname, 'w')
     f.write(output.getvalue())
     f.close()
-    try:
-        s = z3.Solver()
-        for c in const:
-            s.add(z3Obj(c))
-#        print(s.to_smt2())
-        print(s.check())
-    except z3constODEerror:
-        print("receive nonlinear ODE")
 
 
 

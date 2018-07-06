@@ -7,8 +7,8 @@ from core.stl import *
 from core.dRealHandler import *
 from core.z3Handler import *
 
-from testcaseSym import testcase
-from oneThermostat import Thermostat
+from tcNon import testcase
+from twoThermostatNon import Thermostat
 
 sys.setrecursionlimit(10000)
 
@@ -17,8 +17,8 @@ def runTest(formula, k):
     model = Thermostat()
     const = model.modelCheck(formula, k)
     # z3
-    z3const = [z3Obj(i) for i in const]
-
+#    z3const = [z3Obj(i) for i in const]
+    z3const = []
     # dReal
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
     dRealname = dRealname[:-3]
@@ -36,17 +36,17 @@ def reportTest(formula):
         const = runTest(formula, k)
         s = z3.Solver()
         s.add(const)
-        print(s.to_smt2())
+#        print(s.to_smt2())
         s.set("timeout", 10000)
         checkResult = s.check()
-        print(checkResult)
+#        print(checkResult)
 #         print(",".join(["f%s"%i, str(k), str(sizeAst(z3.And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
 #        print(s.to_smt2())
-        print (s.model())
+#        print (s.model())
 
 
 if __name__ == '__main__':
-    print(testcase)
+#    print(testcase)
     for i in range(len(testcase)):
         formula = parseFormula(testcase[i])
         print(formula)

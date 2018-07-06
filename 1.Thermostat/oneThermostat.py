@@ -32,7 +32,7 @@ class Thermostat(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [qf]
+        mode = {qf: (0,1)}
         vars = {fx: (-20, 100), constfx: (-20, 100)}
         init = And(qf == qOff, fx >= gT - RealVal(1), fx <= gT + RealVal(1), constfx == fx)
 
@@ -58,15 +58,17 @@ if __name__ == '__main__':
     const = model.reach(2)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.variables, model.flowDict, model.mode)
     printObject.callAll()
-    f = open('test.smt2', 'w')
+    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
+    dRealname = dRealname[:-3]
+    dRealname += '.smt2'
+    f = open(dRealname, 'w')
     f.write(output.getvalue())
     f.close()
-
     s = z3.Solver()
     for i in range(len(const)):
         s.add(z3Obj(const[i]))
 #    print(s.to_smt2())
-    print(s.check())
+#    print(s.check())
 

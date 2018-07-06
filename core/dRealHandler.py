@@ -1,18 +1,20 @@
 from .constraint import *
 
 class dRealHandler:
-    def __init__(self, const, output, varRange, defineODE):
+    def __init__(self, const, output, varList, varRange, defineODE, modeRange):
         self.const = const
         self.defineODE = defineODE
         self.output = output
         self.varRange = varRange
+        self.modeRange = modeRange
+        self.varList = varList
 
     def addConst(self, constList):
         self.const += constList
 
     def ODEDeclareHandler(self):
         self.output.write("(set-logic QF_NRA_ODE)\n")
-        for i in self.varRange.keys():
+        for i in self.varList:
             self.output.write("(declare-fun ")
             self.output.write(str(i.id))
             self.output.write(" () Real [" + str(self.varRange[i][0]) + ", " + str(self.varRange[i][1]) + "])\n")
@@ -28,7 +30,8 @@ class dRealHandler:
         for i in self.varRange.keys():
             if i in variables:
                 variables.remove(i)
-        variables = list(variables)
+        preVariables = list(variables)
+        variables = sorted(preVariables, key = lambda x : str(x))
 
         for i in range(len(variables)):
             self.output.write("(declare-fun ")
@@ -39,12 +42,19 @@ class dRealHandler:
             self.output.write(typeName)
             key = str(variables[i])[:keyIndex]
             strRange = {}
+            mstrRange = {}
             for i in self.varRange.keys():
                 strRange[str(i.id)] = self.varRange[i]
+            for i in self.modeRange.keys():
+                mstrRange[str(i.id)] = self.modeRange[i]
             if key in strRange.keys():
                 self.output.write(" [" + str(strRange[key][0]) + ", " + str(strRange[key][1]) + "]")
-            elif typeName == 'Real':
-                self.output.write(" [-50.0000, 100.0000]")
+            elif typeName == 'Bool':
+                pass
+            elif key in mstrRange.keys():
+                self.output.write(" [" + str(mstrRange[key][0]) + ", " + str(mstrRange[key][1]) + "]")
+            else:
+                pass
             self.output.write(")\n")
 
     def assertDeclareHandler(self):

@@ -5,19 +5,13 @@ from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
 
+K1 = RealVal(0.015)
+K2 = RealVal(0.045)
+h1 = RealVal(100.0)
+h2 = RealVal(200.0)
+c = RealVal(0.01)
+
 gT = RealVal(20)
-LB = RealVal(16)
-UB = RealVal(24)
-MAX = RealVal(30)
-MIN = RealVal(10)
-S1 = RealVal(5)
-S2 = RealVal(7)
-S3 = RealVal(6)
-H1 = RealVal(3)
-H2 = RealVal(5)
-H3 = RealVal(2)
-D1 = RealVal(2)
-D2 = RealVal(2)
 
 class Thermostat(Model):
     def __init__(self):
@@ -42,10 +36,10 @@ class Thermostat(Model):
         vars = {fx: (-20, 100), sx: (-20, 100), constfx: (-20, 100), constsx: (-20, 100)}
         init = And(And(qf == qOff, qs == qOff), fx >= gT - RealVal(1), fx <= gT + RealVal(1), sx >= gT - RealVal(1), sx <= gT + RealVal(1), And(constfx == fx, constsx == sx))
 
-        fxOff = -S1 * (constfx - (D1 * constsx))
-        fxOn = S1 * (H1 -(constfx - (D1 * constsx)))
-        sxOff = -S2 * (constsx -D1 * constfx)
-        sxOn = S2 * (H2 - (constsx - D1 * constfx))
+        fxOff = -K1 * ((RealVal(1) - c) * constfx + c * constsx) 
+        fxOn = K2 * (h1 -((RealVal(1) - c) * constfx + c * constsx))
+        sxOff = -K2 * ((RealVal(1) - c) * constsx + c * constfx)
+        sxOn = K2 * (h2 -((RealVal(1) - c) * constsx + c * constfx))
 
         flow = {And(qf == qOff, qs == qOff): {fx: fxOff, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
                    And(qf == qOff, qs == qOn): {fx: fxOff, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}, \
@@ -57,13 +51,10 @@ class Thermostat(Model):
                     And(qf == qOn, qs == qOff): And(fx < RealVal(30), sx > RealVal(10)), \
                     And(qf == qOn, qs == qOn):  And(fx < RealVal(30), sx < RealVal(30))}
 
-        jump = {And(qf == qOn, fx > UB):  And(qfNext == qOff, fxNext == fx, constfxNext == fx), \
-                     And(qf == qOff, fx < LB): And(qfNext == qOn, fxNext == fx, constfxNext == fx), \
-                     And(LB <= fx, fx <= UB): And(qfNext == qf, fxNext == fx, constfxNext == fx), \
-                     And(qs == qOn, sx > UB): And(qsNext == qOff, sxNext == sx, constsxNext == sx), \
-                     And(qs == qOff, sx < LB): And(qsNext == qOn, sxNext == sx, constsxNext == sx), \
-                     And(sx >= LB, sx <= UB): And(qsNext == qs, sxNext == sx, constsxNext == sx)}
-
+        jump = {And(fx > gT, sx > gT):  And(qfNext == qOff, qsNext == qOff, fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
+                     And(fx <= gT, sx <= gT): And(qfNext == qOn, qsNext == qOn, fxNext == fx, constfxNext == fx, , sxNext == sx, constsxNext == sx), \
+                     And(fx > gT, sx <= gT): And(qfNext == qOff, qsNext == qOn, fxNext == fx, sxNext == sx, constsxNext == sx, constfxNext == fx), \
+                     And(fx <= gT, sx > gT): And(qfNext == qOn, qsNext == qOff, fxNext == fx, sxNext == sx, constfxNext == fx, constsxNext == sx)}
 
         prop = {proPF: fx >= RealVal(10), (proQF): fx <=  RealVal(10)}
 

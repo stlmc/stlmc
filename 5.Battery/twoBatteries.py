@@ -31,7 +31,7 @@ class Battery(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [mb1, mb2]
+        mode = {mb1: (-1, 1), mb2: (-1, 1)}
         vars = {d1: (-10, 10), d2: (-10, 10), g1: (-10, 10), g2: (-10, 10), constd1: (-10, 10), constd2: (-10, 10)}
         init = And(And(mb1 == RealVal(1), mb2 == RealVal(1)), g1 == RealVal(8.5), d1 == RealVal(0), g2 == RealVal(7.5), d2 == RealVal(0), And(constd1 == d1, constd2 == d2))
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     const = model.reach(4)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

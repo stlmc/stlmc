@@ -19,8 +19,10 @@ class Model:
         self.prop = prop
 
         self.flowDict = self.defineFlowDict()
-        self.varList = list(self.variables.keys())
+        prevarList = list(self.variables.keys())
 
+        self.varList = sorted(prevarList, key = lambda x : str(x))
+        self.modeList = list(self.mode.keys())
 
     def modelCheck(self, formula, bound):
         baseP = baseCase(bound)
@@ -28,20 +30,9 @@ class Model:
 
         fs = fullSeparation(formula, sepMap)
         baseV = baseEncoding(partition,baseP)
-        print("partition!!!!!!!!!!!!!!!!!!!!")
-
-        print(partition)
-        print("full separation!!!!!!!!!!!!!!!!!!!!")
-        print(fs)
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
         modelConsts = self.reach(bound)
-        print("model!!!!!!!!!!!!!!!!!!!!")
-        print(modelConsts)
-        print("formula!!!!!!!!!!!!!!!!!!!!")
-        print(formulaConst)
-        print("partitionConst!!!!!!!!!!!!!!!!!!!!")
-        print(partitionConsts)
         return partitionConsts + modelConsts + [formulaConst] 
 
 
@@ -51,16 +42,25 @@ class Model:
         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, 0))
         const.append(self.init.substitution(combine))
 
+        if bound == 0:
+            ts = [Real("tau_0")]
+
         ts = [Real("tau_%s"%i) for i in range(bound)]
+
         const.append(ts[0] >= RealVal(0))
 
-        for i in range(bound - 1):
+        for i in range(bound-1):
             const.append(Real('time' + str(i)) == (ts[i+1] - ts[i]))
             const.extend(self.flowHandler(Real('time' + str(i)), i))
             const.extend(self.invHandler(Real('time' + str(i)), i))
             const.extend(self.jumpHandler(i))
             const.append(ts[i] < ts[i+1])
             const.extend(self.propHandler(Real('time' + str(i)), i))
+
+        ts.append(Real("tau_" + str(bound)))
+        const.append(Real('time' + str(bound)) == (ts[-1] - ts[-2]))
+        const.extend(self.flowHandler(Real('time' + str(bound)), bound))
+        const.extend(self.invHandler(Real('time' + str(bound)), bound))
 
         return const
 
@@ -74,8 +74,8 @@ class Model:
     def makeSubMode(self, k):
         op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
         subDict = {}
-        for i in range(len(self.mode)):
-            subDict[str(self.mode[i].id)] = op[self.mode[i].getType()](str(self.mode[i].id) + '_' + str(k))
+        for i in range(len(self.modeList)):
+            subDict[str(self.modeList[i].id)] = op[self.modeList[i].getType()](str(self.modeList[i].id) + '_' + str(k))
         for i in self.prop.keys():
             subDict[str(i.id)] = op[i.getType()](str(i.id) + '_' + str(k))
         return subDict

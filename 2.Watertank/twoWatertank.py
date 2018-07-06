@@ -6,26 +6,23 @@ from core.z3Handler import *
 from model import *
 
 gH = RealVal(5.0)
-G = RealVal(9.806)
-A1 = RealVal(8.0)
-A2 = RealVal(9.0)
-Q1 = RealVal(5.0)
-Q2 = RealVal(3.0)
-W = RealVal(0.5)
+g = RealVal(9.806)
+a = RealVal(0.5)
 
+A1 = RealVal(2.0)
+A2 = RealVal(4.0)
+q1 = RealVal(5.0)
+q2 = RealVal(3.0)
 
 class Watertank(Model):
     def __init__(self):
-        qOn  = BoolVal(True)
-        qOff = BoolVal(False)
-        qf = Bool('mf')
-        qs = Bool('ms')
+        m  = Real('mode')
         fx = Real('fx')
         sx = Real('sx')
         constfx = Real('constfx')
         constsx = Real('constsx')
-        qfNext = NextVar(qf)
-        qsNext = NextVar(qs)
+
+        mNext = NextVar(m)
         fxNext = NextVar(fx)
         sxNext = NextVar(sx)
         constfxNext = NextVar(constfx)
@@ -33,29 +30,29 @@ class Watertank(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = [qf, qs]
+        mode = {m: (1, 4)}
         vars = {fx: (0, 10), sx: (0, 10), constfx: (0, 10), constsx: (0, 10)}
-        init = And(And(qf == qOn, qs == qOn), fx >= gH - RealVal(0.1), fx <= gH + RealVal(0.1), sx >= gH - RealVal(0.1), sx <= gH + RealVal(0.1), And(constfx == fx, constsx == sx))
+        init = And(m == RealVal(1), fx >= gH - RealVal(0.1), fx <= gH + RealVal(0.1), sx >= gH - RealVal(0.1), sx <= gH + RealVal(0.1), And(constfx == fx, constsx == sx))
 
-        fxOff = -W * Sqrt(RealVal(2) * G) * Sqrt(constfx) / A1 
-        fxOn = (Q1 - W * Sqrt(RealVal(2) * G) * Sqrt(constfx)) / A1 
-        sxOff = (W * Sqrt(RealVal(2) * G) * (Sqrt(constfx) - Sqrt(constsx))) / A2
-        sxOn = (Q2 + W * Sqrt(RealVal(2) * G) * (Sqrt(constfx) - Sqrt(constsx))) / A2
+        fxOff = -a * Sqrt(RealVal(2) * g) * Sqrt(constfx) / A1 
+        fxOn = (q1 - a * Sqrt(RealVal(2) * g) * Sqrt(constfx)) / A1
+        sxOff = (a * Sqrt(RealVal(2) * g) * (Sqrt(constfx) - Sqrt(constsx))) / A2
+        sxOn = (q2 + a * Sqrt(RealVal(2) * g) * (Sqrt(constfx) - Sqrt(constsx))) / A2
 
-        flow = {And(qf == qOff, qs == qOff): {fx: fxOff, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
-                   And(qf == qOff, qs == qOn): {fx: fxOff, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}, \
-                   And(qf == qOn, qs == qOff): {fx: fxOn, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
-                   And(qf == qOn, qs == qOn): {fx: fxOn, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}}
+        flow = {m == RealVal(4): {fx: fxOff, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
+                m == RealVal(3): {fx: fxOff, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}, \
+                m == RealVal(2): {fx: fxOn, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
+                m == RealVal(1): {fx: fxOn, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}}
 
-        inv = {And(qf == qOff, qs == qOff): And(fx > RealVal(0), sx > RealVal(0)), \
-                    And(qf == qOff, qs == qOn): And(fx > RealVal(0), sx <= A2), \
-                    And(qf == qOn, qs == qOff): And(fx <= A1, sx > RealVal(0) ), \
-                    And(qf == qOn, qs == qOn):  And(fx <= A1, sx <= A2)}
+        inv = {m == RealVal(4): And(fx > RealVal(0), sx > RealVal(0)), \
+               m == RealVal(3): And(fx > RealVal(0), sx <= A2), \
+               m == RealVal(2): And(fx <= A1, sx > RealVal(0) ), \
+               m == RealVal(1):  And(fx <= A1, sx <= A2)}
 
-        jump = {And(fx < gH, sx < gH):  And(qfNext == qOn, qsNext == qOn, fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
-               And(fx < gH, sx >= gH):  And(qfNext == qOn, qsNext == qOff, fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
-               And(fx >= gH, sx < gH):  And(qfNext == qOff, qsNext == qOn, fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
-               And(fx >= gH, sx >= gH):  And(qfNext == qOff, qsNext == qOff, fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx)}
+        jump = {And(fx < gH, sx < gH):  And(mNext == RealVal(1), fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
+               And(fx < gH, sx >= gH):  And(mNext == RealVal(2), fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
+               And(fx >= gH, sx < gH):  And(mNext == RealVal(3), fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx), \
+               And(fx >= gH, sx >= gH):  And(mNext == RealVal(4), fxNext == fx, constfxNext == fx, sxNext == sx, constsxNext == sx)}
 
 
         prop = {proPF: fx >= RealVal(2), (proQF): fx <=  RealVal(5)}
@@ -68,7 +65,7 @@ if __name__ == '__main__':
     const = model.reach(4)
 
     output = io.StringIO()
-    printObject = dRealHandler(const, output, model.variables, model.flowDict)
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
     printObject.callAll()
 #    print (output.getvalue())
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

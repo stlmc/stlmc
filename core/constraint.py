@@ -194,10 +194,10 @@ class BinaryArithmetic(nonLeaf,_BinaryOp):
             raise TypeError()
         super().__init__(op, left.getType(), [left, right])
     def substitution(self, subDict):
-        opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
+        opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
         return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
     def nextSub(self, subDict):
-        opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
+        opdict = {'^':Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
         return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
 class Plus(BinaryArithmetic):
@@ -328,8 +328,8 @@ class Forall(Node):
         else:
             endCond = self.condition.substitution(self.endDict)
             startCond = self.condition.substitution(self.startDict)
-            constraint = And(endCond, startCond)
-            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + '))'
+            constraint = And(endCond, startCond).substitution(self.modeDict)
+            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
         return result
     def getVars(self):
         return set()
