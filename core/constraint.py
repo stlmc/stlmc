@@ -1,7 +1,8 @@
-from .error import *
-from .TYPE import *
-import z3
-import itertools
+import enum
+
+@enum.unique
+class Type(enum.Enum):
+    Bool, Int, Real = range(3)
 
 def Sqrt(a):
     return a * RealVal(0.5)
@@ -51,13 +52,6 @@ class Constant(Leaf):
         return str(self.value)
     def substitution(self, subDict):
         return self
-    def z3Obj(self):
-        op = {Type.Bool: z3.BoolVal, Type.Real: z3.RealVal, Type.Int: z3.IntVal}
-        if self.getType() == Type.Bool:
-            value = True if self.value == 'true' else False
-        else:
-            value = str(self.value)
-        return op[self.getType()](value)
     def getVars(self):
         return set()
     def nextSub(self, subDict):
@@ -111,9 +105,6 @@ class Variable(Leaf):
         return hash(str(self.id))
     def __repr__(self):
         return str(self.id)
-    def z3Obj(self):
-        op = {Type.Bool: z3.Bool, Type.Real: z3.Real, Type.Int: z3.Int}
-        return  op[self.getType()](str(self.id))
     def substitution(self, subDict):
         op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
         if self.id in subDict.keys():
@@ -201,50 +192,31 @@ class Ge(Relational):
         super().__init__('>=', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x >= y
 
 class Gt(Relational):
     def __init__(self, left, right):
         super().__init__('>', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x > y
 
 class Le(Relational):
     def __init__(self, left, right):
         super().__init__('<=', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x <= y
 
 class Lt(Relational):
     def __init__(self, left, right):
         super().__init__('<', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x < y
 
 class Numeq(Relational):
     def __init__(self, left, right):
         super().__init__('=', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x == y
+
 
 class BinaryArithmetic(nonLeaf):
     def __init__(self, op, left, right):
@@ -268,40 +240,27 @@ class Plus(BinaryArithmetic):
         super().__init__('+', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x + y
+
 
 class Minus(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('-', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x - y
+
 
 class Mul(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('*', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x * y
 
 class Div(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('/', left, right)
         self.left = left
         self.right = right
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x / y
+
 
 class UnaryArithmetic(nonLeaf):
     def __init__(self, op, num):
@@ -320,9 +279,6 @@ class Neg(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('-', num)
         self.num = num
-    def z3Obj(self):
-        x = self.num.z3Obj()
-        return -x
     def substitution(self, subDict):
         return Neg(self.num.substitution(subDict))
     def nextSub(self, subDict):
@@ -359,11 +315,6 @@ class And(Logical):
                 result += ' '
         result += ')'
         return result
-    def z3Obj(self):
-        z3args = []
-        for i in range(len(self.args)):
-            z3args.append(self.args[i].z3Obj())
-        return z3.And(z3args)
     def substitution(self, subDict):
         subargs = [element.substitution(subDict) for element in self.args]
         return And(*subargs)
@@ -383,11 +334,6 @@ class Or(Logical):
                 result += ' '
         result += ')'
         return result
-    def z3Obj(self):
-        z3args = []
-        for i in range(len(self.args)):
-            z3args.append(self.args[i].z3Obj())
-        return z3.Or(z3args)
     def substitution(self, subDict):
         subargs = [element.substitution(subDict) for element in self.args]
         return Or(*subargs)
@@ -403,10 +349,6 @@ class Implies(Logical):
     def __repr__(self):
         result = '(=> ' + str(self.left) + ' ' + str(self.right) + ')\n       '
         return result
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return z3.Implies(x, y)
     def substitution(self, subDict):
         return Implies(self.left.substitution(subDict), self.right.substitution(subDict))
     def nextSub(self, subDict):
@@ -420,10 +362,6 @@ class Beq(Logical):
     def __repr__(self):
         result = '(= ' + str(self.left) + ' ' + str(self.right) + ')\n       '
         return result
-    def z3Obj(self):
-        x = self.left.z3Obj()
-        y = self.right.z3Obj()
-        return x == y
     def substitution(self, subDict):
         return Beq(self.left.substitution(subDict), self.right.substitution(subDict))
     def nextSub(self, subDict):
@@ -436,9 +374,6 @@ class Not(Logical):
     def __repr__(self):
         result = '(not ' + str(self.prop) + ')\n       '
         return result
-    def z3Obj(self):
-        x = self.prop.z3Obj()
-        return z3.Not(x)
     def substitution(self, subDict):
         return Not(self.prop.substitution(subDict))
     def nextSub(self, subDict):
@@ -468,34 +403,6 @@ class Integral(nonLeaf):
         end += ']'
         result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
         return result
-    def z3Obj(self):
-        subDict = {}
-        for i in range(len(self.endList)):
-            keyIndex = str(self.endList[i]).find('_')
-            keyValue = str(self.endList[i])[0:keyIndex]
-            subDict[keyValue] = self.startList[i]
-        for i in self.ode.values():
-            subvariables = list(i.getVars())
-            for j in range(len(subvariables)):
-                if subvariables[j] in self.ode.keys():
-                    if str(self.ode[subvariables[j]]) == str(RealVal(0)):
-                        pass
-                    else:
-                        raise z3constODEerror()
-                else:
-                    raise z3constODEerror()
-        substitutionExp = {}
-        for i in self.ode.keys():
-            substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
-        result = []
-        for i in range(len(self.endList)):
-            keyIndex = str(self.endList[i]).find('_') 
-            keyValue = str(self.endList[i])[0:keyIndex]
-            result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
-        z3result = []
-        for i in range(len(result)):
-            z3result.append(result[i].z3Obj())
-        return z3.And(z3result) 
     def getVars(self):
         return set(self.startList + self.endList)
     def substitution(self, subDict):
@@ -523,15 +430,6 @@ class Forall(nonLeaf):
             constraint = And(endCond, startCond)
             result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(self.condition.substitution(self.endDict)) + '))'
         return result
-    def z3Obj(self):
-        typeList = [i.getType() for i in self.condition.getVars()]
-        if not(Type.Real in typeList):
-            subCondition = self.condition.substitution(self.modeDict).z3Obj()
-            return subCondition
-        else:
-            endCond = self.condition.substitution(self.endDict).z3Obj()
-            startCond = self.condition.substitution(self.startDict).z3Obj()
-            return z3.And(endCond, startCond)
     def getVars(self):
         return set()
     def substitution(self, subDict):

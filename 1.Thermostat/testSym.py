@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import core.base
 from core.stl import *
 from core.dRealHandler import *
+from core.z3Handler import *
 
 from testcaseSym import testcase
 from oneThermostat import Thermostat
@@ -16,7 +17,7 @@ def runTest(formula, k):
     model = Thermostat()
     const = model.modelCheck(formula, k)
     # z3
-    z3const = [i.z3Obj() for i in const]
+    z3const = [z3Obj(i) for i in const]
 
     # dReal
     dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

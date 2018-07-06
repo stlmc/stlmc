@@ -1,6 +1,6 @@
 import math
 from .base import Interval
-from .interface import *
+from .constraint import *
 
 def inIntervalC(x:float, j:Interval):
     return (x >= j.left  if j.leftend  else x > j.left) and (x <= j.right if j.rightend else x < j.right)

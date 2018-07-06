@@ -2,7 +2,7 @@
 import math, itertools
 from .base import genId
 from .formula import *
-from .const import *
+from .interval import *
 
 from functools import singledispatch
 

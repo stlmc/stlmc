@@ -1,5 +1,5 @@
 from .formula import *
-from .const import *
+from .interval import *
 from functools import singledispatch
 
 

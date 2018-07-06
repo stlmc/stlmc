@@ -1,6 +1,6 @@
 import os, sys, io
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from core.interface import *
+from core.constraint import *
 from core.dRealHandler import *
 from model import *
 

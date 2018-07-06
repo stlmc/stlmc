@@ -1,5 +1,9 @@
-from core.interface import *
+import os, sys, io
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from core.constraint import *
 from core.dRealHandler import *
+from core.z3Handler import *
 import os, sys
 from model import *
 import math 
@@ -71,8 +75,8 @@ if __name__ == '__main__':
     f.close()
     try:
         s = z3.Solver()
-        for i in range(len(const)):
-            s.add(const[i].z3Obj())
+        for c in const:
+            s.add(z3Obj(c))
 #        print(s.to_smt2())
         print(s.check())
     except z3constODEerror:

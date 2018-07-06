@@ -1,5 +1,4 @@
-from .error import *
-from .TYPE import *
+from .constraint import *
 
 class dRealHandler:
     def __init__(self, const, output, varRange, defineODE):
