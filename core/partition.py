@@ -90,22 +90,22 @@ def _addConstOrd(bCase, genVar, bConst, strict=False):
 
 def _addConstEqu(wl, yl, const):
     for w in wl:
-        const.append(Or([w == y for y in yl]))
+        const.append(Or(*[w == y for y in yl]))
     for y in yl:
-        const.append(Or([y == w for w in wl]))
+        const.append(Or(*[y == w for w in wl]))
 
 
 def _addConstPar(wl, yl, k:Interval, i:Interval, const):
     def _constEnd(w, y):
-        return Or([w == RealVal(0)] + [w == y - RealVal(e) for e in [i.left,i.right] if math.isfinite(e)])
+        arg = [w == RealVal(0)] + [w == y - RealVal(e) for e in [i.left,i.right] if math.isfinite(e)]
+        return Or(*arg)
 
     for w in wl:
-        const.append(Or(\
-                [And(inInterval(y, k), _constEnd(w, y)) for y in yl] + \
-                [_constEnd(w, RealVal(e)) for e in [k.left, k.right] if math.isfinite(e)]))
+        arg = [And(inInterval(y, k), _constEnd(w, y)) for y in yl] + [_constEnd(w, RealVal(e)) for e in [k.left, k.right] if math.isfinite(e)]
+        const.append(Or(*arg))
         const.append(w >= RealVal(0))
 
-    const.extend([Implies(And(inInterval(y,k), y - RealVal(e) >= RealVal(0)), Or([w == y - RealVal(e) for w in wl])) \
+    const.extend([Implies(And(inInterval(y,k), y - RealVal(e) >= RealVal(0)), Or(*[w == y - RealVal(e) for w in wl])) \
             for y in yl for e in [i.left, i.right] if math.isfinite(e)])
-    const.extend([Implies(RealVal(e1) - RealVal(e2) >= RealVal(0), Or([w == RealVal(e1) - RealVal(e2) for w in wl])) \
+    const.extend([Implies(RealVal(e1) - RealVal(e2) >= RealVal(0), Or(*[w == RealVal(e1) - RealVal(e2) for w in wl])) \
             for e1 in [k.left, k.right] if math.isfinite(e1) for e2 in [i.left, i.right] if math.isfinite(e2)])

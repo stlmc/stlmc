@@ -110,7 +110,7 @@ class NextVar(Variable):
     def substitution(self, subDict):
         return self
     def nextSub(self, subDict):
-        return self.substitution(subDict)
+        return super().substitution(subDict)
 
 class Bool(Variable):
     def __init__(self, id):
@@ -299,16 +299,8 @@ class Integral(Node):
         self.flowIndex = str(index)
         super().__init__(Type.Bool)
     def __repr__(self):
-        start = '['
-        end = '['
-        for i in range(len(self.endList)):
-            start += str(self.startList[i])
-            end += str(self.endList[i])
-            if i != len(self.endList) - 1:
-               start += ' '
-               end += ' '
-        start += ']'
-        end += ']'
+        start = '[' + ' '.join([str(sl) for sl in self.startList]) + ']'
+        end   = '[' + ' '.join([str(el) for el in self.endList])   + ']'
         result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
         return result
     def getVars(self):

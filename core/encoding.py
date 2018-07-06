@@ -17,7 +17,7 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     genPr = genId(0, 'chi')
     fMap  = {}
     vf    = _value(f, sub, j, base, genPr, fMap)
-    return And([vf] + [pf[0] == pf[1] for pf in fMap.values()])
+    return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
 
 
 @singledispatch
@@ -45,7 +45,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 @_value.register(Multiary)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
     op = {AndFormula: And, OrFormula: Or}
-    return op[f.__class__]([_value(c,sub,j,base,genPr,fMap) for c in f.children])
+    return op[f.__class__](*[_value(c,sub,j,base,genPr,fMap) for c in f.children])
 
 @_value.register(ImpliesFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
@@ -72,6 +72,6 @@ def _atomEncoding(f:PropositionFormula, j:Interval, base:dict):
     const = []
     for (basePartition,prop) in base[f]:
         const.append(Implies(subInterval(j,basePartition),prop))
-    return And(const)
+    return And(*const)
 
 

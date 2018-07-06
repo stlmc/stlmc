@@ -58,7 +58,7 @@ def subInterval(i:Interval, j:Interval):
         if not (isinstance(j.right, float) and math.isinf(j.right)):
             return BoolVal(False)
 
-    return And(const)
+    return And(*const)
 
 
 def intervalConst(j:Interval, k:Interval, i:Interval):
@@ -83,7 +83,7 @@ def intervalConst(j:Interval, k:Interval, i:Interval):
         if not (isinstance(k.right, float) and math.isinf(k.right)):
             return BoolVal(False)
 
-    return And(const)
+    return And(*const)
 
 
 def _real(x):
