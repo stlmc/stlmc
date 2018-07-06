@@ -26,88 +26,88 @@ def _(const):
 
 @z3Obj.register(Ge)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x >= y
 
 @z3Obj.register(Gt)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x > y
 
 @z3Obj.register(Le)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x <= y
 
 @z3Obj.register(Lt)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x < y
 
 @z3Obj.register(Numeq)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x == y
 
 @z3Obj.register(Plus)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x + y
 
 @z3Obj.register(Minus)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x - y
 
 @z3Obj.register(Mul)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x * y
 
 @z3Obj.register(Div)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x / y
 
 @z3Obj.register(Neg)
 def _(const):
-    x = z3Obj(const.num)
+    x = z3Obj(const.child())
     return -x
 
 @z3Obj.register(And)
 def _(const):
-    z3args = [z3Obj(c) for c in const.args]
+    z3args = [z3Obj(c) for c in const.children]
     return z3.And(z3args)
 
 @z3Obj.register(Or)
 def _(const):
-    z3args = [z3Obj(c) for c in const.args]
+    z3args = [z3Obj(c) for c in const.children]
     return z3.Or(z3args)
 
 @z3Obj.register(Implies)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return z3.Implies(x, y)
 
 @z3Obj.register(Beq)
 def _(const):
-    x = z3Obj(const.left)
-    y = z3Obj(const.right)
+    x = z3Obj(const.left())
+    y = z3Obj(const.right())
     return x == y
 
 @z3Obj.register(Not)
 def _(const):
-    x = z3Obj(const.prop)
+    x = z3Obj(const.child())
     return z3.Not(x)
 
 @z3Obj.register(Integral)

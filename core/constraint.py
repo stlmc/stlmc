@@ -5,7 +5,17 @@ class Type(enum.Enum):
     Bool, Int, Real = range(3)
 
 def Sqrt(a):
-    return a * RealVal(0.5)
+    return a ** RealVal(0.5)
+
+def cos(a):
+    return RealFunction('cos', a)
+
+def sin(a):
+    return RealFunction('sin', a)
+
+def tan(a):
+    return RealFunction('tan', a)
+
 
 class Node:
     def __init__(self, nodeType):
@@ -16,6 +26,8 @@ class Node:
         return Plus(self, num)
     def __mul__(self, num):
         return Mul(self, num)
+    def __pow__(self, num):
+        return Pow(self, num)
     def __truediv__(self, num):
         return Div(self, num)
     def __eq__(self, num):
@@ -61,46 +73,21 @@ class BoolVal(Constant):
     def __init__(self, value):
         if not(isinstance(value, bool)):
            raise TypeError()
-        self.value = 'true' if value == True else 'false'
-        super().__init__(Type.Bool, self.value)
+        super().__init__(Type.Bool, 'true' if value == True else 'false')
 
 class RealVal(Constant, ArithRef):
     def __init__(self, value):
-        self.value = value
         super().__init__(Type.Real, value)
-
-class cos(Constant):
-    def __init__(self, value):
-        self.value = value
-        super().__init__(Type.Real, value)
-    def __repr__(self):
-        return '(cos ' + str(self.value) + ')'
-
-class sin(Constant):
-    def __init__(self, value):
-        self.value = value
-        super().__init__(Type.Real, value)
-    def __repr__(self):
-        return '(sin ' + str(self.value) + ')'
-
-class tan(Constant):
-    def __init__(self, value):
-        self.value = value
-        super().__init__(Type.Real, value)
-    def __repr__(self):
-        return '(tan ' + str(self.value) + ')'
 
 
 class IntVal(Constant, ArithRef):
     def __init__(self, value):
-        self.value = value
         super().__init__(Type.Int, value)
 
 class Variable(Leaf):
-    def __init__(self, varType, var):
+    def __init__(self, varType, varId):
         super().__init__(varType)
-        self.var = var
-        self.id = var.id
+        self.id = varId
     def __hash__(self):
         return hash(str(self.id))
     def __repr__(self):
@@ -111,44 +98,33 @@ class Variable(Leaf):
             return op[self.getType()](subDict[self.id])
         else:
             return self
+    def nextSub(self, subDict):
+        return self
     def getVars(self):
-        return set([self.var])
+        return {self}
 
 class NextVar(Variable):
     def __init__(self, var):
         self.var = var
-        self.id = var.id
-        super().__init__(self.var.getType(), self)
-    def nextSub(self, subDict):
-        op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
-        if self.id in subDict.keys():
-            return op[self.getType()](subDict[self.id])
-        else:
-            return self
+        super().__init__(self.var.getType(), var.id)
     def substitution(self, subDict):
         return self
+    def nextSub(self, subDict):
+        return self.substitution(subDict)
 
 class Bool(Variable):
     def __init__(self, id):
-        self.id = id
-        super().__init__(Type.Bool, self)
-    def nextSub(self, subDict):
-        return self
+        super().__init__(Type.Bool, id)
  
 class Real(Variable, ArithRef):
     def __init__(self, id):
-        self.id = id
-        super().__init__(Type.Real, self)
-    def nextSub(self, subDict):
-        return self
+        super().__init__(Type.Real, id)
         
 class Int(Variable, ArithRef):
     def __init__(self, id):
-        self.id = id
-        super().__init__(Type.Int, self)
-    def nextSub(self, subDict):
-        return self
+        super().__init__(Type.Int, id)
         
+
 class nonLeaf(Node):
     def __init__(self, op, nonLeafType, args):
         self.op = op
@@ -157,183 +133,128 @@ class nonLeaf(Node):
     def __hash__(self):
         return hash(str(self))
     def size(self):
-        size = 1
-        for i in range(len(self.children)):
-            size += self.children[i].size()
-        return size
+        return 1 + sum([c.size() for c in self.children])
     def __repr__(self):
-        result = '(' + self.op + ' '
-        for i in range(len(self.children)):
-            result += str(self.children[i])
-            if i != len(self.children)-1:
-                result += ' '
-        result += ')'
-        return result
+        return '(' + self.op + ' ' + ' '.join([str(c) for c in self.children]) + ')'
+    def getVars(self):
+        return set().union(*[c.getVars() for c in self.children])
 
-class Relational(nonLeaf):
+class _UnaryOp:
+    def child(self):
+        return self.children[0]
+
+class _BinaryOp:
+    def left(self):
+        return self.children[0]
+    def right(self):
+        return self.children[1]
+
+
+class RealFunction(nonLeaf):
+    def __init__(self, name, *args):
+        super().__init__(name, Type.Real, args)
+
+
+class Relational(nonLeaf,_BinaryOp):
     def __init__(self, op, left, right):
         if not(left.getType() == right.getType() == Type.Int or left.getType() == right.getType() == Type.Real):
             raise TypeError()
-        self.left = left
-        self.right = right
-        self.op = op
         super().__init__(op, Type.Bool, [left, right]) 
-    def getVars(self):
-        return self.left.getVars() | self.right.getVars()
     def substitution(self, subDict):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
-        return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
+        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
     def nextSub(self, subDict):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
-        return opdict[self.op](self.left.nextSub(subDict), self.right.nextSub(subDict))
+        return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
 class Ge(Relational):
     def __init__(self, left, right):
         super().__init__('>=', left, right)
-        self.left = left
-        self.right = right
 
 class Gt(Relational):
     def __init__(self, left, right):
         super().__init__('>', left, right)
-        self.left = left
-        self.right = right
 
 class Le(Relational):
     def __init__(self, left, right):
         super().__init__('<=', left, right)
-        self.left = left
-        self.right = right
 
 class Lt(Relational):
     def __init__(self, left, right):
         super().__init__('<', left, right)
-        self.left = left
-        self.right = right
 
 class Numeq(Relational):
     def __init__(self, left, right):
         super().__init__('=', left, right)
-        self.left = left
-        self.right = right
 
 
-class BinaryArithmetic(nonLeaf):
+class BinaryArithmetic(nonLeaf,_BinaryOp):
     def __init__(self, op, left, right):
         if not(left.getType() == right.getType() == Type.Int or left.getType() == right.getType() == Type.Real):
             raise TypeError()
-        self.left = left
-        self.right = right
-        self.op = op
         super().__init__(op, left.getType(), [left, right])
-    def getVars(self):
-        return self.left.getVars() | self.right.getVars()
     def substitution(self, subDict):
         opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
-        return opdict[self.op](self.left.substitution(subDict), self.right.substitution(subDict))
+        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
     def nextSub(self, subDict):
         opdict = {'+': Plus, '-': Minus, '*': Mul, '/': Div}
-        return opdict[self.op](self.left.nextSub(subDict), self.right.nextSub(subDict))
+        return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('+', left, right)
-        self.left = left
-        self.right = right
-
 
 class Minus(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('-', left, right)
-        self.left = left
-        self.right = right
-
 
 class Mul(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('*', left, right)
-        self.left = left
-        self.right = right
 
 class Div(BinaryArithmetic):
     def __init__(self, left, right):
         super().__init__('/', left, right)
-        self.left = left
-        self.right = right
+
+class Pow(BinaryArithmetic):
+    def __init__(self, left, right):
+        super().__init__('^', left, right)
 
 
-class UnaryArithmetic(nonLeaf):
+class UnaryArithmetic(nonLeaf,_UnaryOp):
     def __init__(self, op, num):
         if not(num.getType() == Type.Int or num.getType() == Type.Real):
             raise TypeError()
-        self.num = num
-        if num.getType() == Type.Int:
-            result = [InTVal(0), num]
-        else:
-            result = [RealVal(0), num]
-        super().__init__(op, num.getType(), result)
-    def getVars(self):
-        return self.num.getVars()
+        super().__init__(op, num.getType(), [num])
 
 class Neg(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('-', num)
-        self.num = num
     def substitution(self, subDict):
-        return Neg(self.num.substitution(subDict))
+        return Neg(self.child().substitution(subDict))
     def nextSub(self, subDict):
-        return Neg(self.num.nextSub(subDict))
+        return Neg(self.child().nextSub(subDict))
 
 class Logical(nonLeaf):
-    def __init__(self, op, args):
-        unnested = []
-        for i in range(len(args)):
-            if isinstance(args[i], list):
-                unnested += args[i]
-            else:
-                unnested.append(args[i])
-        for i in range(len(unnested)):
-             if not(unnested[i].getType() == Type.Bool):
+    def __init__(self, op, args:list):
+        for a in args:
+            if not(a.getType() == Type.Bool):
                  raise TypeError()
-        self.args = unnested
-        super().__init__(op, Type.Bool, self.args) 
-    def getVars(self):
-        variables = set()
-        for i in range(len(self.args)):
-             variables = variables.union(self.args[i].getVars())
-        return variables
+        super().__init__(op, Type.Bool, args) 
 
 class And(Logical):
     def __init__(self, *args):
-        self.args = list(args)
-        super().__init__('and', self.args)
-    def __repr__(self):
-        result = '(and '
-        for i in range(len(self.args)):
-            result += str(self.args[i])
-            if i != len(self.args)-1:
-                result += ' '
-        result += ')'
-        return result
+        super().__init__('and', args)
     def substitution(self, subDict):
-        subargs = [element.substitution(subDict) for element in self.args]
+        subargs = [element.substitution(subDict) for element in self.children]
         return And(*subargs)
     def nextSub(self, subDict):
-        subargs = [element.nextSub(subDict) for element in self.args]
+        subargs = [element.nextSub(subDict) for element in self.children]
         return And(*subargs) 
 
 class Or(Logical):
     def __init__(self, *args):
-        self.args = list(args)
-        super().__init__('or', self.args)
-    def __repr__(self):
-        result = '(or '
-        for i in range(len(self.args)):
-            result += str(self.args[i])
-            if i != len(self.args)-1:
-                result += ' '
-        result += ')'
-        return result
+        super().__init__('or', args)
     def substitution(self, subDict):
         subargs = [element.substitution(subDict) for element in self.args]
         return Or(*subargs)
@@ -341,45 +262,32 @@ class Or(Logical):
         subargs = [element.nextSub(subDict) for element in self.args]
         return Or(*subargs)
 
-class Implies(Logical):
+class Implies(Logical,_BinaryOp):
     def __init__(self, left, right):
         super().__init__('=>', [left, right])
-        self.left = left
-        self.right = right
-    def __repr__(self):
-        result = '(=> ' + str(self.left) + ' ' + str(self.right) + ')\n       '
-        return result
     def substitution(self, subDict):
-        return Implies(self.left.substitution(subDict), self.right.substitution(subDict))
+        return Implies(self.left().substitution(subDict), self.right().substitution(subDict))
     def nextSub(self, subDict):
-        return Implies(self.left.nextSub(subDict), self.right.nextSub(subDict))
+        return Implies(self.left().nextSub(subDict), self.right().nextSub(subDict))
 
-class Beq(Logical):
+class Beq(Logical,_BinaryOp):
     def __init__(self, left, right):
-        self.left = left
-        self.right = right
         super().__init__('=', [left, right])
-    def __repr__(self):
-        result = '(= ' + str(self.left) + ' ' + str(self.right) + ')\n       '
-        return result
     def substitution(self, subDict):
-        return Beq(self.left.substitution(subDict), self.right.substitution(subDict))
+        return Beq(self.left().substitution(subDict), self.right().substitution(subDict))
     def nextSub(self, subDict):
-        return Beq(self.left.nextSub(subDict), self.right.nextSub(subDict))
+        return Beq(self.left().nextSub(subDict), self.right().nextSub(subDict))
 
-class Not(Logical):
+class Not(Logical,_UnaryOp):
     def __init__(self, prop):
         super().__init__('not', [prop])
-        self.prop = prop
-    def __repr__(self):
-        result = '(not ' + str(self.prop) + ')\n       '
-        return result
     def substitution(self, subDict):
-        return Not(self.prop.substitution(subDict))
+        return Not(self.child().substitution(subDict))
     def nextSub(self, subDict):
-        return Not(self.prop.nextSub(subDict))
+        return Not(self.child().nextSub(subDict))
 
-class Integral(nonLeaf):
+
+class Integral(Node):
     def __init__(self, endList, startList, time, index, ode):
         self.startList = []
         self.endList = []
@@ -389,7 +297,7 @@ class Integral(nonLeaf):
         self.ode = ode
         self.time = time
         self.flowIndex = str(index)
-        super().__init__('integral', Type.Bool, [self])
+        super().__init__(Type.Bool)
     def __repr__(self):
         start = '['
         end = '['
@@ -410,7 +318,8 @@ class Integral(nonLeaf):
     def nextSub(self, subDict):
         return self
 
-class Forall(nonLeaf):
+
+class Forall(Node):
     def __init__(self, flowIndex, time, condition, start, end, mode):
         self.flowIndex = str(flowIndex)
         self.time = time
@@ -418,7 +327,7 @@ class Forall(nonLeaf):
         self.startDict = start
         self.endDict = end
         self.modeDict = mode
-        super().__init__('forall', Type.Bool, [self])
+        super().__init__(Type.Bool)
     def __repr__(self):
         typeList = [i.getType() for i in self.condition.getVars()]
         if not(Type.Real in typeList):
