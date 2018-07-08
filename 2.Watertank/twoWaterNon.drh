@@ -3,8 +3,8 @@
 #define a 0.5
 #define gH 5
 
-#define A1 2.0
-#define A2 4.0
+#define A1 8.0
+#define A2 9.0
 #define q1 5.0
 #define q2 3.0
 
