@@ -1,9 +1,11 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
+from core.STLHandler import *
 
 FAR = RealVal(1)
 APPROACH = RealVal(2)
@@ -68,21 +70,10 @@ bx > RealVal(0), bx <= RealVal(90))}
 
 if __name__ == '__main__':
     model = Railroad()
-    const = model.reach(2)
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
 
-    s = z3.Solver()
-    for c in const:
-        s.add(z3Obj(c))
-#    print(s.to_smt2())
-    print(s.check())
-#    print(s.model())
+
+
+

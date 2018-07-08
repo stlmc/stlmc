@@ -62,7 +62,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 
 @_value.register(UntilFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
-    return And([intervalConst(j,f.gtime,f.ltime), _value(f.left,sub,f.gtime,base,genPr,fMap), _value(f.right,sub,f.gtime,base,genPr,fMap)])
+    return And(*[intervalConst(j,f.gtime,f.ltime), _value(f.left,sub,f.gtime,base,genPr,fMap), _value(f.right,sub,f.gtime,base,genPr,fMap)])
 
 @_value.register(ReleaseFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):

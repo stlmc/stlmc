@@ -1,9 +1,11 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
+from core.STLHandler import *
 
 FAR = RealVal(1)
 APPROACH = RealVal(2)
@@ -13,76 +15,61 @@ PAST = RealVal(4)
 OPEN = RealVal(1)
 CLOSE = RealVal(2)
 
-V = RealVal(3)
+V = -RealVal(3)
 
 
 #Far: 1, approach: 2, Near: 3, Past: 4
 
 class Railroad(Model):
     def __init__(self):
-        tm = Real('tm')   #train mode
-        bm = Real('bm')   #bar mode
+        m = Real('mode')
         tx = Real('tx')   #train position
         bx = Real('bx')   #angualr 90: open, 0: close
         vbx = Real('vbx')
         
-
-        tmNext = NextVar(tm)
+        mNext = NextVar(m)
         txNext = NextVar(tx)
-        bmNext = NextVar(bm)
         bxNext = NextVar(bx)
         vbxNext = NextVar(vbx)
 
         proPF = Bool('pf')
         proQF = Bool('qf')
-        mode = {tm: (1,4), bm: (1,2)}
+        proQS = Bool('qs')
+        mode = {m: (1,8)}
         vars = {vbx: (-20, 20), tx: (-20, 100), bx: (0, 90)}
-        init = And(tm == FAR, bm == CLOSE, vbx == RealVal(0), bx == RealVal(0), tx >= RealVal(5), tx <= RealVal(8))
+        init = And(m == RealVal(1), vbx == RealVal(0), bx == RealVal(0), tx >= RealVal(60), tx <= RealVal(70))
 
-        flow = {And(tm == FAR, bm == CLOSE): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
-                And(tm == FAR, bm == OPEN): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
-                And(tm == APPROACH, bm == CLOSE): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
-                And(tm == APPROACH, bm == OPEN): {tx: V, bx: vbx, vbx: RealVal(5)}, \
-                And(tm == NEAR, bm == CLOSE): {tx: V, bx: vbx, vbx: -RealVal(5)}, \
-                And(tm == NEAR, bm == OPEN): {tx: V, bx: vbx, vbx: RealVal(10)}, \
-                And(tm == PAST, bm == CLOSE): {tx: V, bx: vbx, vbx: -RealVal(5)}, \
-                And(tm == PAST, bm == OPEN): {tx: V, bx: RealVal(0), vbx: RealVal(0)}}
+        flow = {m == RealVal(1): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
+                m == RealVal(2): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
+                m == RealVal(3): {tx: V, bx: vbx, vbx: RealVal(5)}, \
+                m == RealVal(4): {tx: V, bx: vbx, vbx: RealVal(10)}, \
+                m == RealVal(5): {tx: V, bx: vbx, vbx: -RealVal(5)}, \
+                m == RealVal(6): {tx: V, bx: RealVal(0), vbx: RealVal(0)}}
 
 
-        inv = {And(tm == FAR, bm == CLOSE): And(tx >= RealVal(40), tx <= RealVal(95), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == FAR, bm == OPEN): And(tx >= RealVal(40), tx <= RealVal(95), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == APPROACH, bm == CLOSE):  And(tx < RealVal(40), tx >= RealVal(20), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == APPROACH, bm == OPEN): And(tx < RealVal(40), tx >= RealVal(20), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == NEAR, bm == CLOSE): And(tx < RealVal(20), tx >= RealVal(5), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == NEAR, bm == OPEN): And(tx < RealVal(20), tx >= RealVal(5), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == PAST, bm == CLOSE): And(tx < RealVal(5), tx >= -RealVal(10), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == PAST, bm == OPEN): And(tx < RealVal(5), tx >= -RealVal(10),
-bx > RealVal(0), bx <= RealVal(90))}
+        inv = {m == RealVal(1): And(tx >= RealVal(40), tx <= RealVal(95), bx >= RealVal(0), bx < RealVal(90)), \
+               m == RealVal(2):  And(tx < RealVal(40), tx >= RealVal(20), bx >= RealVal(0), bx < RealVal(90)), \
+               m == RealVal(3): And(tx < RealVal(40), tx >= RealVal(20), bx > RealVal(0), bx <= RealVal(90)), \
+               m == RealVal(4): And(tx < RealVal(20), tx >= RealVal(5), bx > RealVal(0), bx <= RealVal(90)), \
+               m == RealVal(5): And(tx < RealVal(5), tx >= -RealVal(10), bx >= RealVal(0), bx < RealVal(90)), \
+               m == RealVal(6): And(tx < RealVal(5), tx >= -RealVal(10), bx > RealVal(0), bx <= RealVal(90))}
 
 
-        jump = {And(bm == CLOSE, tm == APPROACH): And(bmNext == OPEN, vbxNext == vbx, bxNext == bx, tmNext == tm, txNext == tx), \
-                And(bm == OPEN, tm == PAST): And(bmNext == CLOSE, tmNext == tm, vbxNext == vbx, bxNext == bx), \
-                And(tm == NEAR, tx < RealVal(5)): And(tmNext == PAST, bxNext == bx, vbxNext == vbx, txNext == tx, bmNext == bm), \
-                And(tm == PAST, tx < -RealVal(5)): And(tmNext == FAR, bxNext == bx, txNext == RealVal(85), vbxNext == vbx, bmNext == bm), \
-                And(tm == FAR, tx < RealVal(40)): And(tmNext == APPROACH, bxNext == bx, txNext == tx, vbxNext == vbx, bmNext == bm), \
-                And(tm == APPROACH,tx < RealVal(2)): And(tmNext == NEAR, bxNext == bx, txNext == tx, vbxNext == vbx, bmNext == bm)} 
+        jump = {And(m == RealVal(1), tx < RealVal(40)): And(m == RealVal(2), bxNext == bx, txNext == tx, vbxNext == vbx), \
+                And(m == RealVal(2),tx < RealVal(30)): And(m == RealVal(3), bxNext == bx, txNext == tx, vbxNext == vbx), \
+                And(m == RealVal(3), tx < RealVal(20)): And(m == RealVal(4), vbxNext == vbx, bxNext == bx, txNext == tx), \
+                And(m == RealVal(4), tx < RealVal(5)): And(m == RealVal(5), bxNext == bx, vbxNext == vbx, txNext == tx), \
+                And(m == RealVal(5), tx < RealVal(0)):  And(m == RealVal(6), vbxNext == vbx, bxNext == bx, txNext == tx), \
+                And(m == RealVal(6), tx < -RealVal(5)): And(m == RealVal(1), bxNext == bx, txNext == RealVal(85), vbxNext == vbx)} 
 
-        prop = {}
+        prop = {proPF : m == RealVal(6), proQF: txNext >= tx, proQS: m == RealVal(1)}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Railroad()
-    const = model.reach(2)
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
 
