@@ -256,10 +256,10 @@ class Or(Logical):
     def __init__(self, *args):
         super().__init__('or', args)
     def substitution(self, subDict):
-        subargs = [element.substitution(subDict) for element in self.args]
+        subargs = [element.substitution(subDict) for element in self.children]
         return Or(*subargs)
     def nextSub(self, subDict):
-        subargs = [element.nextSub(subDict) for element in self.args]
+        subargs = [element.nextSub(subDict) for element in self.children]
         return Or(*subargs)
 
 class Implies(Logical,_BinaryOp):

@@ -1,8 +1,10 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from model import *
+from core.STLHandler import *
 
 c1 = RealVal(0.41328)
 c2 = -RealVal(0.366)
@@ -66,6 +68,9 @@ class Powertrain(Model):
         thetaINext = NextVar(thetaI)
         wNext = NextVar(w)
 
+        proPF = Bool('pf')
+        proQF = Bool('qf')
+
         fcO =       (mCf(w,pe) / c11)
         fcP =      (mCf(w,pe) / c11P)
         fcC =     ((RealVal(10) + i + c13 * (c24 * lambdas - c11)) * mCf(w, pe) / c11)
@@ -109,25 +114,15 @@ class Powertrain(Model):
                mt == RealVal(2): And(Or(mtNext == RealVal(2), mtNext == RealVal(4)), thetaNext == theta, pNext == p, lambdasNext == lambdas, And(thetaINext == thetaI, wNext == w, peNext == pe, iNext == i, tauNext == tau)), \
                And(mt == RealVal(3), theta == RealVal(50)): And(mtNext == RealVal(2), thetaNext == theta, pNext == p, lambdasNext == lambdas, And(thetaINext == thetaI, wNext == w, peNext == pe, iNext == i, tauNext == tau))}
 
-        prop = {}
+        prop = {proPF: mt == RealVal(4), proQF: mt == RealVal(3)}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Powertrain()
-    const = model.reach(2)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 

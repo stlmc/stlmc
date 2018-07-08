@@ -1,10 +1,12 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
 import math 
+from core.STLHandler import *
 
 K = RealVal(0.122)
 C = RealVal(0.166)
@@ -25,6 +27,10 @@ class Battery(Model):
         g2Next = NextVar(g2)
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proPZ = Bool('pz')
+        proQZ = Bool('qz')
+        proMT = Bool('mo')
+        proMO = Bool('mt')
 
         mode = {m: (1,5)}
         vars = {d1: (-10, 10), d2: (-10, 10), g1: (-10, 10), g2: (-10, 10)}
@@ -46,34 +52,16 @@ class Battery(Model):
                And(g1 > (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(mNext == RealVal(5), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2), \
                And(g1 <= (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(mNext == RealVal(6), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2)}
 
-        prop = {}
+        prop = {proPF: m == RealVal(6), proQF: m == RealVal(4), proQZ: m == RealVal(3), proMT: m == RealVal(2), proMO: m == RealVal(1), proPZ: m == RealVal(5)}
+
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Battery()
-    const = model.reach(4)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
-    try:
-        s = z3.Solver()
-        for c in const:
-            s.add(z3Obj(c))
-#        print(s.to_smt2())
-        print(s.check())
-    except z3constODEerror:
-        print("receive nonlinear ODE")
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 

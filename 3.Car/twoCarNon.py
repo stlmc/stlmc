@@ -1,14 +1,17 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
 import math 
+from core.STLHandler import *
 
 L1 = RealVal(1)
 L2 = RealVal(1.5)
 C = RealVal(2)
+gT = RealVal(15)
 
 class CarNon(Model):
     def __init__(self):
@@ -29,12 +32,17 @@ class CarNon(Model):
         x2Next = NextVar(x2)
         y1Next = NextVar(y1)
         y2Next = NextVar(y2)
+        v1Next = NextVar(v1)
+        v2Next = NextVar(v2)
         phi1Next = NextVar(phi1)
         theta1Next = NextVar(theta1)
         phi2Next = NextVar(phi2)
         theta2Next = NextVar(theta2)
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proPZ = Bool('pz')
+        proQZ = Bool('qz')
+
         X = cos(RealVal(20))
 
         mode = {m: (1, 3)}
@@ -57,36 +65,21 @@ class CarNon(Model):
         
         jump = {And((((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= RealVal(36)), (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= RealVal(81))): And(mNext == RealVal(1), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
              (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < RealVal(36)): And(mNext == RealVal(3), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
-             (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > RealVal(81): And(mNext == RealVal(2), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2)}
+             (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > RealVal(81)): And(mNext == RealVal(2), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2)}
 
-        prop = {}
+        prop = {proPF: m == RealVal(2), proQF: ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < RealVal(36), proQZ: m == RealVal(3), proPZ: And(x1 == x2, y1 == y2)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        goal = {m == RealVal(3): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
+               m == RealVal(2): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
+               m == RealVal(1): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1)))}
+
+        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
 
 
 if __name__ == '__main__':
     model = CarNon()
-    const = model.reach(4)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
-    try:
-        s = z3.Solver()
-        for c in const:
-            s.add(z3Obj(c))
-#        print(s.to_smt2())
-        print(s.check())
-    except z3constODEerror:
-        print("receive nonlinear ODE")
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 

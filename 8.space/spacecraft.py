@@ -1,8 +1,10 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from model import *
+from core.STLHandler import *
 
 n = RealVal(4.7351)
 m = RealVal(500)
@@ -43,6 +45,7 @@ class Space(Model):
 
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proQZ = Bool('qz')
 
         mode = {ms: (1, 3)}
         vars = {tmr: (0, 100), x: (0, 150), vx: (0, 150), ax: (0, 150), y: (0, 150), vy: (0, 150), ay: (0, 150)}
@@ -69,30 +72,19 @@ class Space(Model):
 
         jump = {And(ms == RealVal(1), distance(x, y) <= RealVal(100)): And(msNext == RealVal(2), xNext == x, vxNext == vx, axNext == ax, yNext == y, vyNext == vy, ayNext == ay, tmrNext == tmr), \
                And(ms == RealVal(2), distance(x, y) >= RealVal(100)): And(msNext == RealVal(1), xNext == x, vxNext == vx, axNext == ax, yNext == y, vyNext == vy, ayNext == ay, tmrNext == tmr), \
-               And(ms == RealVal(1), tmr >= T1, tmr <= T2): And(Or(msNext == RealVal(3), msNext == RealVal(1)), xNext == x, vxNext == vx, axNext == ax, yNext == y, vyNext == vy, ayNext == ay, tmrNext == tmr)}
+               And(ms == RealVal(1), tmr >= T1, tmr <= T2): And(Or(msNext == RealVal(3), msNext == RealVal(1)), xNext == x, vxNext == vx, axNext == ax, yNext == y, vyNext == vy, ayNext == ay, tmrNext == tmr), \
+               And(ms == RealVal(2), tmr >= T1, tmr <= T2): And(Or(msNext == RealVal(3), msNext == RealVal(2)), xNext == x, vxNext == vx, axNext == ax, yNext == y, vyNext == vy, ayNext == ay, tmrNext == tmr) }
  
 
-        prop = {}
+        prop = {proPF: ms == RealVal(3), proQF: ms == RealVal(2), proQZ: tmrNext >= tmr}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Space()
-    const = model.reach(2)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
-
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 

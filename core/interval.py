@@ -65,7 +65,7 @@ def intervalConst(j:Interval, k:Interval, i:Interval):
     const = []
 
     if isinstance(j.left, ArithRef):
-        const.append(_real(j.left) >= 0)
+        const.append(_real(j.left) >= RealVal(0))
 
     if math.isfinite(i.right):
         if j.leftend and not (k.leftend and i.rightend):

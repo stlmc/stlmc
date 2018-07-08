@@ -1,9 +1,11 @@
 import os, sys, io
+from tcLinear import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
+from core.STLHandler import *
 
 L1 = RealVal(1)
 L2 = RealVal(1.5)
@@ -26,6 +28,7 @@ class Car(Model):
         x2Next = NextVar(x2)
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proQZ = Bool('qz')
 
         mode = {mx1: (-1, 1), mx2: (-1, 1)}
         vars = {x1: (0, 100), x2: (0, 100)}
@@ -60,33 +63,15 @@ class Car(Model):
                And((x2 - x1) >= RealVal(4), (x2 - x1) < RealVal(5)): And(And(mx1Next == RealVal(0), mx2Next == -RealVal(1)), x1Next == x1, x2Next == x2), \
                x2 - x1 >= RealVal(5): And(And(mx1Next == RealVal(1)), mx2Next == -RealVal(1), x1Next == x1, x2Next == x2)}
 
-        prop = {proPF : And(mx1 == RealVal(0), mx2 == RealVal(0)), proQF: x2 - x1 < RealVal(9) }
+        prop = {proPF : mx1 == -RealVal(1), proQF: x2 - x1 < RealVal(1), proQZ: x2 > x1, }
 
         super().__init__(mode, vars, init, flow, inv, jump, prop)
 
 
 if __name__ == '__main__':
     model = Car()
-    const = model.reach(4)
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
-    try:
-        s = z3.Solver()
-        for c in const:
-            s.add(z3Obj(c))
-#        print(s.to_smt2())
-        print(s.check())
-    except z3constODEerror:
-        print("receive nonlinear ODE")
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 

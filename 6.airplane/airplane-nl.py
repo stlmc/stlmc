@@ -1,8 +1,10 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from model import *
+from core.STLHandler import *
 
 g = RealVal(9.8055)
 pi = RealVal(3.14159)
@@ -58,7 +60,7 @@ class Airplane(Model):
         valrange = (-3.14159, 3.14159)
         vars = {tau: (0, 0.5), beta: valrange1, p: valrange1, r: valrange1, phi: valrange1, psi: valrange1, xAIL: valrange, xRDR: valrange, gAIL: valrange, gRDR: valrange, gDir: valrange}
 
-        init = And(And(beta == ZERO, p == ZERO, r == ZERO, phi == ZERO, psi == ZERO), \
+        init = And(ma == RealVal(1), And(beta == ZERO, p == ZERO, r == ZERO, phi == ZERO, psi == ZERO), \
                   And(gDir > RealVal(0.5), gDir < RealVal(0.7)), 
                    xAIL == ZERO, xRDR == ZERO, gAIL == ZERO, gRDR == ZERO)
 
@@ -81,30 +83,25 @@ class Airplane(Model):
         newgAIL = (gDir - psi * RealVal(180 / 3.14)) * RealVal(0.5)
         newgRDR = beta * RealVal(0.35)
 
-        jump = {And(tau == RealVal(0.5), gRDR >= xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR < xRDR, gAIL >= xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR >= xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO)}
+        jump = {And(tau == RealVal(0.5), gRDR >= xRDR, gAIL >= xAIL):  And(maNext == RealVal(1), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR < xRDR, gAIL >= xAIL):  And(maNext == RealVal(2), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR >= xRDR, gAIL < xAIL):  And(maNext == RealVal(3), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO), \
+               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(maNext == RealVal(4), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == newgAIL, gRDRNext == newgRDR, gDirNext == gDir, tauNext == ZERO)}
 
-        prop = {proPF: And(beta > RealVal(0.2), beta < RealVal(0.2))}
+        goal = {ma == RealVal(1): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
+              ma == RealVal(2): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
+              ma == RealVal(3): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
+              ma == RealVal(4): Or(beta > RealVal(0.2), beta < -RealVal(0.2))}
+
+        prop = {proPF: ma == RealVal(2), proQF: ma == RealVal(3)}
  
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
 
 
 if __name__ == '__main__':
     model = Airplane()
-    const = model.reach(2)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
 
 
 
