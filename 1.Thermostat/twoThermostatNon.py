@@ -1,9 +1,12 @@
 import os, sys, io
+from tcNon import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *
 from core.z3Handler import *
 from model import *
+from core.STLHandler import *
+
 
 K1 = RealVal(0.015)
 K2 = RealVal(0.045)
@@ -16,28 +19,28 @@ gT = RealVal(20)
 class Thermostat(Model):
     def __init__(self):
         m = Real('mode')
-        fx = Real('fx')
-        sx = Real('sx')
+        fx = Real('x1')
+        sx = Real('x2')
  
         modeNext = NextVar(m)
         fxNext = NextVar(fx)
         sxNext = NextVar(sx)
         proPF = Bool('pf')
         proQF = Bool('qf')
-        proMF = Bool('proMF')
+        proMF = Bool('promf')
 
         proPS = Bool('ps')
         proQS = Bool('qs')
-        proMS = Bool('proMS')
+        proMS = Bool('proms')
 
         mode = {m: (1, 4)}
         vars = {fx: (-20, 100), sx: (-20, 100)}
         init = And(m == RealVal(4), fx >= gT - RealVal(1), fx <= gT + RealVal(1), sx >= gT - RealVal(1), sx <= gT + RealVal(1))
 
-        fxOff = -K1 * ((RealVal(1) - c) * fx + c * sx) 
-        fxOn = K2 * (h1 -((RealVal(1) - c) * fx + c * sx))
-        sxOff = -K2 * ((RealVal(1) - c) * sx + c * fx) 
-        sxOn = K2 * (h2 -((RealVal(1) - c) * sx + c * fx))
+        fxOff = -K1 * ((RealVal(1) - RealVal(2) * c) * fx + c * sx) 
+        fxOn = K1 * (h1 -((RealVal(1) -  RealVal(2) * c) * fx + c * sx))
+        sxOff = -K2 * ((RealVal(1) -  RealVal(2) * c) * sx + c * fx) 
+        sxOn = K2 * (h2 -((RealVal(1) -  RealVal(2) * c) * sx + c * fx))
 
         flow = {m == RealVal(4): {fx: fxOff, sx: sxOff}, \
                  m == RealVal(3): {fx: fxOff, sx: sxOn}, \
@@ -56,25 +59,20 @@ class Thermostat(Model):
 
 
         prop = {proPF: fx < gT - RealVal(1), (proQF): fx >  gT + RealVal(1), proMF: m == RealVal(4),  \
-               proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(4)}
+               proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(1)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        goal = {m == RealVal(4): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
+               m == RealVal(3): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
+               m == RealVal(2): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
+               m == RealVal(1): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1)))}
+
+        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
 
 
 if __name__ == '__main__':
     model = Thermostat()
-    const = model.reach(5)
-
-    output = io.StringIO()
-    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
-    printObject.callAll()
-#    print (output.getvalue())
-    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
-    dRealname = dRealname[:-3]
-    dRealname += '.smt2'
-    f = open(dRealname, 'w')
-    f.write(output.getvalue())
-    f.close()
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL() 
 
 
 

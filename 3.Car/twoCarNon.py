@@ -39,7 +39,7 @@ class CarNon(Model):
 
         mode = {m: (1, 3)}
         vars = {v1: (0, 10), v2: (0, 10), x1: (0, 100), x2: (0, 100), y1: (0, 100), y2: (0, 100), phi1: (-1, 1), phi2: (-1, 1), theta1: (-1.5, 1.5), theta2: (-1.5, 1.5)}
-        init = And(And(mx1 == RealVal(1), mx2 == RealVal(1)), x1 == RealVal(0), x2 == RealVal(10), y1 == RealVal(10), y2 == RealVal(10), v1 == RealVal(3), v2 == RealVal(4), theta1 == RealVal(0), theta2 == RealVal(0), phi1 == RealVal(5), phi2 == -RealVal(5)) 
+        init = And(m == RealVal(1), x1 == RealVal(0), x2 == RealVal(10), y1 == RealVal(10), y2 == RealVal(10), v1 == RealVal(3), v2 == RealVal(4), theta1 == RealVal(0), theta2 == RealVal(0), phi1 == RealVal(5), phi2 == -RealVal(5)) 
 
         flowx1 = v1 * cos(theta1)
         flowy1 = v1 * sin(theta1)
@@ -55,9 +55,9 @@ class CarNon(Model):
                m == RealVal(3): {x1: flowx1, y1: flowy1, x2: flowx2, y2: flowy2, theta1: flowtheta1, theta2: flowtheta2, phi1: flowphi1, phi2: flowphi2, v1: RealVal(0), v2: -RealVal(5)}} 
         inv = {}
         
-        jump = {And((((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) >= RealVal(36)), (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= RealVal(81))): And(mNext == RealVal(1), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
-             (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) < RealVal(36)): And(mNext == RealVal(1), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
-             (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) > RealVal(81): And(mNext == RealVal(1), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2)}
+        jump = {And((((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= RealVal(36)), (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= RealVal(81))): And(mNext == RealVal(1), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
+             (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < RealVal(36)): And(mNext == RealVal(3), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2), \
+             (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > RealVal(81): And(mNext == RealVal(2), x1Next == x1, x2Next == x2, v1Next == v1, v2Next == v2, phi1Next == phi1, phi2Next == phi2, theta1Next == theta1, theta2Next == theta2, y1Next == y1, y2Next == y2)}
 
         prop = {}
 

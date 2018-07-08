@@ -37,13 +37,13 @@
         d/dt[v1] = 0;
         d/dt[v2] = -(v2 - v1);
   jump:
-        (and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==> 
+        (and (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==> 
         @1 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) > 81 ==>
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81 ==>
         @2 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) < 36 ==>   
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36 ==>   
         @3 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
 }
@@ -63,13 +63,13 @@
         d/dt[v1] = 0;
         d/dt[v2] = 5;
   jump:
-        (and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==>
+        (and (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==>
         @1 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) > 81 ==>
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81 ==>
         @2 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) < 36 ==>
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36 ==>
         @3 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
 }
@@ -89,13 +89,13 @@
         d/dt[v1] = 0;
         d/dt[v2] = -5;
   jump:
-        (and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==>
+        (and (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81)) ==>
         @1 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) > 81 ==>
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81 ==>
         @2 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
-        ((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) < 36 ==>
+        ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36 ==>
         @3 (and (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2) (theta1' = theta1) (theta2' = theta2) (phi1' = phi1) (phi2' = phi2) (v1' = v1) (v2' = v2));
 
 }

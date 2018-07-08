@@ -9,7 +9,7 @@ from core.encoding import *
 
 
 class Model:
-    def __init__(self, mode, variables, init, flow, inv, jump, prop):
+    def __init__(self, mode, variables, init, flow, inv, jump, prop, goal = {}):
         self.mode = mode
         self.variables = variables
         self.init = init
@@ -17,6 +17,7 @@ class Model:
         self.inv = inv
         self.jump = jump
         self.prop = prop
+        self.goal = goal
 
         self.flowDict = self.defineFlowDict()
         prevarList = list(self.variables.keys())
@@ -56,11 +57,13 @@ class Model:
             const.extend(self.jumpHandler(i))
             const.append(ts[i] < ts[i+1])
             const.extend(self.propHandler(Real('time' + str(i)), i))
+            const.extend(self.goalHandler(Real('time' + str(i)), i))
 
         ts.append(Real("tau_" + str(bound)))
         const.append(Real('time' + str(bound)) == (ts[-1] - ts[-2]))
         const.extend(self.flowHandler(Real('time' + str(bound)), bound))
         const.extend(self.invHandler(Real('time' + str(bound)), bound))
+        const.extend(self.goalHandler(Real('time' + str(bound)), bound))
 
         return const
 
@@ -111,6 +114,11 @@ class Model:
     def flowHandler(self, time, k):
         const = [Implies(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, self.flowDictionary(self.flow[i]), self.flow[i])) for i in self.flow.keys()]
         return const
+
+    def goalHandler(self, time, k):
+        const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.goal.keys()]
+        return const
+
          
     def invHandler(self, time, k):
         const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.inv.keys()]

@@ -17,8 +17,8 @@
   invt: (x1 < 30);
         (x2 < 30);
   flow:
-        d/dt[x1] = K1 * (h1 - ((1 - c) * x1 + c * x2));
-        d/dt[x2] = K2 * (h2 - ((1 - c) * x2 + c * x1));
+        d/dt[x1] = K1 * (h1 - ((1 - 2 * c) * x1 + c * x2));
+        d/dt[x2] = K2 * (h2 - ((1 - 2 * c) * x2 + c * x1));
   jump:
         (and (x1 <= gT) (x2 <= gT)) ==> 
           @1 (and (x1' = x1) (x2' = x2));
@@ -34,8 +34,8 @@
   invt: (x1 < 30);
         (x2 > 10);
   flow:
-        d/dt[x1] = K1 * (h1 - ((1 - c) * x1 + c * x2));
-        d/dt[x2] = -K2 * ((1 - c) * x2 + c * x1);
+        d/dt[x1] = K1 * (h1 - ((1 - 2 * c) * x1 + c * x2));
+        d/dt[x2] = -K2 * ((1 - 2 * c) * x2 + c * x1);
   jump:
         (and (x1 <= gT) (x2 <= gT)) ==>  
           @1 (and (x1' = x1) (x2' = x2));
@@ -51,8 +51,8 @@
   invt: (x1 > 10);
         (x2 < 30);
   flow:
-        d/dt[x1] = -K1 * ((1 - c) * x1 + c * x2);
-        d/dt[x2] = K2 * (h2 - ((1 - c) * x2 + c * x1));
+        d/dt[x1] = -K1 * ((1 - 2 * c) * x1 + c * x2);
+        d/dt[x2] = K2 * (h2 - ((1 - 2 * c) * x2 + c * x1));
   jump:
         (and (x1 <= gT) (x2 <= gT)) ==>  
           @1 (and (x1' = x1) (x2' = x2));
@@ -68,8 +68,8 @@
   invt: (x1 > 10);
         (x2 > 10);
   flow:
-        d/dt[x1] = -K1 * ((1 - c) * x1 + c * x2);
-        d/dt[x2] = -K2 * ((1 - c) * x2 + c * x1);
+        d/dt[x1] = -K1 * ((1 - 2 * c) * x1 + c * x2);
+        d/dt[x2] = -K2 * ((1 - 2 * c) * x2 + c * x1);
   jump:
         (and (x1 <= gT) (x2 <= gT)) ==>  
           @1 (and (x1' = x1) (x2' = x2));
