@@ -70,7 +70,7 @@ class Battery(Model):
                m == RealVal(5): jumptau >= RealVal(0), \
                m == RealVal(6): jumptau >= RealVal(0)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.01, goal)
 
 
 if __name__ == '__main__':

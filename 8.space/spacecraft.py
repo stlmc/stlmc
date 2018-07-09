@@ -78,7 +78,7 @@ class Space(Model):
 
         prop = {proPF: ms == RealVal(3), proQF: ms == RealVal(2), proQZ: tmrNext >= tmr}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 5)
 
 
 if __name__ == '__main__':

@@ -37,7 +37,7 @@ class Airplane(Model):
         xRDR = Real('xRDR')
         gAIL = Real('gAIL')
         gRDR = Real('gRDR')
-        tau = Real('tau')
+        tau = Real('TauModel')
 
         maNext = NextVar(ma)
         betaNext = NextVar(beta)
@@ -53,7 +53,7 @@ class Airplane(Model):
         proPF = Bool('pf')
         proQF = Bool('qf')
 
-        mode = {ma: (1, 4)}
+        mode = {ma: (1, 5)}
         valrange = (-3.14159, 3.14159)
         vars = {tau: (0, 0.5), beta: valrange, p: valrange, r: valrange, phi: valrange, psi: valrange, xAIL: valrange, xRDR: valrange, gAIL: valrange, gRDR: valrange}
 
@@ -68,27 +68,30 @@ class Airplane(Model):
         flow = {ma == RealVal(1): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: RealVal(0.25), xRDR: RealVal(0.5), gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}, \
                ma == RealVal(2): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: RealVal(0.25), xRDR: -RealVal(0.5), gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}, \
                ma == RealVal(3): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: -RealVal(0.25), xRDR: RealVal(0.5), gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}, \
-               ma == RealVal(4): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: -RealVal(0.25), xRDR: -RealVal(0.5), gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}}
+               ma == RealVal(4): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: -RealVal(0.25), xRDR: -RealVal(0.5), gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}, \
+               ma == RealVal(5): {beta: betaflow, p: pflow, r: rflow, phi: p, psi: psiflow, xAIL: ZERO, xRDR: ZERO, gAIL: ZERO, gRDR: ZERO, tau: RealVal(1)}}
 
 
         inv = {ma == RealVal(1): And(tau >= RealVal(0), tau <= RealVal(0.5)), \
               ma == RealVal(2): And(tau >= RealVal(0), tau <= RealVal(0.5)), \
               ma == RealVal(3): And(tau >= RealVal(0), tau <= RealVal(0.5)), \
-              ma == RealVal(4): And(tau >= RealVal(0), tau <= RealVal(0.5))} 
+              ma == RealVal(4): And(tau >= RealVal(0), tau <= RealVal(0.5)), \
+              ma == RealVal(5): And(tau >= RealVal(0), tau <= RealVal(0.5))} 
 
         jump = {And(tau == RealVal(0.5), gRDR >= xRDR, gAIL >= xAIL):  And(maNext == RealVal(1), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
                And(tau == RealVal(0.5), gRDR < xRDR, gAIL >= xAIL):  And(maNext == RealVal(2), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
                And(tau == RealVal(0.5), gRDR >= xRDR, gAIL < xAIL):  And(maNext == RealVal(3), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
-               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(maNext == RealVal(4), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO)}
+               And(tau == RealVal(0.5), gRDR < xRDR, gAIL < xAIL):  And(maNext == RealVal(4), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO), \
+               tau == RealVal(0.5): And(maNext == RealVal(5), And(betaNext == beta, pNext == p, rNext == r, phiNext == phi, psiNext == psi), xAILNext == xAIL, xRDRNext == xRDR, gAILNext == gAIL, gRDRNext == gRDR, tauNext == ZERO)}
 
         goal = {ma == RealVal(1): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
               ma == RealVal(2): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
               ma == RealVal(3): Or(beta > RealVal(0.2), beta < -RealVal(0.2)), \
               ma == RealVal(4): Or(beta > RealVal(0.2), beta < -RealVal(0.2))}
 
-        prop = {proPF: ma == RealVal(2), proQF: ma == RealVal(3)}
+        prop = {proPF: ma == RealVal(2), proQF: ma == RealVal(3), proQZ : xAIL < 0, proPZ: p >= 0}
  
-        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.5, goal)
 
 
 if __name__ == '__main__':

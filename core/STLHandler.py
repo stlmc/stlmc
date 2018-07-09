@@ -26,14 +26,14 @@ class STLHandler:
         dRealname += '_' + str(k) + '.smt2'
 
         with open(dRealname, 'w') as fle:
-            printObject = dRealHandler(const, fle, self.model.varList, self.model.variables, self.model.flowDict, self.model.mode)
+            printObject = dRealHandler(const, fle, self.model.varList, self.model.variables, self.model.flowDict, self.model.mode, self.model.time, k)
             printObject.addConst(const)
             printObject.callAll()
 
         return z3const
 
     def reportTest(self, formula):
-        for k in range(3,4):
+        for k in range(2,3):
             const = self.runTest(formula, k)
             s = z3.Solver()
             s.add(const)
@@ -48,7 +48,7 @@ class STLHandler:
     def generateSTL(self):
         output = io.StringIO()
         const = self.model.reach(3)
-        printObject = dRealHandler(const, output, self.model.varList, self.model.variables, self.model.flowDict, self.model.mode)
+        printObject = dRealHandler(const, output, self.model.varList, self.model.variables, self.model.flowDict, self.model.mode, self.model.time, 0)
         printObject.callAll()
     #    print (output.getvalue())
         dRealname=os.path.basename(os.path.realpath(sys.argv[0]))

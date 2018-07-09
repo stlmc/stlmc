@@ -9,7 +9,7 @@ from core.encoding import *
 
 
 class Model:
-    def __init__(self, mode, variables, init, flow, inv, jump, prop, goal = {}):
+    def __init__(self, mode, variables, init, flow, inv, jump, prop, time, goal = {}):
         self.mode = mode
         self.variables = variables
         self.init = init
@@ -18,6 +18,7 @@ class Model:
         self.jump = jump
         self.prop = prop
         self.goal = goal
+        self.time = time
 
         self.flowDict = self.defineFlowDict()
         prevarList = list(self.variables.keys())
@@ -33,8 +34,19 @@ class Model:
         baseV = baseEncoding(partition,baseP)
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
+        self.goal = {}
         modelConsts = self.reach(bound)
-        for i in range(bound-1):
+        if bound == 0:
+            ts = [Real("tau_0")]
+        else:
+            ts = [Real("tau_%s"%i) for i in range(bound+1)]
+
+        modelConsts.append(ts[0] >= RealVal(0))
+        modelConsts.append(Real('time0') == ts[0])
+
+        for i in range(bound):
+            modelConsts.append(Real('time' + str(i+1)) == (ts[i+1] - ts[i]))
+            modelConsts.append(ts[i] < ts[i+1])
             modelConsts.extend(self.propHandler(Real('time' + str(i)), i))
 
         return partitionConsts + modelConsts + [formulaConst] 
@@ -46,25 +58,12 @@ class Model:
         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, 0))
         const.append(self.init.substitution(combine))
 
-        if bound == 0:
-            ts = [Real("tau_0")]
-        else:
-            ts = [Real("tau_%s"%i) for i in range(bound+1)]
-
-        const.append(ts[0] >= RealVal(0))
-        const.append(Real('time0') == ts[0])
-
         for i in range(bound):
-            const.append(Real('time' + str(i+1)) == (ts[i+1] - ts[i]))
-            const.append(self.flowHandler(Real('time' + str(i)), i))
-            #const.extend(self.invHandler(Real('time' + str(i)), i))
-            const.extend(self.jumpHandler(i))
-            const.append(ts[i] < ts[i+1])
-            const.append(self.goalHandler(Real('time' + str(i)), i))
+            const.append(self.BeforeflowHandler(Real('time' + str(i)), i))
 
-        const.append(self.flowHandler(Real('time' + str(bound)), bound))
-        #const.extend(self.invHandler(Real('time' + str(bound)), bound))
-        #const.append(self.goalHandler(Real('time' + str(bound)), bound))
+        const.append(self.AfterflowHandler(Real('time' + str(bound)), bound))
+        if self.goal:
+            const.append(self.goalHandler(Real('time' + str(bound)), bound))
 
         return const
 
@@ -109,8 +108,19 @@ class Model:
         return -1
         
     
+    def BeforeflowHandler(self, time, k):
+        combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 1))
+        nextSub = self.combineDict(self.makeSubMode(k+1), self.makeSubVars(k+1, 0))
+        const = [And(i.substitution(combineSub), self.jump[i].substitution(combineSub)) for i in self.jump.keys()]
+        result = [i.nextSub(nextSub) for i in const]
+        result = Or(*result)
+        const = [And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, i.children[1], self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.flow.keys()]
+        constresult = []
+        for i in const:
+            constresult.append(And(i, result))
+        return Or(*constresult)
 
-    def flowHandler(self, time, k):
+    def AfterflowHandler(self, time, k):
         const = [And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, i.children[1], self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.flow.keys()]
         return Or(*const)
 
@@ -118,7 +128,6 @@ class Model:
         combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 1))
         const = [And(i.substitution(self.makeSubMode(k)), self.goal[i].substitution(combineSub)) for i in self.goal.keys()]
         return Or(*const)
-
          
     def invHandler(self, time, k):
         const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.inv.keys()]

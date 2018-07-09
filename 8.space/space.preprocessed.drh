@@ -5,7 +5,7 @@
 [0, 150] vy;
 [0, 150] ay;
 [0, 100] tau;
-[0, 1] time;
+[0, 5] time;
 {mode 1;
   invt: (tau <= 80.0);
         (sqrt(x * x + y * y) >= 100);

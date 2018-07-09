@@ -1,6 +1,0 @@
-Warning: The width of interval x1_0_0 = [4.9000000000000003553, 4.9000000000000012434] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
-Warning: The width of interval x1_0_0 = [4.9000000000000003553, 4.9000000000000012434] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
-Warning: The width of interval x1_0_t = [4.9000000000000003553, 4.9000000000000012434] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
-Warning: The width of interval x1_1_0 = [4.9000000000000003553, 4.9000000000000012434] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
-Warning: The width of interval x1_1_t = [4.9000000000000003553, 4.9000000000000012434] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
-delta-sat with delta = 0.00100000000000000

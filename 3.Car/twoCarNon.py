@@ -47,7 +47,7 @@ class CarNon(Model):
 
         mode = {m: (1, 3)}
         vars = {v1: (0, 10), v2: (0, 10), x1: (0, 100), x2: (0, 100), y1: (0, 100), y2: (0, 100), phi1: (-1, 1), phi2: (-1, 1), theta1: (-1.5, 1.5), theta2: (-1.5, 1.5)}
-        init = And(m == RealVal(1), x1 == RealVal(0), x2 == RealVal(10), y1 == RealVal(10), y2 == RealVal(10), v1 == RealVal(3), v2 == RealVal(4), theta1 == RealVal(0), theta2 == RealVal(0), phi1 == RealVal(5), phi2 == -RealVal(5)) 
+        init = And(m == RealVal(1), x1 > RealVal(0), x1 < RealVal(3), x2 > RealVal(5), x2 < RealVal(10), y1 < RealVal(10), y1 > RealVal(3), y2 > RealVal(3), y2 < RealVal(10), v1 >= RealVal(1), v1 <= RealVal(3), v2 >= RealVal(3), v2 <= RealVal(4), theta1 > RealVal(0), theta1 < RealVal(1), theta2 < RealVal(0), theta2 > -RealVal(1), phi1 <= RealVal(1), phi1 >= RealVal(0), phi2 <= RealVal(0), phi2 >= -RealVal(1)) 
 
         flowx1 = v1 * cos(theta1)
         flowy1 = v1 * sin(theta1)
@@ -73,7 +73,7 @@ class CarNon(Model):
                m == RealVal(2): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
                m == RealVal(1): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1)))}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.5, goal)
 
 
 if __name__ == '__main__':

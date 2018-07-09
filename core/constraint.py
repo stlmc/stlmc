@@ -304,7 +304,7 @@ class Integral(Node):
         result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
         return result
     def getVars(self):
-        return set(self.startList + self.endList)
+        return set(self.startList + self.endList + [self.time])
     def substitution(self, subDict):
         return self
     def nextSub(self, subDict):
@@ -321,8 +321,9 @@ class Forall(Node):
         self.modeDict = mode
         super().__init__(Type.Bool)
     def __repr__(self):
-        typeList = [i.getType() for i in self.condition.getVars()]
-        if not(Type.Real in typeList):
+        if not self.condition.getVars():
+            result = ""
+        elif str(list(self.condition.getVars())[0]) in self.modeDict.keys():
             subCondition = self.condition.substitution(self.modeDict)
             result = str(subCondition)
         else:

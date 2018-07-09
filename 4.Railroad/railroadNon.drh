@@ -91,7 +91,7 @@
         @1 (and (tx' = 85) (bx' = bx) (vbx' = vbx));
 }
 init:
-@1  (and (vbx = 0) (bx = 0) (tx >= 60) (tx <= 70));
+@1  (and (vbx >= 0) (vbx <= 1) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70));
 goal:
 @1 true;
 @2 true;

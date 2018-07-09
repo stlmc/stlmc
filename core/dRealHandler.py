@@ -1,13 +1,15 @@
 from .constraint import *
 
 class dRealHandler:
-    def __init__(self, const, output, varList, varRange, defineODE, modeRange):
+    def __init__(self, const, output, varList, varRange, defineODE, modeRange, time, k):
         self.const = const
         self.defineODE = defineODE
         self.output = output
         self.varRange = varRange
         self.modeRange = modeRange
         self.varList = varList
+        self.time =time
+        self.k = k
 
     def addConst(self, constList):
         self.const += constList
@@ -53,6 +55,12 @@ class dRealHandler:
                 pass
             elif key in mstrRange.keys():
                 self.output.write(" [" + str(mstrRange[key][0]) + ", " + str(mstrRange[key][1]) + "]")
+            elif key.find('time') != -1:
+                self.output.write(" [0, " + str(self.time) + "]")
+            elif key.find('tau') != -1:
+                self.output.write(" [0, " + str(self.time * (self.k + 1)) + "]")
+            elif key.find('TauIndex') != -1:
+                self.output.write(" [0, " + str(self.time * (self.k + 1)) + "]")
             else:
                 pass
             self.output.write(")\n")

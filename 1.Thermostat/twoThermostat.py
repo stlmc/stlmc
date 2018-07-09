@@ -62,9 +62,9 @@ class Thermostat(Model):
                      And(fx <= gT, sx > gT): And(modeNext == RealVal(2), fxNext == fx, sxNext == sx, constfxNext == fx, constsxNext == sx)}
 
         prop = {proPF: fx < gT - RealVal(1), (proQF): fx >  gT + RealVal(1), proMF: m == RealVal(4), \
-               proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(1)}}
+               proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(1)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
 
 
 if __name__ == '__main__':

@@ -37,7 +37,7 @@ class Railroad(Model):
         proQS = Bool('qs')
         mode = {m: (1,8)}
         vars = {vbx: (-20, 20), tx: (-20, 100), bx: (0, 90)}
-        init = And(m == RealVal(1), vbx == RealVal(0), bx == RealVal(0), tx >= RealVal(60), tx <= RealVal(70))
+        init = And(m == RealVal(1), vbx >= RealVal(0), vbx <= RealVal(1), bx >= RealVal(0), bx < RealVal(1), tx >= RealVal(60), tx <= RealVal(70))
 
         flow = {m == RealVal(1): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
                 m == RealVal(2): {tx: V, bx: RealVal(0), vbx: RealVal(0)}, \
@@ -64,7 +64,7 @@ class Railroad(Model):
 
         prop = {proPF : m == RealVal(6), proQF: txNext >= tx, proQS: m == RealVal(1)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
 
 
 if __name__ == '__main__':

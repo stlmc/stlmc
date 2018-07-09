@@ -18,54 +18,52 @@ Keep = RealVal(1)
 
 class Car(Model):
     def __init__(self):
-        mx1 = Real('mx1')
-        mx2 = Real('mx2')
+        m = Real('mode')
         x1 = Real('x1')
         x2 = Real('x2')
-        mx1Next = NextVar(mx1)
-        mx2Next = NextVar(mx2)
+        mNext = NextVar(m)
         x1Next = NextVar(x1)
         x2Next = NextVar(x2)
         proPF = Bool('pf')
         proQF = Bool('qf')
         proQZ = Bool('qz')
 
-        mode = {mx1: (-1, 1), mx2: (-1, 1)}
+        mode = {m: (1, 9)}
         vars = {x1: (0, 100), x2: (0, 100)}
-        init = And(And(mx1 == RealVal(1), mx2 == RealVal(1)), x1 == RealVal(0), x2 == RealVal(3))
+        init = And(m == RealVal(1), x1 >= RealVal(0), x1 <= RealVal(1), x2 <= RealVal(10), x2 >= RealVal(3))
 
 
-        flow = {And(mx1 == RealVal(1), mx2 == RealVal(1)): {x1: V1Acc, x2: V2Acc}, \
-               And(mx1 == RealVal(1), mx2 == RealVal(0)): {x1: V1Acc, x2: Keep}, \
-               And(mx1 == RealVal(1), mx2 == -RealVal(1)): {x1: V1Acc, x2: V2Dec}, \
-               And(mx1 == RealVal(0), mx2 == RealVal(1)): {x1: Keep, x2: V2Acc}, \
-               And(mx1 == RealVal(0), mx2 == RealVal(0)): {x1: Keep, x2: Keep}, \
-               And(mx1 == RealVal(0), mx2 == -RealVal(1)): {x1: Keep, x2: V2Dec}, \
-               And(mx1 == -RealVal(1), mx2 == RealVal(1)): {x1: V1Dec, x2: V2Acc}, \
-               And(mx1 == -RealVal(1), mx2 == RealVal(0)): {x1: V1Dec, x2: Keep}, \
-               And(mx1 == -RealVal(1), mx2 == -RealVal(1)): {x1: V1Dec, x2: V2Dec}}
+        flow = {m == RealVal(1): {x1: V1Acc, x2: V2Acc}, \
+               m == RealVal(2): {x1: V1Acc, x2: Keep}, \
+               m == RealVal(3): {x1: V1Acc, x2: V2Dec}, \
+               m == RealVal(4): {x1: Keep, x2: V2Acc}, \
+               m == RealVal(5): {x1: Keep, x2: Keep}, \
+               m == RealVal(6): {x1: Keep, x2: V2Dec}, \
+               m == RealVal(7): {x1: V1Dec, x2: V2Acc}, \
+               m == RealVal(8): {x1: V1Dec, x2: Keep}, \
+               m == RealVal(9): {x1: V1Dec, x2: V2Dec}}
   
-        inv = {And(mx1 == RealVal(1), mx2 == RealVal(1)): x2 >= x1, \
-               And(mx1 == RealVal(1), mx2 == RealVal(0)): x2 >= x1, \
-               And(mx1 == RealVal(1), mx2 == -RealVal(1)): x2 >= x1, \
-               And(mx1 == RealVal(0), mx2 == RealVal(1)): x2 >= x1, \
-               And(mx1 == RealVal(0), mx2 == RealVal(0)): x2 >= x1, \
-               And(mx1 == RealVal(0), mx2 == -RealVal(1)): x2 >= x1, \
-               And(mx1 == -RealVal(1), mx2 == RealVal(1)): x2 >= x1, \
-               And(mx1 == -RealVal(1), mx2 == RealVal(0)): x2 >= x1, \
-               And(mx1 == -RealVal(1), mx2 == -RealVal(1)): x2 >= x1}
+        inv = {m == RealVal(1): x2 >= x1, \
+               m == RealVal(2): x2 >= x1, \
+               m == RealVal(3): x2 >= x1, \
+               m == RealVal(4): x2 >= x1, \
+               m == RealVal(5): x2 >= x1, \
+               m == RealVal(6): x2 >= x1, \
+               m == RealVal(7): x2 >= x1, \
+               m == RealVal(8): x2 >= x1, \
+               m == RealVal(9): x2 >= x1}
 
 
-        jump = {x2 - x1 <  RealVal(1): And(And(mx1Next == -RealVal(1), mx2Next == RealVal(1)), x1Next == x1, x2Next == x2), \
-               And((x2 - x1) >= RealVal(1), (x2 - x1) < RealVal(2)): And(And(mx1Next == RealVal(0), mx2Next == RealVal(1)), x1Next == x1, x2Next == x2), \
-               And((x2 - x1) >= RealVal(2), (x2 - x1) < RealVal(3)): And(And(mx1Next == RealVal(1), mx2Next == RealVal(1)), x1Next == x1, x2Next == x2), \
-               And((x2 - x1) >= RealVal(3), (x2 - x1) < RealVal(4)): And(And(mx1Next == RealVal(1), mx2Next == RealVal(0)), x1Next == x1, x2Next == x2), \
-               And((x2 - x1) >= RealVal(4), (x2 - x1) < RealVal(5)): And(And(mx1Next == RealVal(0), mx2Next == -RealVal(1)), x1Next == x1, x2Next == x2), \
-               x2 - x1 >= RealVal(5): And(And(mx1Next == RealVal(1)), mx2Next == -RealVal(1), x1Next == x1, x2Next == x2)}
+        jump = {x2 - x1 <  RealVal(1): And(m == RealVal(7), x1Next == x1, x2Next == x2), \
+               And((x2 - x1) >= RealVal(1), (x2 - x1) < RealVal(2)): And(m == RealVal(4), x1Next == x1, x2Next == x2), \
+               And((x2 - x1) >= RealVal(2), (x2 - x1) < RealVal(3)): And(m == RealVal(1), x1Next == x1, x2Next == x2), \
+               And((x2 - x1) >= RealVal(3), (x2 - x1) < RealVal(4)): And(m == RealVal(2), x1Next == x1, x2Next == x2), \
+               And((x2 - x1) >= RealVal(4), (x2 - x1) < RealVal(5)): And(m == RealVal(6), x1Next == x1, x2Next == x2), \
+               x2 - x1 >= RealVal(5): And(m == RealVal(9), x1Next == x1, x2Next == x2)}
 
-        prop = {proPF : mx1 == -RealVal(1), proQF: x2 - x1 < RealVal(1), proQZ: x2 > x1, }
+        prop = {proPF : m == RealVal(9), proQF: x2 - x1 < RealVal(1), proQZ: x2 > x1 }
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
 
 
 if __name__ == '__main__':

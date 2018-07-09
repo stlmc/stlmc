@@ -50,7 +50,7 @@
 [0,180] thetaI;
 [0,150] w;
 
-[0,100] time;
+[0,9] time;
 
 
 // startup
@@ -158,10 +158,10 @@
   jump:
 }
 
-init: @1 (and (theta = 8.8) 
-              (p = 0.9833) 
-              (lambda = 14.7)
-              (pe = 0.9)  // if pe = 0, then fc becomes negative
+init: @1 (and (theta >= 8.8) (theta <= 10) 
+              (p >= 0.9833) (p <= 1)
+              (lambda >= 14.7) (lambda <= 15)
+              (pe >= 0.9) (pe <= 1) // if pe = 0, then fc becomes negative
               (i = 0) 
               (tau = 0) 
               (w = 95) 

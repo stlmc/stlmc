@@ -70,6 +70,8 @@ class Powertrain(Model):
 
         proPF = Bool('pf')
         proQF = Bool('qf')
+        proPZ = Bool('pz')
+        proQZ = Bool('qz')
 
         fcO =       (mCf(w,pe) / c11)
         fcP =      (mCf(w,pe) / c11P)
@@ -114,9 +116,9 @@ class Powertrain(Model):
                mt == RealVal(2): And(Or(mtNext == RealVal(2), mtNext == RealVal(4)), thetaNext == theta, pNext == p, lambdasNext == lambdas, And(thetaINext == thetaI, wNext == w, peNext == pe, iNext == i, tauNext == tau)), \
                And(mt == RealVal(3), theta == RealVal(50)): And(mtNext == RealVal(2), thetaNext == theta, pNext == p, lambdasNext == lambdas, And(thetaINext == thetaI, wNext == w, peNext == pe, iNext == i, tauNext == tau))}
 
-        prop = {proPF: mt == RealVal(4), proQF: mt == RealVal(3)}
+        prop = {proPF: mt == RealVal(4), proQF: mt == RealVal(3), proQZ: mt == RealVal(1), proPZ: tau >= tauI}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 9)
 
 
 if __name__ == '__main__':

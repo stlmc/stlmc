@@ -17,7 +17,7 @@ def guessPartition(formula, baseCase):
     result = {}
     sepMap = {}
     bConst = []
-    genVar = genId(0)
+    genVar = genId(0, "TauIndex")
 
     _addConstOrd(baseCase, genVar, bConst, True)
     _guess(formula, baseCase, genVar, result, sepMap, bConst)

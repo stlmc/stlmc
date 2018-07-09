@@ -43,7 +43,12 @@ class Battery(Model):
                m == RealVal(5): {d1: (RealVal(1) / C) - (K * d1), d2: RealVal(0), g1: -RealVal(1), g2: RealVal(0)}, \
                m == RealVal(6): {d1: RealVal(0), d2: RealVal(0), g1: RealVal(0), g2: RealVal(0)}}
   
-        inv = {}
+        inv = {m == RealVal(1): BoolVal(True), \
+               m == RealVal(2): BoolVal(True), \
+               m == RealVal(3): BoolVal(True), \
+               m == RealVal(4): BoolVal(True), \
+               m == RealVal(5): BoolVal(True), \
+               m == RealVal(6): BoolVal(True)}
 
         jump = {And(g1 > (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(mNext == RealVal(1), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2), \
                And(g1 > (RealVal(1) - C) * d1, g2 > (RealVal(1) - C) * d2): And(mNext == RealVal(2), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2), \
@@ -55,7 +60,7 @@ class Battery(Model):
         prop = {proPF: m == RealVal(6), proQF: m == RealVal(4), proQZ: m == RealVal(3), proMT: m == RealVal(2), proMO: m == RealVal(1), proPZ: m == RealVal(5)}
 
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.01)
 
 
 if __name__ == '__main__':

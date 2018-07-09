@@ -61,7 +61,7 @@ class Watertank(Model):
 
         prop = {proPF: fx <= A1, (proQF): fx < RealVal(5), (proMF1): m == RealVal(1), proMF2: m == RealVal(2), proZF: fx > RealVal(6) }
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.5, goal)
 
 
 if __name__ == '__main__':
