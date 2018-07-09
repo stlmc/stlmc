@@ -3,8 +3,8 @@
 #define a 0.5
 #define gH 5
 
-#define A1 8.0
-#define A2 9.0
+#define A1 2.0
+#define A2 4.0
 #define q1 5.0
 #define q2 3.0
 
@@ -15,8 +15,8 @@
 
 {mode 1;
 
-  invt: (x1 <= A1);
-        (x2 <= A2);
+  invt: (x1 <= 9);
+        (x2 <= 9);
   flow:
         d/dt[x1] = (q1 - a * sqrt(2*g) * sqrt(x1)) / A1; 
         d/dt[x2] = (q2 + a * sqrt(2*g) * (sqrt(x1) - sqrt(x2))) / A2;
@@ -35,7 +35,7 @@
 }
 {mode 2;
 
-  invt: (x1 <= A1);
+  invt: (x1 <= 9);
         (x2 > 0);
   flow:
         d/dt[x1] = (q1 - a * sqrt(2*g) * sqrt(x1)) / A1; 
@@ -56,7 +56,7 @@
 {mode 3;
 
   invt: (x1 > 0);
-        (x2 <= A2);
+        (x2 <= 9);
   flow:
         d/dt[x1] = (- a * sqrt(2*g) * sqrt(x1)) / A1; 
         d/dt[x2] = (q2 + a * sqrt(2*g) * (sqrt(x1) - sqrt(x2))) / A2;

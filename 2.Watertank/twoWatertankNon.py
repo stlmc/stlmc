@@ -8,19 +8,19 @@ from model import *
 from core.STLHandler import *
 
 gH = RealVal(5.0)
-g = RealVal(9.806)
+g = RealVal(9.80665)
 a = RealVal(0.5)
 
-A1 = RealVal(8.0)
-A2 = RealVal(9.0)
+A1 = RealVal(2.0)
+A2 = RealVal(3.0)
 q1 = RealVal(5.0)
 q2 = RealVal(3.0)
 
 class Watertank(Model):
     def __init__(self):
         m  = Real('mode')
-        fx = Real('fx')
-        sx = Real('sx')
+        fx = Real('x1')
+        sx = Real('x2')
         mNext = NextVar(m)
         fxNext = NextVar(fx)
         sxNext = NextVar(sx)
@@ -45,9 +45,9 @@ class Watertank(Model):
                 m == RealVal(1): {fx: fxOn, sx: sxOn}}
 
         inv = {m == RealVal(4): And(fx > RealVal(0), sx > RealVal(0)), \
-               m == RealVal(3): And(fx > RealVal(0), sx <= A2), \
-               m == RealVal(2): And(fx <= A1, sx > RealVal(0) ), \
-               m == RealVal(1):  And(fx <= A1, sx <= A2)}
+               m == RealVal(3): And(fx > RealVal(0), sx <= RealVal(9)), \
+               m == RealVal(2): And(fx <= RealVal(9), sx > RealVal(0) ), \
+               m == RealVal(1):  And(fx <= RealVal(9), sx <= RealVal(9))}
 
         jump = {And(fx < gH, sx < gH):  And(mNext == RealVal(1), fxNext == fx, sxNext == sx), \
                And(fx < gH, sx >= gH):  And(mNext == RealVal(2), fxNext == fx, sxNext == sx), \
@@ -66,8 +66,20 @@ class Watertank(Model):
 
 if __name__ == '__main__':
     model = Watertank()
-    stlObject = STLHandler(model, testcaseSTL)
-    stlObject.generateSTL()
+#    stlObject = STLHandler(model, testcaseSTL)
+#    stlObject.generateSTL()
+
+    const = model.reach(1)
+    output = io.StringIO()
+    printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
+    printObject.callAll()
+#    print (output.getvalue())
+    dRealname=os.path.basename(os.path.realpath(sys.argv[0]))
+    dRealname = dRealname[:-3]
+    dRealname += '.smt2'
+    f = open(dRealname, 'w')
+    f.write(output.getvalue())
+    f.close()
 
 
 
