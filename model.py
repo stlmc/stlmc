@@ -34,6 +34,9 @@ class Model:
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
         modelConsts = self.reach(bound)
+        for i in range(bound-1):
+            modelConsts.extend(self.propHandler(Real('time' + str(i)), i))
+
         return partitionConsts + modelConsts + [formulaConst] 
 
 
@@ -45,25 +48,23 @@ class Model:
 
         if bound == 0:
             ts = [Real("tau_0")]
-
-        ts = [Real("tau_%s"%i) for i in range(bound)]
+        else:
+            ts = [Real("tau_%s"%i) for i in range(bound+1)]
 
         const.append(ts[0] >= RealVal(0))
+        const.append(Real('time0') == ts[0])
 
-        for i in range(bound-1):
-            const.append(Real('time' + str(i)) == (ts[i+1] - ts[i]))
-            const.extend(self.flowHandler(Real('time' + str(i)), i))
-            const.extend(self.invHandler(Real('time' + str(i)), i))
+        for i in range(bound):
+            const.append(Real('time' + str(i+1)) == (ts[i+1] - ts[i]))
+            const.append(self.flowHandler(Real('time' + str(i)), i))
+            #const.extend(self.invHandler(Real('time' + str(i)), i))
             const.extend(self.jumpHandler(i))
             const.append(ts[i] < ts[i+1])
-            const.extend(self.propHandler(Real('time' + str(i)), i))
-            const.extend(self.goalHandler(Real('time' + str(i)), i))
+            const.append(self.goalHandler(Real('time' + str(i)), i))
 
-        ts.append(Real("tau_" + str(bound)))
-        const.append(Real('time' + str(bound)) == (ts[-1] - ts[-2]))
-        const.extend(self.flowHandler(Real('time' + str(bound)), bound))
-        const.extend(self.invHandler(Real('time' + str(bound)), bound))
-        const.extend(self.goalHandler(Real('time' + str(bound)), bound))
+        const.append(self.flowHandler(Real('time' + str(bound)), bound))
+        #const.extend(self.invHandler(Real('time' + str(bound)), bound))
+        #const.append(self.goalHandler(Real('time' + str(bound)), bound))
 
         return const
 
@@ -96,11 +97,9 @@ class Model:
         return subDict
 
     def defineFlowDict(self):
-        count = 1
         flowDict = []
         for i in set(self.flow.keys()):
-            flowDict.append((self.flow[i], count))
-            count += 1
+            flowDict.append((self.flow[i], i.children[1]))
         return flowDict
 
     def flowDictionary(self, value):
@@ -112,12 +111,13 @@ class Model:
     
 
     def flowHandler(self, time, k):
-        const = [Implies(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, self.flowDictionary(self.flow[i]), self.flow[i])) for i in self.flow.keys()]
-        return const
+        const = [And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, i.children[1], self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.flow.keys()]
+        return Or(*const)
 
     def goalHandler(self, time, k):
-        const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.goal.keys()]
-        return const
+        combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 1))
+        const = [And(i.substitution(self.makeSubMode(k)), self.goal[i].substitution(combineSub)) for i in self.goal.keys()]
+        return Or(*const)
 
          
     def invHandler(self, time, k):

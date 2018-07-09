@@ -66,9 +66,9 @@ class Watertank(Model):
 
 if __name__ == '__main__':
     model = Watertank()
-#    stlObject = STLHandler(model, testcaseSTL)
-#    stlObject.generateSTL()
-
+    stlObject = STLHandler(model, testcaseSTL)
+    stlObject.generateSTL()
+    '''
     const = model.reach(1)
     output = io.StringIO()
     printObject = dRealHandler(const, output, model.varList, model.variables, model.flowDict, model.mode)
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     f = open(dRealname, 'w')
     f.write(output.getvalue())
     f.close()
-
+    '''
 
 
 

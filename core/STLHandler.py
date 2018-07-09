@@ -33,7 +33,7 @@ class STLHandler:
         return z3const
 
     def reportTest(self, formula):
-        for k in range(1,2):
+        for k in range(3,4):
             const = self.runTest(formula, k)
             s = z3.Solver()
             s.add(const)

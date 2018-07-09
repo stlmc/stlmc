@@ -1,0 +1,3 @@
+Warning: The width of interval g1_0_t = [8.4999999999999982236, 8.5] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
+Warning: The width of interval g2_0_t = [7.4999999999999991118, 7.5] is larger than the required precision but is no longer bisectable in the platform-native floating-point representation (64-bit).
+delta-sat with delta = 0.00100000000000000
