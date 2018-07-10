@@ -33,17 +33,20 @@ class STLHandler:
         return z3const
 
     def reportTest(self, formula):
-        for k in range(2,3):
+        for k in range(1,10):
             const = self.runTest(formula, k)
             s = z3.Solver()
             s.add(const)
-    #        print(s.to_smt2())
-            s.set("timeout", 10000)
+            s.set("timeout", 100000)
             checkResult = s.check()
             print(checkResult)
     #         print(",".join(["f%s"%i, str(k), str(sizeAst(z3.And(const))+sizeAst(fullSep)), str(checkResult), str(etime1-stime1),str(etime2-stime2)]), file=fle)
     #        print(s.to_smt2())
-    #        print (s.model())
+            #f = open("test.smt2", 'w')
+            #f.write(str(s.model()))
+            #f.close()
+            #if str(checkResult) != 'unsat':
+            #    print (s.model())
 
     def generateSTL(self):
         output = io.StringIO()

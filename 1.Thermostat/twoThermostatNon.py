@@ -66,7 +66,7 @@ class Thermostat(Model):
                m == RealVal(2): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1))), \
                m == RealVal(1): And(Or(fx > gT + RealVal(1), fx < gT - RealVal(1)), Or(sx > gT + RealVal(1), sx < gT - RealVal(1)))}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.01, goal)
 
 
 if __name__ == '__main__':

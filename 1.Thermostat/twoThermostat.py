@@ -31,11 +31,11 @@ class Thermostat(Model):
         constsxNext = NextVar(constsx)
         proPF = Bool('pf')
         proQF = Bool('qf')
-        proMF = Bool('proMF')
+        proMF = Bool('promf')
 
         proPS = Bool('ps')
         proQS = Bool('qs')
-        proMS = Bool('proMS')
+        proMS = Bool('proms')
 
         mode = {m: (1, 4)}
         vars = {fx: (-20, 100), sx: (-20, 100), constfx: (-20, 100), constsx: (-20, 100)}
@@ -61,10 +61,11 @@ class Thermostat(Model):
                      And(fx > gT, sx <= gT): And(modeNext == RealVal(3), fxNext == fx, sxNext == sx, constsxNext == sx, constfxNext == fx), \
                      And(fx <= gT, sx > gT): And(modeNext == RealVal(2), fxNext == fx, sxNext == sx, constfxNext == fx, constsxNext == sx)}
 
+
         prop = {proPF: fx < gT - RealVal(1), (proQF): fx >  gT + RealVal(1), proMF: m == RealVal(4), \
                proPS: sx < gT - RealVal(1), (proQS): sx >  gT + RealVal(1), proMS: m == RealVal(1)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1)
 
 
 if __name__ == '__main__':

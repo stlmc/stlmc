@@ -49,6 +49,7 @@ class Model:
             modelConsts.append(ts[i] < ts[i+1])
             modelConsts.extend(self.propHandler(Real('time' + str(i)), i))
 
+        modelConsts.extend(self.propHandler(Real('time' + str(bound)), bound))
         return partitionConsts + modelConsts + [formulaConst] 
 
 
@@ -104,7 +105,7 @@ class Model:
     def flowDictionary(self, value):
         for i in range(len(self.flowDict)):
             if str(self.flowDict[i][0]) == str(value):
-                return self.flowDict[i][1]
+                return self.flowDict[i][0]
         return -1
         
     

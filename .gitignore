@@ -2,3 +2,10 @@
 *.swp
 .DS_Store
 __pycache__
+*.smt2
+dReal-2.15.11-linux
+dReal-3.16.04.01-linux
+dReal-3.16.04-linux
+dReal-3.16.05.05-linux
+dReal-3.16.08.01-linux
+dReal-3.16.09.01-linux

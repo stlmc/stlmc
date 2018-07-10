@@ -58,9 +58,9 @@ class dRealHandler:
             elif key.find('time') != -1:
                 self.output.write(" [0, " + str(self.time) + "]")
             elif key.find('tau') != -1:
-                self.output.write(" [0, " + str(self.time * (self.k + 1)) + "]")
+                self.output.write(" [0, " + str(self.time * (self.k + 3)) + "]")
             elif key.find('TauIndex') != -1:
-                self.output.write(" [0, " + str(self.time * (self.k + 1)) + "]")
+                self.output.write(" [0, " + str(self.time * (self.k + 3)) + "]")
             else:
                 pass
             self.output.write(")\n")

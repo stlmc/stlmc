@@ -39,10 +39,10 @@ class Watertank(Model):
         vars = {fx: (0, 10), sx: (0, 10), constfx: (0, 10), constsx: (0, 10)}
         init = And(m == RealVal(1), fx >= gH - RealVal(0.1), fx <= gH + RealVal(0.1), sx >= gH - RealVal(0.1), sx <= gH + RealVal(0.1), And(constfx == fx, constsx == sx))
 
-        fxOff = -a * Sqrt(RealVal(2) * g) * Sqrt(constfx) / A1 
-        fxOn = (q1 - a * Sqrt(RealVal(2) * g) * Sqrt(constfx)) / A1
-        sxOff = (a * Sqrt(RealVal(2) * g) * (Sqrt(constfx) - Sqrt(constsx))) / A2
-        sxOn = (q2 + a * Sqrt(RealVal(2) * g) * (Sqrt(constfx) - Sqrt(constsx))) / A2
+        fxOff = -a * Sqrt(RealVal(2) * g) * constfx / (RealVal(2) * A1) 
+        fxOn = (q1 - a * Sqrt(RealVal(2) * g) * constfx) / (RealVal(2) * A1)
+        sxOff = (a * Sqrt(RealVal(2) * g) * (constfx - constsx)) / (RealVal(2) * A2)
+        sxOn = (q2 + a * Sqrt(RealVal(2) * g) * (constfx - constsx)) / (RealVal(2) * A2)
 
         flow = {m == RealVal(4): {fx: fxOff, sx: sxOff, constfx: RealVal(0), constsx: RealVal(0)}, \
                 m == RealVal(3): {fx: fxOff, sx: sxOn, constfx: RealVal(0), constsx: RealVal(0)}, \
@@ -61,7 +61,7 @@ class Watertank(Model):
 
         prop = {proPF: fx <= A1, (proQF): fx < RealVal(5), (proMF1): m == RealVal(1), proMF2: m == RealVal(2), proZF: fx > RealVal(6) }
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1)
 
 
 if __name__ == '__main__':

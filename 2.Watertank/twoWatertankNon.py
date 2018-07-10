@@ -59,9 +59,9 @@ class Watertank(Model):
                m == RealVal(2): And(Or(fx > gH + RealVal(0.1), fx < gH - RealVal(0.1)), Or(sx > gH + RealVal(0.1), sx < gH - RealVal(0.1))), \
                m == RealVal(1): And(Or(fx > gH + RealVal(0.1), fx < gH - RealVal(0.1)), Or(sx > gH + RealVal(0.1), sx < gH - RealVal(0.1)))}
 
-        prop = {proPF: fx <= A1, (proQF): fx < RealVal(5), (proMF1): m == RealVal(1), proMF2: m == RealVal(2), proZF: fx > RealVal(6) }
+        prop = {(proMF1): m == RealVal(1), proMF2: m == RealVal(2)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.5, goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.001, goal)
 
 
 if __name__ == '__main__':

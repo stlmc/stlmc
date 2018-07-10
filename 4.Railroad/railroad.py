@@ -15,65 +15,58 @@ PAST = RealVal(4)
 OPEN = RealVal(1)
 CLOSE = RealVal(2)
 
-V = RealVal(3)
+V = -RealVal(5)
 
-#Far: 1, approach: 2, Near: 3, Past: 4
 
 class Railroad(Model):
     def __init__(self):
-        tm = Real('tm')   #train mode
-        bm = Real('bm')   #bar mode
+        m = Real('mode')
         tx = Real('tx')   #train position
         bx = Real('bx')   #angualr 90: open, 0: close
-        tmNext = NextVar(tm)
+        
+        mNext = NextVar(m)
         txNext = NextVar(tx)
-        bmNext = NextVar(bm)
         bxNext = NextVar(bx)
+
         proPF = Bool('pf')
         proQF = Bool('qf')
-        mode = {tm: (1, 4), bm: (1,2)}
+        proQS = Bool('qs')
+        mode = {m: (1,8)}
         vars = {tx: (-20, 100), bx: (0, 90)}
-        init = And(tm == FAR, bm == CLOSE, bx == RealVal(0), tx >= RealVal(5), tx <= RealVal(8))
+        init = And(m == RealVal(1), bx >= RealVal(0), bx < RealVal(1), tx >= RealVal(60), tx <= RealVal(70))
 
-        flow = {And(tm == FAR, bm == CLOSE): {tx: V, bx: RealVal(0)}, \
-                And(tm == FAR, bm == OPEN): {tx: V, bx: RealVal(0)}, \
-                And(tm == APPROACH, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == APPROACH, bm == OPEN): {tx: V, bx: RealVal(5)}, \
-                And(tm == NEAR, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == NEAR, bm == OPEN): {tx: V, bx: RealVal(5)}, \
-                And(tm == PAST, bm == CLOSE): {tx: V, bx: -RealVal(5)}, \
-                And(tm == PAST, bm == OPEN): {tx: V, bx: RealVal(5)}}
+        flow = {m == RealVal(1): {tx: V, bx: RealVal(0)}, \
+                m == RealVal(2): {tx: V, bx: RealVal(5)}, \
+                m == RealVal(3): {tx: V, bx: RealVal(10)}, \
+                m == RealVal(4): {tx: V, bx: -RealVal(10)}, \
+                m == RealVal(5): {tx: V, bx: RealVal(0)}, \
+                m == RealVal(6): {tx: V, bx: RealVal(0)}}
 
 
-        inv = {And(tm == FAR, bm == CLOSE): And(tx >= RealVal(40), tx <= RealVal(95), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == FAR, bm == OPEN): And(tx >= RealVal(40), tx <= RealVal(95), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == APPROACH, bm == CLOSE):  And(tx < RealVal(40), tx >= RealVal(20), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == APPROACH, bm == OPEN): And(tx < RealVal(40), tx >= RealVal(20), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == NEAR, bm == CLOSE): And(tx < RealVal(20), tx >= RealVal(5), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == NEAR, bm == OPEN): And(tx < RealVal(20), tx >= RealVal(5), bx > RealVal(0), bx <= RealVal(90)), \
-                And(tm == PAST, bm == CLOSE): And(tx < RealVal(5), tx >= -RealVal(10), bx >= RealVal(0), bx < RealVal(90)), \
-                And(tm == PAST, bm == OPEN): And(tx < RealVal(5), tx >= -RealVal(10),
-bx > RealVal(0), bx <= RealVal(90))}
+        inv = {m == RealVal(1): And(tx >= RealVal(40), tx <= RealVal(95), bx >= RealVal(0), bx < RealVal(90)), \
+               m == RealVal(2): And(tx < RealVal(50), tx >= RealVal(20), bx > RealVal(0), bx <= RealVal(90)), \
+               m == RealVal(3): And(tx < RealVal(30), tx >= RealVal(5), bx > RealVal(0), bx <= RealVal(90)), \
+               m == RealVal(4): And(tx < RealVal(10), tx >= -RealVal(30), bx >= RealVal(0), bx < RealVal(90)), \
+               m == RealVal(5): And(bx < RealVal(5)), \
+               m == RealVal(6): bxNext == bx}
 
 
-        jump = {And(bm == CLOSE, tm == APPROACH): And(bmNext == OPEN, bxNext == bx, tmNext == tm, txNext == tx), \
-                And(bm == OPEN, tm == PAST): And(bmNext == CLOSE, tmNext == tm, bxNext == bx), \
-                And(tm == NEAR, tx < RealVal(5)): And(tmNext == PAST, bxNext == bx, txNext == tx, bmNext == bm), \
-                And(tm == PAST, tx < -RealVal(5)): And(tmNext == FAR, bxNext == bx, txNext == RealVal(85), bmNext == bm), \
-                And(tm == FAR, tx < RealVal(40)): And(tmNext == APPROACH, bxNext == bx, txNext == tx, bmNext == bm), \
-                And(tm == APPROACH,tx < RealVal(2)): And(tmNext == NEAR, bxNext == bx, txNext == tx, bmNext == bm)} 
+        jump = {And(m == RealVal(1), tx < RealVal(50), tx >= RealVal(40)): And(mNext == RealVal(2), bxNext == bx, txNext == tx), \
+                And(m == RealVal(2), tx < RealVal(30), tx >= RealVal(20)): And(mNext == RealVal(3), bxNext == bx, txNext == tx), \
+                And(m == RealVal(3), tx < RealVal(10), tx >= RealVal(5), bx <= RealVal(85)): And(mNext == RealVal(4), bxNext == bx, txNext == tx), \
+                And(m == RealVal(3), bx > RealVal(85)): And(mNext == RealVal(6), bxNext == bx, txNext == tx), \
+                And(m == RealVal(6), tx < RealVal(5)): And(mNext == RealVal(4), bxNext == bx, txNext == tx), \
+                And(m == RealVal(4), bx < RealVal(1)):  And(mNext == RealVal(5), bxNext == bx, txNext == tx), \
+                m == RealVal(5): And(mNext == RealVal(1), bxNext == bx, txNext == (RealVal(85) + tx))} 
 
-        prop = {}
+        prop = {proPF : m == RealVal(5), proQF: txNext >= tx, proQS: m == RealVal(1)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1)
 
 
 if __name__ == '__main__':
     model = Railroad()
     stlObject = STLHandler(model, testcaseSTL)
     stlObject.generateSTL()
-
-
-
 
 
