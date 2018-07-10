@@ -51,9 +51,9 @@ def subInterval(i:Interval, j:Interval):
     if not isinstance(i.right, float) or math.isfinite(i.right):
         if not isinstance(j.right, float) or math.isfinite(j.right):
             if i.rightend and not j.rightend:
-                const.append(_real(i.right) <  _real(j.left))
+                const.append(_real(i.right) <  _real(j.right))
             else:
-                const.append(_real(i.right) <= _real(j.left))
+                const.append(_real(i.right) <= _real(j.right))
     else:
         if not (isinstance(j.right, float) and math.isinf(j.right)):
             return BoolVal(False)
