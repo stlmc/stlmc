@@ -6,10 +6,11 @@ from core.stl import *
 from core.partition import *
 from core.separation import *
 from core.encoding import *
-
+import z3
+from core.z3Handler import *
 
 class Model:
-    def __init__(self, mode, variables, init, flow, inv, jump, prop, time, goal = {}):
+    def __init__(self, mode, variables, init, flow, inv, jump, prop, time, stl, filename, goal):
         self.mode = mode
         self.variables = variables
         self.init = init
@@ -19,6 +20,8 @@ class Model:
         self.prop = prop
         self.goal = goal
         self.time = time
+        self.stl = stl
+        self.filename = filename
 
         self.flowDict = self.defineFlowDict()
         prevarList = list(self.variables.keys())
@@ -35,7 +38,17 @@ class Model:
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
         self.goal = {}
-        modelConsts = self.reach(bound)
+
+        modelConsts = []
+
+        combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, 0))
+        modelConsts.append(self.init.substitution(combine))
+
+        for i in range(bound):
+            modelConsts.append(self.BeforeflowHandler(Real('time' + str(i)), i))
+
+        modelConsts.append(self.AfterflowHandler(Real('time' + str(bound)), bound))
+
         if bound == 0:
             ts = [Real("tau_0")]
         else:
@@ -44,13 +57,18 @@ class Model:
         modelConsts.append(ts[0] >= RealVal(0))
         modelConsts.append(Real('time0') == ts[0])
 
+        propSet = set() 
+        for f in partition.keys():
+            if isinstance(f, PropositionFormula):
+               propSet.add(str(f))
+
         for i in range(bound):
             modelConsts.append(Real('time' + str(i+1)) == (ts[i+1] - ts[i]))
             modelConsts.append(ts[i] < ts[i+1])
-            modelConsts.extend(self.propHandler(Real('time' + str(i)), i))
+            modelConsts.extend(self.propHandler(Real('time' + str(i)), i, propSet))
 
-        modelConsts.extend(self.propHandler(Real('time' + str(bound)), bound))
-        return partitionConsts + modelConsts + [formulaConst] 
+        modelConsts.extend(self.propHandler(Real('time' + str(bound)), bound, propSet))
+        return (modelConsts, partitionConsts, formulaConst) 
 
 
     def reach(self, bound):
@@ -63,9 +81,14 @@ class Model:
             const.append(self.BeforeflowHandler(Real('time' + str(i)), i))
 
         const.append(self.AfterflowHandler(Real('time' + str(bound)), bound))
-        if self.goal:
-            const.append(self.goalHandler(Real('time' + str(bound)), bound))
 
+        combine = self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 1))
+        const.append(self.goal.substitution(combine))
+        print(const[len(const)-1])
+#        z3model = [z3Obj(i) for i in const]
+#        s = z3.Solver()
+#        s.add(z3model)
+#        print("reach " + str(s.check()))
         return const
 
 
@@ -125,23 +148,17 @@ class Model:
         const = [And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, i.children[1], self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.flow.keys()]
         return Or(*const)
 
-    def goalHandler(self, time, k):
-        combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 1))
-        const = [And(i.substitution(self.makeSubMode(k)), self.goal[i].substitution(combineSub)) for i in self.goal.keys()]
-        return Or(*const)
-         
     def invHandler(self, time, k):
         const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.inv.keys()]
         return const
 
-    def propHandler(self, time, k):
+    def propHandler(self, time, k, propSet):
         const = []
         for i in self.prop.keys():
-            positive = []
-            negative = []
-            for j in self.flow.keys():
-                const.append(Implies(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
-                const.append(Implies(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
+            if str(i) in propSet:
+                for j in self.flow.keys():
+                    const.append(Implies(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
+                    const.append(Implies(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))))
         return const
   
 

@@ -1,5 +1,4 @@
 import enum
-
 @enum.unique
 class Type(enum.Enum):
     Bool, Int, Real = range(3)
@@ -48,6 +47,8 @@ class Node:
     def getType(self):
         return self.nodeType
 
+def sizeAst(node:Node):
+    return sum([c.size() for c in node.children])
 
 class Leaf(Node):
     def size(self):
@@ -309,6 +310,8 @@ class Integral(Node):
         return self
     def nextSub(self, subDict):
         return self
+    def size(self):
+        return 1
 
 
 class Forall(Node):
@@ -338,5 +341,7 @@ class Forall(Node):
         return self
     def nextSub(self, subDict):
         return self
+    def size(self):
+        return 1
 
 
