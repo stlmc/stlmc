@@ -1,5 +1,5 @@
 import os, sys, io
-from tcLinear import testcaseSTL
+from .tcLinear import testcaseSTL
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from core.constraint import *
 from core.dRealHandler import *

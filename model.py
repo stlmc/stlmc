@@ -37,7 +37,7 @@ class Model:
         baseV = baseEncoding(partition,baseP)
 
         formulaConst = valuation(fs[0], fs[1], Interval(True, 0.0, True, 0.0), baseV)
-        self.goal = {}
+        fsSize = sum([size(f) for f in [fs[0]]+list(fs[1].values())])
 
         modelConsts = []
 
@@ -68,7 +68,7 @@ class Model:
             modelConsts.extend(self.propHandler(Real('time' + str(i)), i, propSet))
 
         modelConsts.extend(self.propHandler(Real('time' + str(bound)), bound, propSet))
-        return (modelConsts, partitionConsts, formulaConst) 
+        return (modelConsts, partitionConsts, formulaConst, fsSize) 
 
 
     def reach(self, bound):
@@ -84,11 +84,10 @@ class Model:
 
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 1))
         const.append(self.goal.substitution(combine))
-        print(const[len(const)-1])
-#        z3model = [z3Obj(i) for i in const]
-#        s = z3.Solver()
-#        s.add(z3model)
-#        print("reach " + str(s.check()))
+        z3model = [z3Obj(i) for i in const]
+        s = z3.Solver()
+        s.add(z3model)
+        print("reach " + str(s.check()))
         return const
 
 

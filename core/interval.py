@@ -1,6 +1,7 @@
 import math
 from .base import Interval
 from .constraint import *
+import z3
 
 def inIntervalC(x:float, j:Interval):
     return (x >= j.left  if j.leftend  else x > j.left) and (x <= j.right if j.rightend else x < j.right)
@@ -97,6 +98,5 @@ def _real(x):
         raise RuntimeError("Invalid partition : " + str(x)) 
 
 
-def sizeAst(node:Node):
-    return 0
-#    return 1 + sum([sizeAst(c) for c in node.children()])
+def sizeAst(node:z3.AstRef):
+    return 1 + sum([sizeAst(c) for c in node.children()])

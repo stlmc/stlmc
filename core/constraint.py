@@ -6,16 +6,6 @@ class Type(enum.Enum):
 def Sqrt(a):
     return a ** RealVal(0.5)
 
-def cos(a):
-    return RealFunction('cos', a)
-
-def sin(a):
-    return RealFunction('sin', a)
-
-def tan(a):
-    return RealFunction('tan', a)
-
-
 class Node:
     def __init__(self, nodeType):
         self.nodeType = nodeType
@@ -46,9 +36,6 @@ class Node:
         return Neg(self)
     def getType(self):
         return self.nodeType
-
-def sizeAst(node:Node):
-    return sum([c.size() for c in node.children])
 
 class Leaf(Node):
     def size(self):
