@@ -141,10 +141,6 @@ class Model:
         const = [And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 1), self.makeSubVars(k,0), time, i.children[1], self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.flow.keys()]
         return Or(*const)
 
-    def invHandler(self, time, k):
-        const = [Implies(i.substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, 0), self.makeSubVars(k, 1), self.makeSubMode(k))) for i in self.inv.keys()]
-        return const
-
     def propHandler(self, time, k, propSet):
         const = []
         for i in self.prop.keys():
@@ -155,10 +151,4 @@ class Model:
         return const
   
 
-    def jumpHandler(self, k):
-        combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 1))
-        nextSub = self.combineDict(self.makeSubMode(k+1), self.makeSubVars(k+1, 0))
-        const = [Implies(i.substitution(combineSub), self.jump[i].substitution(combineSub)) for i in self.jump.keys()]
-        result = [i.nextSub(nextSub) for i in const]
-        return result
 
