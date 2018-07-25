@@ -16,7 +16,7 @@ c = RealVal(0.01)
 
 gT = RealVal(20)
 
-class Thermostat(Model):
+class ThermostatLinear(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')

@@ -17,7 +17,7 @@ V2Dec = RealVal(0.5)
 Keep = RealVal(1)
 #Acc: 1, Keep: 0, Dec: -1
 
-class Car(Model):
+class CarLinear(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -64,7 +64,7 @@ class Car(Model):
 
         goal = ((x2 - x1) <= RealVal(3))
 
-        super().__init__({}, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "CarReport", goal)
+        super().__init__({}, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearCarReport", goal)
 
 
 if __name__ == '__main__':

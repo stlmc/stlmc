@@ -17,7 +17,7 @@ A2 = RealVal(9.0)
 q1 = RealVal(5.0)
 q2 = RealVal(3.0)
 
-class Watertank(Model):
+class WatertankPoly(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -66,7 +66,7 @@ class Watertank(Model):
 
         goal = fx > (gH + RealVal(0.1))
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "WatertankReport", goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyWatertankReport", goal)
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ CLOSE = RealVal(2)
 V = -RealVal(5)
 
 
-class Railroad(Model):
+class RailroadLinear(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -68,7 +68,7 @@ class Railroad(Model):
 
         prop = {proPF : And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False)), proPS: tx <= RealVal(0), proQF: bx >= RealVal(80), proQS: bx <= RealVal(40)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "RailroadReport", goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearRailroadReport", goal)
 
 
 if __name__ == '__main__':

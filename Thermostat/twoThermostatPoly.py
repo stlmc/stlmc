@@ -16,7 +16,7 @@ c = RealVal(0.01)
 
 gT = RealVal(20)
 
-class Thermostat(Model):
+class ThermostatPoly(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -67,7 +67,7 @@ class Thermostat(Model):
 
         goal = fx > (gT + RealVal(1))
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "ThermostatReport", goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyThermostatReport", goal)
 
 
 if __name__ == '__main__':

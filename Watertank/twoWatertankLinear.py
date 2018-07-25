@@ -18,7 +18,7 @@ q1 = RealVal(5.0)
 q2 = RealVal(3.0)
 L = RealVal(1.0)
 
-class Watertank(Model):
+class WatertankLinear(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')

@@ -13,7 +13,7 @@ C = RealVal(0.166)
 
 #On: 1, Off: 0, Dead: -1
 
-class PolyBattery(Model):
+class BatteryPoly(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -72,7 +72,7 @@ class PolyBattery(Model):
         goal = g1 <= RealVal(1)
 
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "BatteryReport", goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyBatteryReport", goal)
 
 
 if __name__ == '__main__':

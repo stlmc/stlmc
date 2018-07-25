@@ -13,7 +13,7 @@ C = RealVal(0.166)
 
 #On: 1, Off: 0, Dead: -1
 
-class Battery(Model):
+class BatteryLinear(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')

@@ -97,7 +97,7 @@ class CarPoly(Model):
 
         goal = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < RealVal(36)
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "CarPolyReport", goal)
+        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyCarReport", goal)
 
 
 if __name__ == '__main__':

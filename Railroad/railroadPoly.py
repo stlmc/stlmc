@@ -18,7 +18,7 @@ CLO = RealVal(2)
 V = -RealVal(5)
 
 
-class PolyRailroad(Model):
+class RailroadPoly(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
