@@ -13,7 +13,7 @@ C = RealVal(0.166)
 
 #On: 1, Off: 0, Dead: -1
 
-class Battery(Model):
+class PolyBattery(Model):
     def __init__(self):
         mf = Bool('mf')
         ms = Bool('ms')
@@ -67,7 +67,7 @@ class Battery(Model):
                And(g1 > (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(And(mfNext == BoolVal(True), msNext == BoolVal(False), mtNext == BoolVal(False)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2), \
                And(g1 <= (RealVal(1) - C) * d1, g2 <= (RealVal(1) - C) * d2): And(And(mfNext == BoolVal(True), msNext == BoolVal(False), mtNext == BoolVal(True)), d1Next == d1, g1Next == g1, d2Next == d2, g2Next == g2, constd1Next == d1, constd2Next == d2)}
 
-        prop = {proPS: g1 <= RealVal(1), proPF: And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(True)), proQF: And(mf == BoolVal(False), ms == BoolVal(True), mt == BoolVal(True)), proQZ: And(mf == BoolVal(False), ms == BoolVal(True), mt == BoolVal(False)), proMT: And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(True)), proMO: And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(False)), proPZ: And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False))}
+        prop = {proPS: g1 <= RealVal(1), proPF: And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(True)), proQF: g1 >= RealVal(0), proQZ: g2 >= RealVal(0), proMT: And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(True)), proMO: And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(False)), proPZ: And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False))}
 
         goal = g1 <= RealVal(1)
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     stlObject = STLHandler(model)
     for i in range(len(model.stl)):
         formula = parseFormula(model.stl[i])
-        (a, b, c) = model.modelCheck(formula, 1)
+        (a, b, c, d) = model.modelCheck(formula, 1)
         z3model = [z3Obj(i) for i in a]
         z3partition = [z3Obj(i) for i in b]
         z3full = z3Obj(c)

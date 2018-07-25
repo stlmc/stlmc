@@ -69,12 +69,13 @@ class Car(Model):
 
 if __name__ == '__main__':
     model = Car()
+    model.reach(10)
     stlObject = STLHandler(model)
     for i in range(len(model.stl)):
         formula = parseFormula(model.stl[i])
         print(formula)
-        for j in range(1,11):
-            (a, b, c) = model.modelCheck(formula, j)
+        for j in range(1,2):
+            (a, b, c, d) = model.modelCheck(formula, j)
             z3model = [z3Obj(i) for i in a]
             z3partition = [z3Obj(i) for i in b]
             z3full = z3Obj(c)
@@ -83,10 +84,9 @@ if __name__ == '__main__':
             s.add(const)
             #print(s.to_smt2())
             stime1 = time.process_time()
-            checkresult = s.check()
+           # checkresult = s.check()
             etime1 = time.process_time()
-            print(str(j) + ":  " + str(checkresult) + " " + str(etime1 - stime1))
-
+            print(z3.simplify(z3.And(z3model)))
 
 
 

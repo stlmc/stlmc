@@ -66,7 +66,7 @@ class Railroad(Model):
 
         goal = tx <= RealVal(0)
 
-        prop = {proPF : And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False)), proPS: tx <= RealVal(0), proQF: txNext >= tx, proQS: And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(False))}
+        prop = {proPF : And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False)), proPS: tx <= RealVal(0), proQF: bx >= RealVal(80), proQS: bx <= RealVal(40)}
 
         super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "RailroadReport", goal)
 
