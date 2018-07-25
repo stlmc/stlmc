@@ -33,7 +33,6 @@ class ThermostatLinear(Model):
         proPS = Bool('ps')
         proMS = Bool('proms')
 
-        mode = {}
         vars = {fx: (-20, 100), sx: (-20, 100)}
         init = And(And(mf == BoolVal(False), ms == BoolVal(False)), fx >= gT - RealVal(0.1), fx <= gT + RealVal(0.1), sx >= gT + RealVal(3), sx <= gT + RealVal(3.5))
 
@@ -67,7 +66,7 @@ class ThermostatLinear(Model):
 
         goal = (fx > ((fx + sx) / RealVal(2)))
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearThermostatReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearThermostatReport", goal)
 
 
 if __name__ == '__main__':

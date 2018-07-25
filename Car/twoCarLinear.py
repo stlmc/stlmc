@@ -64,7 +64,7 @@ class CarLinear(Model):
 
         goal = ((x2 - x1) <= RealVal(3))
 
-        super().__init__({}, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearCarReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearCarReport", goal)
 
 
 if __name__ == '__main__':

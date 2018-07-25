@@ -36,7 +36,7 @@ class RailroadLinear(Model):
         proPS = Bool('ps')
         proQF = Bool('qf')
         proQS = Bool('qs')
-        mode = {}
+
         vars = {tx: (-20, 100), bx: (0, 90)}
         init = And(And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(False)), bx >= RealVal(0), bx < RealVal(1), tx >= RealVal(60), tx <= RealVal(70))
 
@@ -68,7 +68,7 @@ class RailroadLinear(Model):
 
         prop = {proPF : And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(False)), proPS: tx <= RealVal(0), proQF: bx >= RealVal(80), proQS: bx <= RealVal(40)}
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearRailroadReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 1, testcaseSTL, "LinearRailroadReport", goal)
 
 
 if __name__ == '__main__':

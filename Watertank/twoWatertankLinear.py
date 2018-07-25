@@ -35,7 +35,6 @@ class WatertankLinear(Model):
         proMF2 = Bool('promf2')
         proZF = Bool('zf')
 
-        mode = {}
         vars = {fx: (0, 10), sx: (0, 10)}
         init = And(mf == BoolVal(True), ms == BoolVal(True), fx >= gH - RealVal(0.1), fx <= gH + RealVal(0.1), sx >= gH - RealVal(0.1), sx <= gH + RealVal(0.1))
 
@@ -63,7 +62,7 @@ class WatertankLinear(Model):
 
         goal = fx > L 
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "LinearWatertankReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "LinearWatertankReport", goal)
 
 
 if __name__ == '__main__':

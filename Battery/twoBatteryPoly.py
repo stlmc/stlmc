@@ -42,7 +42,6 @@ class BatteryPoly(Model):
         proMO = Bool('mt')
         proPS = Bool('ps')
 
-        mode = {}
         vars = {constd1: (-10, 10), constd2: (-10, 10), d1: (-10, 10), d2: (-10, 10), g1: (-10, 10), g2: (-10, 10)}
         init = And(And(mf == BoolVal(False), ms == BoolVal(False), mt == BoolVal(False)), g1 == RealVal(8.5), d1 == RealVal(0), g2 == RealVal(7.5), d2 == RealVal(0), constd1 == d1, constd2 == d2)
 
@@ -72,7 +71,7 @@ class BatteryPoly(Model):
         goal = g1 <= RealVal(1)
 
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyBatteryReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyBatteryReport", goal)
 
 
 if __name__ == '__main__':

@@ -38,7 +38,6 @@ class WatertankPoly(Model):
         proMF2 = Bool('promf2')
         proZF = Bool('zf')
 
-        mode = {}
         vars = {fx: (0, 10), sx: (0, 10), constfx: (0, 10), constsx: (0, 10)}
         init = And(mf == BoolVal(True), ms == BoolVal(True), fx >= gH - RealVal(0.1), fx <= gH + RealVal(0.1), sx >= gH - RealVal(0.1), sx <= gH + RealVal(0.1), And(constfx == fx, constsx == sx))
 
@@ -66,7 +65,7 @@ class WatertankPoly(Model):
 
         goal = fx > (gH + RealVal(0.1))
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyWatertankReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 0.1, testcaseSTL, "PolyWatertankReport", goal)
 
 
 if __name__ == '__main__':

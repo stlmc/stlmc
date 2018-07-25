@@ -37,7 +37,6 @@ class ThermostatPoly(Model):
         proPS = Bool('ps')
         proMS = Bool('proms')
 
-        mode = {}
         vars = {fx: (-20, 100), sx: (-20, 100), constfx: (-20, 100), constsx: (-20, 100)}
         init = And(And(mf == BoolVal(False), ms == BoolVal(False)), fx >= gT - RealVal(1), fx <= gT + RealVal(1), sx >= gT - RealVal(1), sx <= gT + RealVal(1), And(constfx == fx, constsx == sx))
 
@@ -67,7 +66,7 @@ class ThermostatPoly(Model):
 
         goal = fx > (gT + RealVal(1))
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyThermostatReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyThermostatReport", goal)
 
 
 if __name__ == '__main__':

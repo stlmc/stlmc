@@ -68,7 +68,6 @@ class CarPoly(Model):
         proPZ = Bool('pz')
         proQZ = Bool('qz')
 
-        mode = {}
         vars = {v1: (0, 10), v2: (0, 10), x1: (0, 100), x2: (0, 100), y1: (0, 100), y2: (0, 100), phi1: (-1, 1), phi2: (-1, 1), theta1: (-1.5, 1.5), theta2: (-1.5, 1.5)}
         init = And(And(mf == BoolVal(False), ms == BoolVal(False)), x1 > RealVal(0), x1 < RealVal(3), x2 > RealVal(5), x2 < RealVal(10), y1 < RealVal(10), y1 > RealVal(3), y2 > RealVal(3), y2 < RealVal(10), v1 >= RealVal(1), v1 <= RealVal(3), v2 >= RealVal(3), v2 <= RealVal(4), theta1 > RealVal(0), theta1 < RealVal(1), theta2 < RealVal(0), theta2 > -RealVal(1), phi1 <= RealVal(1), phi1 >= RealVal(0), phi2 <= RealVal(0), phi2 >= -RealVal(1), And(constv1 == v1, constv2 == v2, constphi1 == phi1, constphi2 == phi2, consttheta1 == theta1, consttheta2 == theta2) ) 
 
@@ -97,7 +96,7 @@ class CarPoly(Model):
 
         goal = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < RealVal(36)
 
-        super().__init__(mode, vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyCarReport", goal)
+        super().__init__(vars, init, flow, inv, jump, prop, 1, testcaseSTL, "PolyCarReport", goal)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,11 @@
 from .constraint import *
 
 class dRealHandler:
-    def __init__(self, const, output, varList, varRange, defineODE, modeRange, time, k):
+    def __init__(self, const, output, varList, varRange, defineODE, time, k):
         self.const = const
         self.defineODE = defineODE
         self.output = output
         self.varRange = varRange
-        self.modeRange = modeRange
         self.varList = varList
         self.time =time
         self.k = k
@@ -47,8 +46,6 @@ class dRealHandler:
             mstrRange = {}
             for i in self.varRange.keys():
                 strRange[str(i.id)] = self.varRange[i]
-            for i in self.modeRange.keys():
-                mstrRange[str(i.id)] = self.modeRange[i]
             if key in strRange.keys():
                 self.output.write(" [" + str(strRange[key][0]) + ", " + str(strRange[key][1]) + "]")
             elif typeName == 'Bool':

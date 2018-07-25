@@ -1,7 +1,5 @@
 import os, sys, io
-
 from core.constraint import *
-
 from core.stl import *
 from core.partition import *
 from core.separation import *
@@ -10,8 +8,7 @@ import z3
 from core.z3Handler import *
 
 class Model:
-    def __init__(self, mode, variables, init, flow, inv, jump, prop, time, stl, filename, goal):
-        self.mode = mode
+    def __init__(self, variables, init, flow, inv, jump, prop, time, stl, filename, goal):
         self.variables = variables
         self.init = init
         self.flow = flow
@@ -27,7 +24,6 @@ class Model:
         prevarList = list(self.variables.keys())
 
         self.varList = sorted(prevarList, key = lambda x : str(x))
-        self.modeList = list(self.mode.keys())
 
     def modelCheck(self, formula, bound):
         baseP = baseCase(bound)
@@ -100,8 +96,6 @@ class Model:
     def makeSubMode(self, k):
         op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
         subDict = {}
-        for i in range(len(self.modeList)):
-            subDict[str(self.modeList[i].id)] = op[self.modeList[i].getType()](str(self.modeList[i].id) + '_' + str(k))
         for i in self.prop.keys():
             subDict[str(i.id)] = op[i.getType()](str(i.id) + '_' + str(k))
         return subDict
