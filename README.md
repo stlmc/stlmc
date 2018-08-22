@@ -9,4 +9,5 @@ Below is a brief description of some script files:
 
 - [run.py](run.py): runs all benchmarks and generates results.
 - [model.py](model.py): generates an SMT encoding of benchmarks from an initial set up to a given bound. 
+- [data](data): result data of each benchmark
 
