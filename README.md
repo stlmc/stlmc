@@ -8,5 +8,5 @@ Running these scripts requires the following libraries:
 Below is a brief description of some script files:
 
 - [run.py](run.py): runs all benchmarks and generates results.
-- [model.py](model.py): generates an SMT encoding of a thermostat hybrid system from an initial set up to a given bound. 
+- [model.py](model.py): generates an SMT encoding of benchmarks from an initial set up to a given bound. 
 
