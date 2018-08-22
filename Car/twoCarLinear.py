@@ -53,7 +53,7 @@ class CarLinear(Model):
                And(mf == BoolVal(True), ms == BoolVal(False), mt == BoolVal(True)): x2 >= x1}
 
 
-        jump = {And((x2 - x1) >= RealVal(2), (x2 - x1) < RealVal(3)): And(And(mfNext == BoolVal(False), msNext == BoolVal(False), mtNext == BoolVal(False), mtNext == BoolVal(False)), x1Next == x1, x2Next == x2), \
+        jump = {And((x2 - x1) >= RealVal(2), (x2 - x1) < RealVal(3)): And(And(mfNext == BoolVal(False), msNext == BoolVal(False), mtNext == BoolVal(False)), x1Next == x1, x2Next == x2), \
                And((x2 - x1) >= RealVal(3), (x2 - x1) < RealVal(4)): And(And(mfNext == BoolVal(False), msNext == BoolVal(False), mtNext == BoolVal(True)), x1Next == x1, x2Next == x2), \
                And((x2 - x1) >= RealVal(1), (x2 - x1) < RealVal(2)): And(And(mfNext == BoolVal(False), msNext == BoolVal(True), mtNext == BoolVal(False)), x1Next == x1, x2Next == x2), \
                And((x2 - x1) >= RealVal(4), (x2 - x1) < RealVal(5)): And(And(mfNext == BoolVal(False), msNext == BoolVal(True), mtNext == BoolVal(True)), x1Next == x1, x2Next == x2), \

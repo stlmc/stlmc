@@ -36,9 +36,9 @@ if __name__ == '__main__':
     
     for m in (modelPoly + modelLinear):
         if m in modelPoly:
-            bound = 2
+            bound = 50
         elif m in modelLinear:
-            bound = 3
+            bound = 100
         else:
             print("error")
             bound = 0

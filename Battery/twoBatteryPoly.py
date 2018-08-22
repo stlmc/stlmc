@@ -8,7 +8,7 @@ from model import *
 import math 
 from core.STLHandler import *
 
-K = RealVal(0.122)
+K = RealVal(2.0)
 C = RealVal(0.166)
 
 #On: 1, Off: 0, Dead: -1

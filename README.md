@@ -7,7 +7,7 @@ Running these scripts requires the following libraries:
 
 Below is a brief description of some script files:
 
-- [testCon.py](testCon.py): runs monitoring for STL formulas in [testcase2.py](testcase2.py) with respect to random signals.
-- [testSym.py](testSym.py): runs bounded model checking for STL formulas in [testcaseSym.py](testcaseSym.py) with respect to a model described in [model.py](model.py)
-- [model.py](model.py): generates an SMT encoding of a thermostat hybrid system from an initial set up to a given bound. 
-- [randomSTL.py](randomSTL.py): generates random STL formulas, given a set of atoms.
+- [run.py](run.py): runs all benchmarks and generates results.
+- [model.py](model.py): generates an SMT encoding of benchmarks from an initial set up to a given bound. 
+- [data](data): result data of each benchmark
+
