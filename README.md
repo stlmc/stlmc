@@ -11,3 +11,5 @@ Below is a brief description of some script files:
 - [model.py](model.py): generates an SMT encoding of benchmarks from an initial set up to a given bound. 
 - [data](data): result data of each benchmark
 
+
+Time out : 1500min(30 hours)
