@@ -1,0 +1,89 @@
+#define V -5
+
+[-20, 100] tx;
+[0, 90] bx;
+[-50, 50] vx; 
+
+[0, 1] time;
+
+{mode 1;
+
+  invt: 
+  flow:
+        d/dt[tx] = V; 
+        d/dt[bx] = vx;
+        d/dt[vx] = 0;
+  jump:
+        (and (tx < -5) (tx >= -10)) ==> 
+          @1 (and (tx' = 100 + tx) (bx' = bx) (vx' = vx));
+        (and (tx < 50) (tx >= 40)) ==>
+          @2 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx < 30) (tx >= 20)) ==>
+          @3 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx <= 0) (tx >= -5)) ==>
+          @4 (and (tx' = tx) (bx' = bx) (vx' = vx));
+}
+{mode 2;
+
+  invt: 
+  flow:
+        d/dt[tx] = V;    
+        d/dt[bx] = vx;
+        d/dt[vx] = 5;
+  jump:
+        (and (tx < -5) (tx >= -10)) ==>
+          @1 (and (tx' = 100 + tx) (bx' = bx) (vx' = vx));
+        (and (tx < 50) (tx >= 40)) ==>
+          @2 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx < 30) (tx >= 20)) ==>
+          @3 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx <= 0) (tx >= -5)) ==>
+          @4 (and (tx' = tx) (bx' = bx) (vx' = vx));
+}
+{mode 3;
+
+  invt: 
+  flow:
+        d/dt[tx] = V;    
+        d/dt[bx] = vx;
+        d/dt[vx] = 10;
+  jump:
+        (and (tx < -5) (tx >= -10)) ==>
+          @1 (and (tx' = 100 + tx) (bx' = bx) (vx' = vx));
+        (and (tx < 50) (tx >= 40)) ==>
+          @2 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx < 30) (tx >= 20)) ==>
+          @3 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx <= 0) (tx >= -5)) ==>
+          @4 (and (tx' = tx) (bx' = bx) (vx' = vx));
+}
+{mode 4;
+
+  invt: (bx > 80);
+        (bx < 90); 
+  flow:
+        d/dt[tx] = V;    
+        d/dt[bx] = vx;
+        d/dt[vx] = -5;
+  jump:
+        (and (tx < -5) (tx >= -10)) ==>
+          @1 (and (tx' = 100 + tx) (bx' = bx) (vx' = vx));
+        (and (tx < 50) (tx >= 40)) ==>
+          @2 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx < 30) (tx >= 20)) ==>
+          @3 (and (tx' = tx) (bx' = bx) (vx' = vx));
+        (and (tx <= 0) (tx >= -5)) ==>
+          @4 (and (tx' = tx) (bx' = bx) (vx' = vx));
+}
+
+
+init:
+@1  (and (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx >= 0) (vx <= 0.1)); 
+
+goal:
+@1 (tx < 0.5);
+@2 (tx < 0.5);
+@3 (tx < 0.5);
+@4 (tx < 0.5);
+ 
+

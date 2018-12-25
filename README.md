@@ -1,15 +1,16 @@
-## Syntactic separation of signal temporal logic 
+## stlMC: Signal Temporal Logic Model Checker
 
 Running these scripts requires the following libraries:
 
 1. [Z3 Python api](https://github.com/Z3Prover/z3)
 2. [ANTLR](http://www.antlr.org/) for Python 3
 
-Below is a brief description of some script files:
+Simple example can be executed using the following command
+~~~
+python3 example.py
+~~~
 
-- [run.py](run.py): runs all benchmarks and generates results.
-- [model.py](model.py): generates an SMT encoding of benchmarks from an initial set up to a given bound. 
-- [data](data): result data of each benchmark
+The following document includes the explanation of the tool and benchmark models
 
+- [readme.pdf](readme.pdf)
 
-Time out : 1500min(30 hours)

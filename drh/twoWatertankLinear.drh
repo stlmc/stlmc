@@ -1,0 +1,88 @@
+#define gH    5
+#define L     1
+#define x1Off -0.2
+#define x1On  0.5
+#define x2Off -0.3
+#define x2On  0.6
+
+[0, 10] x1;
+[0, 10] x2;
+
+[0, 1] time;
+
+{mode 1;
+
+  invt: (x1 > 0);
+        (x2 > 0);
+  flow:
+        d/dt[x1] = x1Off; 
+        d/dt[x2] = x2Off;
+  jump:
+        (and (x1 >= (x2 - L)) (x2 >= L)) ==> 
+          @1 (and (x1' = x1) (x2' = x2));
+        (and (x1 >= (L - x2)) (x2 < L)) ==>
+          @2 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 >= L)) ==>
+          @3 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 < L)) ==>
+          @4 (and (x1' = x1) (x2' = x2));
+}
+{mode 2;
+
+  invt: (x1 > 0);
+        (x2 < 8);
+  flow:
+        d/dt[x1] = x1Off;
+        d/dt[x2] = x2On;
+  jump:
+        (and (x1 >= (x2 - L)) (x2 >= L)) ==>
+          @1 (and (x1' = x1) (x2' = x2));
+        (and (x1 >= (L - x2)) (x2 < L)) ==>
+          @2 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 >= L)) ==>
+          @3 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 < L)) ==>
+          @4 (and (x1' = x1) (x2' = x2));
+}
+{mode 3;
+
+  invt: (x1 < 8);
+        (x2 > 0);
+  flow:
+        d/dt[x1] = x1On; 
+        d/dt[x2] = x2Off;
+  jump:
+        (and (x1 >= (x2 - L)) (x2 >= L)) ==>
+          @1 (and (x1' = x1) (x2' = x2));
+        (and (x1 >= (L - x2)) (x2 < L)) ==>
+          @2 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 >= L)) ==>
+          @3 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 < L)) ==>
+          @4 (and (x1' = x1) (x2' = x2));
+}
+{mode 4;
+
+  invt: (x1 < 8);
+        (x2 < 8);
+  flow:
+        d/dt[x1] = x1On;
+        d/dt[x2] = x2On;
+  jump:
+        (and (x1 >= (x2 - L)) (x2 >= L)) ==>
+          @1 (and (x1' = x1) (x2' = x2));
+        (and (x1 >= (L - x2)) (x2 < L)) ==>
+          @2 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 >= L)) ==>
+          @3 (and (x1' = x1) (x2' = x2));
+        (and (x1 < L) (x2 < L)) ==>
+          @4 (and (x1' = x1) (x2' = x2));
+}
+
+
+init:
+@4  (and (x1 >= gH - 0.1) (x1 <= gH + 0.1) (x2 >= gH - 0.1) (x2 <= gH + 0.1));
+
+goal:
+@1  (and (or (x1 < gH - 1) (x1 > gH + 1)) (or (x2 < gH - 1) (x2 > gH + 1)));
+
