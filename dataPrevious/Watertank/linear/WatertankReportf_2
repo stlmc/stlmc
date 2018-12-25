@@ -1,3 +1,0 @@
-id,k,ModelConstraintSize,FormulaConstraintSize,TranslationSize,FullSeparation,Result,Generation,Solving
-f2,1,2007,6096,1189,43,sat,0.761889159,0.027989759000000003
-f2,2,3214,11654,2616,59,sat,1.2858767480000002,19827.472737307
