@@ -17,21 +17,138 @@ class modelListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by modelParser#expression.
-    def enterExpression(self, ctx:modelParser.ExpressionContext):
+    # Enter a parse tree produced by modelParser#binaryExp.
+    def enterBinaryExp(self, ctx:modelParser.BinaryExpContext):
         pass
 
-    # Exit a parse tree produced by modelParser#expression.
-    def exitExpression(self, ctx:modelParser.ExpressionContext):
+    # Exit a parse tree produced by modelParser#binaryExp.
+    def exitBinaryExp(self, ctx:modelParser.BinaryExpContext):
         pass
 
 
-    # Enter a parse tree produced by modelParser#condition.
-    def enterCondition(self, ctx:modelParser.ConditionContext):
+    # Enter a parse tree produced by modelParser#unaryExp.
+    def enterUnaryExp(self, ctx:modelParser.UnaryExpContext):
         pass
 
-    # Exit a parse tree produced by modelParser#condition.
-    def exitCondition(self, ctx:modelParser.ConditionContext):
+    # Exit a parse tree produced by modelParser#unaryExp.
+    def exitUnaryExp(self, ctx:modelParser.UnaryExpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#parenthesisExp.
+    def enterParenthesisExp(self, ctx:modelParser.ParenthesisExpContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#parenthesisExp.
+    def exitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#constantExp.
+    def enterConstantExp(self, ctx:modelParser.ConstantExpContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#constantExp.
+    def exitConstantExp(self, ctx:modelParser.ConstantExpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#parenthesisCond.
+    def enterParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#parenthesisCond.
+    def exitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#compCond.
+    def enterCompCond(self, ctx:modelParser.CompCondContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#compCond.
+    def exitCompCond(self, ctx:modelParser.CompCondContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#binaryCond.
+    def enterBinaryCond(self, ctx:modelParser.BinaryCondContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#binaryCond.
+    def exitBinaryCond(self, ctx:modelParser.BinaryCondContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#unaryCond.
+    def enterUnaryCond(self, ctx:modelParser.UnaryCondContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#unaryCond.
+    def exitUnaryCond(self, ctx:modelParser.UnaryCondContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#constantCond.
+    def enterConstantCond(self, ctx:modelParser.ConstantCondContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#constantCond.
+    def exitConstantCond(self, ctx:modelParser.ConstantCondContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#jump_redecl_module.
+    def enterJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#jump_redecl_module.
+    def exitJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#parenthesisJump.
+    def enterParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#parenthesisJump.
+    def exitParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#binaryJump.
+    def enterBinaryJump(self, ctx:modelParser.BinaryJumpContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#binaryJump.
+    def exitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#unaryJump.
+    def enterUnaryJump(self, ctx:modelParser.UnaryJumpContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#unaryJump.
+    def exitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#conditionMod.
+    def enterConditionMod(self, ctx:modelParser.ConditionModContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#conditionMod.
+    def exitConditionMod(self, ctx:modelParser.ConditionModContext):
+        pass
+
+
+    # Enter a parse tree produced by modelParser#jumpMod.
+    def enterJumpMod(self, ctx:modelParser.JumpModContext):
+        pass
+
+    # Exit a parse tree produced by modelParser#jumpMod.
+    def exitJumpMod(self, ctx:modelParser.JumpModContext):
         pass
 
 

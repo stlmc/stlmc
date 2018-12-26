@@ -1,11 +1,11 @@
 bool a;
-int b;
+bool b;
 [-20, 100] x1;
 [-20, 100] x2;
 {
     mode:
-        a == true;
-        b > 30;
+        a == false;
+        b == false ;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -14,14 +14,61 @@ int b;
         d/dt[x2] = -0.6;
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a == true) (x1' = x1) (x2' = x2) b > 30);
+          (and (a' == false) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == false) (x1' = x1) (x2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a == false) (x1' = x1) (x2' = x2) b <= 30);
+          (and (a' == true) (b' == true) (x1' = x1) (x2' = x2));
+
 }
 {
     mode:
         a == false;
-        b <= 30;
+        b == true;
+    inv:
+        x1 > 0;
+        (x2 < 50);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = 1;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a == true;
+        b == false;
+    inv:
+        x1 < 50;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = -0.6;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a == true;
+        b == true;
     inv:
         x1 < 50;
         (x2 < 50);
@@ -30,13 +77,17 @@ int b;
         d/dt[x2] = 1;
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a == true) (x1' = x1) (x2' = x2) b > 30);
+          (and (a' == false) (b' == false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+          (and (a' == false) (b' == true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+          (and (a' == true) (b' == false) (x1' = x1) (x2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a == false) (x1' = x1) (x2' = x2) b <= 30);
-}
+          (and (a' == true) (b' == true) (x1' = x1) (x2' = x2));
 
+}
 init:
-(and (a == true) (b > 30) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1));
+(and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1));
 
 goal:
     (or (a == false) (x1 > 23)) 

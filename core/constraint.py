@@ -176,6 +176,9 @@ class Numeq(Relational):
     def __init__(self, left, right):
         super().__init__('=', left, right)
 
+class Numneq(Relational):
+    def __init__(self, left, right):
+        super().__init__('!=', left, right)
 
 class BinaryArithmetic(nonLeaf,_BinaryOp):
     def __init__(self, op, left, right):
