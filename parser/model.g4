@@ -60,7 +60,7 @@ NEXT_VAR   : VARIABLE + '\'' ;
  * Parser Rules
  */
 
-stlMC : mode_var_decl variable_var_decl (mode_module)+ init_decl goal_decl EOF ;
+stlMC : mode_var_decl+ variable_var_decl+ mode_module+ init_decl goal_decl EOF ;
 
 expression  : LPAREN expression RPAREN # parenthesisExp
             | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
@@ -79,13 +79,11 @@ condition   : LPAREN condition RPAREN  # parenthesisCond
             | VARIABLE # constantCond
               ;
 
-jump_redecl_module : NEXT_VAR EQUAL expression ; 
-             
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl  # binaryJump 
-            | op=BOOL_NOT jump_redecl jump_redecl  # unaryJump
+            | op=BOOL_NOT jump_redecl  # unaryJump
             | condition  # conditionMod
-            | jump_redecl_module # jumpMod
+            | NEXT_VAR EQUAL expression # jumpMod
               ;
 
 diff_eq : DIFF LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;

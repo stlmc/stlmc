@@ -98,15 +98,6 @@ class modelListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by modelParser#jump_redecl_module.
-    def enterJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
-        pass
-
-    # Exit a parse tree produced by modelParser#jump_redecl_module.
-    def exitJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
-        pass
-
-
     # Enter a parse tree produced by modelParser#parenthesisJump.
     def enterParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
         pass

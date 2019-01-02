@@ -7,112 +7,114 @@ import sys
 
 def serializedATN():
     with StringIO() as buf:
-        buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\64")
-        buf.write("\u00ff\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
+        buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\63")
+        buf.write("\u0101\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
         buf.write("\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16")
         buf.write("\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22\4\23\t\23")
-        buf.write("\4\24\t\24\4\25\t\25\3\2\3\2\3\2\6\2.\n\2\r\2\16\2/\3")
-        buf.write("\2\3\2\3\2\3\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3")
-        buf.write("\5\3@\n\3\3\3\3\3\3\3\7\3E\n\3\f\3\16\3H\13\3\3\4\3\4")
-        buf.write("\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3")
-        buf.write("\4\3\4\5\4[\n\4\3\5\3\5\3\5\3\5\3\6\3\6\3\6\3\6\3\6\3")
-        buf.write("\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\5\6o\n\6\3\7\3\7\3")
-        buf.write("\7\3\7\3\7\3\7\3\7\3\7\3\b\3\b\3\b\3\b\3\b\3\b\3\b\3\b")
-        buf.write("\3\t\3\t\3\t\3\t\3\t\6\t\u0086\n\t\r\t\16\t\u0087\3\n")
-        buf.write("\3\n\3\n\3\n\3\n\7\n\u008f\n\n\f\n\16\n\u0092\13\n\3\13")
-        buf.write("\3\13\3\13\6\13\u0097\n\13\r\13\16\13\u0098\3\13\6\13")
-        buf.write("\u009c\n\13\r\13\16\13\u009d\5\13\u00a0\n\13\3\f\3\f\3")
-        buf.write("\f\3\f\3\f\3\f\3\f\6\f\u00a9\n\f\r\f\16\f\u00aa\3\r\3")
-        buf.write("\r\3\r\3\r\3\16\3\16\3\16\3\16\3\17\3\17\3\17\3\17\3\17")
-        buf.write("\3\17\3\17\3\20\3\20\3\20\3\20\3\20\3\21\3\21\3\21\3\21")
-        buf.write("\3\21\3\22\3\22\3\22\3\22\5\22\u00ca\n\22\3\23\3\23\3")
-        buf.write("\23\3\23\3\23\3\23\5\23\u00d2\n\23\3\24\3\24\3\24\3\24")
-        buf.write("\3\24\3\24\5\24\u00da\n\24\3\25\3\25\3\25\3\25\3\25\3")
-        buf.write("\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25\5\25\u00ea")
-        buf.write("\n\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25\3\25")
-        buf.write("\3\25\3\25\3\25\3\25\7\25\u00fa\n\25\f\25\16\25\u00fd")
-        buf.write("\13\25\3\25\2\4\4(\26\2\4\6\b\n\f\16\20\22\24\26\30\32")
-        buf.write("\34\36 \"$&(\2\7\3\2\r\20\3\2\33\34\3\2\t\13\3\2*+\3\2")
-        buf.write("()\2\u010d\2*\3\2\2\2\4?\3\2\2\2\6Z\3\2\2\2\b\\\3\2\2")
-        buf.write("\2\nn\3\2\2\2\fp\3\2\2\2\16x\3\2\2\2\20\u0080\3\2\2\2")
-        buf.write("\22\u0089\3\2\2\2\24\u0093\3\2\2\2\26\u00a1\3\2\2\2\30")
-        buf.write("\u00ac\3\2\2\2\32\u00b0\3\2\2\2\34\u00b4\3\2\2\2\36\u00bb")
-        buf.write("\3\2\2\2 \u00c0\3\2\2\2\"\u00c9\3\2\2\2$\u00d1\3\2\2\2")
-        buf.write("&\u00d9\3\2\2\2(\u00e9\3\2\2\2*+\5\30\r\2+-\5\32\16\2")
-        buf.write(",.\5\34\17\2-,\3\2\2\2./\3\2\2\2/-\3\2\2\2/\60\3\2\2\2")
-        buf.write("\60\61\3\2\2\2\61\62\5\36\20\2\62\63\5 \21\2\63\64\7\2")
-        buf.write("\2\3\64\3\3\2\2\2\65\66\b\3\1\2\66\67\7,\2\2\678\5\4\3")
-        buf.write("\289\7-\2\29@\3\2\2\2:;\7\4\2\2;@\5\4\3\6<@\7\f\2\2=@")
-        buf.write("\7\5\2\2>@\7\6\2\2?\65\3\2\2\2?:\3\2\2\2?<\3\2\2\2?=\3")
-        buf.write("\2\2\2?>\3\2\2\2@F\3\2\2\2AB\f\7\2\2BC\t\2\2\2CE\5\4\3")
-        buf.write("\bDA\3\2\2\2EH\3\2\2\2FD\3\2\2\2FG\3\2\2\2G\5\3\2\2\2")
-        buf.write("HF\3\2\2\2IJ\7,\2\2JK\5\6\4\2KL\7-\2\2L[\3\2\2\2MN\5\4")
-        buf.write("\3\2NO\7\3\2\2OP\5\4\3\2P[\3\2\2\2QR\t\3\2\2RS\5\6\4\2")
-        buf.write("ST\5\6\4\2T[\3\2\2\2UV\7\35\2\2V[\5\6\4\2W[\7%\2\2X[\7")
-        buf.write("&\2\2Y[\7\f\2\2ZI\3\2\2\2ZM\3\2\2\2ZQ\3\2\2\2ZU\3\2\2")
-        buf.write("\2ZW\3\2\2\2ZX\3\2\2\2ZY\3\2\2\2[\7\3\2\2\2\\]\7 \2\2")
-        buf.write("]^\7\61\2\2^_\5\4\3\2_\t\3\2\2\2`a\7,\2\2ab\5\n\6\2bc")
-        buf.write("\7-\2\2co\3\2\2\2de\t\3\2\2ef\5\n\6\2fg\5\n\6\2go\3\2")
-        buf.write("\2\2hi\7\35\2\2ij\5\n\6\2jk\5\n\6\2ko\3\2\2\2lo\5\6\4")
-        buf.write("\2mo\5\b\5\2n`\3\2\2\2nd\3\2\2\2nh\3\2\2\2nl\3\2\2\2n")
-        buf.write("m\3\2\2\2o\13\3\2\2\2pq\7\37\2\2qr\7.\2\2rs\7\f\2\2st")
-        buf.write("\7/\2\2tu\7\61\2\2uv\5\4\3\2vw\7\32\2\2w\r\3\2\2\2xy\7")
-        buf.write("\f\2\2yz\7.\2\2z{\7\f\2\2{|\7/\2\2|}\7\61\2\2}~\5\4\3")
-        buf.write("\2~\177\7\32\2\2\177\17\3\2\2\2\u0080\u0081\7\21\2\2\u0081")
-        buf.write("\u0085\7\31\2\2\u0082\u0083\5\6\4\2\u0083\u0084\7\32\2")
-        buf.write("\2\u0084\u0086\3\2\2\2\u0085\u0082\3\2\2\2\u0086\u0087")
-        buf.write("\3\2\2\2\u0087\u0085\3\2\2\2\u0087\u0088\3\2\2\2\u0088")
-        buf.write("\21\3\2\2\2\u0089\u008a\7\22\2\2\u008a\u0090\7\31\2\2")
-        buf.write("\u008b\u008c\5\6\4\2\u008c\u008d\7\32\2\2\u008d\u008f")
-        buf.write("\3\2\2\2\u008e\u008b\3\2\2\2\u008f\u0092\3\2\2\2\u0090")
-        buf.write("\u008e\3\2\2\2\u0090\u0091\3\2\2\2\u0091\23\3\2\2\2\u0092")
-        buf.write("\u0090\3\2\2\2\u0093\u0094\7\23\2\2\u0094\u009f\7\31\2")
-        buf.write("\2\u0095\u0097\5\f\7\2\u0096\u0095\3\2\2\2\u0097\u0098")
-        buf.write("\3\2\2\2\u0098\u0096\3\2\2\2\u0098\u0099\3\2\2\2\u0099")
-        buf.write("\u00a0\3\2\2\2\u009a\u009c\5\16\b\2\u009b\u009a\3\2\2")
-        buf.write("\2\u009c\u009d\3\2\2\2\u009d\u009b\3\2\2\2\u009d\u009e")
-        buf.write("\3\2\2\2\u009e\u00a0\3\2\2\2\u009f\u0096\3\2\2\2\u009f")
-        buf.write("\u009b\3\2\2\2\u00a0\25\3\2\2\2\u00a1\u00a2\7\24\2\2\u00a2")
-        buf.write("\u00a8\7\31\2\2\u00a3\u00a4\5\6\4\2\u00a4\u00a5\7\36\2")
-        buf.write("\2\u00a5\u00a6\5\n\6\2\u00a6\u00a7\7\32\2\2\u00a7\u00a9")
-        buf.write("\3\2\2\2\u00a8\u00a3\3\2\2\2\u00a9\u00aa\3\2\2\2\u00aa")
-        buf.write("\u00a8\3\2\2\2\u00aa\u00ab\3\2\2\2\u00ab\27\3\2\2\2\u00ac")
-        buf.write("\u00ad\t\4\2\2\u00ad\u00ae\7\f\2\2\u00ae\u00af\7\32\2")
-        buf.write("\2\u00af\31\3\2\2\2\u00b0\u00b1\5&\24\2\u00b1\u00b2\7")
-        buf.write("\f\2\2\u00b2\u00b3\7\32\2\2\u00b3\33\3\2\2\2\u00b4\u00b5")
-        buf.write("\7\27\2\2\u00b5\u00b6\5\20\t\2\u00b6\u00b7\5\22\n\2\u00b7")
-        buf.write("\u00b8\5\24\13\2\u00b8\u00b9\5\26\f\2\u00b9\u00ba\7\30")
-        buf.write("\2\2\u00ba\35\3\2\2\2\u00bb\u00bc\7\26\2\2\u00bc\u00bd")
-        buf.write("\7\31\2\2\u00bd\u00be\5\6\4\2\u00be\u00bf\7\32\2\2\u00bf")
-        buf.write("\37\3\2\2\2\u00c0\u00c1\7\25\2\2\u00c1\u00c2\7\31\2\2")
-        buf.write("\u00c2\u00c3\5\6\4\2\u00c3\u00c4\7\32\2\2\u00c4!\3\2\2")
-        buf.write("\2\u00c5\u00c6\7,\2\2\u00c6\u00ca\7\63\2\2\u00c7\u00c8")
-        buf.write("\7.\2\2\u00c8\u00ca\7\63\2\2\u00c9\u00c5\3\2\2\2\u00c9")
-        buf.write("\u00c7\3\2\2\2\u00ca#\3\2\2\2\u00cb\u00cc\7\63\2\2\u00cc")
-        buf.write("\u00d2\7-\2\2\u00cd\u00ce\7\63\2\2\u00ce\u00d2\7/\2\2")
-        buf.write("\u00cf\u00d0\7\'\2\2\u00d0\u00d2\7-\2\2\u00d1\u00cb\3")
-        buf.write("\2\2\2\u00d1\u00cd\3\2\2\2\u00d1\u00cf\3\2\2\2\u00d2%")
-        buf.write("\3\2\2\2\u00d3\u00d4\5\"\22\2\u00d4\u00d5\7\60\2\2\u00d5")
-        buf.write("\u00d6\5$\23\2\u00d6\u00da\3\2\2\2\u00d7\u00d8\7\61\2")
-        buf.write("\2\u00d8\u00da\7\63\2\2\u00d9\u00d3\3\2\2\2\u00d9\u00d7")
-        buf.write("\3\2\2\2\u00da\'\3\2\2\2\u00db\u00dc\b\25\1\2\u00dc\u00dd")
-        buf.write("\7!\2\2\u00dd\u00ea\5(\25\f\u00de\u00df\t\5\2\2\u00df")
-        buf.write("\u00e0\5&\24\2\u00e0\u00e1\5(\25\13\u00e1\u00ea\3\2\2")
-        buf.write("\2\u00e2\u00e3\7,\2\2\u00e3\u00e4\5(\25\2\u00e4\u00e5")
-        buf.write("\7-\2\2\u00e5\u00ea\3\2\2\2\u00e6\u00ea\7\62\2\2\u00e7")
-        buf.write("\u00ea\7%\2\2\u00e8\u00ea\7&\2\2\u00e9\u00db\3\2\2\2\u00e9")
-        buf.write("\u00de\3\2\2\2\u00e9\u00e2\3\2\2\2\u00e9\u00e6\3\2\2\2")
-        buf.write("\u00e9\u00e7\3\2\2\2\u00e9\u00e8\3\2\2\2\u00ea\u00fb\3")
-        buf.write("\2\2\2\u00eb\u00ec\f\n\2\2\u00ec\u00ed\7\"\2\2\u00ed\u00fa")
-        buf.write("\5(\25\13\u00ee\u00ef\f\t\2\2\u00ef\u00f0\7#\2\2\u00f0")
-        buf.write("\u00fa\5(\25\n\u00f1\u00f2\f\b\2\2\u00f2\u00f3\t\6\2\2")
-        buf.write("\u00f3\u00f4\5&\24\2\u00f4\u00f5\5(\25\t\u00f5\u00fa\3")
-        buf.write("\2\2\2\u00f6\u00f7\f\7\2\2\u00f7\u00f8\7$\2\2\u00f8\u00fa")
-        buf.write("\5(\25\b\u00f9\u00eb\3\2\2\2\u00f9\u00ee\3\2\2\2\u00f9")
-        buf.write("\u00f1\3\2\2\2\u00f9\u00f6\3\2\2\2\u00fa\u00fd\3\2\2\2")
-        buf.write("\u00fb\u00f9\3\2\2\2\u00fb\u00fc\3\2\2\2\u00fc)\3\2\2")
-        buf.write("\2\u00fd\u00fb\3\2\2\2\23/?FZn\u0087\u0090\u0098\u009d")
-        buf.write("\u009f\u00aa\u00c9\u00d1\u00d9\u00e9\u00f9\u00fb")
+        buf.write("\4\24\t\24\3\2\6\2*\n\2\r\2\16\2+\3\2\6\2/\n\2\r\2\16")
+        buf.write("\2\60\3\2\6\2\64\n\2\r\2\16\2\65\3\2\3\2\3\2\3\2\3\3\3")
+        buf.write("\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3F\n\3\3\3\3\3\3")
+        buf.write("\3\7\3K\n\3\f\3\16\3N\13\3\3\4\3\4\3\4\3\4\3\4\3\4\3\4")
+        buf.write("\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\5\4a\n\4\3\5")
+        buf.write("\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\5")
+        buf.write("\5q\n\5\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\6\3\7\3\7\3\7\3")
+        buf.write("\7\3\7\3\7\3\7\3\7\3\b\3\b\3\b\3\b\3\b\6\b\u0088\n\b\r")
+        buf.write("\b\16\b\u0089\3\t\3\t\3\t\3\t\3\t\7\t\u0091\n\t\f\t\16")
+        buf.write("\t\u0094\13\t\3\n\3\n\3\n\6\n\u0099\n\n\r\n\16\n\u009a")
+        buf.write("\3\n\6\n\u009e\n\n\r\n\16\n\u009f\5\n\u00a2\n\n\3\13\3")
+        buf.write("\13\3\13\3\13\3\13\3\13\3\13\6\13\u00ab\n\13\r\13\16\13")
+        buf.write("\u00ac\3\f\3\f\3\f\3\f\3\r\3\r\3\r\3\r\3\16\3\16\3\16")
+        buf.write("\3\16\3\16\3\16\3\16\3\17\3\17\3\17\3\17\3\17\3\20\3\20")
+        buf.write("\3\20\3\20\3\20\3\21\3\21\3\21\3\21\5\21\u00cc\n\21\3")
+        buf.write("\22\3\22\3\22\3\22\3\22\3\22\5\22\u00d4\n\22\3\23\3\23")
+        buf.write("\3\23\3\23\3\23\3\23\5\23\u00dc\n\23\3\24\3\24\3\24\3")
+        buf.write("\24\3\24\3\24\3\24\3\24\3\24\3\24\3\24\3\24\3\24\3\24")
+        buf.write("\5\24\u00ec\n\24\3\24\3\24\3\24\3\24\3\24\3\24\3\24\3")
+        buf.write("\24\3\24\3\24\3\24\3\24\3\24\3\24\7\24\u00fc\n\24\f\24")
+        buf.write("\16\24\u00ff\13\24\3\24\2\4\4&\25\2\4\6\b\n\f\16\20\22")
+        buf.write("\24\26\30\32\34\36 \"$&\2\7\3\2\f\17\3\2\32\33\3\2\t\13")
+        buf.write("\3\2)*\3\2\'(\2\u0112\2)\3\2\2\2\4E\3\2\2\2\6`\3\2\2\2")
+        buf.write("\bp\3\2\2\2\nr\3\2\2\2\fz\3\2\2\2\16\u0082\3\2\2\2\20")
+        buf.write("\u008b\3\2\2\2\22\u0095\3\2\2\2\24\u00a3\3\2\2\2\26\u00ae")
+        buf.write("\3\2\2\2\30\u00b2\3\2\2\2\32\u00b6\3\2\2\2\34\u00bd\3")
+        buf.write("\2\2\2\36\u00c2\3\2\2\2 \u00cb\3\2\2\2\"\u00d3\3\2\2\2")
+        buf.write("$\u00db\3\2\2\2&\u00eb\3\2\2\2(*\5\26\f\2)(\3\2\2\2*+")
+        buf.write("\3\2\2\2+)\3\2\2\2+,\3\2\2\2,.\3\2\2\2-/\5\30\r\2.-\3")
+        buf.write("\2\2\2/\60\3\2\2\2\60.\3\2\2\2\60\61\3\2\2\2\61\63\3\2")
+        buf.write("\2\2\62\64\5\32\16\2\63\62\3\2\2\2\64\65\3\2\2\2\65\63")
+        buf.write("\3\2\2\2\65\66\3\2\2\2\66\67\3\2\2\2\678\5\34\17\289\5")
+        buf.write("\36\20\29:\7\2\2\3:\3\3\2\2\2;<\b\3\1\2<=\7+\2\2=>\5\4")
+        buf.write("\3\2>?\7,\2\2?F\3\2\2\2@A\7\4\2\2AF\5\4\3\6BF\7\7\2\2")
+        buf.write("CF\7\5\2\2DF\7\6\2\2E;\3\2\2\2E@\3\2\2\2EB\3\2\2\2EC\3")
+        buf.write("\2\2\2ED\3\2\2\2FL\3\2\2\2GH\f\7\2\2HI\t\2\2\2IK\5\4\3")
+        buf.write("\bJG\3\2\2\2KN\3\2\2\2LJ\3\2\2\2LM\3\2\2\2M\5\3\2\2\2")
+        buf.write("NL\3\2\2\2OP\7+\2\2PQ\5\6\4\2QR\7,\2\2Ra\3\2\2\2ST\5\4")
+        buf.write("\3\2TU\7\3\2\2UV\5\4\3\2Va\3\2\2\2WX\t\3\2\2XY\5\6\4\2")
+        buf.write("YZ\5\6\4\2Za\3\2\2\2[\\\7\34\2\2\\a\5\6\4\2]a\7$\2\2^")
+        buf.write("a\7%\2\2_a\7\7\2\2`O\3\2\2\2`S\3\2\2\2`W\3\2\2\2`[\3\2")
+        buf.write("\2\2`]\3\2\2\2`^\3\2\2\2`_\3\2\2\2a\7\3\2\2\2bc\7+\2\2")
+        buf.write("cd\5\b\5\2de\7,\2\2eq\3\2\2\2fg\t\3\2\2gh\5\b\5\2hi\5")
+        buf.write("\b\5\2iq\3\2\2\2jk\7\34\2\2kq\5\b\5\2lq\5\6\4\2mn\7\37")
+        buf.write("\2\2no\7\60\2\2oq\5\4\3\2pb\3\2\2\2pf\3\2\2\2pj\3\2\2")
+        buf.write("\2pl\3\2\2\2pm\3\2\2\2q\t\3\2\2\2rs\7\36\2\2st\7-\2\2")
+        buf.write("tu\7\7\2\2uv\7.\2\2vw\7\60\2\2wx\5\4\3\2xy\7\31\2\2y\13")
+        buf.write("\3\2\2\2z{\7\7\2\2{|\7-\2\2|}\7\7\2\2}~\7.\2\2~\177\7")
+        buf.write("\60\2\2\177\u0080\5\4\3\2\u0080\u0081\7\31\2\2\u0081\r")
+        buf.write("\3\2\2\2\u0082\u0083\7\20\2\2\u0083\u0087\7\30\2\2\u0084")
+        buf.write("\u0085\5\6\4\2\u0085\u0086\7\31\2\2\u0086\u0088\3\2\2")
+        buf.write("\2\u0087\u0084\3\2\2\2\u0088\u0089\3\2\2\2\u0089\u0087")
+        buf.write("\3\2\2\2\u0089\u008a\3\2\2\2\u008a\17\3\2\2\2\u008b\u008c")
+        buf.write("\7\21\2\2\u008c\u0092\7\30\2\2\u008d\u008e\5\6\4\2\u008e")
+        buf.write("\u008f\7\31\2\2\u008f\u0091\3\2\2\2\u0090\u008d\3\2\2")
+        buf.write("\2\u0091\u0094\3\2\2\2\u0092\u0090\3\2\2\2\u0092\u0093")
+        buf.write("\3\2\2\2\u0093\21\3\2\2\2\u0094\u0092\3\2\2\2\u0095\u0096")
+        buf.write("\7\22\2\2\u0096\u00a1\7\30\2\2\u0097\u0099\5\n\6\2\u0098")
+        buf.write("\u0097\3\2\2\2\u0099\u009a\3\2\2\2\u009a\u0098\3\2\2\2")
+        buf.write("\u009a\u009b\3\2\2\2\u009b\u00a2\3\2\2\2\u009c\u009e\5")
+        buf.write("\f\7\2\u009d\u009c\3\2\2\2\u009e\u009f\3\2\2\2\u009f\u009d")
+        buf.write("\3\2\2\2\u009f\u00a0\3\2\2\2\u00a0\u00a2\3\2\2\2\u00a1")
+        buf.write("\u0098\3\2\2\2\u00a1\u009d\3\2\2\2\u00a2\23\3\2\2\2\u00a3")
+        buf.write("\u00a4\7\23\2\2\u00a4\u00aa\7\30\2\2\u00a5\u00a6\5\6\4")
+        buf.write("\2\u00a6\u00a7\7\35\2\2\u00a7\u00a8\5\b\5\2\u00a8\u00a9")
+        buf.write("\7\31\2\2\u00a9\u00ab\3\2\2\2\u00aa\u00a5\3\2\2\2\u00ab")
+        buf.write("\u00ac\3\2\2\2\u00ac\u00aa\3\2\2\2\u00ac\u00ad\3\2\2\2")
+        buf.write("\u00ad\25\3\2\2\2\u00ae\u00af\t\4\2\2\u00af\u00b0\7\7")
+        buf.write("\2\2\u00b0\u00b1\7\31\2\2\u00b1\27\3\2\2\2\u00b2\u00b3")
+        buf.write("\5$\23\2\u00b3\u00b4\7\7\2\2\u00b4\u00b5\7\31\2\2\u00b5")
+        buf.write("\31\3\2\2\2\u00b6\u00b7\7\26\2\2\u00b7\u00b8\5\16\b\2")
+        buf.write("\u00b8\u00b9\5\20\t\2\u00b9\u00ba\5\22\n\2\u00ba\u00bb")
+        buf.write("\5\24\13\2\u00bb\u00bc\7\27\2\2\u00bc\33\3\2\2\2\u00bd")
+        buf.write("\u00be\7\25\2\2\u00be\u00bf\7\30\2\2\u00bf\u00c0\5\6\4")
+        buf.write("\2\u00c0\u00c1\7\31\2\2\u00c1\35\3\2\2\2\u00c2\u00c3\7")
+        buf.write("\24\2\2\u00c3\u00c4\7\30\2\2\u00c4\u00c5\5\6\4\2\u00c5")
+        buf.write("\u00c6\7\31\2\2\u00c6\37\3\2\2\2\u00c7\u00c8\7+\2\2\u00c8")
+        buf.write("\u00cc\7\62\2\2\u00c9\u00ca\7-\2\2\u00ca\u00cc\7\62\2")
+        buf.write("\2\u00cb\u00c7\3\2\2\2\u00cb\u00c9\3\2\2\2\u00cc!\3\2")
+        buf.write("\2\2\u00cd\u00ce\7\62\2\2\u00ce\u00d4\7,\2\2\u00cf\u00d0")
+        buf.write("\7\62\2\2\u00d0\u00d4\7.\2\2\u00d1\u00d2\7&\2\2\u00d2")
+        buf.write("\u00d4\7,\2\2\u00d3\u00cd\3\2\2\2\u00d3\u00cf\3\2\2\2")
+        buf.write("\u00d3\u00d1\3\2\2\2\u00d4#\3\2\2\2\u00d5\u00d6\5 \21")
+        buf.write("\2\u00d6\u00d7\7/\2\2\u00d7\u00d8\5\"\22\2\u00d8\u00dc")
+        buf.write("\3\2\2\2\u00d9\u00da\7\60\2\2\u00da\u00dc\7\62\2\2\u00db")
+        buf.write("\u00d5\3\2\2\2\u00db\u00d9\3\2\2\2\u00dc%\3\2\2\2\u00dd")
+        buf.write("\u00de\b\24\1\2\u00de\u00df\7 \2\2\u00df\u00ec\5&\24\f")
+        buf.write("\u00e0\u00e1\t\5\2\2\u00e1\u00e2\5$\23\2\u00e2\u00e3\5")
+        buf.write("&\24\13\u00e3\u00ec\3\2\2\2\u00e4\u00e5\7+\2\2\u00e5\u00e6")
+        buf.write("\5&\24\2\u00e6\u00e7\7,\2\2\u00e7\u00ec\3\2\2\2\u00e8")
+        buf.write("\u00ec\7\61\2\2\u00e9\u00ec\7$\2\2\u00ea\u00ec\7%\2\2")
+        buf.write("\u00eb\u00dd\3\2\2\2\u00eb\u00e0\3\2\2\2\u00eb\u00e4\3")
+        buf.write("\2\2\2\u00eb\u00e8\3\2\2\2\u00eb\u00e9\3\2\2\2\u00eb\u00ea")
+        buf.write("\3\2\2\2\u00ec\u00fd\3\2\2\2\u00ed\u00ee\f\n\2\2\u00ee")
+        buf.write("\u00ef\7!\2\2\u00ef\u00fc\5&\24\13\u00f0\u00f1\f\t\2\2")
+        buf.write("\u00f1\u00f2\7\"\2\2\u00f2\u00fc\5&\24\n\u00f3\u00f4\f")
+        buf.write("\b\2\2\u00f4\u00f5\t\6\2\2\u00f5\u00f6\5$\23\2\u00f6\u00f7")
+        buf.write("\5&\24\t\u00f7\u00fc\3\2\2\2\u00f8\u00f9\f\7\2\2\u00f9")
+        buf.write("\u00fa\7#\2\2\u00fa\u00fc\5&\24\b\u00fb\u00ed\3\2\2\2")
+        buf.write("\u00fb\u00f0\3\2\2\2\u00fb\u00f3\3\2\2\2\u00fb\u00f8\3")
+        buf.write("\2\2\2\u00fc\u00ff\3\2\2\2\u00fd\u00fb\3\2\2\2\u00fd\u00fe")
+        buf.write("\3\2\2\2\u00fe\'\3\2\2\2\u00ff\u00fd\3\2\2\2\25+\60\65")
+        buf.write("EL`p\u0089\u0092\u009a\u009f\u00a1\u00ac\u00cb\u00d3\u00db")
+        buf.write("\u00eb\u00fb\u00fd")
         return buf.getvalue()
 
 
@@ -128,103 +130,99 @@ class modelParser ( Parser ):
 
     literalNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                      "<INVALID>", "<INVALID>", "<INVALID>", "'bool'", "'int'", 
-                     "'real'", "<INVALID>", "'+'", "'-'", "'*'", "'/'", 
-                     "'mode'", "'inv'", "'flow'", "'jump'", "'goal'", "'init'", 
-                     "'{'", "'}'", "':'", "';'", "'and'", "'or'", "'not'", 
-                     "'==>'", "'d/dt'", "<INVALID>", "'~'", "'/\\'", "'\\/'", 
-                     "'->'", "'true'", "'false'", "'inf'", "'U'", "'R'", 
-                     "'[]'", "'<>'", "'('", "')'", "'['", "']'", "','", 
-                     "'='" ]
+                     "'real'", "'+'", "'-'", "'*'", "'/'", "'mode'", "'inv'", 
+                     "'flow'", "'jump'", "'goal'", "'init'", "'{'", "'}'", 
+                     "':'", "';'", "'and'", "'or'", "'not'", "'==>'", "'d/dt'", 
+                     "<INVALID>", "'~'", "'/\\'", "'\\/'", "'->'", "'true'", 
+                     "'false'", "'inf'", "'U'", "'R'", "'[]'", "'<>'", "'('", 
+                     "')'", "'['", "']'", "','", "'='" ]
 
     symbolicNames = [ "<INVALID>", "COMPARE_OP", "FUNC_OP", "INT_NUM", "REAL_NUM", 
-                      "VARIABLE_ID", "CONSTANT", "BOOL", "INT", "REAL", 
-                      "VARIABLE", "PLUS", "MINUS", "MULTIPLY", "DIVIDE", 
-                      "MODE", "INVT", "FLOW", "JUMP", "GOAL", "INIT", "LCURLY", 
-                      "RCURLY", "COLON", "SEMICOLON", "BOOL_AND", "BOOL_OR", 
-                      "BOOL_NOT", "JUMP_ARROW", "DIFF", "NEXT_VAR", "NOT", 
-                      "AND", "OR", "IMP", "TRUE", "FALSE", "INFTY", "UNTIL", 
-                      "RELEASE", "GLOBAL", "FINAL", "LPAREN", "RPAREN", 
-                      "LBRACK", "RBRACK", "COMMA", "EQUAL", "ID", "NUMBER", 
-                      "WS" ]
+                      "VARIABLE", "CONSTANT", "BOOL", "INT", "REAL", "PLUS", 
+                      "MINUS", "MULTIPLY", "DIVIDE", "MODE", "INVT", "FLOW", 
+                      "JUMP", "GOAL", "INIT", "LCURLY", "RCURLY", "COLON", 
+                      "SEMICOLON", "BOOL_AND", "BOOL_OR", "BOOL_NOT", "JUMP_ARROW", 
+                      "DIFF", "NEXT_VAR", "NOT", "AND", "OR", "IMP", "TRUE", 
+                      "FALSE", "INFTY", "UNTIL", "RELEASE", "GLOBAL", "FINAL", 
+                      "LPAREN", "RPAREN", "LBRACK", "RBRACK", "COMMA", "EQUAL", 
+                      "ID", "NUMBER", "WS" ]
 
     RULE_stlMC = 0
     RULE_expression = 1
     RULE_condition = 2
-    RULE_jump_redecl_module = 3
-    RULE_jump_redecl = 4
-    RULE_diff_eq = 5
-    RULE_sol_eq = 6
-    RULE_mode_decl = 7
-    RULE_inv_decl = 8
-    RULE_flow_decl = 9
-    RULE_jump_decl = 10
-    RULE_mode_var_decl = 11
-    RULE_variable_var_decl = 12
-    RULE_mode_module = 13
-    RULE_init_decl = 14
-    RULE_goal_decl = 15
-    RULE_leftEnd = 16
-    RULE_rightEnd = 17
-    RULE_interval = 18
-    RULE_formula = 19
+    RULE_jump_redecl = 3
+    RULE_diff_eq = 4
+    RULE_sol_eq = 5
+    RULE_mode_decl = 6
+    RULE_inv_decl = 7
+    RULE_flow_decl = 8
+    RULE_jump_decl = 9
+    RULE_mode_var_decl = 10
+    RULE_variable_var_decl = 11
+    RULE_mode_module = 12
+    RULE_init_decl = 13
+    RULE_goal_decl = 14
+    RULE_leftEnd = 15
+    RULE_rightEnd = 16
+    RULE_interval = 17
+    RULE_formula = 18
 
-    ruleNames =  [ "stlMC", "expression", "condition", "jump_redecl_module", 
-                   "jump_redecl", "diff_eq", "sol_eq", "mode_decl", "inv_decl", 
-                   "flow_decl", "jump_decl", "mode_var_decl", "variable_var_decl", 
-                   "mode_module", "init_decl", "goal_decl", "leftEnd", "rightEnd", 
-                   "interval", "formula" ]
+    ruleNames =  [ "stlMC", "expression", "condition", "jump_redecl", "diff_eq", 
+                   "sol_eq", "mode_decl", "inv_decl", "flow_decl", "jump_decl", 
+                   "mode_var_decl", "variable_var_decl", "mode_module", 
+                   "init_decl", "goal_decl", "leftEnd", "rightEnd", "interval", 
+                   "formula" ]
 
     EOF = Token.EOF
     COMPARE_OP=1
     FUNC_OP=2
     INT_NUM=3
     REAL_NUM=4
-    VARIABLE_ID=5
+    VARIABLE=5
     CONSTANT=6
     BOOL=7
     INT=8
     REAL=9
-    VARIABLE=10
-    PLUS=11
-    MINUS=12
-    MULTIPLY=13
-    DIVIDE=14
-    MODE=15
-    INVT=16
-    FLOW=17
-    JUMP=18
-    GOAL=19
-    INIT=20
-    LCURLY=21
-    RCURLY=22
-    COLON=23
-    SEMICOLON=24
-    BOOL_AND=25
-    BOOL_OR=26
-    BOOL_NOT=27
-    JUMP_ARROW=28
-    DIFF=29
-    NEXT_VAR=30
-    NOT=31
-    AND=32
-    OR=33
-    IMP=34
-    TRUE=35
-    FALSE=36
-    INFTY=37
-    UNTIL=38
-    RELEASE=39
-    GLOBAL=40
-    FINAL=41
-    LPAREN=42
-    RPAREN=43
-    LBRACK=44
-    RBRACK=45
-    COMMA=46
-    EQUAL=47
-    ID=48
-    NUMBER=49
-    WS=50
+    PLUS=10
+    MINUS=11
+    MULTIPLY=12
+    DIVIDE=13
+    MODE=14
+    INVT=15
+    FLOW=16
+    JUMP=17
+    GOAL=18
+    INIT=19
+    LCURLY=20
+    RCURLY=21
+    COLON=22
+    SEMICOLON=23
+    BOOL_AND=24
+    BOOL_OR=25
+    BOOL_NOT=26
+    JUMP_ARROW=27
+    DIFF=28
+    NEXT_VAR=29
+    NOT=30
+    AND=31
+    OR=32
+    IMP=33
+    TRUE=34
+    FALSE=35
+    INFTY=36
+    UNTIL=37
+    RELEASE=38
+    GLOBAL=39
+    FINAL=40
+    LPAREN=41
+    RPAREN=42
+    LBRACK=43
+    RBRACK=44
+    COMMA=45
+    EQUAL=46
+    ID=47
+    NUMBER=48
+    WS=49
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
@@ -240,14 +238,6 @@ class modelParser ( Parser ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
-        def mode_var_decl(self):
-            return self.getTypedRuleContext(modelParser.Mode_var_declContext,0)
-
-
-        def variable_var_decl(self):
-            return self.getTypedRuleContext(modelParser.Variable_var_declContext,0)
-
-
         def init_decl(self):
             return self.getTypedRuleContext(modelParser.Init_declContext,0)
 
@@ -258,6 +248,20 @@ class modelParser ( Parser ):
 
         def EOF(self):
             return self.getToken(modelParser.EOF, 0)
+
+        def mode_var_decl(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(modelParser.Mode_var_declContext)
+            else:
+                return self.getTypedRuleContext(modelParser.Mode_var_declContext,i)
+
+
+        def variable_var_decl(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(modelParser.Variable_var_declContext)
+            else:
+                return self.getTypedRuleContext(modelParser.Variable_var_declContext,i)
+
 
         def mode_module(self, i:int=None):
             if i is None:
@@ -277,6 +281,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitStlMC" ):
                 listener.exitStlMC(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitStlMC" ):
+                return visitor.visitStlMC(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -287,27 +297,47 @@ class modelParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 40
-            self.mode_var_decl()
-            self.state = 41
-            self.variable_var_decl()
-            self.state = 43 
+            self.state = 39 
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
-                self.state = 42
+                self.state = 38
+                self.mode_var_decl()
+                self.state = 41 
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.BOOL) | (1 << modelParser.INT) | (1 << modelParser.REAL))) != 0)):
+                    break
+
+            self.state = 44 
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while True:
+                self.state = 43
+                self.variable_var_decl()
+                self.state = 46 
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.LPAREN) | (1 << modelParser.LBRACK) | (1 << modelParser.EQUAL))) != 0)):
+                    break
+
+            self.state = 49 
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while True:
+                self.state = 48
                 self.mode_module()
-                self.state = 45 
+                self.state = 51 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if not (_la==modelParser.LCURLY):
                     break
 
-            self.state = 47
+            self.state = 53
             self.init_decl()
-            self.state = 48
+            self.state = 54
             self.goal_decl()
-            self.state = 49
+            self.state = 55
             self.match(modelParser.EOF)
         except RecognitionException as re:
             localctx.exception = re
@@ -362,6 +392,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitBinaryExp" ):
                 listener.exitBinaryExp(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBinaryExp" ):
+                return visitor.visitBinaryExp(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class UnaryExpContext(ExpressionContext):
 
@@ -383,6 +419,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitUnaryExp" ):
                 listener.exitUnaryExp(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitUnaryExp" ):
+                return visitor.visitUnaryExp(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class ParenthesisExpContext(ExpressionContext):
@@ -407,6 +449,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitParenthesisExp" ):
                 listener.exitParenthesisExp(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitParenthesisExp" ):
+                return visitor.visitParenthesisExp(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class ConstantExpContext(ExpressionContext):
 
@@ -429,6 +477,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitConstantExp" ):
                 listener.exitConstantExp(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitConstantExp" ):
+                return visitor.visitConstantExp(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
     def expression(self, _p:int=0):
@@ -441,7 +495,7 @@ class modelParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 61
+            self.state = 67
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [modelParser.LPAREN]:
@@ -449,50 +503,50 @@ class modelParser ( Parser ):
                 self._ctx = localctx
                 _prevctx = localctx
 
-                self.state = 52
+                self.state = 58
                 self.match(modelParser.LPAREN)
-                self.state = 53
+                self.state = 59
                 self.expression(0)
-                self.state = 54
+                self.state = 60
                 self.match(modelParser.RPAREN)
                 pass
             elif token in [modelParser.FUNC_OP]:
                 localctx = modelParser.UnaryExpContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 56
+                self.state = 62
                 localctx.op = self.match(modelParser.FUNC_OP)
-                self.state = 57
+                self.state = 63
                 self.expression(4)
                 pass
             elif token in [modelParser.VARIABLE]:
                 localctx = modelParser.ConstantExpContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 58
+                self.state = 64
                 self.match(modelParser.VARIABLE)
                 pass
             elif token in [modelParser.INT_NUM]:
                 localctx = modelParser.ConstantExpContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 59
+                self.state = 65
                 self.match(modelParser.INT_NUM)
                 pass
             elif token in [modelParser.REAL_NUM]:
                 localctx = modelParser.ConstantExpContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 60
+                self.state = 66
                 self.match(modelParser.REAL_NUM)
                 pass
             else:
                 raise NoViableAltException(self)
 
             self._ctx.stop = self._input.LT(-1)
-            self.state = 68
+            self.state = 74
             self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,2,self._ctx)
+            _alt = self._interp.adaptivePredict(self._input,4,self._ctx)
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                 if _alt==1:
                     if self._parseListeners is not None:
@@ -500,11 +554,11 @@ class modelParser ( Parser ):
                     _prevctx = localctx
                     localctx = modelParser.BinaryExpContext(self, modelParser.ExpressionContext(self, _parentctx, _parentState))
                     self.pushNewRecursionContext(localctx, _startState, self.RULE_expression)
-                    self.state = 63
+                    self.state = 69
                     if not self.precpred(self._ctx, 5):
                         from antlr4.error.Errors import FailedPredicateException
                         raise FailedPredicateException(self, "self.precpred(self._ctx, 5)")
-                    self.state = 64
+                    self.state = 70
                     localctx.op = self._input.LT(1)
                     _la = self._input.LA(1)
                     if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.PLUS) | (1 << modelParser.MINUS) | (1 << modelParser.MULTIPLY) | (1 << modelParser.DIVIDE))) != 0)):
@@ -512,11 +566,11 @@ class modelParser ( Parser ):
                     else:
                         self._errHandler.reportMatch(self)
                         self.consume()
-                    self.state = 65
+                    self.state = 71
                     self.expression(6) 
-                self.state = 70
+                self.state = 76
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,2,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input,4,self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re
@@ -566,6 +620,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitCompCond" ):
                 listener.exitCompCond(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitCompCond" ):
+                return visitor.visitCompCond(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class ConstantCondContext(ConditionContext):
 
@@ -587,6 +647,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitConstantCond" ):
                 listener.exitConstantCond(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitConstantCond" ):
+                return visitor.visitConstantCond(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class UnaryCondContext(ConditionContext):
@@ -610,6 +676,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitUnaryCond" ):
                 listener.exitUnaryCond(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitUnaryCond" ):
+                return visitor.visitUnaryCond(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class ParenthesisCondContext(ConditionContext):
 
@@ -632,6 +704,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitParenthesisCond" ):
                 listener.exitParenthesisCond(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitParenthesisCond" ):
+                return visitor.visitParenthesisCond(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class BinaryCondContext(ConditionContext):
@@ -660,6 +738,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitBinaryCond" ):
                 listener.exitBinaryCond(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBinaryCond" ):
+                return visitor.visitBinaryCond(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
     def condition(self):
@@ -668,35 +752,35 @@ class modelParser ( Parser ):
         self.enterRule(localctx, 4, self.RULE_condition)
         self._la = 0 # Token type
         try:
-            self.state = 88
+            self.state = 94
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,3,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input,5,self._ctx)
             if la_ == 1:
                 localctx = modelParser.ParenthesisCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 1)
-                self.state = 71
+                self.state = 77
                 self.match(modelParser.LPAREN)
-                self.state = 72
+                self.state = 78
                 self.condition()
-                self.state = 73
+                self.state = 79
                 self.match(modelParser.RPAREN)
                 pass
 
             elif la_ == 2:
                 localctx = modelParser.CompCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 2)
-                self.state = 75
+                self.state = 81
                 self.expression(0)
-                self.state = 76
+                self.state = 82
                 localctx.op = self.match(modelParser.COMPARE_OP)
-                self.state = 77
+                self.state = 83
                 self.expression(0)
                 pass
 
             elif la_ == 3:
                 localctx = modelParser.BinaryCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 3)
-                self.state = 79
+                self.state = 85
                 localctx.op = self._input.LT(1)
                 _la = self._input.LA(1)
                 if not(_la==modelParser.BOOL_AND or _la==modelParser.BOOL_OR):
@@ -704,93 +788,43 @@ class modelParser ( Parser ):
                 else:
                     self._errHandler.reportMatch(self)
                     self.consume()
-                self.state = 80
+                self.state = 86
                 self.condition()
-                self.state = 81
+                self.state = 87
                 self.condition()
                 pass
 
             elif la_ == 4:
                 localctx = modelParser.UnaryCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 4)
-                self.state = 83
+                self.state = 89
                 localctx.op = self.match(modelParser.BOOL_NOT)
-                self.state = 84
+                self.state = 90
                 self.condition()
                 pass
 
             elif la_ == 5:
                 localctx = modelParser.ConstantCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 5)
-                self.state = 85
+                self.state = 91
                 self.match(modelParser.TRUE)
                 pass
 
             elif la_ == 6:
                 localctx = modelParser.ConstantCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 6)
-                self.state = 86
+                self.state = 92
                 self.match(modelParser.FALSE)
                 pass
 
             elif la_ == 7:
                 localctx = modelParser.ConstantCondContext(self, localctx)
                 self.enterOuterAlt(localctx, 7)
-                self.state = 87
+                self.state = 93
                 self.match(modelParser.VARIABLE)
                 pass
 
 
-        except RecognitionException as re:
-            localctx.exception = re
-            self._errHandler.reportError(self, re)
-            self._errHandler.recover(self, re)
-        finally:
-            self.exitRule()
-        return localctx
-
-    class Jump_redecl_moduleContext(ParserRuleContext):
-
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
-            super().__init__(parent, invokingState)
-            self.parser = parser
-
-        def NEXT_VAR(self):
-            return self.getToken(modelParser.NEXT_VAR, 0)
-
-        def EQUAL(self):
-            return self.getToken(modelParser.EQUAL, 0)
-
-        def expression(self):
-            return self.getTypedRuleContext(modelParser.ExpressionContext,0)
-
-
-        def getRuleIndex(self):
-            return modelParser.RULE_jump_redecl_module
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterJump_redecl_module" ):
-                listener.enterJump_redecl_module(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitJump_redecl_module" ):
-                listener.exitJump_redecl_module(self)
-
-
-
-
-    def jump_redecl_module(self):
-
-        localctx = modelParser.Jump_redecl_moduleContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 6, self.RULE_jump_redecl_module)
-        try:
-            self.enterOuterAlt(localctx, 1)
-            self.state = 90
-            self.match(modelParser.NEXT_VAR)
-            self.state = 91
-            self.match(modelParser.EQUAL)
-            self.state = 92
-            self.expression(0)
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)
@@ -822,11 +856,8 @@ class modelParser ( Parser ):
             self.op = None # Token
             self.copyFrom(ctx)
 
-        def jump_redecl(self, i:int=None):
-            if i is None:
-                return self.getTypedRuleContexts(modelParser.Jump_redeclContext)
-            else:
-                return self.getTypedRuleContext(modelParser.Jump_redeclContext,i)
+        def jump_redecl(self):
+            return self.getTypedRuleContext(modelParser.Jump_redeclContext,0)
 
         def BOOL_NOT(self):
             return self.getToken(modelParser.BOOL_NOT, 0)
@@ -838,6 +869,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitUnaryJump" ):
                 listener.exitUnaryJump(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitUnaryJump" ):
+                return visitor.visitUnaryJump(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class ConditionModContext(Jump_redeclContext):
@@ -858,6 +895,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitConditionMod" ):
                 listener.exitConditionMod(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitConditionMod" ):
+                return visitor.visitConditionMod(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class JumpModContext(Jump_redeclContext):
 
@@ -865,8 +908,12 @@ class modelParser ( Parser ):
             super().__init__(parser)
             self.copyFrom(ctx)
 
-        def jump_redecl_module(self):
-            return self.getTypedRuleContext(modelParser.Jump_redecl_moduleContext,0)
+        def NEXT_VAR(self):
+            return self.getToken(modelParser.NEXT_VAR, 0)
+        def EQUAL(self):
+            return self.getToken(modelParser.EQUAL, 0)
+        def expression(self):
+            return self.getTypedRuleContext(modelParser.ExpressionContext,0)
 
 
         def enterRule(self, listener:ParseTreeListener):
@@ -876,6 +923,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitJumpMod" ):
                 listener.exitJumpMod(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitJumpMod" ):
+                return visitor.visitJumpMod(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class ParenthesisJumpContext(Jump_redeclContext):
@@ -899,6 +952,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitParenthesisJump" ):
                 listener.exitParenthesisJump(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitParenthesisJump" ):
+                return visitor.visitParenthesisJump(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class BinaryJumpContext(Jump_redeclContext):
@@ -927,32 +986,38 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitBinaryJump" ):
                 listener.exitBinaryJump(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBinaryJump" ):
+                return visitor.visitBinaryJump(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
     def jump_redecl(self):
 
         localctx = modelParser.Jump_redeclContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 8, self.RULE_jump_redecl)
+        self.enterRule(localctx, 6, self.RULE_jump_redecl)
         self._la = 0 # Token type
         try:
-            self.state = 108
+            self.state = 110
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,4,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input,6,self._ctx)
             if la_ == 1:
                 localctx = modelParser.ParenthesisJumpContext(self, localctx)
                 self.enterOuterAlt(localctx, 1)
-                self.state = 94
-                self.match(modelParser.LPAREN)
-                self.state = 95
-                self.jump_redecl()
                 self.state = 96
+                self.match(modelParser.LPAREN)
+                self.state = 97
+                self.jump_redecl()
+                self.state = 98
                 self.match(modelParser.RPAREN)
                 pass
 
             elif la_ == 2:
                 localctx = modelParser.BinaryJumpContext(self, localctx)
                 self.enterOuterAlt(localctx, 2)
-                self.state = 98
+                self.state = 100
                 localctx.op = self._input.LT(1)
                 _la = self._input.LA(1)
                 if not(_la==modelParser.BOOL_AND or _la==modelParser.BOOL_OR):
@@ -960,20 +1025,18 @@ class modelParser ( Parser ):
                 else:
                     self._errHandler.reportMatch(self)
                     self.consume()
-                self.state = 99
+                self.state = 101
                 self.jump_redecl()
-                self.state = 100
+                self.state = 102
                 self.jump_redecl()
                 pass
 
             elif la_ == 3:
                 localctx = modelParser.UnaryJumpContext(self, localctx)
                 self.enterOuterAlt(localctx, 3)
-                self.state = 102
-                localctx.op = self.match(modelParser.BOOL_NOT)
-                self.state = 103
-                self.jump_redecl()
                 self.state = 104
+                localctx.op = self.match(modelParser.BOOL_NOT)
+                self.state = 105
                 self.jump_redecl()
                 pass
 
@@ -988,7 +1051,11 @@ class modelParser ( Parser ):
                 localctx = modelParser.JumpModContext(self, localctx)
                 self.enterOuterAlt(localctx, 5)
                 self.state = 107
-                self.jump_redecl_module()
+                self.match(modelParser.NEXT_VAR)
+                self.state = 108
+                self.match(modelParser.EQUAL)
+                self.state = 109
+                self.expression(0)
                 pass
 
 
@@ -1039,28 +1106,34 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitDiff_eq" ):
                 listener.exitDiff_eq(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDiff_eq" ):
+                return visitor.visitDiff_eq(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def diff_eq(self):
 
         localctx = modelParser.Diff_eqContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 10, self.RULE_diff_eq)
+        self.enterRule(localctx, 8, self.RULE_diff_eq)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 110
-            self.match(modelParser.DIFF)
-            self.state = 111
-            self.match(modelParser.LBRACK)
             self.state = 112
-            self.match(modelParser.VARIABLE)
+            self.match(modelParser.DIFF)
             self.state = 113
-            self.match(modelParser.RBRACK)
+            self.match(modelParser.LBRACK)
             self.state = 114
-            self.match(modelParser.EQUAL)
+            self.match(modelParser.VARIABLE)
             self.state = 115
-            self.expression(0)
+            self.match(modelParser.RBRACK)
             self.state = 116
+            self.match(modelParser.EQUAL)
+            self.state = 117
+            self.expression(0)
+            self.state = 118
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1109,28 +1182,34 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitSol_eq" ):
                 listener.exitSol_eq(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitSol_eq" ):
+                return visitor.visitSol_eq(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def sol_eq(self):
 
         localctx = modelParser.Sol_eqContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 12, self.RULE_sol_eq)
+        self.enterRule(localctx, 10, self.RULE_sol_eq)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 118
-            self.match(modelParser.VARIABLE)
-            self.state = 119
-            self.match(modelParser.LBRACK)
             self.state = 120
             self.match(modelParser.VARIABLE)
             self.state = 121
-            self.match(modelParser.RBRACK)
+            self.match(modelParser.LBRACK)
             self.state = 122
-            self.match(modelParser.EQUAL)
+            self.match(modelParser.VARIABLE)
             self.state = 123
-            self.expression(0)
+            self.match(modelParser.RBRACK)
             self.state = 124
+            self.match(modelParser.EQUAL)
+            self.state = 125
+            self.expression(0)
+            self.state = 126
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1176,29 +1255,35 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitMode_decl" ):
                 listener.exitMode_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitMode_decl" ):
+                return visitor.visitMode_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def mode_decl(self):
 
         localctx = modelParser.Mode_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 14, self.RULE_mode_decl)
+        self.enterRule(localctx, 12, self.RULE_mode_decl)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 126
+            self.state = 128
             self.match(modelParser.MODE)
-            self.state = 127
+            self.state = 129
             self.match(modelParser.COLON)
-            self.state = 131 
+            self.state = 133 
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
-                self.state = 128
+                self.state = 130
                 self.condition()
-                self.state = 129
+                self.state = 131
                 self.match(modelParser.SEMICOLON)
-                self.state = 133 
+                self.state = 135 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.FUNC_OP) | (1 << modelParser.INT_NUM) | (1 << modelParser.REAL_NUM) | (1 << modelParser.VARIABLE) | (1 << modelParser.BOOL_AND) | (1 << modelParser.BOOL_OR) | (1 << modelParser.BOOL_NOT) | (1 << modelParser.TRUE) | (1 << modelParser.FALSE) | (1 << modelParser.LPAREN))) != 0)):
@@ -1248,29 +1333,35 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitInv_decl" ):
                 listener.exitInv_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitInv_decl" ):
+                return visitor.visitInv_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def inv_decl(self):
 
         localctx = modelParser.Inv_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 16, self.RULE_inv_decl)
+        self.enterRule(localctx, 14, self.RULE_inv_decl)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 135
+            self.state = 137
             self.match(modelParser.INVT)
-            self.state = 136
+            self.state = 138
             self.match(modelParser.COLON)
-            self.state = 142
+            self.state = 144
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while (((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.FUNC_OP) | (1 << modelParser.INT_NUM) | (1 << modelParser.REAL_NUM) | (1 << modelParser.VARIABLE) | (1 << modelParser.BOOL_AND) | (1 << modelParser.BOOL_OR) | (1 << modelParser.BOOL_NOT) | (1 << modelParser.TRUE) | (1 << modelParser.FALSE) | (1 << modelParser.LPAREN))) != 0):
-                self.state = 137
+                self.state = 139
                 self.condition()
-                self.state = 138
+                self.state = 140
                 self.match(modelParser.SEMICOLON)
-                self.state = 144
+                self.state = 146
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
 
@@ -1319,31 +1410,37 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitFlow_decl" ):
                 listener.exitFlow_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitFlow_decl" ):
+                return visitor.visitFlow_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def flow_decl(self):
 
         localctx = modelParser.Flow_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 18, self.RULE_flow_decl)
+        self.enterRule(localctx, 16, self.RULE_flow_decl)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 145
+            self.state = 147
             self.match(modelParser.FLOW)
-            self.state = 146
+            self.state = 148
             self.match(modelParser.COLON)
-            self.state = 157
+            self.state = 159
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [modelParser.DIFF]:
-                self.state = 148 
+                self.state = 150 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while True:
-                    self.state = 147
+                    self.state = 149
                     self.diff_eq()
-                    self.state = 150 
+                    self.state = 152 
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     if not (_la==modelParser.DIFF):
@@ -1351,13 +1448,13 @@ class modelParser ( Parser ):
 
                 pass
             elif token in [modelParser.VARIABLE]:
-                self.state = 153 
+                self.state = 155 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while True:
-                    self.state = 152
+                    self.state = 154
                     self.sol_eq()
-                    self.state = 155 
+                    self.state = 157 
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     if not (_la==modelParser.VARIABLE):
@@ -1424,33 +1521,39 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitJump_decl" ):
                 listener.exitJump_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitJump_decl" ):
+                return visitor.visitJump_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def jump_decl(self):
 
         localctx = modelParser.Jump_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 20, self.RULE_jump_decl)
+        self.enterRule(localctx, 18, self.RULE_jump_decl)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 159
+            self.state = 161
             self.match(modelParser.JUMP)
-            self.state = 160
+            self.state = 162
             self.match(modelParser.COLON)
-            self.state = 166 
+            self.state = 168 
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
-                self.state = 161
-                self.condition()
-                self.state = 162
-                self.match(modelParser.JUMP_ARROW)
                 self.state = 163
-                self.jump_redecl()
+                self.condition()
                 self.state = 164
+                self.match(modelParser.JUMP_ARROW)
+                self.state = 165
+                self.jump_redecl()
+                self.state = 166
                 self.match(modelParser.SEMICOLON)
-                self.state = 168 
+                self.state = 170 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.FUNC_OP) | (1 << modelParser.INT_NUM) | (1 << modelParser.REAL_NUM) | (1 << modelParser.VARIABLE) | (1 << modelParser.BOOL_AND) | (1 << modelParser.BOOL_OR) | (1 << modelParser.BOOL_NOT) | (1 << modelParser.TRUE) | (1 << modelParser.FALSE) | (1 << modelParser.LPAREN))) != 0)):
@@ -1496,26 +1599,32 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitMode_var_decl" ):
                 listener.exitMode_var_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitMode_var_decl" ):
+                return visitor.visitMode_var_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def mode_var_decl(self):
 
         localctx = modelParser.Mode_var_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 22, self.RULE_mode_var_decl)
+        self.enterRule(localctx, 20, self.RULE_mode_var_decl)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 170
+            self.state = 172
             _la = self._input.LA(1)
             if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << modelParser.BOOL) | (1 << modelParser.INT) | (1 << modelParser.REAL))) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
                 self.consume()
-            self.state = 171
+            self.state = 173
             self.match(modelParser.VARIABLE)
-            self.state = 172
+            self.state = 174
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1552,20 +1661,26 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitVariable_var_decl" ):
                 listener.exitVariable_var_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitVariable_var_decl" ):
+                return visitor.visitVariable_var_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def variable_var_decl(self):
 
         localctx = modelParser.Variable_var_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 24, self.RULE_variable_var_decl)
+        self.enterRule(localctx, 22, self.RULE_variable_var_decl)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 174
-            self.interval()
-            self.state = 175
-            self.match(modelParser.VARIABLE)
             self.state = 176
+            self.interval()
+            self.state = 177
+            self.match(modelParser.VARIABLE)
+            self.state = 178
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1614,26 +1729,32 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitMode_module" ):
                 listener.exitMode_module(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitMode_module" ):
+                return visitor.visitMode_module(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def mode_module(self):
 
         localctx = modelParser.Mode_moduleContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 26, self.RULE_mode_module)
+        self.enterRule(localctx, 24, self.RULE_mode_module)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 178
-            self.match(modelParser.LCURLY)
-            self.state = 179
-            self.mode_decl()
             self.state = 180
-            self.inv_decl()
+            self.match(modelParser.LCURLY)
             self.state = 181
-            self.flow_decl()
+            self.mode_decl()
             self.state = 182
-            self.jump_decl()
+            self.inv_decl()
             self.state = 183
+            self.flow_decl()
+            self.state = 184
+            self.jump_decl()
+            self.state = 185
             self.match(modelParser.RCURLY)
         except RecognitionException as re:
             localctx.exception = re
@@ -1673,22 +1794,28 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitInit_decl" ):
                 listener.exitInit_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitInit_decl" ):
+                return visitor.visitInit_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def init_decl(self):
 
         localctx = modelParser.Init_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 28, self.RULE_init_decl)
+        self.enterRule(localctx, 26, self.RULE_init_decl)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 185
-            self.match(modelParser.INIT)
-            self.state = 186
-            self.match(modelParser.COLON)
             self.state = 187
-            self.condition()
+            self.match(modelParser.INIT)
             self.state = 188
+            self.match(modelParser.COLON)
+            self.state = 189
+            self.condition()
+            self.state = 190
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1728,22 +1855,28 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitGoal_decl" ):
                 listener.exitGoal_decl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitGoal_decl" ):
+                return visitor.visitGoal_decl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def goal_decl(self):
 
         localctx = modelParser.Goal_declContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 30, self.RULE_goal_decl)
+        self.enterRule(localctx, 28, self.RULE_goal_decl)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 190
-            self.match(modelParser.GOAL)
-            self.state = 191
-            self.match(modelParser.COLON)
             self.state = 192
-            self.condition()
+            self.match(modelParser.GOAL)
             self.state = 193
+            self.match(modelParser.COLON)
+            self.state = 194
+            self.condition()
+            self.state = 195
             self.match(modelParser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re
@@ -1780,29 +1913,35 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitLeftEnd" ):
                 listener.exitLeftEnd(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitLeftEnd" ):
+                return visitor.visitLeftEnd(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def leftEnd(self):
 
         localctx = modelParser.LeftEndContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 32, self.RULE_leftEnd)
+        self.enterRule(localctx, 30, self.RULE_leftEnd)
         try:
-            self.state = 199
+            self.state = 201
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [modelParser.LPAREN]:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 195
+                self.state = 197
                 self.match(modelParser.LPAREN)
-                self.state = 196
+                self.state = 198
                 localctx.value = self.match(modelParser.NUMBER)
                 pass
             elif token in [modelParser.LBRACK]:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 197
+                self.state = 199
                 self.match(modelParser.LBRACK)
-                self.state = 198
+                self.state = 200
                 localctx.value = self.match(modelParser.NUMBER)
                 pass
             else:
@@ -1846,38 +1985,44 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitRightEnd" ):
                 listener.exitRightEnd(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitRightEnd" ):
+                return visitor.visitRightEnd(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def rightEnd(self):
 
         localctx = modelParser.RightEndContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 34, self.RULE_rightEnd)
+        self.enterRule(localctx, 32, self.RULE_rightEnd)
         try:
-            self.state = 207
+            self.state = 209
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,12,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input,14,self._ctx)
             if la_ == 1:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 201
+                self.state = 203
                 localctx.value = self.match(modelParser.NUMBER)
-                self.state = 202
+                self.state = 204
                 self.match(modelParser.RPAREN)
                 pass
 
             elif la_ == 2:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 203
+                self.state = 205
                 localctx.value = self.match(modelParser.NUMBER)
-                self.state = 204
+                self.state = 206
                 self.match(modelParser.RBRACK)
                 pass
 
             elif la_ == 3:
                 self.enterOuterAlt(localctx, 3)
-                self.state = 205
+                self.state = 207
                 localctx.value = self.match(modelParser.INFTY)
-                self.state = 206
+                self.state = 208
                 self.match(modelParser.RPAREN)
                 pass
 
@@ -1924,31 +2069,37 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitInterval" ):
                 listener.exitInterval(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitInterval" ):
+                return visitor.visitInterval(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
     def interval(self):
 
         localctx = modelParser.IntervalContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 36, self.RULE_interval)
+        self.enterRule(localctx, 34, self.RULE_interval)
         try:
-            self.state = 215
+            self.state = 217
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [modelParser.LPAREN, modelParser.LBRACK]:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 209
-                self.leftEnd()
-                self.state = 210
-                self.match(modelParser.COMMA)
                 self.state = 211
+                self.leftEnd()
+                self.state = 212
+                self.match(modelParser.COMMA)
+                self.state = 213
                 self.rightEnd()
                 pass
             elif token in [modelParser.EQUAL]:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 213
+                self.state = 215
                 self.match(modelParser.EQUAL)
-                self.state = 214
+                self.state = 216
                 self.match(modelParser.NUMBER)
                 pass
             else:
@@ -1999,6 +2150,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitParenFormula" ):
                 listener.exitParenFormula(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitParenFormula" ):
+                return visitor.visitParenFormula(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class ConstantContext(FormulaContext):
 
@@ -2018,6 +2175,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitConstant" ):
                 listener.exitConstant(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitConstant" ):
+                return visitor.visitConstant(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class BinaryTemporalFormulaContext(FormulaContext):
@@ -2049,6 +2212,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitBinaryTemporalFormula" ):
                 listener.exitBinaryTemporalFormula(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBinaryTemporalFormula" ):
+                return visitor.visitBinaryTemporalFormula(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class PropositionContext(FormulaContext):
 
@@ -2066,6 +2235,12 @@ class modelParser ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitProposition" ):
                 listener.exitProposition(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitProposition" ):
+                return visitor.visitProposition(self)
+            else:
+                return visitor.visitChildren(self)
 
 
     class BinaryFormulaContext(FormulaContext):
@@ -2096,6 +2271,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitBinaryFormula" ):
                 listener.exitBinaryFormula(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitBinaryFormula" ):
+                return visitor.visitBinaryFormula(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class UnaryTemporalFormulaContext(FormulaContext):
 
@@ -2123,6 +2304,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitUnaryTemporalFormula" ):
                 listener.exitUnaryTemporalFormula(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitUnaryTemporalFormula" ):
+                return visitor.visitUnaryTemporalFormula(self)
+            else:
+                return visitor.visitChildren(self)
+
 
     class UnaryFormulaContext(FormulaContext):
 
@@ -2145,6 +2332,12 @@ class modelParser ( Parser ):
             if hasattr( listener, "exitUnaryFormula" ):
                 listener.exitUnaryFormula(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitUnaryFormula" ):
+                return visitor.visitUnaryFormula(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
     def formula(self, _p:int=0):
@@ -2152,12 +2345,12 @@ class modelParser ( Parser ):
         _parentState = self.state
         localctx = modelParser.FormulaContext(self, self._ctx, _parentState)
         _prevctx = localctx
-        _startState = 38
-        self.enterRecursionRule(localctx, 38, self.RULE_formula, _p)
+        _startState = 36
+        self.enterRecursionRule(localctx, 36, self.RULE_formula, _p)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 231
+            self.state = 233
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [modelParser.NOT]:
@@ -2165,16 +2358,16 @@ class modelParser ( Parser ):
                 self._ctx = localctx
                 _prevctx = localctx
 
-                self.state = 218
+                self.state = 220
                 localctx.op = self.match(modelParser.NOT)
-                self.state = 219
+                self.state = 221
                 self.formula(10)
                 pass
             elif token in [modelParser.GLOBAL, modelParser.FINAL]:
                 localctx = modelParser.UnaryTemporalFormulaContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 220
+                self.state = 222
                 localctx.op = self._input.LT(1)
                 _la = self._input.LA(1)
                 if not(_la==modelParser.GLOBAL or _la==modelParser.FINAL):
@@ -2182,92 +2375,92 @@ class modelParser ( Parser ):
                 else:
                     self._errHandler.reportMatch(self)
                     self.consume()
-                self.state = 221
+                self.state = 223
                 self.interval()
-                self.state = 222
+                self.state = 224
                 self.formula(9)
                 pass
             elif token in [modelParser.LPAREN]:
                 localctx = modelParser.ParenFormulaContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 224
-                self.match(modelParser.LPAREN)
-                self.state = 225
-                self.formula(0)
                 self.state = 226
+                self.match(modelParser.LPAREN)
+                self.state = 227
+                self.formula(0)
+                self.state = 228
                 self.match(modelParser.RPAREN)
                 pass
             elif token in [modelParser.ID]:
                 localctx = modelParser.PropositionContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 228
+                self.state = 230
                 self.match(modelParser.ID)
                 pass
             elif token in [modelParser.TRUE]:
                 localctx = modelParser.ConstantContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 229
+                self.state = 231
                 self.match(modelParser.TRUE)
                 pass
             elif token in [modelParser.FALSE]:
                 localctx = modelParser.ConstantContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 230
+                self.state = 232
                 self.match(modelParser.FALSE)
                 pass
             else:
                 raise NoViableAltException(self)
 
             self._ctx.stop = self._input.LT(-1)
-            self.state = 249
+            self.state = 251
             self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,16,self._ctx)
+            _alt = self._interp.adaptivePredict(self._input,18,self._ctx)
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                 if _alt==1:
                     if self._parseListeners is not None:
                         self.triggerExitRuleEvent()
                     _prevctx = localctx
-                    self.state = 247
+                    self.state = 249
                     self._errHandler.sync(self)
-                    la_ = self._interp.adaptivePredict(self._input,15,self._ctx)
+                    la_ = self._interp.adaptivePredict(self._input,17,self._ctx)
                     if la_ == 1:
                         localctx = modelParser.BinaryFormulaContext(self, modelParser.FormulaContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 233
+                        self.state = 235
                         if not self.precpred(self._ctx, 8):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 8)")
-                        self.state = 234
+                        self.state = 236
                         localctx.op = self.match(modelParser.AND)
-                        self.state = 235
+                        self.state = 237
                         self.formula(9)
                         pass
 
                     elif la_ == 2:
                         localctx = modelParser.BinaryFormulaContext(self, modelParser.FormulaContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 236
+                        self.state = 238
                         if not self.precpred(self._ctx, 7):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 7)")
-                        self.state = 237
+                        self.state = 239
                         localctx.op = self.match(modelParser.OR)
-                        self.state = 238
+                        self.state = 240
                         self.formula(8)
                         pass
 
                     elif la_ == 3:
                         localctx = modelParser.BinaryTemporalFormulaContext(self, modelParser.FormulaContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 239
+                        self.state = 241
                         if not self.precpred(self._ctx, 6):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 6)")
-                        self.state = 240
+                        self.state = 242
                         localctx.op = self._input.LT(1)
                         _la = self._input.LA(1)
                         if not(_la==modelParser.UNTIL or _la==modelParser.RELEASE):
@@ -2275,29 +2468,29 @@ class modelParser ( Parser ):
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 241
+                        self.state = 243
                         self.interval()
-                        self.state = 242
+                        self.state = 244
                         self.formula(7)
                         pass
 
                     elif la_ == 4:
                         localctx = modelParser.BinaryFormulaContext(self, modelParser.FormulaContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 244
+                        self.state = 246
                         if not self.precpred(self._ctx, 5):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 5)")
-                        self.state = 245
+                        self.state = 247
                         localctx.op = self.match(modelParser.IMP)
-                        self.state = 246
+                        self.state = 248
                         self.formula(6)
                         pass
 
              
-                self.state = 251
+                self.state = 253
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,16,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input,18,self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re
@@ -2313,7 +2506,7 @@ class modelParser ( Parser ):
         if self._predicates == None:
             self._predicates = dict()
         self._predicates[1] = self.expression_sempred
-        self._predicates[19] = self.formula_sempred
+        self._predicates[18] = self.formula_sempred
         pred = self._predicates.get(ruleIndex, None)
         if pred is None:
             raise Exception("No predicate with index:" + str(ruleIndex))
