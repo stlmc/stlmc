@@ -86,24 +86,26 @@ condition   : LPAREN condition RPAREN  # parenthesisCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
-            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # binaryJump 
+            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multiJump 
             | op=BOOL_NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
             | NEXT_VAR EQUAL expression # jumpMod
               ;
 
 var_type    : (BOOL | INT | REAL) ;
-var_range   : (LBRACK VALUE RBRACK) | ((LBRACK | LPAREN) VALUE COMMA VALUE (RPAREN | RBRACK)) ;
+var_range   : LBRACK VALUE RBRACK #exactValue
+            | leftParen=(LBRACK | LPAREN) leftVal=VALUE COMMA rightVal=VALUE rightParen=(RPAREN | RBRACK)  # variableRange
+            ;
 
 diff_eq : DIFF LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
 sol_eq : VARIABLE LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
 
+mode_module : LCURLY mode_decl inv_decl flow_decl jump_decl RCURLY ;
+
 mode_decl : MODE COLON (condition SEMICOLON)+ ;
 inv_decl  : INVT COLON (condition SEMICOLON)* ;
 flow_decl : FLOW COLON (diff_eq+ | sol_eq+) ;
-jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ; 
-
-mode_module : LCURLY mode_decl inv_decl flow_decl jump_decl RCURLY ;
+jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ;
  
 init_decl : INIT COLON condition SEMICOLON ;
 goal_decl : GOAL COLON condition SEMICOLON ;

@@ -74,8 +74,8 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#binaryJump.
-    def visitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
+    # Visit a parse tree produced by modelParser#multiJump.
+    def visitMultiJump(self, ctx:modelParser.MultiJumpContext):
         return self.visitChildren(ctx)
 
 
@@ -99,8 +99,13 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#var_range.
-    def visitVar_range(self, ctx:modelParser.Var_rangeContext):
+    # Visit a parse tree produced by modelParser#exactValue.
+    def visitExactValue(self, ctx:modelParser.ExactValueContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#variableRange.
+    def visitVariableRange(self, ctx:modelParser.VariableRangeContext):
         return self.visitChildren(ctx)
 
 
@@ -111,6 +116,11 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#sol_eq.
     def visitSol_eq(self, ctx:modelParser.Sol_eqContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#mode_module.
+    def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
         return self.visitChildren(ctx)
 
 
@@ -131,11 +141,6 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#jump_decl.
     def visitJump_decl(self, ctx:modelParser.Jump_declContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#mode_module.
-    def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
         return self.visitChildren(ctx)
 
 
