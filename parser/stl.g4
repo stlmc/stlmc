@@ -1,10 +1,10 @@
 grammar stl;
 
-NOT : '~'   ;
-AND : '/\\' ;
-OR  : '\\/' ;
-IMP : '->'  ;
- 
+NOT   : '~'   ;
+AND   : '/\\' ;
+OR    : '\\/' ;
+IMP   : '->'  ;
+
 TRUE  : 'true'  ;
 FALSE : 'false' ;
 INFTY : 'inf'   ;
@@ -20,12 +20,12 @@ LBRACK : '[' ;
 RBRACK : ']' ;
 COMMA  : ',' ;
 EQUAL  : '=' ;
-  
-ID      : [a-z]+DIGIT* ;
-NUMBER  : DIGIT*'.'?DIGIT+([eE][-+]?DIGIT+)? ; 
-WS      : [ \r\t\u000C\n]+ -> skip ; 
 
 fragment DIGIT      : [0-9] ;
+  
+ID      : [a-z]+ DIGIT* ;
+NUMBER  : DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ; 
+WS      : (' ' | '\t' | '\n')+ -> skip ; 
 
 leftEnd
  : LPAREN value=NUMBER

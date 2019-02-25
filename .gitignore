@@ -1,3 +1,4 @@
+parser/visitor/*
 *.pyc
 *.swp
 .DS_Store

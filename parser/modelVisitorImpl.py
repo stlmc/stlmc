@@ -101,7 +101,7 @@ class modelVisitorImpl(modelVisitor):
 
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
         return Not(self.visit(ctx.condition()))
-         
+
     def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
         if ctx.TRUE():
             return BoolVal(True) 
@@ -133,11 +133,11 @@ class modelVisitorImpl(modelVisitor):
     def visitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
         return Not(self.visit(ctx.jump_redecl()))
 
-    def visitConditionMod(self, ctx:modelParser.ConditionModContext):
-        return self.visit(ctx.condition())
-
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
         return NextVar(ctx.NEXT_VAR().getText()) == self.visit(ctx.expression())
+
+    def visitBoolVar(self, ctx:modelParser.BoolVarContext):
+        return ctx.getText()
 
     '''
     flow differential equation type
@@ -250,9 +250,11 @@ class modelVisitorImpl(modelVisitor):
         for i in range(len(ctx.variable_var_decl())):
             resultVar.update(self.visit(ctx.variable_var_decl()[i])) 
 #        return Model(self.resultMode, resultVar, self.visit(ctx.init_decl()), self.resultFlow, self.resultInv, self.resultJump) 
+        for i in range(len(ctx.mode_var_decl())):
+            self.visit(ctx.mode_var_decl()[i])
         print(self.resultMode)
         print(resultVar)
-        print(self.visit(ctx.init_decl()))
+        print(self.visit(ctx.init_decl().getText()))
         print(self.resultFlow)
         print(self.resultInv)
         print(self.resultJump) 

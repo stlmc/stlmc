@@ -14,6 +14,16 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by modelParser#mode_var_decl.
+    def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#variable_var_decl.
+    def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by modelParser#binaryExp.
     def visitBinaryExp(self, ctx:modelParser.BinaryExpContext):
         return self.visitChildren(ctx)
@@ -74,13 +84,23 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#conditionMod.
-    def visitConditionMod(self, ctx:modelParser.ConditionModContext):
+    # Visit a parse tree produced by modelParser#boolVar.
+    def visitBoolVar(self, ctx:modelParser.BoolVarContext):
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by modelParser#jumpMod.
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#var_type.
+    def visitVar_type(self, ctx:modelParser.Var_typeContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#var_range.
+    def visitVar_range(self, ctx:modelParser.Var_rangeContext):
         return self.visitChildren(ctx)
 
 
@@ -111,16 +131,6 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#jump_decl.
     def visitJump_decl(self, ctx:modelParser.Jump_declContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#mode_var_decl.
-    def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#variable_var_decl.
-    def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
         return self.visitChildren(ctx)
 
 

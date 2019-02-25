@@ -6,10 +6,10 @@ fragment GT        : '>' ;
 fragment GTE       : '>=' ;
 fragment LT        : '<' ;
 fragment LTE       : '<=' ; 
-fragment EQ        : '==' ;
+fragment COM_EQ    : '==' ;
 fragment NEQ       : '!=' ;
 
-COMPARE_OP : (GT | GTE | LT | LTE | EQ | NEQ) ;
+COMPARE_OP : (GT | GTE | LT | LTE | COM_EQ | NEQ) ;
 
 fragment OP_SIN    : 'sin' ;
 fragment OP_COS    : 'cos' ;
@@ -22,20 +22,16 @@ FUNC_OP : (OP_SIN | OP_COS | OP_LOG | OP_SQRT) ;
 fragment LOWERCASE : [a-z] ;
 fragment UPPERCASE : [A-Z] ;
 
-INT_NUM : DIGIT+([eE][-+]?DIGIT+)?;
-REAL_NUM : DIGIT*'.'?DIGIT+([eE][-+]?DIGIT+)?;
-
-VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
-CONSTANT     : TRUE | FALSE | INT_NUM | REAL_NUM ;
-
-BOOL : 'bool' ;
-INT  : 'int' ;
-REAL : 'real' ;
-
 PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
 DIVIDE   : '/' ;
+
+VALUE : MINUS? NUMBER ;
+
+BOOL : 'bool' ;
+INT  : 'int' ;
+REAL : 'real' ;
 
 MODE : 'mode' ;
 INVT : 'inv' ;
@@ -44,16 +40,22 @@ JUMP : 'jump' ;
 GOAL : 'goal' ;
 INIT : 'init' ;
 
+BOOL_AND   : 'and' ;
+BOOL_OR    : 'or'  ;
+BOOL_NOT   : 'not' ;
+JUMP_ARROW : '==>' ;
+DIFF       : 'd/dt' ;
+
+VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
+
+UNARY_CONST : (MINUS | PLUS)? NUMBER ; 
+UNARY_VAR   : (MINUS | PLUS)? VARIABLE ;
+
 LCURLY : '{' ;
 RCURLY : '}' ;
 COLON : ':' ;
 SEMICOLON : ';' ;
 
-BOOL_AND   : 'and' ;
-BOOL_OR    : 'or'  ;
-BOOL_NOT   : 'not' ;   
-JUMP_ARROW : '==>' ;
-DIFF       : 'd/dt' ;
 NEXT_VAR   : VARIABLE + '\'' ;
 
 /*
@@ -62,17 +64,21 @@ NEXT_VAR   : VARIABLE + '\'' ;
 
 stlMC : mode_var_decl+ variable_var_decl+ mode_module+ init_decl goal_decl EOF ;
 
+mode_var_decl     : var_type VARIABLE SEMICOLON ;
+variable_var_decl : var_range VARIABLE SEMICOLON ;
+
 expression  : LPAREN expression RPAREN # parenthesisExp
             | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
             | VARIABLE  # constantExp
-            | INT_NUM # constantExp
-            | REAL_NUM # constantExp
+            | VALUE     # constantExp
+            | TRUE      # constantExp
+            | FALSE     # constantExp    
               ;
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
             | expression op=COMPARE_OP expression  # compCond
-            | op=(BOOL_AND | BOOL_OR) condition condition  #binaryCond 
+            | op=(BOOL_AND | BOOL_OR) condition condition+  #binaryCond 
             | op=BOOL_NOT condition  # unaryCond
             | TRUE  # constantCond
             | FALSE  # constantCond
@@ -80,11 +86,14 @@ condition   : LPAREN condition RPAREN  # parenthesisCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
-            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl  # binaryJump 
+            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # binaryJump 
             | op=BOOL_NOT jump_redecl  # unaryJump
-            | condition  # conditionMod
+            | NEXT_VAR # boolVar
             | NEXT_VAR EQUAL expression # jumpMod
               ;
+
+var_type    : (BOOL | INT | REAL) ;
+var_range   : (LBRACK VALUE RBRACK) | ((LBRACK | LPAREN) VALUE COMMA VALUE (RPAREN | RBRACK)) ;
 
 diff_eq : DIFF LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
 sol_eq : VARIABLE LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
@@ -93,9 +102,6 @@ mode_decl : MODE COLON (condition SEMICOLON)+ ;
 inv_decl  : INVT COLON (condition SEMICOLON)* ;
 flow_decl : FLOW COLON (diff_eq+ | sol_eq+) ;
 jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ; 
-
-mode_var_decl     : (BOOL | INT | REAL) VARIABLE SEMICOLON ;
-variable_var_decl : interval VARIABLE SEMICOLON ;
 
 mode_module : LCURLY mode_decl inv_decl flow_decl jump_decl RCURLY ;
  
