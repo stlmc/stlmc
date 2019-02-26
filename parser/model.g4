@@ -1,6 +1,10 @@
 grammar model ;
 
-import stl ;
+
+TRUE  : 'true'  ;
+FALSE : 'false' ;
+
+fragment DIGIT      : [0-9] ;
 
 fragment GT        : '>' ;
 fragment GTE       : '>=' ;
@@ -28,6 +32,7 @@ MULTIPLY : '*' ;
 DIVIDE   : '/' ;
 
 VALUE : MINUS? NUMBER ;
+NUMBER  : DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 
 BOOL : 'bool' ;
 INT  : 'int' ;
@@ -55,8 +60,15 @@ LCURLY : '{' ;
 RCURLY : '}' ;
 COLON : ':' ;
 SEMICOLON : ';' ;
+LPAREN : '(' ;
+RPAREN : ')' ;
+LBRACK : '[' ;
+RBRACK : ']' ;
+COMMA  : ',' ;
+EQUAL  : '=' ;
 
-NEXT_VAR   : VARIABLE + '\'' ;
+NEXT_VAR   : VARIABLE '\'' ;
+WS      : (' ' | '\t' | '\n')+ -> skip ;
 
 /*
  * Parser Rules
@@ -70,10 +82,10 @@ variable_var_decl : var_range VARIABLE SEMICOLON ;
 expression  : LPAREN expression RPAREN # parenthesisExp
             | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
-            | VARIABLE  # constantExp
             | VALUE     # constantExp
             | TRUE      # constantExp
             | FALSE     # constantExp    
+            | VARIABLE  # constantExp
               ;
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
@@ -109,4 +121,4 @@ jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ;
  
 init_decl : INIT COLON condition SEMICOLON ;
 goal_decl : GOAL COLON condition SEMICOLON ;
-
+ 

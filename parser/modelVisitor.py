@@ -11,11 +11,13 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#stlMC.
     def visitStlMC(self, ctx:modelParser.StlMCContext):
+        print("1")
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by modelParser#mode_var_decl.
     def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
+        print("2")
         return self.visitChildren(ctx)
 
 
@@ -151,56 +153,6 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#goal_decl.
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#leftEnd.
-    def visitLeftEnd(self, ctx:modelParser.LeftEndContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#rightEnd.
-    def visitRightEnd(self, ctx:modelParser.RightEndContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#interval.
-    def visitInterval(self, ctx:modelParser.IntervalContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#parenFormula.
-    def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#constant.
-    def visitConstant(self, ctx:modelParser.ConstantContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#binaryTemporalFormula.
-    def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#proposition.
-    def visitProposition(self, ctx:modelParser.PropositionContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#binaryFormula.
-    def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#unaryTemporalFormula.
-    def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#unaryFormula.
-    def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):
         return self.visitChildren(ctx)
 
 

@@ -14,7 +14,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     Expression 
     '''
-    def visitParenExp(self, ctx:modelParser.ParenthesisExpContext):
+    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext):
         print("paren")
         return self.visit(ctx.expression())
 
@@ -45,19 +45,23 @@ class modelVisitorImpl(modelVisitor):
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
         print("Const exp")
-        if ctx.VARIABLE():
-            return self.contVar[ctx.VARIABLE().getText()] 
-        elif ctx.INT_NUM() :
-            return IntVal(ctx.getText())
-        elif ctx.REAL_NUM() :
-            return RealVal(ctx.getText())
+        if ctx.VALUE():
+            return Real(ctx.VALUE().getText())
+        elif ctx.TRUE():
+            return BoolVal(True)
+        elif ctx.FALSE():
+            return BoolVal(False)
+        elif ctx.VARIABLE():
+            if ctx.VARIABLE().getText() in self.contVar.keys():
+                return self.contVar[ctx.VARIABLE().getText()] 
+            else:
+                return self.modeVar[ctx.VARIABLE().getText()]
         else:
-            raise "something wrong"
-
+            pass
     '''
     Condition
     '''
-    def visitParenCond(self, ctx:modelParser.ParenthesisCondContext):
+    def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         print("paren condition")
         return self.visit(ctx.condition())
 
@@ -85,7 +89,7 @@ class modelVisitorImpl(modelVisitor):
         print("Binary condition")
         prop = list()
         for i in range(len(ctx.condition())):
-            prop.append(self.visit(i))
+            prop.append(self.visit(ctx.condition()[i]))
         return {'and' : And, 'or' : Or}[ctx.op.text](*prop)
 
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
@@ -109,7 +113,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     jump redeclaration
     '''
-    def visitParenJump(self, ctx:modelParser.ParenthesisJumpContext):
+    def visitParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
         print("Paren jump")
         return self.visit(ctx.jump_redecl())
 
@@ -136,7 +140,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow differential equation type
     '''
-    def visitDiffEq(self, ctx:modelParser.Diff_eqContext):
+    def visitDiff_Eq(self, ctx:modelParser.Diff_eqContext):
         print("differential equation")
         result = dict()
         result[self.contVar[ctx.VARIABLE().getText()]] = self.visit(ctx.expression())
@@ -145,7 +149,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow solution equation type
     '''
-    def visitSolEq(self, ctx:modelParser.Sol_eqContext):
+    def visitSol_Eq(self, ctx:modelParser.Sol_eqContext):
         print("Solution equation")
         result = dict()
         result[self.contVar[ctx.VARIABLE()[0].getText()]] = self.visit(ctx.expression())
@@ -154,21 +158,27 @@ class modelVisitorImpl(modelVisitor):
     '''
     mode declaration
     '''
-    def visitModeDecl(self, ctx:modelParser.Mode_declContext):
+    def visitMode_decl(self, ctx:modelParser.Mode_declContext):
         print("mode declaration")
-        return And(*self.visit(ctx.condition()))
+        element = list()
+        for i in range(len(ctx.condition())):
+            element.append(self.visit(ctx.condition()[i]))
+        return And(*element)
  
     '''
     invariant declaration
     '''
-    def visitInvDecl(self, ctx:modelParser.Inv_declContext):
+    def visitInv_decl(self, ctx:modelParser.Inv_declContext):
         print("invariant declaration")
-        return And(*self.visit(ctx.condition()))
+        element = list()
+        for i in range(len(ctx.condition())):
+            element.append(self.visit(ctx.condition()[i]))
+        return And(*element)
 
     '''
     flow declaration
     '''
-    def visitFlowDecl(self, ctx:modelParser.Flow_declContext):
+    def visitFlow_decl(self, ctx:modelParser.Flow_declContext):
         print("flow declaration")
         resultDict = dict()
         if ctx.diff_eq():
@@ -185,7 +195,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     jump declaration
     '''
-    def visitJumpDecl(self, ctx:modelParser.Jump_declContext):
+    def visitJump_decl(self, ctx:modelParser.Jump_declContext):
         print("jump declaration")
         result = dict()
         result[self.visit(ctx.condition())] = self.visit(ctx.jump_redecl())
@@ -195,19 +205,19 @@ class modelVisitorImpl(modelVisitor):
     '''
     mode_var_decl
     '''
-    def visitModeVarDecl(self, ctx:modelParser.Mode_var_declContext):
+    def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
         return {ctx.VARIABLE().getText() : {'bool' : Bool, 'int' : Int, 'real' : Real}[ctx.var_type().getText()](ctx.VARIABLE().getText())}
 
     '''
     exact value variable
     '''
-    def visitExactValueDecl(self, ctx:modelParser.ExactValueContext):
+    def visitExactValue(self, ctx:modelParser.ExactValueContext):
         return [ctx.VALUE().getText(), ctx.VALUE().getText()]
 
     '''
     variable range
     '''
-    def visitVariableRangeDecl(self, ctx:modelParser.VariableRangeContext):
+    def visitVariableRange(self, ctx:modelParser.VariableRangeContext):
         '''
         if ctx.leftParen.text == '(' :
             if ctx.rightParen.text == ')' :
@@ -226,19 +236,19 @@ class modelVisitorImpl(modelVisitor):
     '''
     variable_var_declaration
     '''
-    def visitVariableVarDecl(self, ctx:modelParser.Variable_var_declContext):
-        return {ctx.VARIABLE().getText() : self.visitVariableRangeDecl(ctx.var_range())}
+    def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
+        return {ctx.VARIABLE().getText() : self.visit(ctx.var_range())}
   
     '''
     mode module
     '''
-    def visitModeModule(self, ctx:modelParser.Mode_moduleContext):
+    def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
         print("Mode mulde decl")
         inv = dict()
         flow = dict()
         jump = dict()
 
-        modeCond = self.visitModeDecl(ctx.mode_decl())
+        modeCond = self.visit(ctx.mode_decl())
         inv[modeCond] = self.visit(ctx.inv_decl())
         flow[modeCond] = self.visit(ctx.flow_decl())
         jump[modeCond] = self.visit(ctx.jump_decl())         
@@ -248,7 +258,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     initial declaration
     '''
-    def visitInitDecl(self, ctx:modelParser.Init_declContext):
+    def visitInit_decl(self, ctx:modelParser.Init_declContext):
         print("Init decl")
         return self.visit(ctx.condition())
 
@@ -256,9 +266,9 @@ class modelVisitorImpl(modelVisitor):
     '''
     goal declaration
     '''
-    def visitGoalDecl(self, ctx:modelParser.Goal_declContext):
+    def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
         print("Goal decl")
-        return self.visit(ctx.condition())
+#        return self.visit(ctx.condition())
             
     def dictAppend(origin, append):
         for k in append.keys():
@@ -275,31 +285,24 @@ class modelVisitorImpl(modelVisitor):
 
         prop = dict()
 
-#        t = self.visit(ctx.mode_var_decl()[0])
+
+             
         for i in range(len(ctx.mode_var_decl())):
-            self.modeVar.update(self.visitModeVarDecl(ctx.mode_var_decl()[i]))
+            self.modeVar.update(self.visit(ctx.mode_var_decl()[i]))
 
 
         for i in range(len(ctx.variable_var_decl())):
-            appendDict = self.visitVariableVarDecl(ctx.variable_var_decl()[i])
+            appendDict = self.visit(ctx.variable_var_decl()[i])
             self.contVar.update(appendDict)
 
         for i in range(len(ctx.mode_module())):
-            (invEle, flowEle, jumpEle) = self.visitModeModule(ctx.mode_module())
+            (invEle, flowEle, jumpEle) = self.visit(ctx.mode_module()[i])
             inv = self.dictAppend(inv, invEle)
             flow = self.dictAppend(flow, flowEle)
             jump = self.dictAppend(jump, jumpEle)
 
-        init = self.visit(ctx.init_decl())
-        goal = self.visit(ctx.goal_decl())
+#        init = self.visit(ctx.init_decl())
+#        goal = self.visit(ctx.goal_decl())
 
 #        return Model(self.contVar, init, flow, inv, jump, prop)
 
-        '''
-        print(self.resultMode)
-        print(resultVar)
-        print(self.visit(ctx.init_decl().getText()))
-        print(self.resultFlow)
-        print(self.resultInv)
-        print(self.resultJump) 
-        '''
