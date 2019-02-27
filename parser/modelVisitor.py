@@ -11,13 +11,11 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#stlMC.
     def visitStlMC(self, ctx:modelParser.StlMCContext):
-        print("1")
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by modelParser#mode_var_decl.
     def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
-        print("2")
         return self.visitChildren(ctx)
 
 
