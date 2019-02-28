@@ -83,12 +83,11 @@ expression  : LPAREN expression RPAREN # parenthesisExp
             | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
             | VALUE     # constantExp
-            | TRUE      # constantExp
-            | FALSE     # constantExp    
             | VARIABLE  # constantExp
               ;
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
+            | condition op=COMPARE_OP condition #compCond
             | expression op=COMPARE_OP expression  # compCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  #binaryCond 
             | op=BOOL_NOT condition  # unaryCond

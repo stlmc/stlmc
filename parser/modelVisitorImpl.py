@@ -1,6 +1,7 @@
 from antlr4 import *
 from modelParser import modelParser
 from modelVisitor import modelVisitor
+from model import *
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from stlMC import *
@@ -8,68 +9,48 @@ from stlMC import *
 class modelVisitorImpl(modelVisitor):
 
     def __init__(self):
-        self.modeVar = dict()
-        self.contVar = dict()
-
+        pass
 
     '''
     stlMC
     '''
     def visitStlMC(self, ctx:modelParser.StlMCContext):
-        flow = dict()
-        inv = dict()
-        jump = dict()
-
-        prop = dict()
-
-
+        modesDecl = list()
+        varsDecl = list()
+        modeModuleDecl = list()
 
         for i in range(len(ctx.mode_var_decl())):
-            self.modeVar.update(self.visit(ctx.mode_var_decl()[i]))
-
+            modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
 
         for i in range(len(ctx.variable_var_decl())):
-            appendDict = self.visit(ctx.variable_var_decl()[i])
-            self.contVar.update(appendDict)
+            varsDecl.append(self.visit(ctx.variable_var_decl()[i]))
 
         for i in range(len(ctx.mode_module())):
-            (invEle, flowEle, jumpEle) = self.visit(ctx.mode_module()[i])
-            inv = self.dictAppend(inv, invEle)
-            flow = self.dictAppend(flow, flowEle)
-            jump = self.dictAppend(jump, jumpEle)
+            modeModuleDecl.append(self.visit(ctx.mode_module()[i]))
 
-#        init = self.visit(ctx.init_decl())
-#        goal = self.visit(ctx.goal_decl())
+        init = self.visit(ctx.init_decl())
+        goal = self.visit(ctx.goal_decl())
 
-#        return Model(self.contVar, init, flow, inv, jump, prop)
+        return StlMC(modeDecl, varsDecl, modeModeleDecl, init, goal) 
 
 
     '''
     mode_var_decl
     '''
     def visitMode_var_decl(self, ctx:modelParser.Mode_var_declContext):
-        return {ctx.VARIABLE().getText() : {'bool' : Bool, 'int' : Int, 'real' : Real}[ctx.var_type().getText()](ctx.VARIABLE().getText())}
+        return Mode(ctx.var_type().getText(), ctx.VARIABLE().getText())
 
     '''
     variable_var_declaration
     '''
     def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
-        return {ctx.VARIABLE().getText() : self.visit(ctx.var_range())}
+        return ContVar(self.visit(ctx.var_range()), ctx.VARIABLE().getText())
 
     def visitBinaryExp(self, ctx:modelParser.BinaryExpContext):
         op = ctx.op.text
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
-        if op == '+':
-            return left + right
-        elif op == '-':
-            return left - right
-        elif op == '*':
-            return left * right
-        elif op == '/':
-            return left / right
-        else:
-            raise "Not yet in Binary Expression"
+        return BinaryExp(op, left, right)
 
     '''
     Not yet
@@ -81,21 +62,7 @@ class modelVisitorImpl(modelVisitor):
         return self.visit(ctx.expression())
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
-        if ctx.VALUE():
-            return Real(ctx.VALUE().getText())
-        elif ctx.TRUE():
-            return BoolVal(True)
-        elif ctx.FALSE():
-            return BoolVal(False)
-        elif ctx.VARIABLE():
-            if ctx.VARIABLE().getText() in self.contVar.keys():
-                return Real(ctx.VARIABLE().getText())
-            elif ctx.VARIABLE().getTecxt() in self.modeVar.keys():
-                return self.modeVar[ctx.VARIABLE().getText()]
-            else:
-                raise "Used undeclared variable"
-        else:
-            pass
+        return ctx.VARIABLE().getText()
 
     def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         return self.visit(ctx.condition())
@@ -168,25 +135,26 @@ class modelVisitorImpl(modelVisitor):
     exact value variable
     '''
     def visitExactValue(self, ctx:modelParser.ExactValueContext):
-        return [ctx.VALUE().getText(), ctx.VALUE().getText()]
+        number = float(ctx.VALUE().getText())
+        return (True, number, number, True) 
 
     '''
     variable range
     '''
     def visitVariableRange(self, ctx:modelParser.VariableRangeContext):
-        '''
+        leftBracket = True
+        rightBracket = True 
+
         if ctx.leftParen.text == '(' :
-            if ctx.rightParen.text == ')' :
-                return I.open(float(ctx.leftVal.text), float(ctx.rightVal.text))
-            else:
-                return I.openclosed(float(ctx.leftVal.text), float(ctx.rightVal.text))
-        else:
-            if ctx.rightParen.text == ')' :
-                return I.closedopen(float(ctx.leftVal.text), float(ctx.rightVal.text))
-            else :
-                return [float(ctx.leftVal.text), float(ctx.rightVal.text)]
-        '''
-        return ctx.leftParen.text + ctx.leftVal.text + "," +  ctx.rightVal.text + ctx.rightParen.text
+            leftBracket = False
+
+        if ctx.rightParen.text == ')' :
+            rightBracket = False
+
+        leftNumber = float(ctx.leftVal.text)
+        rightNumber = float(ctx.rightVal.text)
+        
+        return (leftBracket, leftNumber,  rightNumber, rightBracket)
 
     '''
     flow differential equation type
