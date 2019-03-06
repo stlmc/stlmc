@@ -44,18 +44,13 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#parenthesisCond.
-    def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by modelParser#compCond.
     def visitCompCond(self, ctx:modelParser.CompCondContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#binaryCond.
-    def visitBinaryCond(self, ctx:modelParser.BinaryCondContext):
+    # Visit a parse tree produced by modelParser#constantCond.
+    def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
         return self.visitChildren(ctx)
 
 
@@ -64,8 +59,13 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#constantCond.
-    def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
+    # Visit a parse tree produced by modelParser#multiCond.
+    def visitMultiCond(self, ctx:modelParser.MultiCondContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#parenthesisCond.
+    def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         return self.visitChildren(ctx)
 
 
@@ -146,6 +146,61 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#init_decl.
     def visitInit_decl(self, ctx:modelParser.Init_declContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#leftEnd.
+    def visitLeftEnd(self, ctx:modelParser.LeftEndContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#rightEnd.
+    def visitRightEnd(self, ctx:modelParser.RightEndContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#interval.
+    def visitInterval(self, ctx:modelParser.IntervalContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#parenFormula.
+    def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#constant.
+    def visitConstant(self, ctx:modelParser.ConstantContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#binaryTemporalFormula.
+    def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#proposition.
+    def visitProposition(self, ctx:modelParser.PropositionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#binaryFormula.
+    def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#unaryTemporalFormula.
+    def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#unaryFormula.
+    def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#prop.
+    def visitProp(self, ctx:modelParser.PropContext):
         return self.visitChildren(ctx)
 
 

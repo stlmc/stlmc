@@ -1,9 +1,8 @@
 grammar model ;
 
-import stl ;
-
 TRUE  : 'true'  ;
 FALSE : 'false' ;
+INFTY : 'inf' ;
 
 fragment GT        : '>' ;
 fragment GTE       : '>=' ;
@@ -30,6 +29,10 @@ MINUS    : '-' ;
 MULTIPLY : '*' ;
 DIVIDE   : '/' ;
 
+fragment DIGIT      : [0-9] ;
+
+NUMBER  : DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
+
 VALUE : MINUS? NUMBER ;
 
 BOOL : 'bool' ;
@@ -48,6 +51,16 @@ BOOL_OR    : 'or'  ;
 BOOL_NOT   : 'not' ;
 JUMP_ARROW : '==>' ;
 DIFF       : 'd/dt' ;
+
+NOT   : '~'   ;
+AND   : '/\\' ;
+OR    : '\\/' ;
+IMP   : '->'  ;
+
+UNTIL   : 'U'  ;
+RELEASE : 'R'  ;
+GLOBAL  : '[]' ;
+FINAL   : '<>' ;
 
 VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
 
@@ -68,11 +81,12 @@ EQUAL  : '=' ;
 NEXT_VAR   : VARIABLE '\'' ;
 WS      : (' ' | '\t' | '\n')+ -> skip ;
 
+
 /*
  * Parser Rules
  */
 
-stlMC : mode_var_decl+ variable_var_decl+ mode_module+ init_decl goal_decl EOF ;
+stlMC : mode_var_decl+ variable_var_decl+ mode_module+ init_decl prop* goal_decl EOF ;
 
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;
@@ -101,7 +115,7 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | NEXT_VAR EQUAL expression # jumpMod
               ;
 
-var_type    : (BOOL | INT | REAL) ;
+var_type    : varType=(BOOL | INT | REAL) ;
 var_range   : LBRACK VALUE RBRACK #exactValue
             | leftParen=(LBRACK | LPAREN) leftVal=VALUE COMMA rightVal=VALUE rightParen=(RPAREN | RBRACK)  # variableRange
             ;
@@ -118,7 +132,37 @@ jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ;
  
 init_decl : INIT COLON condition SEMICOLON ;
 
-property : VARIABLE EQUAL condition SEMICOLON ;
+leftEnd
+ : LPAREN value=NUMBER
+ | LBRACK value=NUMBER
+ ;
 
-goal_decl : GOAL COLON stl=(condition | formula)* SEMICOLON ;
+rightEnd
+ : value=NUMBER RPAREN
+ | value=NUMBER RBRACK
+ | value=INFTY  RPAREN
+ ;
+
+interval
+ : leftEnd COMMA rightEnd
+ | EQUAL NUMBER
+ ;
+
+formula
+ :          op=NOT                      formula  # unaryFormula
+ |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
+ | formula  op=AND                      formula  # binaryFormula
+ | formula  op=OR                       formula  # binaryFormula
+ | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
+ | formula  op=IMP                      formula  # binaryFormula
+ | LPAREN formula RPAREN                         # parenFormula
+ | VARIABLE                                      # proposition
+ | TRUE                                          # constant
+ | FALSE                                         # constant
+ ;
+
+prop : VARIABLE EQUAL condition SEMICOLON ;
+
+goal_decl : GOAL COLON (formula SEMICOLON)* ;
+
  

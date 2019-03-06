@@ -1,3 +1,8 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from core.constraint import *
+
 class Variable:
      def __init__(self, varType, varId):
          self.type = varType
@@ -102,6 +107,8 @@ class DiffEq:
     def __init__(self, contVar, flow):
         self.contVar = contVar
         self.flow = flow
+    def __repr__(self):
+        return str(self.contVar) + " = " + str(self.flow)
     def getExpression(self):
         result = dict()
         result[self.contVar] = self.flow
@@ -111,6 +118,8 @@ class SolEq:
     def __init__(self, contVar, Sol):
         self.contVar = contVar
         self.sol = Sol
+    def __repr__(self):
+        return str(self.contVar) + " = " + str(self.sol)
     def getExpressiont(self):
         result = dict()
         resutl[self.contVar] = self.sol
@@ -122,6 +131,8 @@ class modeModule:
         self.inv = inv
         self.flow = flow
         self.jump = jump
+    def __repr__(self):
+        return str(self.mode) + "\n" + str(self.inv) + "\n" + str(self.flow) + "\n" + str(self.jump)
     def getMode(self):
         return self.mode
     def getInv(self):
@@ -135,14 +146,22 @@ class flowDecl:
     def __init__(self, expType, exps):
         self.type = expType   # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
+    def __repr__(self):
+        return str(self.type) + " " +  str(self.exps)
     
 class jumpDecl:
     def __init__(self, cond, jumpRedecl):
         self.cond = cond
-        self.jumpRedcl =jumpRedecl
+        self.jumpRedecl =jumpRedecl
+    def __repr__(self):
+        return str(self.cond) + " " + str(self.jumpRedecl)
 
-
- 
+class propDecl:
+    def __init__(self, varId, cond):
+        self.id = varId
+        self.cond = cond
+    def __repr__(self):
+        return str(self.id) + " = " + str(self.cond)
 
 class StlMC:
      def __init__(self, modeVar, contVar, modeModule, init, goal):
