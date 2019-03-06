@@ -1,10 +1,9 @@
 grammar model ;
 
+import stl ;
 
 TRUE  : 'true'  ;
 FALSE : 'false' ;
-
-fragment DIGIT      : [0-9] ;
 
 fragment GT        : '>' ;
 fragment GTE       : '>=' ;
@@ -32,7 +31,6 @@ MULTIPLY : '*' ;
 DIVIDE   : '/' ;
 
 VALUE : MINUS? NUMBER ;
-NUMBER  : DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 
 BOOL : 'bool' ;
 INT  : 'int' ;
@@ -89,7 +87,7 @@ expression  : LPAREN expression RPAREN # parenthesisExp
 condition   : LPAREN condition RPAREN  # parenthesisCond
             | condition op=COMPARE_OP condition #compCond
             | expression op=COMPARE_OP expression  # compCond
-            | op=(BOOL_AND | BOOL_OR) condition condition+  #binaryCond 
+            | op=(BOOL_AND | BOOL_OR) condition condition+  #multiCond 
             | op=BOOL_NOT condition  # unaryCond
             | TRUE  # constantCond
             | FALSE  # constantCond
@@ -119,5 +117,8 @@ flow_decl : FLOW COLON (diff_eq+ | sol_eq+) ;
 jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ;
  
 init_decl : INIT COLON condition SEMICOLON ;
-goal_decl : GOAL COLON condition SEMICOLON ;
+
+property : VARIABLE EQUAL condition SEMICOLON ;
+
+goal_decl : GOAL COLON stl=(condition | formula)* SEMICOLON ;
  

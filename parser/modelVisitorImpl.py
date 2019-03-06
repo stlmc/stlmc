@@ -71,29 +71,16 @@ class modelVisitorImpl(modelVisitor):
         op = ctx.op.text
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
-        if op == '<':
-            return left < right
-        elif op == '<=':
-            return left <= right
-        elif op == '>':
-            return left > right
-        elif op == '>=':
-            return left >= right
-        elif op == '==':
-            return left == right
-        elif op == '!=':
-            return left != right
-        else:
-            raise "something wrong"
+        return CompCond(op, left, right)
 
-    def visitBinaryCond(self, ctx:modelParser.BinaryCondContext):
+    def visitMultiCond(self, ctx:modelParser.BinaryCondContext):
         prop = list()
         for i in range(len(ctx.condition())):
             prop.append(self.visit(ctx.condition()[i]))
-        return {'and' : And, 'or' : Or}[ctx.op.text](*prop)
+        return BinaryCond(ctx.op.text, prop)
 
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
-        return Not(self.visit(ctx.condition()))
+        return UnaryCond(ctx.op.text,self.visit(ctx.condition()))
 
     def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
         if ctx.TRUE():
@@ -101,12 +88,7 @@ class modelVisitorImpl(modelVisitor):
         elif ctx.FALSE() :
             return BoolVal(False) 
         elif ctx.VARIABLE() :
-            if ctx.VARIABLE().getText() in self.modeVar.keys():
-                return self.modeVar[ctx.VARIABLE().getText()]
-            else:
-                return self.contVar[ctx.VARIABLE().getText()] 
-        else:
-            raise "something wrong"
+            return ctx.VARIABLE().getText()
 
     '''
     jump redeclaration
@@ -118,17 +100,15 @@ class modelVisitorImpl(modelVisitor):
         prop = list()
         for i in range(len(ctx.jump_redecl)):
             prop.append(self.visit(i))
-        op = ctx.op.text
-        return {'and' : And, 'or' : Or}[ctx.op.text](*prop)
+        return MultiJump(ctx.op.text, prop) 
 
     def visitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
-        return Not(self.visit(ctx.jump_redecl()))
+        return UnaryJump(ctx.op.text, self.visit(ctx.jump_redecl()))
 
     def visitBoolVar(self, ctx:modelParser.BoolVarContext):
         return NextVar(Bool(ctx.NEXT_VAR().getText()[:-1]))
 
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
-        print("jump module")
         return NextVar(self.contVar[ctx.NEXT_VAR().getText()]) == self.visit(ctx.expression())
 
     '''
@@ -160,81 +140,61 @@ class modelVisitorImpl(modelVisitor):
     flow differential equation type
     '''
     def visitDiff_Eq(self, ctx:modelParser.Diff_eqContext):
-        print("differential equation")
-        result = dict()
-        result[self.contVar[ctx.VARIABLE().getText()]] = self.visit(ctx.expression())
-        return result
+        return DiffEq(ctx.VARIABLE().getText(), self.visit(ctx.expression()))
 
     '''
     flow solution equation type
     '''
     def visitSol_Eq(self, ctx:modelParser.Sol_eqContext):
-        print("Solution equation")
-        result = dict()
-        result[self.contVar[ctx.VARIABLE()[0].getText()]] = self.visit(ctx.expression())
-        return result
+        return SolEq(ctx.VARIABLE()[0].getText(), self.visit(ctx.expression()))
 
     '''
     mode module
     '''
     def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
-        print("Mode mulde decl")
-        inv = dict()
-        flow = dict()
-        jump = dict()
-
-        modeCond = self.visit(ctx.mode_decl())
-        inv[modeCond] = self.visit(ctx.inv_decl())
-        flow[modeCond] = self.visit(ctx.flow_decl())
-        jump[modeCond] = self.visit(ctx.jump_decl())
-
-        return(inv, flow, jump)
+        return modeModule(self.visit(ctx.mode_decl()), self.visit(ctx.inv_decl()), self.visit(ctx.flow_decl()), self.visit(ctx.jump_decl()))
 
     '''
     mode declaration
     '''
     def visitMode_decl(self, ctx:modelParser.Mode_declContext):
-        print("mode declaration")
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return And(*element)
+        return MultiCond("and", element)
  
     '''
     invariant declaration
     '''
     def visitInv_decl(self, ctx:modelParser.Inv_declContext):
-        print("invariant declaration")
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return And(*element)
+        return MultiCond("and", element) 
 
     '''
     flow declaration
     '''
     def visitFlow_decl(self, ctx:modelParser.Flow_declContext):
         print("flow declaration")
-        resultDict = dict()
+        result = list()
+        expType = "empty"
         if ctx.diff_eq():
+           expType = "diff"
             for i in range(len(ctx.diff_eq())):
-                resultDict.update(self.visit(ctx.diff_eq()[i])) 
-            return resultDict
+                result.append(self.visit(ctx.diff_eq()[i])) 
         elif ctx.sol_eq():
+            expType = "sol"
             for i in range(len(ctx.sol_eq())):
-                resultDict.update(self.visit(ctx.sol_eq()[i]))
-            return resultDict
-        else:
-            raise "something wrong"
+                result.append(self.visit(ctx.sol_eq()[i]))
+
+        return flowDecl(expType, result)
 
     '''
     jump declaration
     '''
     def visitJump_decl(self, ctx:modelParser.Jump_declContext):
-        print("jump declaration")
-        result = dict()
-        result[self.visit(ctx.condition())] = self.visit(ctx.jump_redecl())
-        return result
+        return jumpDecl(self.visit(ctx.condition()), self.visit(ctx.jump_redecl()))
 
     '''
     initial declaration
@@ -251,9 +211,4 @@ class modelVisitorImpl(modelVisitor):
         print("Goal decl")
 #        return self.visit(ctx.condition())
             
-    def dictAppend(origin, append):
-        for k in append.keys():
-            origin[k] = append[k]
-        return origin
-
 
