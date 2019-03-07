@@ -36,8 +36,7 @@ class modelVisitorImpl(modelVisitor):
             propDecl.append(self.visit(ctx.prop()[i]))
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modeDecl, varsDecl, modeModeleDecl, init, propDecl, goal) 
-
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, propDecl, goal) 
 
     '''
     mode_var_decl
@@ -67,9 +66,20 @@ class modelVisitorImpl(modelVisitor):
         return self.visit(ctx.expression())
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
-        return ctx.VARIABLE().getText()
+        if ctx.VARIABLE():
+            return ctx.VARIABLE().getText()
+        elif ctx.VALUE():
+            return ctx.VALUE().getText()
+        else:
+            raise ("error in constant expression")
 
     def visitCompCond(self, ctx:modelParser.CompCondContext):
+        op = ctx.op.text
+        left = self.visit(ctx.condition()[0])
+        right = self.visit(ctx.condition()[1])
+        return CompCond(op, left, right)
+
+    def visitCompExp(self, ctx:modelParser.CompExpContext):
         op = ctx.op.text
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
@@ -86,11 +96,11 @@ class modelVisitorImpl(modelVisitor):
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
         return UnaryCond(ctx.op.text,self.visit(ctx.condition()))
 
-    def visitMultiCond(self, ctx:modelParser.BinaryCondContext):
+    def visitMultiCond(self, ctx:modelParser.MultiCondContext):
         prop = list()
         for i in range(len(ctx.condition())):
             prop.append(self.visit(ctx.condition()[i]))
-        return BinaryCond(ctx.op.text, prop)
+        return MultiCond(ctx.op.text, prop)
 
     def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         return self.visit(ctx.condition())
@@ -103,8 +113,8 @@ class modelVisitorImpl(modelVisitor):
 
     def visitMultiJump(self, ctx:modelParser.MultiJumpContext):
         prop = list()
-        for i in range(len(ctx.jump_redecl)):
-            prop.append(self.visit(i))
+        for i in range(len(ctx.jump_redecl())):
+            prop.append(self.visit(ctx.jump_redecl()[i]))
         return MultiJump(ctx.op.text, prop) 
 
     def visitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
@@ -114,7 +124,7 @@ class modelVisitorImpl(modelVisitor):
         return NextVar(Bool(ctx.NEXT_VAR().getText()[:-1]))
 
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
-        return NextVar(self.contVar[ctx.NEXT_VAR().getText()]) == self.visit(ctx.expression())
+        return jumpMod(ctx.NEXT_VAR().getText()[:-1], self.visit(ctx.condition()))
 
     def vistVar_type(self, ctx:modelParser.Var_typeContext):
         return ctx.varType.text
@@ -184,13 +194,12 @@ class modelVisitorImpl(modelVisitor):
     flow declaration
     '''
     def visitFlow_decl(self, ctx:modelParser.Flow_declContext):
-        print("flow declaration")
         result = list()
         expType = "empty"
         if ctx.diff_eq():
            expType = "diff"
-            for i in range(len(ctx.diff_eq())):
-                result.append(self.visit(ctx.diff_eq()[i])) 
+           for i in range(len(ctx.diff_eq())):
+               result.append(self.visit(ctx.diff_eq()[i])) 
         elif ctx.sol_eq():
             expType = "sol"
             for i in range(len(ctx.sol_eq())):
@@ -201,8 +210,14 @@ class modelVisitorImpl(modelVisitor):
     '''
     jump declaration
     '''
+    def visitJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
+        return jumpRedeclModule(self.visit(ctx.condition()), self.visit(ctx.jump_redecl())) 
+
     def visitJump_decl(self, ctx:modelParser.Jump_declContext):
-        return jumpDecl(self.visit(ctx.condition()), self.visit(ctx.jump_redecl()))
+        result = list()
+        for i in range(len(ctx.jump_redecl_module())):
+            result.append(self.visit(ctx.jump_redecl_module()[i]))
+        return jumpDecl(result)
 
     '''
     initial declaration
@@ -211,20 +226,20 @@ class modelVisitorImpl(modelVisitor):
         print("Init decl")
         return self.visit(ctx.condition())
 
-    # Visit a parse tree produced by stlParser#leftEnd.
-    def visitLeftEnd(self, ctx:stlParser.LeftEndContext):
+    # Visit a parse tree produced by modelParser#leftEnd.
+    def visitLeftEnd(self, ctx:modelParser.LeftEndContext):
         return (not ctx.LPAREN(), float(ctx.value.text))
 
 
-    # Visit a parse tree produced by stlParser#rightEnd.
-    def visitRightEnd(self, ctx:stlParser.RightEndContext):
+    # Visit a parse tree produced by modelParser#rightEnd.
+    def visitRightEnd(self, ctx:modelParser.RightEndContext):
         return (not ctx.RPAREN(), float(ctx.value.text))
 
 
-    # Visit a parse tree produced by stlParser#interval.
-    def visitInterval(self, ctx:stlParser.IntervalContext):
+    # Visit a parse tree produced by modelParser#interval.
+    def visitInterval(self, ctx:modelParser.IntervalContext):
         if ctx.EQUAL():
-            number = float(ctx.NUMBER().getText())
+            number = float(ctx.VALUE().getText())
             return Interval(True, number, True, number)
         else:
             left = self.visit(ctx.leftEnd())
@@ -232,31 +247,31 @@ class modelVisitorImpl(modelVisitor):
             return Interval(left[0], left[1], right[0], right[1])
 
 
-    # Visit a parse tree produced by stlParser#parenFormula.
-    def visitParenFormula(self, ctx:stlParser.ParenFormulaContext):
+    # Visit a parse tree produced by modelParser#parenFormula.
+    def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visit(ctx.formula())
 
 
-    # Visit a parse tree produced by stlParser#constant.
-    def visitConstant(self, ctx:stlParser.ConstantContext):
+    # Visit a parse tree produced by modelParser#constant.
+    def visitConstant(self, ctx:modelParser.ConstantContext):
         return ConstantFormula(ctx.getText())
 
 
-    # Visit a parse tree produced by stlParser#binaryTemporalFormula.
-    def visitBinaryTemporalFormula(self, ctx:stlParser.BinaryTemporalFormulaContext):
+    # Visit a parse tree produced by modelParser#binaryTemporalFormula.
+    def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
         time = self.visit(ctx.interval())
         left = self.visit(ctx.formula()[0])
         right = self.visit(ctx.formula()[1])
         return {'U': UntilFormula, 'R': ReleaseFormula}[ctx.op.text](time, universeInterval, left, right)
 
 
-    # Visit a parse tree produced by stlParser#proposition.
-    def visitProposition(self, ctx:stlParser.PropositionContext):
+    # Visit a parse tree produced by modelParser#proposition.
+    def visitProposition(self, ctx:modelParser.PropositionContext):
         return PropositionFormula(ctx.getText())
 
 
-    # Visit a parse tree produced by stlParser#binaryFormula.
-    def visitBinaryFormula(self, ctx:stlParser.BinaryFormulaContext):
+    # Visit a parse tree produced by modelParser#binaryFormula.
+    def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
         op = ctx.op.text
         left = self.visit(ctx.formula()[0])
         right = self.visit(ctx.formula()[1])
@@ -269,15 +284,15 @@ class modelVisitorImpl(modelVisitor):
         else:
             raise "something wrong"
 
-    # Visit a parse tree produced by stlParser#unaryTemporalFormula.
-    def visitUnaryTemporalFormula(self, ctx:stlParser.UnaryTemporalFormulaContext):
+    # Visit a parse tree produced by modelParser#unaryTemporalFormula.
+    def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
         time = self.visit(ctx.interval())
         child = self.visit(ctx.formula())
         return {'[]': GloballyFormula, '<>': FinallyFormula}[ctx.op.text](time, universeInterval, child)
 
 
-    # Visit a parse tree produced by stlParser#unaryFormula.
-    def visitUnaryFormula(self, ctx:stlParser.UnaryFormulaContext):
+    # Visit a parse tree produced by modelParser#unaryFormula.
+    def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):
         child = self.visit(ctx.formula())
         return {'~': NotFormula}[ctx.op.text](child)
 

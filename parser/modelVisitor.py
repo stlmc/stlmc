@@ -44,18 +44,23 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#compCond.
-    def visitCompCond(self, ctx:modelParser.CompCondContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by modelParser#constantCond.
     def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by modelParser#compCond.
+    def visitCompCond(self, ctx:modelParser.CompCondContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by modelParser#unaryCond.
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#compExp.
+    def visitCompExp(self, ctx:modelParser.CompExpContext):
         return self.visitChildren(ctx)
 
 
@@ -136,6 +141,11 @@ class modelVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by modelParser#flow_decl.
     def visitFlow_decl(self, ctx:modelParser.Flow_declContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#jump_redecl_module.
+    def visitJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
         return self.visitChildren(ctx)
 
 

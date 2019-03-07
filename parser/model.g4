@@ -20,6 +20,9 @@ fragment OP_SQRT   : 'sqrt' ;
 
 FUNC_OP : (OP_SIN | OP_COS | OP_LOG | OP_SQRT) ;
 
+fragment DIGIT      : [0-9] ;
+
+VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 
 fragment LOWERCASE : [a-z] ;
 fragment UPPERCASE : [A-Z] ;
@@ -28,12 +31,6 @@ PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
 DIVIDE   : '/' ;
-
-fragment DIGIT      : [0-9] ;
-
-NUMBER  : DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
-
-VALUE : MINUS? NUMBER ;
 
 BOOL : 'bool' ;
 INT  : 'int' ;
@@ -63,9 +60,6 @@ GLOBAL  : '[]' ;
 FINAL   : '<>' ;
 
 VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
-
-UNARY_CONST : (MINUS | PLUS)? NUMBER ; 
-UNARY_VAR   : (MINUS | PLUS)? VARIABLE ;
 
 LCURLY : '{' ;
 RCURLY : '}' ;
@@ -100,11 +94,12 @@ expression  : LPAREN expression RPAREN # parenthesisExp
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
             | condition op=COMPARE_OP condition #compCond
-            | expression op=COMPARE_OP expression  # compCond
+            | expression op=COMPARE_OP expression  # compExp
             | op=(BOOL_AND | BOOL_OR) condition condition+  #multiCond 
             | op=BOOL_NOT condition  # unaryCond
-            | TRUE  # constantCond
-            | FALSE  # constantCond
+            | TRUE     # constantCond
+            | FALSE    # constantCond
+            | VALUE    # constantCond
             | VARIABLE # constantCond
               ;
 
@@ -112,7 +107,7 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multiJump 
             | op=BOOL_NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
-            | NEXT_VAR EQUAL expression # jumpMod
+            | NEXT_VAR EQUAL condition # jumpMod
               ;
 
 var_type    : varType=(BOOL | INT | REAL) ;
@@ -128,24 +123,25 @@ mode_module : LCURLY mode_decl inv_decl flow_decl jump_decl RCURLY ;
 mode_decl : MODE COLON (condition SEMICOLON)+ ;
 inv_decl  : INVT COLON (condition SEMICOLON)* ;
 flow_decl : FLOW COLON (diff_eq+ | sol_eq+) ;
-jump_decl : JUMP COLON (condition JUMP_ARROW jump_redecl SEMICOLON)+ ;
+jump_redecl_module : condition JUMP_ARROW jump_redecl SEMICOLON ;
+jump_decl : JUMP COLON (jump_redecl_module)+ ;
  
 init_decl : INIT COLON condition SEMICOLON ;
 
 leftEnd
- : LPAREN value=NUMBER
- | LBRACK value=NUMBER
+ : LPAREN value=VALUE
+ | LBRACK value=VALUE
  ;
 
 rightEnd
- : value=NUMBER RPAREN
- | value=NUMBER RBRACK
+ : value=VALUE RPAREN
+ | value=VALUE RBRACK
  | value=INFTY  RPAREN
  ;
 
 interval
  : leftEnd COMMA rightEnd
- | EQUAL NUMBER
+ | EQUAL VALUE
  ;
 
 formula

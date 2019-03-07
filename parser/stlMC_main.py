@@ -21,7 +21,9 @@ def main(argv):
     stream = CommonTokenStream(lexer)
     parser = modelParser(stream)
     tree   = parser.stlMC()
-    modelVisitorImpl().visit(tree)
+    stlMC =  modelVisitorImpl().visit(tree)
+    stlMC.reach()
+
     '''
     output = open("output.json","w")
     
