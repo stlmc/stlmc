@@ -17,26 +17,39 @@ class Variable:
      def getVariable(self):
          return {'bool' : Bool, 'int' : Int, 'real' : Real}[self.type](self.varId)
      def __repr__(self):
+         return str(self.type) + " " + str(self.varId)
+     def getVarString(self):
+         return str(self.type) + " " + str(self.varId)
+     def getType(self):
+         return str(self.type)
+     def getId(self):
          return str(self.varId)
-
 
 class Mode(Variable):
      def __init__(self, varType, varId):
          super().__init__(varType, varId)
-     def __repr__(self):
-         return str(self.varType) + str(self.varId)
-
+         
 class ContVar(Variable):
      def __init__(self, interval, varId):
-         super().__init__("Real", varId)
+         super().__init__("real", varId)
          self.leftend = interval[0]
          self.left = interval[1]
-         self.righ = interval[2]
+         self.right = interval[2]
          self.rightend = interval[3]
      def __repr__(self):
-         return "Real " + ('[' if self.leftend else '(') + repr(self.left) + ',' + repr(self.right) + (']' if self.rightend else ')')
-     def getInterval(self):
-         return ('[' if self.leftend else '(') + repr(self.left) + ',' + repr(self.right) + (']' if self.rightend else ')')
+         return super(ContVar,self).getVarString() + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(self.right) + (']' if self.rightend else ')')
+     def getConstraint(self):
+         variable =  {'bool' : Bool, 'int' : Int, 'real' : Real}[self.type](self.varId)
+         consts = list()
+         if self.leftend:
+             consts.append(variable >= RealVal(float(self.left)))
+         else:
+             consts.append(variable > RealVal(float(self.left)))
+         if self.rightend:
+             consts.append(variable <= RealVal(float(self.right)))
+         else:
+             consts.append(variable < RealVal(float(self.right)))
+         return And(*consts) 
 
 class BinaryExp:
      def __init__(self, op, left, right):
@@ -48,17 +61,25 @@ class BinaryExp:
              self.right = float(right) if isNumber(right) else right
      def __repr__(self):
          return str(self.left) + str(self.op) + str(self.right)
-     def getExpression(self):
+     def getExpression(self, varDict):
+         left = self.left 
+         right = self.right
+         if str(self.left) in varDict.keys(): 
+             left = varDict[str(self.left)]
+         if str(self.right) in varDict.keys():
+            right = varDict[str(self.right)]
          if self.op == '+':
-             return self.left + self.right
+             return left + right
          elif self.op == '-':
-             return self.left - self.right
+             return left - right
          elif self.op == '*':
-             return self.left * self.right
+             return left * right
          elif self.op == '/':
-             return self.left / self.right
+             return left / right
          else:
              raise "Not yet in Binary Expression"
+     def getType(self):
+         return Type.Real
 
 class CompCond:
      def __init__(self, op, left, right):
@@ -70,38 +91,50 @@ class CompCond:
              self.right = float(right) if isNumber(right) else right
      def __repr__(self):
          return str(self.left) + str(self.op) + str(self.right)
-     def getExpression(self):
-         if op == '<':
-             return self.left < self.right
-         elif op == '<=':
-             return self.left <= self.right
-         elif op == '>':
-             return self.left > self.right
-         elif op == '>=':
-             return self.left >= self.right
-         elif op == '==':
-             return self.left == self.right
-         elif op == '!=':
-             return self.left != self.right
+     def getExpression(self, varDict):
+         left = self.left 
+         right = self.right
+         if str(self.left) in varDict.keys():
+             left = varDict[str(self.left)]
+         if str(self.right) in varDict.keys():
+            right = varDict[str(self.right)]
+         if self.op == '<':
+             return left < right
+         elif self.op == '<=':
+             return left <= right
+         elif self.op == '>':
+             return left > right
+         elif self.op == '>=':
+             return left >= right
+         elif self.op == '==':
+             return left == right
+         elif self.op == '!=':
+             return left != right
          else:
              raise "Not yet in Compare Condition"
+     def getType(self):
+         return Type.Bool
+
 class Multy:
     def __init__(self, op, props):
         self.op = op
         self.props = props
     def __repr__(self):
-        strProps = ''.join(self.props)
-        return str(self.op) + strProps
-    def getExpression(self):
-        return {'and' : And, 'or' : Or}[self.op](*self.props)
+        strProps = ''.join(str(self.props))
+        return str(self.op) + " " + strProps
+    def getExpression(self, varDict):
+        result = list()
+        for i in range(len(self.props)):
+            result.append(self.props[i].getExpression(varDict))
+        return {'and' : And, 'or' : Or}[self.op](*result)
 
 class Unary:
     def __init__(self, op, prop):
         self.op = op
         self.prop = prop
     def __repr__(self):
-        return str(self.op) + repr(self.prop)
-    def getExpression(self):
+        return str(self.op) + " " + repr(self.prop)
+    def getExpression(self, varDict):
         return {'not' : Not}[self.op](self.prop)
 
 class MultiCond(Multy):
@@ -179,6 +212,8 @@ class jumpMod:
       def __init__(self, nextVarId, exp):
           self.nextVarId = nextVarId
           self.exp = exp
+      def __repr__(self):
+          return str(self.nextVarId) + "' = " + str(self.exp)
 
 class propDecl:
     def __init__(self, varId, cond):
@@ -186,6 +221,12 @@ class propDecl:
         self.cond = cond
     def __repr__(self):
         return str(self.id) + " = " + str(self.cond)
+
+class formulaDecl:
+    def __init__(self, formulaList):
+        self.formulaList = formulaList  # string type formulas
+    def getFormulas(self):
+        return self.formulaList 
 
 class StlMC:
      def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
@@ -195,7 +236,40 @@ class StlMC:
          self.init = init
          self.prop = prop    #list type
          self.goal = goal
+         self.subvars = self.makeVariablesDict()
+
+     def makeVariablesDict(self):
+         result = dict()
+         for i in range(len(self.modeVar)):
+             result[str(self.modeVar[i].getId())] = {'bool' : Bool, 'int' : Int, 'real' : Real}[self.modeVar[i].getType()](self.modeVar[i].getId())
+         for i in range(len(self.contVar)):
+             result[str(self.contVar[i].getId())] = {'bool' : Bool, 'int' : Int, 'real' : Real}[self.contVar[i].getType()](self.contVar[i].getId())
+         result['false'] = BoolVal(False)
+         result['true'] = BoolVal(True)
+         return result
+
+     def makeVarRangeConsts(self):
+         result = list()
+         for i in range(len(self.contVar)):
+             result.append(self.contVar[i].getConstraint())
+         return result
+
+     def modelConstraints(self):
+         result = list()
+         result.append(self.makeVarRangeConsts())
+         return result
+
      def reach(self):
+         print(self.init.getExpression(self.subvars))
+
+         '''
+         for i in range(len(self.modeVar)):
+             print(self.modeVar[i])
+         for i in range(len(self.contVar)):
+             print(self.contVar[i])
+         for i in range(len(self.modeModule)):
+             print(self.modeModule[i]) 
+         '''
          print("construct stlMC object") 
     
 

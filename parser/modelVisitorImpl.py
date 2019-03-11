@@ -223,7 +223,6 @@ class modelVisitorImpl(modelVisitor):
     initial declaration
     '''
     def visitInit_decl(self, ctx:modelParser.Init_declContext):
-        print("Init decl")
         return self.visit(ctx.condition())
 
     # Visit a parse tree produced by modelParser#leftEnd.
@@ -303,7 +302,11 @@ class modelVisitorImpl(modelVisitor):
     goal declaration
     '''
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
-        print("Goal decl")
-#        return self.visit(ctx.condition())
+        formulaList = list()
+
+        for i in range(len(ctx.formula())):
+            formulaList.append(self.visit(ctx.formula()[i]))
+        return formulaDecl(formulaList)
+
             
 
