@@ -8,4 +8,5 @@ parser/visitor/*
 *.swp
 .DS_Store
 __pycache__
+data/
 *.smt2
