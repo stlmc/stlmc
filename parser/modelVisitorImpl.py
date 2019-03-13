@@ -277,6 +277,8 @@ class modelVisitorImpl(modelVisitor):
     def visitProposition(self, ctx:modelParser.PropositionContext):
         return PropositionFormula(ctx.getText())
 
+    def visitDirectCond(self, ctx:modelParser.DirectCondContext):
+        return self.visit(ctx.condition())
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
@@ -305,7 +307,7 @@ class modelVisitorImpl(modelVisitor):
         return {'~': NotFormula}[ctx.op.text](child)
 
     def visitProp(self, ctx:modelParser.PropContext):
-        return propDecl(ctx.VARIABLE.getText(), self.visit(ctx.condition())) 
+        return propDecl(ctx.VARIABLE().getText(), self.visit(ctx.condition())) 
 
     '''
     goal declaration

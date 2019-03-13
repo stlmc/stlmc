@@ -278,7 +278,7 @@ class formulaDecl:
         for i in range(len(self.formulaList)):
             curStl = parseFormula("~"+self.formulaList[i])
             result.append(curStl)
-        return return result
+        return result
 
 class StlMC:
     def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
@@ -378,7 +378,7 @@ class StlMC:
             for i in range(len(self.modeModule)):
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curInv = self.modeModule[i].getInv().getExpression(self.subvars)
-		invConsts.append(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
+                invConsts.append(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
             result.append(Or(*invConsts))
         return And(*result)
 

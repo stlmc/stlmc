@@ -14,7 +14,6 @@ class ConstantFormula(Atomic, Formula):
     def getValue(self):
         return self.id
 
-
 class PropositionFormula(Atomic, Formula):
     pass
 

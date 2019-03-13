@@ -154,9 +154,10 @@ formula
  | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
  | formula  op=IMP                      formula  # binaryFormula
  | LPAREN formula RPAREN                         # parenFormula
- | VARIABLE                                      # proposition
+ | VARIABLE                                      # proposition 
  | TRUE                                          # constant
  | FALSE                                         # constant
+ | condition                                     # directCond 
  ;
 
 prop : VARIABLE EQUAL condition SEMICOLON ;
