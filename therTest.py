@@ -1,4 +1,3 @@
-
 import z3
 import io, os, sys
 import gc
@@ -28,15 +27,14 @@ def reportSatisfiable(model, formula, bound, step, timeBound, filename):
 if __name__ == '__main__':
 
     # pairs of a model, its benchmark parameters, and properties
-    model6  = (M6.ThermostatLinear(),   1, 60, 4, M6.testcaseSTL,  M6.goal)
+    model6  = (M6.ThermostatLinear(),   5, 60, 2, M6.testcaseSTL,  M6.goal)
 
     configs = [model6]
-
+    '''
     for (model, bound, tmax, step, stlFormulas, reachGoal) in configs:
         model.modelCheck(stlFormulas[0], bound, tmax, False)
-   
-
     '''
+
     # create data directory if needed
     if not os.path.exists(str(os.path.abspath(os.curdir)) + "/data/"):
         os.makedirs(str(os.path.abspath(os.curdir)) + "/data/")
@@ -49,5 +47,3 @@ if __name__ == '__main__':
             with open(rel_path, 'w') as fle:
                 print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
             p = multiprocessing.Process(target = reportSatisfiable, args=(model, stlFormulas[i], bound, step, tmax, rel_path))
-            p.start()
-    '''

@@ -2,6 +2,12 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from core.constraint import *
+from core.stl import parseFormula
+from core.z3Handler import checkSat
+
+import core.partition as PART
+import core.separation as SEP
+import core.encoding as ENC
 
 def isNumber(s):
     try:
@@ -57,8 +63,8 @@ class BinaryExp:
          self.left = left
          self.right = right
          if isinstance(left, str) and isinstance(right, str):
-             self.left = float(left) if isNumber(left) else left
-             self.right = float(right) if isNumber(right) else right
+             self.left = RealVal(float(left)) if isNumber(left) else left
+             self.right = RealVal(float(right)) if isNumber(right) else right
      def __repr__(self):
          return str(self.left) + str(self.op) + str(self.right)
      def getExpression(self, varDict):
@@ -87,8 +93,8 @@ class CompCond:
          self.left = left
          self.right = right
          if isinstance(left, str) and isinstance(right, str):
-             self.left = float(left) if isNumber(left) else left
-             self.right = float(right) if isNumber(right) else right
+             self.left = RealVal(float(left)) if isNumber(left) else left
+             self.right = RealVal(float(right)) if isNumber(right) else right
      def __repr__(self):
          return str(self.left) + str(self.op) + str(self.right)
      def getExpression(self, varDict):
@@ -155,6 +161,12 @@ class DiffEq:
         self.flow = flow
     def __repr__(self):
         return str(self.contVar) + " = " + str(self.flow)
+    def getVarId(self):
+        return str(self.contVar)
+    def getFlow(self):
+        if type(self.flow) in [RealVal, IntVal, BoolVal]:
+            return self.flow
+        return self.flow.getExpression()
     def getExpression(self):
         result = dict()
         result[self.contVar] = self.flow
@@ -166,6 +178,12 @@ class SolEq:
         self.sol = Sol
     def __repr__(self):
         return str(self.contVar) + " = " + str(self.sol)
+    def getVarId(self):
+        return str(self.contVar)
+    def getFlow(self):
+        if isinstance(self.sol, str):
+            return self.sol           
+        return self.sol.getExpression()
     def getExpression(self):
         result = dict()
         resutl[self.contVar] = self.sol
@@ -183,8 +201,10 @@ class modeModule:
         return self.mode
     def getInv(self):
         return self.inv
+    # return flowDecl type
     def getFlow(self):
         return(self.flow)
+    # return jumpDecl type
     def getJump(self):
         return(self.jump)
 
@@ -194,19 +214,31 @@ class flowDecl:
         self.exps = exps
     def __repr__(self):
         return str(self.type) + " " +  str(self.exps)
-   
+    def getExpression(self):
+        return self.exps
+ 
 class jumpRedeclModule:
     def __init__(self, cond, jumpRedecl):
         self.cond = cond
         self.jumpRedecl =jumpRedecl
     def __repr__(self):
         return str(self.cond) + " " + str(self.jumpRedecl)
+    def getCond(self, varDict):
+        condition = self.cond.getExpression(varDict)
+    def getExpression(self,varDict):
+        condition = self.cond.getExpression(varDict)
+        redecl = self.jumpRedecl.getExpression(varDict)
+        return Or(Not(condition), redecl)
+    def getJumpRedecl(self):
+        return self.jumpRedecl
 
 class jumpDecl:
     def __init__(self, redeclList):
         self.redeclList = redeclList
     def __repr__(self):
         return str(self.redeclList)
+    def getRedeclList(self):
+        return self.redeclList
 
 class jumpMod:
       def __init__(self, nextVarId, exp):
@@ -214,6 +246,18 @@ class jumpMod:
           self.exp = exp
       def __repr__(self):
           return str(self.nextVarId) + "' = " + str(self.exp)
+      def getExpression(self, varDict):
+          if self.nextVarId in varDict.keys():
+              left = NextVar(varDict[self.nextVarId])
+              if isinstance(self.exp, BoolVal):
+                  right = self.exp
+              elif self.exp in varDict.keys():
+                  right = varDict[self.exp]
+              else:
+                  right = self.exp.getExpression(varDict)
+              return (left == right) 
+          else:
+              raise ("jump undeclared variable id in next variable handling")
 
 class propDecl:
     def __init__(self, varId, cond):
@@ -221,55 +265,171 @@ class propDecl:
         self.cond = cond
     def __repr__(self):
         return str(self.id) + " = " + str(self.cond)
+    def getExpression(self, varDict):
+        return self.cond.getExpression(varDict)
+    def getId(self):
+        return Bool(str(self.id))
 
 class formulaDecl:
     def __init__(self, formulaList):
         self.formulaList = formulaList  # string type formulas
-    def getFormulas(self):
-        return self.formulaList 
+    def getFormulas(self, propDict):
+        result = list()
+        for i in range(len(self.formulaList)):
+            curStl = parseFormula("~"+self.formulaList[i])
+            result.append(curStl)
+        return return result
 
 class StlMC:
-     def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
-         self.modeVar = modeVar
-         self.contVar = contVar
-         self.modeModule = modeModule
-         self.init = init
-         self.prop = prop    #list type
-         self.goal = goal
-         self.subvars = self.makeVariablesDict()
+    def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
+        self.modeVar = modeVar
+        self.contVar = contVar
+        self.modeModule = modeModule
+        self.init = init
+        self.prop = prop    #list type
+        self.goal = goal
+        self.subvars = self.makeVariablesDict()
 
-     def makeVariablesDict(self):
-         result = dict()
-         for i in range(len(self.modeVar)):
-             result[str(self.modeVar[i].getId())] = {'bool' : Bool, 'int' : Int, 'real' : Real}[self.modeVar[i].getType()](self.modeVar[i].getId())
-         for i in range(len(self.contVar)):
-             result[str(self.contVar[i].getId())] = {'bool' : Bool, 'int' : Int, 'real' : Real}[self.contVar[i].getType()](self.contVar[i].getId())
-         result['false'] = BoolVal(False)
-         result['true'] = BoolVal(True)
-         return result
+    # Transform the string id to Type(id) ex: 'a' -> Bool('a')
+    def makeVariablesDict(self):
+        op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+        result = dict()
+        for i in range(len(self.modeVar)):
+            result[str(self.modeVar[i].getId())] = op[self.modeVar[i].getType()](self.modeVar[i].getId())
+        for i in range(len(self.contVar)):
+            result[str(self.contVar[i].getId())] = op[self.contVar[i].getType()](self.contVar[i].getId())
+        result['false'] = BoolVal(False)
+        result['true'] = BoolVal(True)
+        return result
 
-     def makeVarRangeConsts(self):
-         result = list()
-         for i in range(len(self.contVar)):
-             result.append(self.contVar[i].getConstraint())
-         return result
+    # Substitution proposition and mode variables according to bound k: {'fonepo' : fonepo_k} 
+    def makeSubMode(self, k):
+        op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+        result = {}
+        for i in range(len(self.modeVar)):
+            result[str(self.modeVar[i].getId())] = op[self.modeVar[i].getType()](self.modeVar[i].getId() + '_' + str(k))
+        return result
 
-     def modelConstraints(self):
-         result = list()
-         result.append(self.makeVarRangeConsts())
-         return result
+    # Substituion varialbes according to bound k, sOe: var_k_0 or var_k_t
+    def makeSubVars(self, k, sOe):
+        op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+        result = {}
+        for i in range(len(self.contVar)):
+            result[str(self.contVar[i].getId())] = op[self.contVar[i].getType()](self.contVar[i].getId() + '_' + str(k) + '_' + sOe)
+        return result
 
-     def reach(self):
-         print(self.init.getExpression(self.subvars))
+    # Make variable range constratint
+    def makeVarRangeConsts(self):
+        result = list()
+        for i in range(len(self.contVar)):
+            result.append(self.contVar[i].getConstraint())
+        return result
 
-         '''
-         for i in range(len(self.modeVar)):
-             print(self.modeVar[i])
-         for i in range(len(self.contVar)):
-             print(self.contVar[i])
-         for i in range(len(self.modeModule)):
-             print(self.modeModule[i]) 
-         '''
-         print("construct stlMC object") 
-    
+    def combineDict(self, dict1, dict2):
+        result = dict1.copy()
+        for i in dict2.keys():
+            result[i] = dict2[i]
+        return result
+
+    def jumpConstraints(self, bound):
+        jumpConsts = list()
+        for i in range(len(self.modeModule)):
+            subresult = list()
+            for j in range(len(self.modeModule[i].getJump().getRedeclList())):
+                subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
+            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
+
+        result = []
+        for k in range(bound+1):
+            time = Real('time' + str(k))
+
+            combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 't'))
+            nextSub = self.combineDict(self.makeSubMode(k+1), self.makeSubVars(k+1, '0'))
+
+            const = [i.substitution(combineSub) for i in jumpConsts]
+            combineJump = [i.nextSub(nextSub) for i in const]
+            result.append(Or(*combineJump))
+
+        return And(*result)
+
+    def flowConstraints(self, bound):
+        result= list()
+        for k in range(bound+1):
+            time = Real('time' + str(k))
+            flowConsts = list()
+            for i in range(len(self.modeModule)):
+                flowModule = dict()
+                curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+                curFlow = self.modeModule[i].getFlow().getExpression() 
+                for j in range(len(curFlow)):
+                    if curFlow[j].getVarId() in self.subvars.keys():
+                        flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow()
+                    else:
+                        raise ("Flow id is not declared")
+                flowConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule)))
+            result.append(Or(*flowConsts))
+        return And(*result)
+
+    def invConstraints(self, bound):
+        result = list()
+        for k in range(bound+1):
+            time = Real('time' + str(k))
+            invConsts = list()
+            for i in range(len(self.modeModule)):
+                curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+                curInv = self.modeModule[i].getInv().getExpression(self.subvars)
+		invConsts.append(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
+            result.append(Or(*invConsts))
+        return And(*result)
+
+    # {propId : Expression} // {str :  Exp}
+    def makePropDict(self):
+        result = dict()
+        for i in range(len(self.prop)):
+            result[self.prop[i].getId()] = self.prop[i].getExpression(self.subvars)
+        return result
+
+    def propConstraints(self, propSet, bound):
+        result = list()
+        for k in range(bound+1):
+            time = Real('time' + str(k))
+            const = list()
+            for i in self.makePropDict().keys():
+                if str(i) in propSet:
+                    for j in self.flow.keys():
+                        const.append(Implies(And(i, j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, self.prop[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+                        const.append(Implies(And(Not(i), j).substitution(self.makeSubMode(k)), Forall(self.flowDictionary(self.flow[j]), time, Not(self.prop[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+            result.append(And(*const))
+        return And(*result)
+
+    # Make constraints of the model
+    def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula):
+        result = list()
+        combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))
+        result.append(self.makeVarRangeConsts()) # make range constraint
+        result.append(self.init.getExpression(self.subvars).substitution(combine)) # make initial constraint
+
+
+        return result
+
+    def reach(self):
+        result = dict()
+        for i in range(len(self.modeModule)):
+#            print(self.modeModule[i].getMode().getExpression(self.subvars)) 
+#            print(self.modeModule[i].getInv().getExpression(self.subvars))      
+#            for j in range(len(self.modeModule[i].getFlow().getExpression())):
+#                result[self.modeModule[i].getFlow().getExpression()[j].getVarId()] = self.modeModule[i].getFlow().getExpression()[j].getFlow()
+            for j in range(len(self.modeModule[i].getJump().getRedeclList())):
+                print(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
+
+        '''
+        for i in range(len(self.modeVar)):
+            print(self.modeVar[i])
+        for i in range(len(self.contVar)):
+            print(self.contVar[i])
+        for i in range(len(self.modeModule)):
+            print(self.modeModule[i]) 
+        '''
+        print("construct stlMC object") 
+   
 

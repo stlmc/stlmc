@@ -107,7 +107,9 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multiJump 
             | op=BOOL_NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
-            | NEXT_VAR EQUAL condition # jumpMod
+            | NEXT_VAR EQUAL TRUE # jumpMod
+            | NEXT_VAR EQUAL FALSE # jumpMod
+            | NEXT_VAR EQUAL expression # jumpMod
               ;
 
 var_type    : varType=(BOOL | INT | REAL) ;

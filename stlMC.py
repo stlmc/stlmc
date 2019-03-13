@@ -101,9 +101,6 @@ class Model:
         result.append(self.init.substitution(combine))
         result.append(self.flowConstraints(bound))
 
-        for i in range(len(result)):
-            print(result[i])
-
         ts = [Real("tau_%s"%i) for i in range(0, bound+1)]
 
         result.append(ts[0] >= RealVal(0))
@@ -175,21 +172,16 @@ class Model:
     def flowConstraints(self, bound):
         combineJump = []
         flowConsts = []
-        for k in range(bound):
+        for k in range(bound + 1):
             time = Real('time' + str(k))
             combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 't'))
             nextSub = self.combineDict(self.makeSubMode(k+1), self.makeSubVars(k+1, '0'))
             const = [And(i.substitution(combineSub), self.jump[i].substitution(combineSub)) for i in self.jump.keys()]
             result = [i.nextSub(nextSub) for i in const]
             combineJump.append(Or(*result))
-            flowConsts.append(Or(*([And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, str(i.children).replace(",","").replace(" ","").replace("(","").replace(")",""), self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) for i in self.flow.keys()])))
-
-        k = bound
-        time = Real('time' + str(bound))
-
-#        flowConsts.append(Or(*([And(i.substitution(self.makeSubMode(k)), Solution(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), str(i.children).replace(",","").replace(" ","").replace("(","").replace(")",""), self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) for i in self.flow.keys()])))
-
-        flowConsts.append(Or(*([And(i.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, str(i.children).replace(",","").replace(" ","").replace("(","").replace(")",""), self.flowDictionary(self.flow[i])), Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) for i in self.flow.keys()])))
+            flowConsts.append(Or(*([And(i.substitution(self.makeSubMode(k)), 
+                                    Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, str(i.children).replace(",","").replace(" ","").replace("(","").replace(")",""), self.flowDictionary(self.flow[i])), 
+                                    Forall(self.flowDictionary(self.flow[i]), time, self.inv[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) for i in self.flow.keys()])))
 
         return And(And(*combineJump), And(*flowConsts))
 

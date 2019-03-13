@@ -69,7 +69,7 @@ class modelVisitorImpl(modelVisitor):
         if ctx.VARIABLE():
             return ctx.VARIABLE().getText()
         elif ctx.VALUE():
-            return ctx.VALUE().getText()
+            return RealVal(ctx.VALUE().getText())
         else:
             raise ("error in constant expression")
 
@@ -90,8 +90,12 @@ class modelVisitorImpl(modelVisitor):
             return BoolVal(True)
         elif ctx.FALSE() :
             return BoolVal(False)
+        elif ctx.VALUE():
+            return RealVal(ctx.VALUE().getText())
         elif ctx.VARIABLE() :
             return ctx.VARIABLE().getText()
+        else:
+            raise ("error in constant condition")
 
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
         return UnaryCond(ctx.op.text,self.visit(ctx.condition()))
@@ -124,7 +128,12 @@ class modelVisitorImpl(modelVisitor):
         return NextVar(Bool(ctx.NEXT_VAR().getText()[:-1]))
 
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
-        return jumpMod(ctx.NEXT_VAR().getText()[:-1], self.visit(ctx.condition()))
+        if ctx.TRUE():
+            return jumpMod(ctx.NEXT_VAR().getText()[:-1], BoolVal(True))
+        elif ctx.FALSE():
+            return jumpMod(ctx.NEXT_VAR().getText()[:-1], BoolVal(False))
+        else:
+            return jumpMod(ctx.NEXT_VAR().getText()[:-1], self.visit(ctx.expression()))
 
     def vistVar_type(self, ctx:modelParser.Var_typeContext):
         return ctx.varType.text
@@ -157,13 +166,13 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow differential equation type
     '''
-    def visitDiff_Eq(self, ctx:modelParser.Diff_eqContext):
+    def visitDiff_eq(self, ctx:modelParser.Diff_eqContext):
         return DiffEq(ctx.VARIABLE().getText(), self.visit(ctx.expression()))
 
     '''
     flow solution equation type
     '''
-    def visitSol_Eq(self, ctx:modelParser.Sol_eqContext):
+    def visitSol_eq(self, ctx:modelParser.Sol_eqContext):
         return SolEq(ctx.VARIABLE()[0].getText(), self.visit(ctx.expression()))
 
     '''
@@ -302,11 +311,11 @@ class modelVisitorImpl(modelVisitor):
     goal declaration
     '''
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
-        formulaList = list()
+        #formulaList = list()
 
-        for i in range(len(ctx.formula())):
-            formulaList.append(self.visit(ctx.formula()[i]))
-        return formulaDecl(formulaList)
+        #for i in range(len(ctx.formula())):
+        #    formulaList.append(self.visit(ctx.formula()[i]))
+        return formulaDecl(ctx.formula())
 
             
 

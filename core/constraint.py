@@ -48,6 +48,7 @@ class ArithRef(Leaf):
 class Constant(Leaf):
     def __init__(self, constType, value):
         super().__init__(constType)
+        self.type = constType
         self.value = value
     def __repr__(self):
         return str(self.value)
@@ -57,6 +58,9 @@ class Constant(Leaf):
         return set()
     def nextSub(self, subDict):
         return self
+    def getExpression(self, subDict):
+        op = {Type.Bool : Bool, Type.Int : Int, Type.Real : Real}
+        return op[self.type](self.value)
 
 class BoolVal(Constant):
     def __init__(self, value):
@@ -100,6 +104,8 @@ class NextVar(Variable):
         return self
     def nextSub(self, subDict):
         return super().substitution(subDict)
+    def __repr__(self):
+        return str(self.var.id) + "'"
 
 class Bool(Variable):
     def __init__(self, id):
@@ -280,7 +286,7 @@ class Not(Logical,_UnaryOp):
 
 
 class Integral(Node):
-    def __init__(self, endList, startList, time, index, ode):
+    def __init__(self, endList, startList, time, ode):
         self.startList = []
         self.endList = []
         for i in endList.keys():
@@ -288,12 +294,12 @@ class Integral(Node):
             self.endList.append(endList[i])
         self.ode = ode
         self.time = time
-        self.flowIndex = str(index)
+#        self.flowIndex = str(index)
         super().__init__(Type.Bool)
     def __repr__(self):
         start = '[' + ' '.join([str(sl) for sl in self.startList]) + ']'
         end   = '[' + ' '.join([str(el) for el in self.endList])   + ']'
-        result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
+#        result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
         return result
     def getVars(self):
         return set(self.startList + self.endList + [self.time])
@@ -329,8 +335,8 @@ class Solution(Node):
         return 1
 
 class Forall(Node):
-    def __init__(self, flowIndex, time, condition, start, end, mode):
-        self.flowIndex = str(flowIndex)
+    def __init__(self, time, condition, start, end, mode):
+#        self.flowIndex = str(flowIndex)
         self.time = time
         self.condition = condition
         self.startDict = start
@@ -347,7 +353,7 @@ class Forall(Node):
             endCond = self.condition.substitution(self.endDict)
             startCond = self.condition.substitution(self.startDict)
             constraint = And(endCond, startCond).substitution(self.modeDict)
-            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
+#            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
         return result
     def getVars(self):
         return set()

@@ -33,13 +33,15 @@ if __name__ == '__main__':
     model4  = (M4.RailroadPoly(),     21, 10, 4, M4.testcaseSTL,  M4.goal)
     model5  = (M5.BatteryPoly(),      21, 30, 4, M5.testcaseSTL,  M5.goal)
 
-    model6  = (M6.ThermostatLinear(), 51, 100, 10, M6.testcaseSTL,  M6.goal)
+    model6  = (M6.ThermostatLinear(), 31, 100, 10, M6.testcaseSTL,  M6.goal)
     model7  = (M7.WatertankLinear(),  51, 100, 10, M7.testcaseSTL,  M7.goal)
     model8  = (M8.CarLinear(),        51,  60, 10, M8.testcaseSTL,  M8.goal)
     model9  = (M9.RailroadLinear(),   51,  10, 10, M9.testcaseSTL,  M9.goal)
     model10 = (M10.BatteryLinear(),   51,  30, 10, M10.testcaseSTL, M10.goal)
 
     configs = [model1, model2, model3, model4, model5, model6, model7, model8, model9, model10]
+ 
+    configs = [model6]
 
     # create data directory if needed
     if not os.path.exists(str(os.path.abspath(os.curdir)) + "/data/"):
