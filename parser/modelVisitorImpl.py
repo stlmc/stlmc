@@ -31,9 +31,8 @@ class modelVisitorImpl(modelVisitor):
 
         init = self.visit(ctx.init_decl())
  
-        propDecl = list()
-        for i in range(len(ctx.prop())):
-            propDecl.append(self.visit(ctx.prop()[i]))
+        propDecl = self.visit(ctx.props())
+
         goal = self.visit(ctx.goal_decl())
 
         return StlMC(modesDecl, varsDecl, modeModuleDecl, init, propDecl, goal) 
@@ -305,6 +304,13 @@ class modelVisitorImpl(modelVisitor):
     def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):
         child = self.visit(ctx.formula())
         return {'~': NotFormula}[ctx.op.text](child)
+
+    def visitProps(self, ctx:modelParser.PropsContext):
+        propDecl = list()
+        for i in range(len(ctx.prop())):
+            propDecl.append(self.visit(ctx.prop()[i]))
+
+        return propDecl
 
     def visitProp(self, ctx:modelParser.PropContext):
         return propDecl(ctx.VARIABLE().getText(), self.visit(ctx.condition())) 
