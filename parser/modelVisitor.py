@@ -214,6 +214,11 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by modelParser#props.
+    def visitProps(self, ctx:modelParser.PropsContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by modelParser#prop.
     def visitProp(self, ctx:modelParser.PropContext):
         return self.visitChildren(ctx)

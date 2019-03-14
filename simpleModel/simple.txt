@@ -89,6 +89,7 @@ bool b;
 init:
 (and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1));
 
+propositions:
 reachability = fx > 21 ;
 ffourpt = fx > 10 ;
 
