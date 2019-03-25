@@ -298,7 +298,7 @@ class formulaDecl:
     def getFormulas(self, propDict):
         result = list()
         for i in range(len(self.formulaList)):
-            curStl = parseFormula("~"+self.formulaList[i])
+            curStl = parseFormula("~"+str(self.formulaList[i]))
             result.append(curStl)
         return result
     def getNumOfForms(self):

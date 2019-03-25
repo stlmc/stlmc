@@ -94,7 +94,7 @@ reachability = x1 > 21 ;
 ffourpt = x1 > 10 ;
 
 goal:
-(x1 > 21 and x1 < 23) ;
+(and (x1 > 21) (x1 < 23)) ;
 
 
 

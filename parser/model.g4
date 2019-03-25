@@ -94,8 +94,8 @@ expression  : LPAREN expression RPAREN # parenthesisExp
               ;
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
-            | expression op=COMPARE_OP expression  # compExp
             | condition op=COMPARE_OP condition    # compCond
+            | expression op=COMPARE_OP expression  # compExp
             | condition op=(BOOL_AND | BOOL_OR | AND | OR) condition   # binaryCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
             | op=BOOL_NOT condition  # unaryCond
@@ -156,8 +156,8 @@ formula
  | op=(BOOL_AND | BOOL_OR) formula formula+      # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
  | formula  op=IMP                      formula  # binaryFormula
- | LPAREN formula RPAREN                         # parenFormula
  | condition                                     # directCond 
+ | LPAREN formula RPAREN                         # parenFormula
  | VARIABLE                                      # proposition
  ;
 

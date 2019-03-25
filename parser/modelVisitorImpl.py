@@ -326,9 +326,8 @@ class modelVisitorImpl(modelVisitor):
     '''
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
         formulaList = list()
-
         for i in range(len(ctx.formula())):
-            formulaList.append(ctx.formula()[i].getText())
+            formulaList.append(self.visit(ctx.formula()[i]))
         return formulaDecl(formulaList)
 
             
