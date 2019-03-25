@@ -24,10 +24,6 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
 def _value(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
     raise NotImplementedError('Something wrong')
 
-@_value.register(ConstantFormula)
-def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
-    return BoolVal(f.getValue())
-
 @_value.register(PropositionFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
     if f in sub:

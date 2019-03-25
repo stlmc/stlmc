@@ -44,6 +44,11 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by modelParser#multyCond.
+    def visitMultyCond(self, ctx:modelParser.MultyCondContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by modelParser#constantCond.
     def visitConstantCond(self, ctx:modelParser.ConstantCondContext):
         return self.visitChildren(ctx)
@@ -64,23 +69,13 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#multiCond.
-    def visitMultiCond(self, ctx:modelParser.MultiCondContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by modelParser#parenthesisCond.
     def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#parenthesisJump.
-    def visitParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by modelParser#multiJump.
-    def visitMultiJump(self, ctx:modelParser.MultiJumpContext):
+    # Visit a parse tree produced by modelParser#binaryCond.
+    def visitBinaryCond(self, ctx:modelParser.BinaryCondContext):
         return self.visitChildren(ctx)
 
 
@@ -94,8 +89,23 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by modelParser#multyJump.
+    def visitMultyJump(self, ctx:modelParser.MultyJumpContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by modelParser#jumpMod.
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#parenthesisJump.
+    def visitParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by modelParser#binaryJump.
+    def visitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
         return self.visitChildren(ctx)
 
 
@@ -174,13 +184,13 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#parenFormula.
-    def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
+    # Visit a parse tree produced by modelParser#multyFormula.
+    def visitMultyFormula(self, ctx:modelParser.MultyFormulaContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#constant.
-    def visitConstant(self, ctx:modelParser.ConstantContext):
+    # Visit a parse tree produced by modelParser#parenFormula.
+    def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visitChildren(ctx)
 
 

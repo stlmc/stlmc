@@ -300,6 +300,7 @@ class Integral(Node):
         start = '[' + ' '.join([str(sl) for sl in self.startList]) + ']'
         end   = '[' + ' '.join([str(el) for el in self.endList])   + ']'
 #        result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_' + self.flowIndex + '))\n'
+        result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_))\n' 
         return result
     def getVars(self):
         return set(self.startList + self.endList + [self.time])
@@ -354,6 +355,7 @@ class Forall(Node):
             startCond = self.condition.substitution(self.startDict)
             constraint = And(endCond, startCond).substitution(self.modeDict)
 #            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
+            result = '(and ' + str(constraint) + ' (forall_t ' + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
         return result
     def getVars(self):
         return set()

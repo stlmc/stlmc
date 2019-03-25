@@ -29,10 +29,6 @@ def guessPartition(formula, baseCase):
 def _guess(formula, baseCase, genVar, result, sepMap, const):
     raise NotImplementedError('Something wrong')
 
-@_guess.register(ConstantFormula)
-def _(formula, baseCase, genVar, result, sepMap, const):
-    result[formula] = set()
-
 @_guess.register(PropositionFormula)
 def _(formula, baseCase, genVar, result, sepMap, const):
     result[formula] = set(baseCase)

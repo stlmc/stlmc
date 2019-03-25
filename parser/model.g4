@@ -94,9 +94,10 @@ expression  : LPAREN expression RPAREN # parenthesisExp
               ;
 
 condition   : LPAREN condition RPAREN  # parenthesisCond
-            | condition op=COMPARE_OP condition #compCond
             | expression op=COMPARE_OP expression  # compExp
-            | op=(BOOL_AND | BOOL_OR) condition condition+  #multiCond 
+            | condition op=COMPARE_OP condition    # compCond
+            | condition op=(BOOL_AND | BOOL_OR | AND | OR) condition   # binaryCond
+            | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
             | op=BOOL_NOT condition  # unaryCond
             | TRUE     # constantCond
             | FALSE    # constantCond
@@ -105,7 +106,8 @@ condition   : LPAREN condition RPAREN  # parenthesisCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
-            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multiJump 
+            | jump_redecl op=(BOOL_AND | BOOL_OR | AND | OR) jump_redecl   # binaryJump
+            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
             | op=BOOL_NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
             | NEXT_VAR EQUAL TRUE # jumpMod
@@ -150,15 +152,13 @@ interval
 formula
  :          op=NOT                      formula  # unaryFormula
  |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
- | formula  op=AND                      formula  # binaryFormula
- | formula  op=OR                       formula  # binaryFormula
+ | formula  op=(BOOL_AND | BOOL_OR | AND | OR)     formula  # binaryFormula
+ | op=(BOOL_AND | BOOL_OR) formula formula+      # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
  | formula  op=IMP                      formula  # binaryFormula
  | LPAREN formula RPAREN                         # parenFormula
- | VARIABLE                                      # proposition 
- | TRUE                                          # constant
- | FALSE                                         # constant
  | condition                                     # directCond 
+ | VARIABLE                                      # proposition
  ;
 
 props : PROP COLON (prop)* ;

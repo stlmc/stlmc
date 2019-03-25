@@ -90,12 +90,11 @@ init:
 (and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1));
 
 propositions:
-reachability = fx > 21 ;
-ffourpt = fx > 10 ;
+reachability = x1 > 21 ;
+ffourpt = x1 > 10 ;
 
 goal:
-[] [0.0,40.0] ~reachability ;
-~(<> [0.0,20.0] ((sx <= 20) U[2.0, 12.0) ffourpt)) ;
+(x1 > 21 and x1 < 23) ;
 
 
 

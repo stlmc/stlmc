@@ -8,12 +8,6 @@ class NotFormula(Unary, Formula):
     op = '~'
 
 
-class ConstantFormula(Atomic, Formula):
-    def __init__(self, value):
-        super().__init__(True if value == 'true' else False)
-    def getValue(self):
-        return self.id
-
 class PropositionFormula(Atomic, Formula):
     pass
 

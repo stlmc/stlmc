@@ -99,14 +99,17 @@ class modelVisitorImpl(modelVisitor):
     def visitUnaryCond(self, ctx:modelParser.UnaryCondContext):
         return UnaryCond(ctx.op.text,self.visit(ctx.condition()))
 
-    def visitMultiCond(self, ctx:modelParser.MultiCondContext):
+    def visitMultyCond(self, ctx:modelParser.MultyCondContext):
         prop = list()
         for i in range(len(ctx.condition())):
             prop.append(self.visit(ctx.condition()[i]))
-        return MultiCond(ctx.op.text, prop)
+        return MultyCond(ctx.op.text, prop)
 
     def visitParenthesisCond(self, ctx:modelParser.ParenthesisCondContext):
         return self.visit(ctx.condition())
+
+    def visitBinaryCond(self, ctx:modelParser.BinaryCondContext):
+        return BinaryCond(ctx.op.text, ctx.condition()[0], ctx.condition()[1])
 
     '''
     jump redeclaration
@@ -114,11 +117,14 @@ class modelVisitorImpl(modelVisitor):
     def visitParenthesisJump(self, ctx:modelParser.ParenthesisJumpContext):
         return self.visit(ctx.jump_redecl())
 
-    def visitMultiJump(self, ctx:modelParser.MultiJumpContext):
+    def visitMultyJump(self, ctx:modelParser.MultyJumpContext):
         prop = list()
         for i in range(len(ctx.jump_redecl())):
             prop.append(self.visit(ctx.jump_redecl()[i]))
-        return MultiJump(ctx.op.text, prop) 
+        return MultyJump(ctx.op.text, prop) 
+
+    def visitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
+        return BinaryJump(ctx.op.text, ctx.jump_redecl()[0], ctx.jump_redecl()[1])
 
     def visitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
         return UnaryJump(ctx.op.text, self.visit(ctx.jump_redecl()))
@@ -187,7 +193,7 @@ class modelVisitorImpl(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return MultiCond("and", element)
+        return MultyCond("and", element)
  
     '''
     invariant declaration
@@ -196,7 +202,7 @@ class modelVisitorImpl(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return MultiCond("and", element) 
+        return MultyCond("and", element) 
 
     '''
     flow declaration
@@ -258,12 +264,6 @@ class modelVisitorImpl(modelVisitor):
     def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visit(ctx.formula())
 
-
-    # Visit a parse tree produced by modelParser#constant.
-    def visitConstant(self, ctx:modelParser.ConstantContext):
-        return ConstantFormula(ctx.getText())
-
-
     # Visit a parse tree produced by modelParser#binaryTemporalFormula.
     def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
         time = self.visit(ctx.interval())
@@ -293,6 +293,12 @@ class modelVisitorImpl(modelVisitor):
         else:
             raise "something wrong"
 
+    def visitMultyFormula(self, ctx:modelParser.MultyFormulaContext):
+        result = list()
+        for i in range(len(ctx.formula())):
+            result.append(self.visit(ctx.formula()[i]))
+        return {'and' : AndFormula, 'or' : OrFormula}[ctx.op.text](result)
+
     # Visit a parse tree produced by modelParser#unaryTemporalFormula.
     def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
         time = self.visit(ctx.interval())
@@ -319,11 +325,11 @@ class modelVisitorImpl(modelVisitor):
     goal declaration
     '''
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
-        #formulaList = list()
+        formulaList = list()
 
-        #for i in range(len(ctx.formula())):
-        #    formulaList.append(self.visit(ctx.formula()[i]))
-        return formulaDecl(ctx.formula())
+        for i in range(len(ctx.formula())):
+            formulaList.append(ctx.formula()[i].getText())
+        return formulaDecl(formulaList)
 
             
 
