@@ -4,6 +4,7 @@ from core.stl import parseFormula
 from core.z3Handler import checkSat
 import core.partition as PART
 import core.separation as SEP
+from core.formula import *
 
 def isNumber(s):
     try:
@@ -145,7 +146,7 @@ class Binary:
         self.right = right
     def __repr__(self):
         return "(" + str(self.op) + " " + str(self.left) + " " + str(self.right) + ")"
-    def getExpressiont(self, varDict):
+    def getExpression(self, varDict):
         left = self.left.getExpression(varDict)
         right = self.right.getExpression(varDict)
         return {'and' : And, 'or' : Or}[self.op](left, right)
@@ -157,7 +158,11 @@ class Unary:
     def __repr__(self):
         return str(self.op) + " " + repr(self.prop)
     def getExpression(self, varDict):
-        return {'not' : Not}[self.op](self.prop)
+        if self.prop in varDict.keys():
+            prop = varDict[self.prop]
+        else: 
+            raise("Proposition is not declared in unary class")
+        return {'not' : Not}[self.op](prop)
 
 class MultyCond(Multy):
     pass
@@ -175,7 +180,12 @@ class BinaryJump(Binary):
     pass
 
 class UnaryJump(Unary):
-    pass
+    def getExpression(self, varDict):
+        if isinstance(self.prop, NextVar):
+            prop = self.prop
+        else:
+            prop = self.prop.getExpression(varDict)
+        return {'not' : Not}[self.op](prop)
 
 class DiffEq:
     def __init__(self, contVar, flow):
@@ -291,16 +301,14 @@ class propDecl:
         return self.cond.getExpression(varDict)
     def getId(self):
         return Bool(str(self.id))
+    def getType(self):
+        return Type.Bool
 
 class formulaDecl:
     def __init__(self, formulaList):
         self.formulaList = formulaList  # string type formulas
     def getFormulas(self, propDict):
-        result = list()
-        for i in range(len(self.formulaList)):
-            curStl = parseFormula("~"+str(self.formulaList[i]))
-            result.append(curStl)
-        return result
+        return self.formulaList
     def getNumOfForms(self):
         return len(self.formulaList)
 
@@ -315,7 +323,7 @@ class StlMC:
         self.subvars = self.makeVariablesDict()
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
 
-    def getNegStlFormsList(self):
+    def getStlFormsList(self):
         return self.goal.getFormulas(self.subvars)
 
     def getNumOfstlForms(self):
@@ -338,6 +346,7 @@ class StlMC:
         (constSize, fsSize) = (0, 0)
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
+        negFormula = NotFormula(stlFormula)  # negate the formula
 
         for i in range(0 if iterative else bound, bound + 1):
 
@@ -346,10 +355,10 @@ class StlMC:
             baseP = PART.baseCase(i)
 
             # partition constraint
-            (partition,sepMap,partitionConsts) = PART.guessPartition(stlFormula, baseP)
+            (partition,sepMap,partitionConsts) = PART.guessPartition(negFormula, baseP)
 
             # full separation
-            fs = SEP.fullSeparation(stlFormula, sepMap)
+            fs = SEP.fullSeparation(negFormula, sepMap)
 
             # FOL translation
             baseV = ENC.baseEncoding(partition,baseP)
@@ -357,6 +366,9 @@ class StlMC:
 
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
+
+            #for i in range(len(modelConsts)):
+            #    print(modelConsts[i])
 
             etime1 = time.process_time()
 

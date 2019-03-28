@@ -194,11 +194,6 @@ class modelVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by modelParser#directCond.
-    def visitDirectCond(self, ctx:modelParser.DirectCondContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by modelParser#binaryTemporalFormula.
     def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
         return self.visitChildren(ctx)

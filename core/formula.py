@@ -7,14 +7,12 @@ class Formula:
 class NotFormula(Unary, Formula):
     op = '~'
 
-
 class PropositionFormula(Atomic, Formula):
     pass
 
 
 class AndFormula(Multiary, Formula):
     op = '/\\'
-
 
 class OrFormula(Multiary, Formula):
     op = '\\/'
@@ -23,7 +21,6 @@ class OrFormula(Multiary, Formula):
 class ImpliesFormula(Binary, Formula):
     op = '->'
 
-
 class UnaryTemporalFormula(Unary, Formula):
     def __init__(self, ltime, gtime, child):
         super().__init__(child)
@@ -31,7 +28,6 @@ class UnaryTemporalFormula(Unary, Formula):
         self.gtime = gtime
     def __str__(self):
         return '(' + self.op+ '_' + str(self.ltime) + '^' + str(self.gtime) + ' ' + str(self.child) + ')'
-
 
 class GloballyFormula(UnaryTemporalFormula):
     op = '[]'
@@ -48,7 +44,6 @@ class BinaryTemporalFormula(Binary, Formula):
         self.gtime = gtime
     def __str__(self):
         return '(' + str(self.left) + ' ' + self.op + '_' + str(self.ltime) + '^' + str(self.gtime) + ' ' + str(self.right) + ')'
-
 
 class UntilFormula(BinaryTemporalFormula):
     op = 'U'

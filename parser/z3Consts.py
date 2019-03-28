@@ -22,6 +22,12 @@ class z3Consts:
             result[str(self.modeVar[i].getId())] = op[self.modeVar[i].getType()](self.modeVar[i].getId() + '_' + str(k))
         return result
 
+    def makeSubProps(self, k):
+        result = {}
+        for i in range(len(self.prop)):
+            result[str(self.prop[i].getId())] = Bool(str(self.prop[i].getId()) + '_' + str(k))
+        return result
+ 
     # Substituion varialbes according to bound k, sOe: var_k_0 or var_k_t
     def makeSubVars(self, k, sOe):
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
@@ -31,10 +37,12 @@ class z3Consts:
         return result
 
     # Make variable range constratint
-    def makeVarRangeConsts(self):
+    def makeVarRangeConsts(self, bound):
         result = list()
-        for i in range(len(self.contVar)):
-            result.append(self.contVar[i].getConstraint())
+        for k in range(bound+1):
+            combine = self.combineDict(self.makeSubVars(k, '0'), self.makeSubVars(k, 't'))
+            for i in range(len(self.contVar)):
+                result.append(self.contVar[i].getConstraint().substitution(combine))
         return And(*result)
 
     def combineDict(self, dict1, dict2):
@@ -49,7 +57,7 @@ class z3Consts:
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
-            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
+            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), And(*subresult)))
 
         result = []
         for k in range(bound+1):
@@ -105,13 +113,14 @@ class z3Consts:
         for k in range(bound+1):
             time = Real('time' + str(k))
             const = list()
+            combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
             for i in self.makePropDict().keys():
                 if str(i) in propSet:
                     for m in range(len(self.modeModule)):
                         flowModule = dict()
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
-                        const.append(Implies(And(i, curMode).substitution(self.makeSubMode(k)), Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
-                        const.append(Implies(And(Not(i), curMode).substitution(self.makeSubMode(k)), Forall(time, Not(self.makePropDict()[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+                        const.append(Implies(And(i, curMode).substitution(combine), Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+                        const.append(Implies(And(Not(i), curMode).substitution(combine), Forall(time, Not(self.makePropDict()[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
             result.append(And(*const))
         return And(*result)
 
@@ -138,10 +147,10 @@ class z3Consts:
     def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula):
         result = list()
         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))
-        result.append(self.makeVarRangeConsts()) # make range constraint
+        result.append(self.makeVarRangeConsts(bound)) # make range constraint
         result.append(self.init.getExpression(self.subvars).substitution(combine)) # make initial constraint
         result.append(self.flowConstraints(bound))
-
+        result.append(self.jumpConstraints(bound))
         ts = [Real("tau_%s"%i) for i in range(0, bound+1)]
 
         result.append(ts[0] >= RealVal(0))

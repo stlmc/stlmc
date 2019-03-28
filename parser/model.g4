@@ -1,13 +1,13 @@
 grammar model ;
 
-TRUE  : 'true'  ;
-FALSE : 'false' ;
+TRUE  : 'true' | 'True' | 'TRUE' ;
+FALSE : 'false' | 'False' | 'FALSE' ;
 INFTY : 'inf' ;
 
 fragment GT        : '>' ;
 fragment GTE       : '>=' ;
 fragment LT        : '<' ;
-fragment LTE       : '<=' ; 
+fragment LTE       : '<=' ;
 fragment COM_EQ    : '==' ;
 fragment NEQ       : '!=' ;
 
@@ -20,21 +20,10 @@ fragment OP_SQRT   : 'sqrt' ;
 
 FUNC_OP : (OP_SIN | OP_COS | OP_LOG | OP_SQRT) ;
 
-fragment DIGIT      : [0-9] ;
-
-VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
-
-fragment LOWERCASE : [a-z] ;
-fragment UPPERCASE : [A-Z] ;
-
 PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
 DIVIDE   : '/' ;
-
-BOOL : 'bool' ;
-INT  : 'int' ;
-REAL : 'real' ;
 
 MODE : 'mode' ;
 INVT : 'inv' ;
@@ -44,13 +33,16 @@ GOAL : 'goal' ;
 INIT : 'init' ;
 PROP : 'propositions' ;
 
-BOOL_AND   : 'and' ;
-BOOL_OR    : 'or'  ;
-BOOL_NOT   : 'not' ;
+BOOL : 'bool' | 'Bool' | 'BOOL' ;
+INT  : 'int' | 'Int' | 'INT' ;
+REAL : 'real' | 'Real' | 'REAL' ;
+
+BOOL_AND   : 'and' | 'And' ;
+BOOL_OR    : 'or'  | 'Or' ;
+NOT   : 'not' | 'Not' | '~' ;
 JUMP_ARROW : '==>' ;
 DIFF       : 'd/dt' ;
 
-NOT   : '~'   ;
 AND   : '/\\' ;
 OR    : '\\/' ;
 IMP   : '->'  ;
@@ -59,8 +51,6 @@ UNTIL   : 'U'  ;
 RELEASE : 'R'  ;
 GLOBAL  : '[]' ;
 FINAL   : '<>' ;
-
-VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
 
 LCURLY : '{' ;
 RCURLY : '}' ;
@@ -73,7 +63,17 @@ RBRACK : ']' ;
 COMMA  : ',' ;
 EQUAL  : '=' ;
 
+fragment DIGIT      : [0-9] ;
+
+VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
+
+fragment LOWERCASE : [a-z] ;
+fragment UPPERCASE : [A-Z] ;
+
+VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
+
 NEXT_VAR   : VARIABLE '\'' ;
+
 WS      : (' ' | '\t' | '\n')+ -> skip ;
 
 
@@ -81,34 +81,36 @@ WS      : (' ' | '\t' | '\n')+ -> skip ;
  * Parser Rules
  */
 
-stlMC : (mode_var_decl | variable_var_decl)+ mode_module+ init_decl props goal_decl EOF ;
+stlMC : (mode_var_decl | variable_var_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;
 
-expression  : LPAREN expression RPAREN # parenthesisExp
-            | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
-            | op=FUNC_OP expression  # unaryExp
+expression  : 
+              LPAREN expression RPAREN # parenthesisExp
             | VALUE     # constantExp
             | VARIABLE  # constantExp
+            | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
+            | op=FUNC_OP expression  # unaryExp
               ;
 
-condition   : LPAREN condition RPAREN  # parenthesisCond
-            | condition op=COMPARE_OP condition    # compCond
-            | expression op=COMPARE_OP expression  # compExp
-            | condition op=(BOOL_AND | BOOL_OR | AND | OR) condition   # binaryCond
-            | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
-            | op=BOOL_NOT condition  # unaryCond
+condition   :
+              LPAREN condition RPAREN  # parenthesisCond
             | TRUE     # constantCond
             | FALSE    # constantCond
             | VALUE    # constantCond
             | VARIABLE # constantCond
+            | expression op=COMPARE_OP expression  # compExp
+            | condition op=COMPARE_OP condition    # compCond
+            | condition op=(BOOL_AND | BOOL_OR | AND | OR) condition   # binaryCond
+            | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
+            | op=NOT condition  # unaryCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | jump_redecl op=(BOOL_AND | BOOL_OR | AND | OR) jump_redecl   # binaryJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
-            | op=BOOL_NOT jump_redecl  # unaryJump
+            | op=NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
             | NEXT_VAR EQUAL TRUE # jumpMod
             | NEXT_VAR EQUAL FALSE # jumpMod
@@ -150,15 +152,15 @@ interval
  ;
 
 formula
- :          op=NOT                      formula  # unaryFormula
- |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
+ :
+   LPAREN formula RPAREN                         # parenFormula
+ | VARIABLE                                      # proposition
  | formula  op=(BOOL_AND | BOOL_OR | AND | OR)     formula  # binaryFormula
+ |          op=NOT                      formula  # unaryFormula
+ |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
  | op=(BOOL_AND | BOOL_OR) formula formula+      # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
  | formula  op=IMP                      formula  # binaryFormula
- | condition                                     # directCond 
- | LPAREN formula RPAREN                         # parenFormula
- | VARIABLE                                      # proposition
  ;
 
 props : PROP COLON (prop)* ;

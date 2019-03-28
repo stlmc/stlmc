@@ -5,7 +5,6 @@ from model import *
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from stlMC import *
-from core.formula import *
 
 class modelVisitorImpl(modelVisitor):
 
@@ -19,6 +18,7 @@ class modelVisitorImpl(modelVisitor):
         modesDecl = list()
         varsDecl = list()
         modeModuleDecl = list()
+        propDecl = list()
 
         for i in range(len(ctx.mode_var_decl())):
             modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
@@ -30,8 +30,9 @@ class modelVisitorImpl(modelVisitor):
             modeModuleDecl.append(self.visit(ctx.mode_module()[i]))
 
         init = self.visit(ctx.init_decl())
- 
-        propDecl = self.visit(ctx.props())
+
+        if ctx.props():
+            propDecl = self.visit(ctx.props())
 
         goal = self.visit(ctx.goal_decl())
 
@@ -109,7 +110,7 @@ class modelVisitorImpl(modelVisitor):
         return self.visit(ctx.condition())
 
     def visitBinaryCond(self, ctx:modelParser.BinaryCondContext):
-        return BinaryCond(ctx.op.text, ctx.condition()[0], ctx.condition()[1])
+        return BinaryCond(ctx.op.text, self.visit(ctx.condition()[0]), self.visit(ctx.condition()[1]))
 
     '''
     jump redeclaration
@@ -264,20 +265,9 @@ class modelVisitorImpl(modelVisitor):
     def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visit(ctx.formula())
 
-    # Visit a parse tree produced by modelParser#binaryTemporalFormula.
-    def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
-        time = self.visit(ctx.interval())
-        left = self.visit(ctx.formula()[0])
-        right = self.visit(ctx.formula()[1])
-        return {'U': UntilFormula, 'R': ReleaseFormula}[ctx.op.text](time, universeInterval, left, right)
-
-
-    # Visit a parse tree produced by modelParser#proposition.
+    # Visit a parse tree produced by stlParser#proposition.
     def visitProposition(self, ctx:modelParser.PropositionContext):
-        return PropositionFormula(ctx.getText())
-
-    def visitDirectCond(self, ctx:modelParser.DirectCondContext):
-        return self.visit(ctx.condition())
+        return PropositionFormula(ctx.VARIABLE().getText())
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
@@ -286,9 +276,9 @@ class modelVisitorImpl(modelVisitor):
         right = self.visit(ctx.formula()[1])
         if op == '->':
             return ImpliesFormula(left,right)
-        elif op == '/\\':
+        elif ((op == '/\\') or (op == 'And') or (op == 'and')):
             return AndFormula([left,right])
-        elif op == '\\/':
+        elif ((op == '\\/') or (op == 'Or') or (op == 'or')):
             return OrFormula([left,right])
         else:
             raise "something wrong"

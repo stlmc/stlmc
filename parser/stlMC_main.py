@@ -34,9 +34,9 @@ def main(argv):
         with open(rel_path, 'w' ) as fle:
             print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         #args : (0, bound, step)
-        for k in range(2, 4, 2):
-            formula = stlMC.getNegStlFormsList()[i]
-            print("  scheduleing " + str(i) + " bound: " + str(k))
+        for k in range(1, 2, 2):
+            formula = stlMC.getStlFormsList()[i]
+            print("  scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
             with open(filename, 'a+') as fle:

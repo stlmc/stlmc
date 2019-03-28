@@ -100,11 +100,11 @@ init:
 (and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1) ((constx1 == x1) and (constx2 == x2)));
 
 propositions:
-reachability = x1 > 21 ;
-ffourpt = x1 > 10 ;
+reachability = x1 < 27 ;
+a = x1 > 21 ;
 
 goal:
-(x1 > 21 and x1 < 23) ;
+([] [0.0, 20.0] (reachability /\ a)) ;
 
 
 
