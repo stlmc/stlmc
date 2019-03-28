@@ -1,6 +1,5 @@
 from z3Consts import *
 import time
-from core.stl import parseFormula
 from core.z3Handler import checkSat
 import core.partition as PART
 import core.separation as SEP
