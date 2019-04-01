@@ -12,8 +12,8 @@ def isNumber(s):
     except ValueError:
         return False
 
-def printResult(result, k, cSize, fSize, generationTime, solvingTime, totalTime):
-    print(result + " at bound k = " + str(k) + ".")
+def printResult(result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
+    print(result + " at bound k : " + str(k) + ", time bound : " + str(tauMax) + ".")
     print("Constraint Size : " + str(cSize) + ", Translation Size : " + str(fSize) + ".")
     print("Generation Time(sec) : " + generationTime + ", Solving Time(sec) : " + solvingTime + ", Total Time(sec) : " + totalTime + ".\n")
     print("--------------------------------------------------------------------------------------\n")
@@ -392,13 +392,13 @@ class StlMC:
             totalTime = round((stime2-stime1), 4)
 
             if  result == z3.sat:
-                printResult("False", i, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+                printResult("False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
                 return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
             if  result == z3.unknown:
                 isUnknown = True
 
         result = "Unknown" if isUnknown else True
-        printResult(str(result), bound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+        printResult(str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime)) 
 
