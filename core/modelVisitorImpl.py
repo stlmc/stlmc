@@ -1,10 +1,7 @@
 from antlr4 import *
-from modelParser import modelParser
-from modelVisitor import modelVisitor
-from model import *
-import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from stlMC import *
+from core.syntax.modelParser import modelParser
+from core.syntax.modelVisitor import modelVisitor
+from core.model import *
 
 class modelVisitorImpl(modelVisitor):
 

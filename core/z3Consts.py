@@ -1,8 +1,6 @@
 import z3
-import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from core.constraint import *
 import core.encoding as ENC
+from .node import *
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):

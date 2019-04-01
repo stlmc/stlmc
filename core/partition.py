@@ -1,4 +1,3 @@
-
 import math, itertools
 from .base import genId
 from .formula import *

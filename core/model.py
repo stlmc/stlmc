@@ -1,9 +1,9 @@
-from z3Consts import *
-import time
-from core.z3Handler import checkSat
 import core.partition as PART
 import core.separation as SEP
-from core.formula import *
+from .formula import *
+from .z3Consts import *
+import time
+from .z3Handler import checkSat
 
 def isNumber(s):
     try:

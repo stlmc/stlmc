@@ -1,8 +1,8 @@
 import sys
 from antlr4 import *
-from modelLexer import modelLexer
-from modelParser import modelParser
-from modelVisitorImpl import modelVisitorImpl
+from core.syntax.modelLexer import modelLexer
+from core.syntax.modelParser import modelParser
+from core.modelVisitorImpl import modelVisitorImpl
 import io, os, sys
 
 
@@ -29,7 +29,7 @@ def main(argv):
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
-            with open(filename, 'a+') as fle:
+            with open(rel_path, 'a+') as fle:
                 print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
 if __name__ == '__main__':
