@@ -13,11 +13,6 @@ class ConstantFormula(Atomic, Formula):
     def getValue(self):
         return self.id
 
-class DirectCondFormula(Binary, Formula):
-    def __init__(self, op, left, right):
-        super().__init__(left, right)
-        self.op = op
-
 class PropositionFormula(Atomic, Formula):
     pass
 

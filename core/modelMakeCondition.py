@@ -17,7 +17,7 @@ class modelVisitorImpl(modelVisitor):
         modesDecl = list()
         varsDecl = list()
         modeModuleDecl = list()
-        self.propDecl = list()
+        propDecl = list()
 
         for i in range(len(ctx.mode_var_decl())):
             modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
@@ -31,10 +31,11 @@ class modelVisitorImpl(modelVisitor):
         init = self.visit(ctx.init_decl())
 
         if ctx.props():
-            self.propDecl = self.visit(ctx.props())
+            propDecl = self.visit(ctx.props())
 
-        goal = self.visit(ctx.goal_decl())
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, self.propDecl, goal) 
+        (newProps, goal) = self.visit(ctx.goal_decl())
+
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, propDecl.extend(newProps), goal) 
 
     '''
     mode_var_decl
@@ -265,55 +266,56 @@ class modelVisitorImpl(modelVisitor):
 
     # Visit a parse tree produced by modelParser#proposition.
     def visitProposition(self, ctx:modelParser.PropositionContext):
-        return PropositionFormula(ctx.VARIABLE().getText())
+        print("reach proposition formula")
+        print(ctx.VARIABLE().getText())
+        return ([], PropositionFormula(ctx.VARIABLE().getText()))
 
     # Visit a parse tree produced by modelParser#constant.
     def visitConstFormula(self, ctx:modelParser.ConstFormulaContext):
-        return ConstantFormula(ctx.getText())
+        print("reach constant formula")
+        return ([], ConstantFormula(ctx.getText()))
 
-    def visitDirectCond(self, ctx:modelParser.DirectCondContext):
+    def vistDirectCond(self, ctx:modelParser.DirectCondContext):
         newProp = "".join([random.choice(string.ascii_letters) for _ in range(10)])
-        op = ctx.op.text
-        if ctx.expression():
-            left = self.visit(ctx.expression()[0])
-            right = self.visit(ctx.expression()[1])
-        else:
-            left = self.visit(ctx.condition()[0])
-            right = self.visit(ctx.condition()[1])
-        self.propDecl.append(propDecl(str(newProp), CompCond(op, left, right))) 
-        return PropositionFormula(str(newProp))
+        print("reach direct condition")
+        return ([propDecl(str(newProp), self.visit(ctx.condition()))], PropositionFormula(str(newProp))) 
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
+        print("reach binary formula")
         op = ctx.op.text
         left = self.visit(ctx.formula()[0])
         right = self.visit(ctx.formula()[1])
         if op == '->':
-            return ImpliesFormula(left,right)
+            result = ImpliesFormula(left,right)
         elif ((op == '/\\') or (op == 'And') or (op == 'and')):
-            return AndFormula([left,right])
+            result = AndFormula([left,right])
         elif ((op == '\\/') or (op == 'Or') or (op == 'or')):
-            return OrFormula([left,right])
+            result = OrFormula([left,right])
         else:
             raise "something wrong"
+        return ([], result)
 
     def visitMultyFormula(self, ctx:modelParser.MultyFormulaContext):
+        print("reach multy formula")
         result = list()
         for i in range(len(ctx.formula())):
             result.append(self.visit(ctx.formula()[i]))
-        return {'and' : AndFormula, 'or' : OrFormula}[ctx.op.text](result)
+        return ([], {'and' : AndFormula, 'or' : OrFormula}[ctx.op.text](result))
 
     # Visit a parse tree produced by modelParser#unaryTemporalFormula.
     def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
+        print("reach unary temporal formula")
         time = self.visit(ctx.interval())
-        child = self.visit(ctx.formula())
-        return {'[]': GloballyFormula, '<>': FinallyFormula}[ctx.op.text](time, universeInterval, child)
+        child = self.visit(ctx.formula())[1]
+        return ([], {'[]': GloballyFormula, '<>': FinallyFormula}[ctx.op.text](time, universeInterval, child))
 
 
     # Visit a parse tree produced by modelParser#unaryFormula.
     def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):
-        child = self.visit(ctx.formula())
-        return {'~': NotFormula}[ctx.op.text](child)
+        print("reach unary formula formula")
+        child = self.visit(ctx.formula())[1]
+        return ([], {'~': NotFormula}[ctx.op.text](child))
 
     def visitProps(self, ctx:modelParser.PropsContext):
         propDecl = list()
@@ -330,9 +332,13 @@ class modelVisitorImpl(modelVisitor):
     '''
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
         formulaList = list()
+        newPropList = list()
         for i in range(len(ctx.formula())):
-            formulaList.append(self.visit(ctx.formula()[i]))
-        return formulaDecl(formulaList)
+            result = self.visit(ctx.formula()[i])
+            print(result[1])
+            formulaList.append(result[1])
+            newPropList.extend(result[0])
+        return (newPropList, formulaDecl(formulaList))
 
             
 
