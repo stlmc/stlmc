@@ -12,6 +12,12 @@ def isNumber(s):
     except ValueError:
         return False
 
+def printResult(result, k, cSize, fSize, generationTime, solvingTime, totalTime):
+    print(result + " at bound k = " + str(k) + ".")
+    print("Constraint Size : " + str(cSize) + ", Translation Size : " + str(fSize) + ".")
+    print("Generation Time(sec) : " + generationTime + ", Solving Time(sec) : " + solvingTime + ", Total Time(sec) : " + totalTime + ".\n")
+
+
 class Variable:
      def __init__(self, varType, varId):
          self.type = varType
@@ -380,12 +386,20 @@ class StlMC:
             fsSize += sum([ENC.size(f) for f in [fs[0]]+list(fs[1].values())])
             constSize += cSize
 
+            generationTime = round((etime1-stime1),4)
+            solvingTime = round((stime2-etime1), 4)
+            totalTime = round((stime2-stime1), 4)
+
             if  result == z3.sat:
-                return (False, constSize, fsSize, str(etime1-stime1), str(stime2-etime1), str(stime2-stime1))  # counterexample found
+                printResult("False", i, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+                return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
             if  result == z3.unknown:
                 isUnknown = True
 
-        return ("Unknown" if isUnknown else True, constSize, fsSize, str(etime1-stime1), str(stime2-etime1), str(stime2-stime1))
+        result = "Unknown" if isUnknown else True
+        printResult(str(result), bound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+
+        return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime)) 
 
 
     def reach(self, bound, goal):
