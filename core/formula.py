@@ -7,6 +7,17 @@ class Formula:
 class NotFormula(Unary, Formula):
     op = '~'
 
+class ConstantFormula(Atomic, Formula):
+    def __init__(self, value):
+        super().__init__(True if value == 'true' else False)
+    def getValue(self):
+        return self.id
+
+class DirectCondFormula(Binary, Formula):
+    def __init__(self, op, left, right):
+        super().__init__(left, right)
+        self.op = op
+
 class PropositionFormula(Atomic, Formula):
     pass
 

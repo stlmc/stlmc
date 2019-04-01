@@ -154,7 +154,11 @@ interval
 formula
  :
    LPAREN formula RPAREN                         # parenFormula
+ | TRUE                                          # constFormula
+ | FALSE                                         # constFormula
  | VARIABLE                                      # proposition
+ | expression op=COMPARE_OP expression           # directCond
+ | condition op=COMPARE_OP condition             # directCond
  | formula  op=(BOOL_AND | BOOL_OR | AND | OR)     formula  # binaryFormula
  |          op=NOT                      formula  # unaryFormula
  |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula

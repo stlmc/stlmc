@@ -1,7 +1,6 @@
 import z3
 import itertools
 from functools import singledispatch
-
 from .error import *
 from .node import *
 

@@ -262,9 +262,22 @@ class modelVisitorImpl(modelVisitor):
     def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visit(ctx.formula())
 
-    # Visit a parse tree produced by stlParser#proposition.
+    # Visit a parse tree produced by modelParser#proposition.
     def visitProposition(self, ctx:modelParser.PropositionContext):
         return PropositionFormula(ctx.VARIABLE().getText())
+
+    # Visit a parse tree produced by modelParser#constant.
+    def visitConstFormula(self, ctx:modelParser.ConstFormulaContext):
+        return ConstantFormula(ctx.getText())
+
+    def vistDirectCond(self, ctx:modelParser.DirectCondContext):
+        if ctx.expression():
+            left = self.visit(ctx.expression()[0])
+            right = self.visit(ctx.expression()[1])
+        else:
+            left = self.visit(ctx.condition()[0])
+            right = self.visit(ctx.condition()[1])
+        return DirectCondFormula(ctx.op().getText(), left, right)
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):

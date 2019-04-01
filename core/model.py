@@ -362,7 +362,7 @@ class StlMC:
 
             # partition constraint
             (partition,sepMap,partitionConsts) = PART.guessPartition(negFormula, baseP)
-
+            
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
 
