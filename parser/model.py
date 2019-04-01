@@ -16,6 +16,7 @@ def printResult(result, k, cSize, fSize, generationTime, solvingTime, totalTime)
     print(result + " at bound k = " + str(k) + ".")
     print("Constraint Size : " + str(cSize) + ", Translation Size : " + str(fSize) + ".")
     print("Generation Time(sec) : " + generationTime + ", Solving Time(sec) : " + solvingTime + ", Total Time(sec) : " + totalTime + ".\n")
+    print("--------------------------------------------------------------------------------------\n")
 
 
 class Variable:
