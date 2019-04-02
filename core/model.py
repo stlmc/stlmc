@@ -319,7 +319,7 @@ class formulaDecl:
         return len(self.formulaList)
 
 class StlMC:
-    def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
+    def __init__(self, modeVar, contVar, modeModule, init, prop, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
         self.modeModule = modeModule
@@ -328,12 +328,13 @@ class StlMC:
         self.goal = goal
         self.subvars = self.makeVariablesDict()
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.formulaText = formulaText
 
     def getStlFormsList(self):
         return self.goal.getFormulas(self.subvars)
 
-    def getNumOfstlForms(self):
-        return self.goal.getNumOfForms()
+    def getStlFormsText(self):
+        return self.formulaText
 
     # Transform the string id to Type(id) ex: 'a' -> Bool('a')
     def makeVariablesDict(self):

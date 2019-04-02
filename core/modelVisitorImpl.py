@@ -17,6 +17,7 @@ class modelVisitorImpl(modelVisitor):
         modeModuleDecl = list()
         propDecl = list()
         self.newPropDecl = list()
+        self.formulaText = list()
 
         for i in range(len(ctx.mode_var_decl())):
             modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
@@ -34,7 +35,7 @@ class modelVisitorImpl(modelVisitor):
 
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal) 
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText) 
 
     '''
     mode_var_decl
@@ -332,6 +333,7 @@ class modelVisitorImpl(modelVisitor):
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
         formulaList = list()
         for i in range(len(ctx.formula())):
+            self.formulaText.append(ctx.formula()[i].getText())
             formulaList.append(self.visit(ctx.formula()[i]))
         return formulaDecl(formulaList)
 

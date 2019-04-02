@@ -18,15 +18,16 @@ def main(argv):
     if not os.path.exists(str(os.path.abspath(os.curdir)) + "/data/"):
         os.makedirs(str(os.path.abspath(os.curdir)) + "/data/")
 
-    for i in range(stlMC.getNumOfstlForms()):
+    for i in range(len(stlMC.getStlFormsText())):
         filename = str("linearThermo") + "f_" + str(i) + ".csv"
         rel_path = str(os.path.abspath(os.curdir)) + "/data/" + filename
         with open(rel_path, 'w' ) as fle:
             print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         #args : (0, bound, step)
         for k in range(1, 6, 2):
+            strFormula = stlMC.getStlFormsText()[i]
             formula = stlMC.getStlFormsList()[i]
-            print("Scheduleing " + str(formula) + " bound: " + str(k))
+            print("Scheduleing " + strFormula + " bound: " + str(k))
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
             with open(rel_path, 'a+') as fle:
