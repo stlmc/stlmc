@@ -143,7 +143,7 @@ class Multy:
         result = list()
         for i in range(len(self.props)):
             result.append(self.props[i].getExpression(varDict))
-        return {'and' : And, 'or' : Or}[self.op](*result)
+        return {'and' : And, 'or' : Or, '/\\': And, '\//' : Or}[self.op](*result)
 
 class Binary:
     def __init__(self, op, left, right):
@@ -155,7 +155,7 @@ class Binary:
     def getExpression(self, varDict):
         left = self.left.getExpression(varDict)
         right = self.right.getExpression(varDict)
-        return {'and' : And, 'or' : Or}[self.op](left, right)
+        return {'and' : And, 'or' : Or, '/\\': And, '\//' : Or}[self.op](left, right)
 
 class Unary:
     def __init__(self, op, prop):
