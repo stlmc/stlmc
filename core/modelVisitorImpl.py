@@ -291,9 +291,9 @@ class modelVisitorImpl(modelVisitor):
         right = self.visit(ctx.formula()[1])
         if op == '->':
             return ImpliesFormula(left,right)
-        elif ((op == '/\\') or (op == 'And') or (op == 'and')):
+        elif ((op == 'And') or (op == 'and')):
             return AndFormula([left,right])
-        elif ((op == '\\/') or (op == 'Or') or (op == 'or')):
+        elif ((op == 'Or') or (op == 'or')):
             return OrFormula([left,right])
         else:
             raise "something wrong"
@@ -302,7 +302,7 @@ class modelVisitorImpl(modelVisitor):
         result = list()
         for i in range(len(ctx.formula())):
             result.append(self.visit(ctx.formula()[i]))
-        return {'and' : AndFormula, 'or' : OrFormula}[ctx.op.text](result)
+        return {'and' : AndFormula, 'or' : OrFormula, 'And' : AndFormula, 'Or' : OrFormula}[ctx.op.text](result)
 
     # Visit a parse tree produced by modelParser#unaryTemporalFormula.
     def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):

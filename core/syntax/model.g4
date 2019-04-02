@@ -43,8 +43,6 @@ NOT   : 'not' | 'Not' | '~' ;
 JUMP_ARROW : '==>' ;
 DIFF       : 'd/dt' ;
 
-AND   : '/\\' ;
-OR    : '\\/' ;
 IMP   : '->'  ;
 
 UNTIL   : 'U'  ;
@@ -102,13 +100,13 @@ condition   :
             | VARIABLE # constantCond
             | expression op=COMPARE_OP expression  # compExp
             | condition op=COMPARE_OP condition    # compCond
-            | condition op=(BOOL_AND | BOOL_OR | AND | OR) condition   # binaryCond
+            | condition op=(BOOL_AND | BOOL_OR) condition   # binaryCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
             | op=NOT condition  # unaryCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
-            | jump_redecl op=(BOOL_AND | BOOL_OR | AND | OR) jump_redecl   # binaryJump
+            | jump_redecl op=(BOOL_AND | BOOL_OR) jump_redecl   # binaryJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
             | op=NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
@@ -159,7 +157,7 @@ formula
  | VARIABLE                                      # proposition
  | expression op=COMPARE_OP expression           # directCond
  | condition op=COMPARE_OP condition             # directCond
- | formula  op=(BOOL_AND | BOOL_OR | AND | OR)     formula  # binaryFormula
+ | formula  op=(BOOL_AND | BOOL_OR)     formula  # binaryFormula
  |          op=NOT                      formula  # unaryFormula
  |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
  | op=(BOOL_AND | BOOL_OR) formula formula+      # multyFormula

@@ -87,7 +87,7 @@ bool b;
 
 }
 init:
-(and (not(a)) not(b) ((x1 <= 21 + 0.1) and (x1 >= 21 - 0.1)) ((x2 <= 21 + 3.5) /\ (x2 >= 21 + 3)));
+(and (not(a)) not(b) ((x1 <= 21 + 0.1) and (x1 >= 21 - 0.1)) (x2 <= 21 + 3.5) (x2 >= 21 + 3));
 
 propositions:
 reachability = x1 < 27 ;
