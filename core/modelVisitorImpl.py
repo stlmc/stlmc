@@ -1,5 +1,3 @@
-import random
-import string
 from antlr4 import *
 from core.syntax.modelParser import modelParser
 from core.syntax.modelVisitor import modelVisitor
@@ -17,7 +15,8 @@ class modelVisitorImpl(modelVisitor):
         modesDecl = list()
         varsDecl = list()
         modeModuleDecl = list()
-        self.propDecl = list()
+        propDecl = list()
+        self.newPropDecl = list()
 
         for i in range(len(ctx.mode_var_decl())):
             modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
@@ -31,10 +30,11 @@ class modelVisitorImpl(modelVisitor):
         init = self.visit(ctx.init_decl())
 
         if ctx.props():
-            self.propDecl = self.visit(ctx.props())
+            propDecl = self.visit(ctx.props())
 
         goal = self.visit(ctx.goal_decl())
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, self.propDecl, goal) 
+
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal) 
 
     '''
     mode_var_decl
@@ -272,7 +272,8 @@ class modelVisitorImpl(modelVisitor):
         return ConstantFormula(ctx.getText())
 
     def visitDirectCond(self, ctx:modelParser.DirectCondContext):
-        newProp = "".join([random.choice(string.ascii_letters) for _ in range(10)])
+        newProp = "newPropDecl_" + str(len(self.newPropDecl))
+ 
         op = ctx.op.text
         if ctx.expression():
             left = self.visit(ctx.expression()[0])
@@ -280,8 +281,8 @@ class modelVisitorImpl(modelVisitor):
         else:
             left = self.visit(ctx.condition()[0])
             right = self.visit(ctx.condition()[1])
-        self.propDecl.append(propDecl(str(newProp), CompCond(op, left, right))) 
-        return PropositionFormula(str(newProp))
+        self.newPropDecl.append(propDecl(newProp, CompCond(op, left, right))) 
+        return PropositionFormula(newProp)
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
