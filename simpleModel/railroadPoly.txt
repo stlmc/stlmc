@@ -1,0 +1,97 @@
+bool a;
+bool b;
+[-20, 100] tx;
+[0, 90] bx;
+[-50, 50] vx;
+[-50, 50] constvx;
+{
+    mode:
+        a == false;
+        b == false ;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = constvx ;
+        d/dt[vx] = 0 ;
+        d/dt[constvx] = 0 ;
+    jump:
+        (and (40 <= tx) (tx < 50)) ==>
+          (and (not a') (b') (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) ==>
+          (and (a') (not b') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 0)) ==>
+          (and (a') (b') (bx' = bx) (tx' = tx));
+        (and (-10 <= tx) (tx < -5)) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        a == false;
+        b == true;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = constvx ;
+        d/dt[vx] = 5 ;
+        d/dt[constvx] = 0 ;
+    jump:
+        (and (40 <= tx) (tx < 50)) ==>
+          (and (not a') (b') (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) ==>
+          (and (a') (not b') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 0)) ==>
+          (and (a') (b') (bx' = bx) (tx' = tx));
+        (and (-10 <= tx) (tx < -5)) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        a == true;
+        b == false;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = constvx ;
+        d/dt[vx] = 10 ;
+        d/dt[constvx] = 0 ;
+    jump:
+        (and (40 <= tx) (tx < 50)) ==>
+          (and (not a') (b') (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) ==>
+          (and (a') (not b') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 0)) ==>
+          (and (a') (b') (bx' = bx) (tx' = tx));
+        (and (-10 <= tx) (tx < -5)) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        a == true;
+        b == true;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = constvx ;
+        d/dt[vx] = -5 ;
+        d/dt[constvx] = 0 ;
+    jump:
+        (and (40 <= tx) (tx < 50)) ==>
+          (and (not a') (b') (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) ==>
+          (and (a') (not b') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 0)) ==>
+          (and (a') (b') (bx' = bx) (tx' = tx));
+        (and (-10 <= tx) (tx < -5)) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+}
+init:
+(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0) (constvx == vx)) ;
+
+propositions:
+reachability = tx < 0 ;
+
+goal:
+(<> [0.0, 50.0] reachability) ;
+
+
+

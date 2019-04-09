@@ -31,10 +31,12 @@ def main(argv):
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
             visualize = stlMC.getSpecificModel()
+            '''
             print(visualize.getVarsId())
             print(visualize.getContValues())
             print(visualize.getODE())
             print(visualize.getProposition())
+            '''
             with open(rel_path, 'a+') as fle:
                 print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 

@@ -66,7 +66,7 @@ class modelVisitorImpl(modelVisitor):
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
         if ctx.VARIABLE():
-            return ctx.VARIABLE().getText()
+            return Real(ctx.VARIABLE().getText())
         elif ctx.VALUE():
             return RealVal(ctx.VALUE().getText())
         else:

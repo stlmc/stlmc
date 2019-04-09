@@ -143,6 +143,7 @@ class Multy:
     def getExpression(self, varDict):
         result = list()
         for i in range(len(self.props)):
+            print(self.props[i])
             result.append(self.props[i].getExpression(varDict))
         return {'and' : And, 'or' : Or}[self.op](*result)
 
@@ -203,8 +204,9 @@ class DiffEq:
     def getVarId(self):
         return str(self.contVar)
     def getFlow(self, varDict):
-        if type(self.flow) in [RealVal, IntVal, BoolVal]:
+        if type(self.flow) in [RealVal, IntVal, BoolVal, Real]:
             return self.flow
+        print(self.flow)
         return self.flow.getExpression(varDict)
     def getExpression(self, varDict):
         result = dict()
@@ -289,6 +291,8 @@ class jumpMod:
           if self.nextVarId in varDict.keys():
               left = NextVar(varDict[self.nextVarId])
               if isinstance(self.exp, BoolVal):
+                  right = self.exp
+              elif isinstance(self.exp, Real):
                   right = self.exp
               elif self.exp in varDict.keys():
                   right = varDict[self.exp]
@@ -383,8 +387,8 @@ class StlMC:
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
-            #for i in range(len(modelConsts)):
-            #    print(modelConsts[i])
+            for i in range(len(modelConsts)):
+                print(modelConsts[i])
 
             etime1 = time.process_time()
 

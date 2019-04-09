@@ -14,7 +14,7 @@ bool b;
         d/dt[x2] = -0.6;
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2));
+          (and (not a') (b') (x1' = x1) (x2' = x2));
         (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
