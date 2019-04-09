@@ -4,6 +4,7 @@ from .formula import *
 from .z3Consts import *
 import time
 from .z3Handler import checkSat
+from .visualize import *
 
 def isNumber(s):
     try:
@@ -329,6 +330,7 @@ class StlMC:
         self.subvars = self.makeVariablesDict()
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
         self.formulaText = formulaText
+        self.bound = 0       # initial value is 0
 
     def getStlFormsList(self):
         return self.goal.getFormulas(self.subvars)
@@ -348,8 +350,15 @@ class StlMC:
         result['true'] = BoolVal(True)
         return result
 
+    def getSpecificModel(self):
+        ODE = dict()
+        for i in range(len(self.modeModule)):
+            ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
+        return Visualize(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound)
+
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
+        self.bound = bound
         (constSize, fsSize) = (0, 0)
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
@@ -380,7 +389,7 @@ class StlMC:
             etime1 = time.process_time()
 
             # check the satisfiability
-            (result, cSize) = checkSat(modelConsts + partitionConsts + [formulaConst])
+            (result, cSize, self.model) = checkSat(modelConsts + partitionConsts + [formulaConst])
 
             stime2 = time.process_time()
 

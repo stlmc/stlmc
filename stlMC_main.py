@@ -24,12 +24,17 @@ def main(argv):
         with open(rel_path, 'w' ) as fle:
             print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         #args : (0, bound, step)
-        for k in range(1, 6, 2):
+        for k in range(1, 2, 2):
             strFormula = stlMC.getStlFormsText()[i]
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + strFormula + " bound: " + str(k))
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
+            visualize = stlMC.getSpecificModel()
+            print(visualize.getVarsId())
+            print(visualize.getContValues())
+            print(visualize.getODE())
+            print(visualize.getProposition())
             with open(rel_path, 'a+') as fle:
                 print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 

@@ -93,7 +93,6 @@ propositions:
 reachability = x1 < 27 ;
 
 goal:
-(<> [0.0, 40.0] (x1 < 27)) ; 
 ([] [0.0, 40.0] (~reachability)) ;
 
 
