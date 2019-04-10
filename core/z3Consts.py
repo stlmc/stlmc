@@ -1,6 +1,7 @@
 import z3
 import core.encoding as ENC
 from .node import *
+from .z3Handler import checkSat
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -53,8 +54,20 @@ class z3Consts:
         jumpConsts = list()
         for i in range(len(self.modeModule)):
             subresult = list()
+            forComplete = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
+                forComplete.append(self.modeModule[i].getJump().getRedeclList()[j].getCond(self.subvars))
+            steadyStateConsts = list()
+            op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+            for k in range(len(self.modeVar)):
+                mode = op[self.modeVar[k].getType()](self.modeVar[k].getId())
+                steadyStateConsts.append(NextVar(mode) == mode)
+            for k in range(len(self.contVar)):
+                var = op[self.contVar[k].getType()](self.contVar[k].getId())
+                steadyStateConsts.append(NextVar(var) == var)  
+            if checkSat([Not(Or(*forComplete))])[0] == z3.sat:
+                subresult.append(And(Not(Or(*forComplete)), And(*steadyStateConsts)))
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []

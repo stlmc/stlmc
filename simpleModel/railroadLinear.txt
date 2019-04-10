@@ -19,8 +19,6 @@ bool b;
           (and (a') (b') (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
-        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==> 
-          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
 {
     mode:
@@ -39,8 +37,6 @@ bool b;
           (and (a') (b') (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
-        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
 {
     mode:
@@ -59,8 +55,6 @@ bool b;
           (and (a') (b') (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
-        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 
 }
 {
@@ -80,8 +74,6 @@ bool b;
           (and (a') (b') (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
-        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
 
 init:

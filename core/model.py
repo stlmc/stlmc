@@ -3,7 +3,6 @@ import core.separation as SEP
 from .formula import *
 from .z3Consts import *
 import time
-from .z3Handler import checkSat
 from .visualize import *
 
 def isNumber(s):
@@ -264,6 +263,7 @@ class jumpRedeclModule:
         return str(self.cond) + " " + str(self.jumpRedecl)
     def getCond(self, varDict):
         condition = self.cond.getExpression(varDict)
+        return condition
     def getExpression(self,varDict):
         condition = self.cond.getExpression(varDict)
         redecl = self.jumpRedecl.getExpression(varDict)
