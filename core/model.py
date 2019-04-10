@@ -143,7 +143,6 @@ class Multy:
     def getExpression(self, varDict):
         result = list()
         for i in range(len(self.props)):
-            print(self.props[i])
             result.append(self.props[i].getExpression(varDict))
         return {'and' : And, 'or' : Or}[self.op](*result)
 
@@ -169,7 +168,7 @@ class Unary:
         if self.prop in varDict.keys():
             prop = varDict[self.prop]
         else: 
-            raise("Proposition is not declared in unary class")
+            prop = self.prop.getExpression(varDict)           
         return {'not' : Not}[self.op](prop)
 
 class MultyCond(Multy):
@@ -206,7 +205,6 @@ class DiffEq:
     def getFlow(self, varDict):
         if type(self.flow) in [RealVal, IntVal, BoolVal, Real]:
             return self.flow
-        print(self.flow)
         return self.flow.getExpression(varDict)
     def getExpression(self, varDict):
         result = dict()
@@ -269,7 +267,7 @@ class jumpRedeclModule:
     def getExpression(self,varDict):
         condition = self.cond.getExpression(varDict)
         redecl = self.jumpRedecl.getExpression(varDict)
-        return Or(Not(condition), redecl)
+        return And(condition, redecl)
     def getJumpRedecl(self):
         return self.jumpRedecl
 
@@ -387,8 +385,10 @@ class StlMC:
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
+            '''
             for i in range(len(modelConsts)):
                 print(modelConsts[i])
+            '''
 
             etime1 = time.process_time()
 

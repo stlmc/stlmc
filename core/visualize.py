@@ -80,12 +80,14 @@ class Visualize:
                     getModeConsts.append(k)
                     coincide = checkSat(getModeConsts)[0]
                     if coincide == z3.sat:
-                        result.append(self.ODE[k])
+                        toString = list()
+                        for m in range(len(self.ODE[k])):
+                            toString.append(str(self.ODE[k][m]))
+                        result.append(toString)
                         break
                     getModeConsts.pop()
 
                 modeResult.append(curModeValue)   
-
         return result
 
     def getProposition(self):

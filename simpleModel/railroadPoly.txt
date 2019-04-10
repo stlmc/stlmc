@@ -16,13 +16,13 @@ bool b;
         d/dt[constvx] = 0 ;
     jump:
         (and (40 <= tx) (tx < 50)) ==>
-          (and (not a') (b') (bx' = bx) (tx' = tx));
+          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (20 <= tx) (tx < 30)) ==>
-          (and (a') (not b') (bx' = bx) (tx' = tx));
+          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-5 <= tx) (tx < 0)) ==>
-          (and (a') (b') (bx' = bx) (tx' = tx));
+          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-10 <= tx) (tx < -5)) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= constvx));
 }
 {
     mode:
@@ -36,13 +36,13 @@ bool b;
         d/dt[constvx] = 0 ;
     jump:
         (and (40 <= tx) (tx < 50)) ==>
-          (and (not a') (b') (bx' = bx) (tx' = tx));
+          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (20 <= tx) (tx < 30)) ==>
-          (and (a') (not b') (bx' = bx) (tx' = tx));
+          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-5 <= tx) (tx < 0)) ==>
-          (and (a') (b') (bx' = bx) (tx' = tx));
+          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-10 <= tx) (tx < -5)) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= constvx));
 }
 {
     mode:
@@ -56,13 +56,13 @@ bool b;
         d/dt[constvx] = 0 ;
     jump:
         (and (40 <= tx) (tx < 50)) ==>
-          (and (not a') (b') (bx' = bx) (tx' = tx));
+          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (20 <= tx) (tx < 30)) ==>
-          (and (a') (not b') (bx' = bx) (tx' = tx));
+          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-5 <= tx) (tx < 0)) ==>
-          (and (a') (b') (bx' = bx) (tx' = tx));
+          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-10 <= tx) (tx < -5)) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= constvx));
 }
 {
     mode:
@@ -76,13 +76,13 @@ bool b;
         d/dt[constvx] = 0 ;
     jump:
         (and (40 <= tx) (tx < 50)) ==>
-          (and (not a') (b') (bx' = bx) (tx' = tx));
+          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (20 <= tx) (tx < 30)) ==>
-          (and (a') (not b') (bx' = bx) (tx' = tx));
+          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-5 <= tx) (tx < 0)) ==>
-          (and (a') (b') (bx' = bx) (tx' = tx));
+          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= constvx));
         (and (-10 <= tx) (tx < -5)) ==>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= constvx));
 }
 init:
 (and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0) (constvx == vx)) ;

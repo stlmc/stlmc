@@ -11,14 +11,16 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = 0;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (35 <= tx) (tx < 50)) ==>
           (and (not a') (b') (bx' = bx) (tx' = tx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (5 <= tx) (tx < 35)) ==>
           (and (a') (not b') (bx' = bx) (tx' = tx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 5) (bx <=80)) ==>
           (and (a') (b') (bx' = bx) (tx' = tx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==> 
+          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
 {
     mode:
@@ -29,14 +31,16 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = 5;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (35 <= tx) (tx < 50)) ==>
           (and (not a') (b') (bx' = bx) (tx' = tx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (5 <= tx) (tx < 35)) ==>
           (and (a') (not b') (bx' = bx) (tx' = tx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 5) (bx <=80)) ==>
           (and (a') (b') (bx' = bx) (tx' = tx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
 {
     mode:
@@ -47,14 +51,17 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = 10;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (35 <= tx) (tx < 50)) ==>
           (and (not a') (b') (bx' = bx) (tx' = tx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (5 <= tx) (tx < 35)) ==>
           (and (a') (not b') (bx' = bx) (tx' = tx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 5) (bx <=80)) ==>
           (and (a') (b') (bx' = bx) (tx' = tx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
+
 }
 {
     mode:
@@ -65,23 +72,26 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = -5;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (35 <= tx) (tx < 50)) ==>
           (and (not a') (b') (bx' = bx) (tx' = tx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (5 <= tx) (tx < 35)) ==>
           (and (a') (not b') (bx' = bx) (tx' = tx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 5) (bx <=80)) ==>
           (and (a') (b') (bx' = bx) (tx' = tx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (bx > 85) (tx < -5)) ==>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+        (not (or (and (35 <= tx) (tx < 50)) (and (5 <= tx) (tx < 35)) (and (-5 <= tx) (tx < 5) (bx <=80)) (and (bx > 85) (tx < -5)))) ==>
+          (and (not a') (not b') (bx' = bx) (tx' = tx)) ;
 }
+
 init:
-(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70)) ;
+(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 85) (tx <= 90)) ;
 
 propositions:
 reachability = tx < 0 ;
 
 goal:
-(<> [0.0, 50.0] reachability) ;
+([] [0.0, 50.0] tx < 50) ;
 
 
 

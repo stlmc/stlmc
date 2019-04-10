@@ -55,7 +55,7 @@ class z3Consts:
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
-            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), And(*subresult)))
+            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []
         for k in range(bound+1):
