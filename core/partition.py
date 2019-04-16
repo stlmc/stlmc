@@ -1,9 +1,7 @@
-
 import math, itertools
 from .base import genId
 from .formula import *
 from .interval import *
-
 from functools import singledispatch
 
 # We add linear order constraints for separation only
@@ -28,6 +26,10 @@ def guessPartition(formula, baseCase):
 @singledispatch
 def _guess(formula, baseCase, genVar, result, sepMap, const):
     raise NotImplementedError('Something wrong')
+
+@_guess.register(ConstantFormula)
+def _(formula, baseCase, genVar, result, sepMap, const):
+    result[formula] = set()
 
 @_guess.register(PropositionFormula)
 def _(formula, baseCase, genVar, result, sepMap, const):

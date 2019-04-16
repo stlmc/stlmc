@@ -1,12 +1,3 @@
-parser/*.interp
-parser/*.tokens
-parser/modelLexer.py
-parser/modelParser.py
-parser/delete.sh
-parser/*.csv
-parser/*.smt2
-parser/data/
-parser/visitor/*
 *.pyc
 *.swp
 .DS_Store

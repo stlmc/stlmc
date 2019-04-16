@@ -1,6 +1,6 @@
 import math
 from .base import Interval
-from .constraint import *
+from .node import *
 import z3
 
 def inIntervalC(x:float, j:Interval):

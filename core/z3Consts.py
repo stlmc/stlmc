@@ -1,8 +1,7 @@
 import z3
-import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from core.constraint import *
 import core.encoding as ENC
+from .node import *
+from .z3Handler import checkSat
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -57,7 +56,16 @@ class z3Consts:
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
-            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), And(*subresult)))
+            steadyStateConsts = list()
+            op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+            for k in range(len(self.modeVar)):
+                mode = op[self.modeVar[k].getType()](self.modeVar[k].getId())
+                steadyStateConsts.append(NextVar(mode) == mode)
+            for k in range(len(self.contVar)):
+                var = op[self.contVar[k].getType()](self.contVar[k].getId())
+                steadyStateConsts.append(NextVar(var) == var)  
+            subresult.append(And(*steadyStateConsts))
+            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []
         for k in range(bound+1):

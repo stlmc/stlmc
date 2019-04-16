@@ -1,10 +1,8 @@
-
 import z3
 import itertools
 from functools import singledispatch
-
 from .error import *
-from .constraint import *
+from .node import *
 
 
 # return a check result and the Z3 constraint size
@@ -20,7 +18,14 @@ def checkSat(consts, logic="None"):
     solver.set("timeout", 9000000)  #timeout : 150 min
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
-    return (solver.check(), sizeAst(z3.And(*z3Consts)))
+
+    result = solver.check()
+    if result == z3.sat:
+        m = solver.model()
+    else:
+        m = None
+
+    return (result, sizeAst(z3.And(*z3Consts)), m)
 
 # return the size of the Z3 constraint
 def sizeAst(node:z3.AstRef):

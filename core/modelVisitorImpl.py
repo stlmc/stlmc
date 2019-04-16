@@ -1,10 +1,7 @@
 from antlr4 import *
-from modelParser import modelParser
-from modelVisitor import modelVisitor
-from model import *
-import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from stlMC import *
+from core.syntax.modelParser import modelParser
+from core.syntax.modelVisitor import modelVisitor
+from core.model import *
 
 class modelVisitorImpl(modelVisitor):
 
@@ -19,6 +16,8 @@ class modelVisitorImpl(modelVisitor):
         varsDecl = list()
         modeModuleDecl = list()
         propDecl = list()
+        self.newPropDecl = list()
+        self.formulaText = list()
 
         for i in range(len(ctx.mode_var_decl())):
             modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
@@ -36,7 +35,7 @@ class modelVisitorImpl(modelVisitor):
 
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, propDecl, goal) 
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText) 
 
     '''
     mode_var_decl
@@ -67,7 +66,7 @@ class modelVisitorImpl(modelVisitor):
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
         if ctx.VARIABLE():
-            return ctx.VARIABLE().getText()
+            return Real(ctx.VARIABLE().getText())
         elif ctx.VALUE():
             return RealVal(ctx.VALUE().getText())
         else:
@@ -265,9 +264,26 @@ class modelVisitorImpl(modelVisitor):
     def visitParenFormula(self, ctx:modelParser.ParenFormulaContext):
         return self.visit(ctx.formula())
 
-    # Visit a parse tree produced by stlParser#proposition.
+    # Visit a parse tree produced by modelParser#proposition.
     def visitProposition(self, ctx:modelParser.PropositionContext):
         return PropositionFormula(ctx.VARIABLE().getText())
+
+    # Visit a parse tree produced by modelParser#constant.
+    def visitConstFormula(self, ctx:modelParser.ConstFormulaContext):
+        return ConstantFormula(ctx.getText())
+
+    def visitDirectCond(self, ctx:modelParser.DirectCondContext):
+        newProp = "newPropDecl_" + str(len(self.newPropDecl))
+ 
+        op = ctx.op.text
+        if ctx.expression():
+            left = self.visit(ctx.expression()[0])
+            right = self.visit(ctx.expression()[1])
+        else:
+            left = self.visit(ctx.condition()[0])
+            right = self.visit(ctx.condition()[1])
+        self.newPropDecl.append(propDecl(newProp, CompCond(op, left, right))) 
+        return PropositionFormula(newProp)
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx:modelParser.BinaryFormulaContext):
@@ -276,9 +292,9 @@ class modelVisitorImpl(modelVisitor):
         right = self.visit(ctx.formula()[1])
         if op == '->':
             return ImpliesFormula(left,right)
-        elif ((op == '/\\') or (op == 'And') or (op == 'and')):
+        elif ((op == 'And') or (op == 'and')):
             return AndFormula([left,right])
-        elif ((op == '\\/') or (op == 'Or') or (op == 'or')):
+        elif ((op == 'Or') or (op == 'or')):
             return OrFormula([left,right])
         else:
             raise "something wrong"
@@ -287,7 +303,7 @@ class modelVisitorImpl(modelVisitor):
         result = list()
         for i in range(len(ctx.formula())):
             result.append(self.visit(ctx.formula()[i]))
-        return {'and' : AndFormula, 'or' : OrFormula}[ctx.op.text](result)
+        return {'and' : AndFormula, 'or' : OrFormula, 'And' : AndFormula, 'Or' : OrFormula}[ctx.op.text](result)
 
     # Visit a parse tree produced by modelParser#unaryTemporalFormula.
     def visitUnaryTemporalFormula(self, ctx:modelParser.UnaryTemporalFormulaContext):
@@ -317,6 +333,7 @@ class modelVisitorImpl(modelVisitor):
     def visitGoal_decl(self, ctx:modelParser.Goal_declContext):
         formulaList = list()
         for i in range(len(ctx.formula())):
+            self.formulaText.append(ctx.formula()[i].getText())
             formulaList.append(self.visit(ctx.formula()[i]))
         return formulaDecl(formulaList)
 

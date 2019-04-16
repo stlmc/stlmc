@@ -106,6 +106,8 @@ class NextVar(Variable):
         return super().substitution(subDict)
     def __repr__(self):
         return str(self.var.id) + "'"
+    def getExpression(self, varDict):
+        return self
 
 class Bool(Variable):
     def __init__(self, id):

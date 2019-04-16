@@ -18,13 +18,13 @@ bool b;
         d/dt[x2] = -0.045 * ((1 - 2* 0.01) * constx2 + 0.01 * constx1);
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2));
+          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
 
 }
 {
@@ -41,14 +41,13 @@ bool b;
         d/dt[x2] = 0.045 * (200 -((1 - 2 * 0.01) * constx2 + 0.01 * constx1));
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
-
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
 }
 {
     mode:
@@ -64,14 +63,13 @@ bool b;
         d/dt[x2] = -0.045 * ((1 - 2* 0.01) * constx2 + 0.01 * constx1);
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
-
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
 }
 {
     mode:
@@ -87,24 +85,23 @@ bool b;
         d/dt[x2] = 0.045 * (200 -((1 - 2 * 0.01) * constx2 + 0.01 * constx1));
     jump:
         (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
         (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
-
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
 }
 init:
 (and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1) ((constx1 == x1) and (constx2 == x2)));
 
 propositions:
-reachability = x1 < 27 ;
+reachability = x1 > 27 ;
 a = x1 > 21 ;
 
 goal:
-([] [0.0, 20.0] (reachability /\ a)) ;
+([] [0.0, 20.0] (reachability)) ;
 
 
 

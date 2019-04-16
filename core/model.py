@@ -1,9 +1,9 @@
-from z3Consts import *
-import time
-from core.z3Handler import checkSat
 import core.partition as PART
 import core.separation as SEP
-from core.formula import *
+from .formula import *
+from .z3Consts import *
+import time
+from .visualize import *
 
 def isNumber(s):
     try:
@@ -12,8 +12,8 @@ def isNumber(s):
     except ValueError:
         return False
 
-def printResult(result, k, cSize, fSize, generationTime, solvingTime, totalTime):
-    print(result + " at bound k = " + str(k) + ".")
+def printResult(result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
+    print(result + " at bound k : " + str(k) + ", time bound : " + str(tauMax) + ".")
     print("Constraint Size : " + str(cSize) + ", Translation Size : " + str(fSize) + ".")
     print("Generation Time(sec) : " + generationTime + ", Solving Time(sec) : " + solvingTime + ", Total Time(sec) : " + totalTime + ".\n")
     print("--------------------------------------------------------------------------------------\n")
@@ -167,7 +167,7 @@ class Unary:
         if self.prop in varDict.keys():
             prop = varDict[self.prop]
         else: 
-            raise("Proposition is not declared in unary class")
+            prop = self.prop.getExpression(varDict)           
         return {'not' : Not}[self.op](prop)
 
 class MultyCond(Multy):
@@ -202,7 +202,7 @@ class DiffEq:
     def getVarId(self):
         return str(self.contVar)
     def getFlow(self, varDict):
-        if type(self.flow) in [RealVal, IntVal, BoolVal]:
+        if type(self.flow) in [RealVal, IntVal, BoolVal, Real]:
             return self.flow
         return self.flow.getExpression(varDict)
     def getExpression(self, varDict):
@@ -263,10 +263,11 @@ class jumpRedeclModule:
         return str(self.cond) + " " + str(self.jumpRedecl)
     def getCond(self, varDict):
         condition = self.cond.getExpression(varDict)
+        return condition
     def getExpression(self,varDict):
         condition = self.cond.getExpression(varDict)
         redecl = self.jumpRedecl.getExpression(varDict)
-        return Or(Not(condition), redecl)
+        return And(condition, redecl)
     def getJumpRedecl(self):
         return self.jumpRedecl
 
@@ -288,6 +289,8 @@ class jumpMod:
           if self.nextVarId in varDict.keys():
               left = NextVar(varDict[self.nextVarId])
               if isinstance(self.exp, BoolVal):
+                  right = self.exp
+              elif isinstance(self.exp, Real):
                   right = self.exp
               elif self.exp in varDict.keys():
                   right = varDict[self.exp]
@@ -319,7 +322,7 @@ class formulaDecl:
         return len(self.formulaList)
 
 class StlMC:
-    def __init__(self, modeVar, contVar, modeModule, init, prop, goal):
+    def __init__(self, modeVar, contVar, modeModule, init, prop, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
         self.modeModule = modeModule
@@ -328,12 +331,14 @@ class StlMC:
         self.goal = goal
         self.subvars = self.makeVariablesDict()
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.formulaText = formulaText
+        self.bound = 0       # initial value is 0
 
     def getStlFormsList(self):
         return self.goal.getFormulas(self.subvars)
 
-    def getNumOfstlForms(self):
-        return self.goal.getNumOfForms()
+    def getStlFormsText(self):
+        return self.formulaText
 
     # Transform the string id to Type(id) ex: 'a' -> Bool('a')
     def makeVariablesDict(self):
@@ -347,8 +352,15 @@ class StlMC:
         result['true'] = BoolVal(True)
         return result
 
+    def getSpecificModel(self):
+        ODE = dict()
+        for i in range(len(self.modeModule)):
+            ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
+        return Visualize(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound)
+
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
+        self.bound = bound
         (constSize, fsSize) = (0, 0)
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
@@ -362,7 +374,7 @@ class StlMC:
 
             # partition constraint
             (partition,sepMap,partitionConsts) = PART.guessPartition(negFormula, baseP)
-
+            
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
 
@@ -373,13 +385,15 @@ class StlMC:
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
-            #for i in range(len(modelConsts)):
-            #    print(modelConsts[i])
+            '''
+            for i in range(len(modelConsts)):
+                print(modelConsts[i])
+            '''
 
             etime1 = time.process_time()
 
             # check the satisfiability
-            (result, cSize) = checkSat(modelConsts + partitionConsts + [formulaConst])
+            (result, cSize, self.model) = checkSat(modelConsts + partitionConsts + [formulaConst])
 
             stime2 = time.process_time()
 
@@ -392,13 +406,13 @@ class StlMC:
             totalTime = round((stime2-stime1), 4)
 
             if  result == z3.sat:
-                printResult("False", i, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+                printResult("False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
                 return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
             if  result == z3.unknown:
                 isUnknown = True
 
         result = "Unknown" if isUnknown else True
-        printResult(str(result), bound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+        printResult(str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime)) 
 
