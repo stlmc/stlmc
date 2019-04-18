@@ -2,7 +2,7 @@ import z3
 from .node import *
 from .z3Handler import checkSat
 
-class Visualize:
+class Api:
     def __init__(self, model, modeVar, contVar, ODE, props, bound):
         self.model = model
         self.modeVar = modeVar

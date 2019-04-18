@@ -3,7 +3,7 @@ import core.separation as SEP
 from .formula import *
 from .z3Consts import *
 import time
-from .visualize import *
+from visualize.api import *
 
 def isNumber(s):
     try:
