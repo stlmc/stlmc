@@ -1,6 +1,10 @@
 import z3
-from .node import *
-from .z3Handler import checkSat
+from core.node import *
+from core.z3Handler import checkSat
+from .vilaInterpreter import *
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
 
 class Api:
     def __init__(self, model, modeVar, contVar, ODE, props, bound):
@@ -10,6 +14,7 @@ class Api:
         self.ODE = ODE
         self.props = props
         self.bound = bound
+        self.vilaInterpreter = VilaInterpreter()
 
     # return continuous variables id
     def getVarsId(self):
@@ -103,4 +108,34 @@ class Api:
                             declares.remove(k)
                 result[str(self.props[i].getId())] = subResult
         return result 
-     
+    
+    def _ode_model(self, z, t):
+        var_list = self.getVarsId()
+        ode = self.getODE()
+        z_dict = dict((k, z[i]) for k, i in zip(var_list, range(len(var_list))))
+        model_dict = self.vilaInterpreter.vila2model(z_dict, ode[0])
+        res = []
+        for key in z_dict:
+            res.append(model_dict[key])
+        return res
+
+    def visualize(self):
+        var_list = self.getVarsId()
+        initial_dict = self.getContValues()
+        initial_val = []
+        for k in var_list:
+            initial_val.append(initial_dict[k][0][0])
+        
+        t = np.linspace(0, 2500)
+        z = odeint(self._ode_model, initial_val, t)
+        print("ode z : " + str(len(z)))
+        # plot results
+        c = ['b', 'r', 'c', 'm']
+        for i in range(len(var_list)):
+            plt.plot(t,z[:,i], c=c[i], label=var_list[i])
+        plt.ylabel('variables')
+        plt.xlabel('time')
+        plt.legend(loc='best')
+        plt.show()
+
+            

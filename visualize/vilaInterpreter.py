@@ -1,39 +1,45 @@
 import sys
 from antlr4 import *
-from vila.vilaLexer import vilaLexer
-from vila.vilaParser import vilaParser
-from vila.vilaVisitor import vilaVisitor
-import numpy as np
-from scipy.integrate import odeint
-import matplotlib.pyplot as plt
-
+from .vila.vilaLexer import vilaLexer
+from .vila.vilaParser import vilaParser
+from .vila.vilaStlMCVisitor import vilaStlMCVisitor
 
 class VilaInterpreter():
 
     def __init__(self):
-        self.input
-        self.input = InputStream("")
-        self.lexer = vilaLexer(input)
-        self.stream = CommonTokenStream(lexer)
-        self.parser = vilaParser(stream)
-        self.tree = parser.statement()
-        self.vila = vilaVisitor({'none':0}).visit(tree)
-
+        #self.input = InputStream("//")
+        #self.lexer = vilaLexer(input)
+        #self.stream = CommonTokenStream(self.lexer)
+        #self.parser = vilaParser(self.stream)
+        #self.tree = self.parser.statement()
+        #self.vilaVisitor = vilaStlMCVisitor({'none':0})
+        #self.vila = self.vilaVisitor.visit(self.tree)
+        self.var_name = ""
 
     # _readVila for internal supported
     # var_assn: ode variable list in dictionary form
     # e.g) z = { 'x1': 0, 'x2' :1 }
     def _readVila(self, var_assn, vila_string:str):
-        self.input = InputStream(vila_string)
-        self.lexer = vilaLexer(input)
-        self.stream = CommonTokenStream(lexer)
-        self.parser = vilaParser(stream)
-        self.tree = parser.statement()
-        self.vila = vilaVisitor(var_assn).visit(tree)
-        return self.vila
+        input = InputStream(vila_string)
+        lexer = vilaLexer(input)
+        stream = CommonTokenStream(lexer)
+        parser = vilaParser(stream)
+        tree = parser.statement()
+        vilaVisitor = vilaStlMCVisitor(var_assn)
+        vila = vilaVisitor.visit(tree)
+        self.var_name = vilaVisitor.var_name
+        return vila
 
     def vila2model(self, var_assn, vila_string_list:list):
-        return [ self._readVila(var_assn, vila_string).result for vila_string in vila_string_list ]
+        res = dict()
+        for vila_string in vila_string_list:
+            v = self._readVila(var_assn, vila_string)
+            res[self.var_name]=v.result
+            #res += dict(self.var_name=v.result)
+
+        return res
+
+
         
 
         

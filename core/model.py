@@ -3,7 +3,7 @@ import core.separation as SEP
 from .formula import *
 from .z3Consts import *
 import time
-from visualize.api import *
+from visualize import *
 
 def isNumber(s):
     try:
@@ -356,7 +356,7 @@ class StlMC:
         ODE = dict()
         for i in range(len(self.modeModule)):
             ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
-        return Visualize(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound)
+        return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound)
 
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):

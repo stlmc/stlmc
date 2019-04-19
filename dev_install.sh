@@ -1,5 +1,5 @@
 CORE_PATH=core/syntax
-VILA_PATH=core/visualize/vila
+VILA_PATH=visualize/vila
 model=$CORE_PATH/model
 vila=$VILA_PATH/vila
 venv=venv

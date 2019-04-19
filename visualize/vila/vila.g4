@@ -5,15 +5,18 @@ grammar vila;
  * Parser rules
  */
 
-statement
-: comment* expression comment*
-| statement statement EOF
-;
 
 expression
-: value=(NUMBER | VARIABLE)
+: expression operator=EQ expression
 | expression operator=(MUL | DIV) expression
 | expression operator=(PLUS | MINUS) expression
+| uniop=MINUS value=(NUMBER | VARIABLE)
+| value=(NUMBER | VARIABLE)
+;
+
+
+statement
+: comment* expression comment* EOF
 ;
 
 comment
@@ -30,15 +33,16 @@ comment
  */
 
 fragment DIGIT		: [0-9]							;
+EQ			: '='							;
 PLUS			: '+' 							;
 MINUS			: '-'							;
 MUL			: '*'							;
 DIV			: '/'							;
 WHITEPACE		: (' ' | '\t' | '\n')+ -> skip				;
-NUMBER			: MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)?	;
+NUMBER			: DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)?		;
 fragment LOWERCASE 	: [a-z] 						;
 fragment UPPERCASE 	: [A-Z] 						;
-VARIABLE		: MINUS? (LOWERCASE | UPPERCASE)+ DIGIT*		;
+VARIABLE		: (LOWERCASE | UPPERCASE)+ DIGIT*			;
 fragment COMMENT_LEFT	: '/*'							;
 fragment COMMENT_RIGHT	: '*/'							;
 fragment COMMENT_ALONE	: '//'							;

@@ -9,6 +9,12 @@ class Expression():
         }
         self.ode_var = ode_var
         self.result = 0.0
+    
+    def uniopvar(self, var:str):
+        self.result = -self.ode_var[var]
+
+    def uniopnum(self, num):
+        self.result = -float(num)
 
     def plus(self, left:float, right:float):
         self.result = left + right

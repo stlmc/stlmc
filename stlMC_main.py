@@ -37,6 +37,7 @@ def main(argv):
             print(visualize.getTauValues())
             print(visualize.getODE())
             print(visualize.getProposition())
+            visualize.visualize()
 #            '''
             with open(rel_path, 'a+') as fle:
                 print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
