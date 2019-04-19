@@ -110,12 +110,16 @@ class Api:
         return result 
     
     def _ode_model(self, z, t):
+        print("ode_model running")
         var_list = self.getVarsId()
         ode = self.getODE()
         z_dict = dict((k, z[i]) for k, i in zip(var_list, range(len(var_list))))
+        #for k in z_dict:
+        #    print("Key[" + k + "] ===> "+str(z_dict[k]))
         model_dict = self.vilaInterpreter.vila2model(z_dict, ode[0])
         res = []
         for key in z_dict:
+            #print("mm==>"+str(model_dict[key]))
             res.append(model_dict[key])
         return res
 
@@ -126,7 +130,10 @@ class Api:
         for k in var_list:
             initial_val.append(initial_dict[k][0][0])
         
-        t = np.linspace(0, 2500)
+        #for e in range(len(initial_val)):
+        #    print("Initial >> " + str(var_list[e]) + " and " + str((initial_val[e])))
+        tsp = self.getTauValues()
+        t = np.linspace(0, tsp[0])
         z = odeint(self._ode_model, initial_val, t)
         print("ode z : " + str(len(z)))
         # plot results

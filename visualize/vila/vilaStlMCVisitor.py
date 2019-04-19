@@ -19,7 +19,7 @@ class vilaStlMCVisitor(vilaVisitor):
         if ctx.operator:
             if ctx.operator.text == '=':
                 self.var_name = ctx.expression()[0].getText()
-                self.visitExpression(ctx.expression()[1])
+                exp.eq(self.visitExpression(ctx.expression()[1]).result)
             else:
                 exp.operator(ctx.operator.text, self.visitExpression(ctx.expression()[0]).result, self.visitExpression(ctx.expression()[1]).result)
         if ctx.uniop:

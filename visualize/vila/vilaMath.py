@@ -9,7 +9,10 @@ class Expression():
         }
         self.ode_var = ode_var
         self.result = 0.0
-    
+
+    def eq(self, n:float):
+        self.result = n
+
     def uniopvar(self, var:str):
         self.result = -self.ode_var[var]
 

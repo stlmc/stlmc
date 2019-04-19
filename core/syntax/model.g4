@@ -88,7 +88,8 @@ expression  :
               LPAREN expression RPAREN # parenthesisExp
             | VALUE     # constantExp
             | VARIABLE  # constantExp
-            | expression op=(PLUS | MINUS | MULTIPLY | DIVIDE) expression # binaryExp
+	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
+            | expression op=(PLUS | MINUS) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
               ;
 
