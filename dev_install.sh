@@ -1,5 +1,6 @@
 CORE_PATH=core/syntax
 VILA_PATH=visualize/vila
+ORI_PATH=../../
 model=$CORE_PATH/model
 vila=$VILA_PATH/vila
 venv=venv
@@ -28,17 +29,19 @@ antlr_setting () {
 	# create lexer using antlr 
 	# need to install java first if you don't have one
 	java -jar antlr-4.7.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor 
-	
+	cd $ORI_PATH
 }
 
 vila_setting () {
 	cd $VILA_PATH
 	java -jar antlr-4.7.1-complete.jar -Dlanguage=Python3 vila.g4 -no-listener -visitor
+	cd $ORI_PATH
 }
 
 
 case $1 in 
 	-rm | --auto-remove ) auto_remove; echo "remove finished"; break;;
+	-ai | --auto-install ) install_env; antlr_setting; vila_setting; break;;
 	-i | --install ) install_env; echo "install environment finished"; break;;
 	-antlr | --antlr-setting ) antlr_setting; echo "antlr setting finished"; break;;
 	-vila | --vila-setting ) vila_setting; echo "vila setting finished"; break;;

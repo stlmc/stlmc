@@ -63,7 +63,11 @@ class z3Consts:
                 steadyStateConsts.append(NextVar(mode) == mode)
             for k in range(len(self.contVar)):
                 var = op[self.contVar[k].getType()](self.contVar[k].getId())
-                steadyStateConsts.append(NextVar(var) == var)  
+                if("const" in self.contVar[k].getId()):
+                    updateVar = op[self.contVar[k].getType()](self.contVar[k].getId().replace("const", ""))
+                    steadyStateConsts.append(NextVar(var) == updateVar)
+                else:
+                    steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
