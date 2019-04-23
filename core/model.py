@@ -333,6 +333,10 @@ class StlMC:
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
         self.formulaText = formulaText
         self.bound = 0       # initial value is 0
+        self.cont_id_dict = dict()
+        for i in range(len(self.contVar)):
+         
+
 
     def getStlFormsList(self):
         return self.goal.getFormulas(self.subvars)
