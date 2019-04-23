@@ -1,3 +1,7 @@
+*.interp
+*.tokens
+*Parser.py
+*Lexer.py
 *.pyc
 *.swp
 .DS_Store

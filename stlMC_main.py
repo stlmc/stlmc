@@ -39,7 +39,6 @@ def main(argv):
             print(visualize.getProposition())
             visualize.visualize()
             '''
-            print(visualize.getContValues())
             with open(rel_path, 'a+') as fle:
                 print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
