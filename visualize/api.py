@@ -41,13 +41,18 @@ class Api:
                 for j in range(self.bound+2):
                     declares = self.model.decls()
                     for k in declares:
-                        if str(self.contVar[i].getId()) + "_" + str(j) + "_0" == k.name():
+                        if j == (self.bound + 1) and str(self.contVar[i].getId()) + "_" + str(j) + "_0" == k.name():
+                            initial = float(self.model[k].as_decimal(6).replace("?", ""))
+                            final = initial
+                            declares.remove(k) 
+                        elif str(self.contVar[i].getId()) + "_" + str(j) + "_0" == k.name():
                             initial = float(self.model[k].as_decimal(6).replace("?", ""))
                             declares.remove(k)
                         elif str(self.contVar[i].getId()) + "_" + str(j) + "_t" == k.name():
                             final = float(self.model[k].as_decimal(6).replace("?", ""))
                             declares.remove(k)
                     subResult.append((initial, final))
+                 
                 result[str(self.contVar[i].getId())] = subResult
         return result
 

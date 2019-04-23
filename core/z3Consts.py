@@ -56,6 +56,7 @@ class z3Consts:
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
+            '''
             steadyStateConsts = list()
             op = {'bool' : Bool, 'int' : Int, 'real' : Real}
             for k in range(len(self.modeVar)):
@@ -63,14 +64,11 @@ class z3Consts:
                 steadyStateConsts.append(NextVar(mode) == mode)
             for k in range(len(self.contVar)):
                 var = op[self.contVar[k].getType()](self.contVar[k].getId())
-                if("const" in self.contVar[k].getId()):
-                    updateVar = op[self.contVar[k].getType()](self.contVar[k].getId().replace("const", ""))
-                    steadyStateConsts.append(NextVar(var) == updateVar)
-                else:
-                    steadyStateConsts.append(NextVar(var) == var)
+                steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
+            '''
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
-
+           
         result = []
         for k in range(bound+1):
             time = Real('time' + str(k))
