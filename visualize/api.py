@@ -38,20 +38,17 @@ class Api:
         if self.model is not None:
             for i in range(len(self.contVar)):
                 subResult = []
-                for j in range(self.bound+2):
-                    declares = self.model.decls()
-                    for k in declares:
-                        if j == (self.bound + 1) and str(self.contVar[i].getId()) + "_" + str(j) + "_0" == k.name():
-                            initial = float(self.model[k].as_decimal(6).replace("?", ""))
-                            final = initial
-                            declares.remove(k) 
-                        elif str(self.contVar[i].getId()) + "_" + str(j) + "_0" == k.name():
-                            initial = float(self.model[k].as_decimal(6).replace("?", ""))
-                            declares.remove(k)
-                        elif str(self.contVar[i].getId()) + "_" + str(j) + "_t" == k.name():
-                            final = float(self.model[k].as_decimal(6).replace("?", ""))
-                            declares.remove(k)
-                    subResult.append((initial, final))
+                op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                for j in range(self.bound+1):
+                    initial_var = op[self.contVar[i].getType()](str(self.contVar[i].getId()) + "_" + str(j) + "_0")
+                    final_var = op[self.contVar[i].getType()](str(self.contVar[i].getId()) + "_" + str(j) + "_t")
+                    initial_value = float(self.model[initial_var].as_decimal(6).replace("?", ""))
+                    final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                    subResult.append((initial_value, final_value))
+
+                final_var = op[self.contVar[i].getType()](str(self.contVar[i].getId()) + "_" + str(self.bound+1) + "_0")
+                final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                subResult.append((final_value, final_value))
                  
                 result[str(self.contVar[i].getId())] = subResult
         return result
@@ -115,7 +112,6 @@ class Api:
         return result 
     
     def _ode_model(self, z, t):
-        print("ode_model running")
         var_list = self.getVarsId()
         ode = self.getODE()
         z_dict = dict((k, z[i]) for k, i in zip(var_list, range(len(var_list))))
