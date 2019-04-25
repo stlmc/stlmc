@@ -18,7 +18,7 @@ class z3Consts:
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
         result = {}
         for i in range(len(self.modeVar)):
-            result[str(self.modeVar[i].getId())] = op[self.modeVar[i].getType()](self.modeVar[i].getId() + '_' + str(k))
+            result[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id + '_' + str(k))
         return result
 
     def makeSubProps(self, k):
@@ -32,7 +32,7 @@ class z3Consts:
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
         result = {}
         for i in range(len(self.contVar)):
-            result[str(self.contVar[i].getId())] = op[self.contVar[i].getType()](self.contVar[i].getId() + '_' + str(k) + '_' + sOe)
+            result[str(self.contVar[i].id)] = op[self.contVar[i].type](self.contVar[i].id + '_' + str(k) + '_' + sOe)
         return result
 
     # Make variable range constratint

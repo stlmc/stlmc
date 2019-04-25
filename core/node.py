@@ -49,9 +49,18 @@ class Constant(Leaf):
     def __init__(self, constType, value):
         super().__init__(constType)
         self.type = constType
-        self.value = value
+        self.__value = value
+
+    @property
+    def cvalue(self):
+        return self.__value
+
+    @cvalue.setter
+    def cvalue(self, value):
+        self.__value = value
+
     def __repr__(self):
-        return str(self.value)
+        return str(self.__value)
     def substitution(self, subDict):
         return self
     def getVars(self):
@@ -60,7 +69,7 @@ class Constant(Leaf):
         return self
     def getExpression(self, subDict):
         op = {Type.Bool : Bool, Type.Int : Int, Type.Real : Real}
-        return op[self.type](self.value)
+        return op[self.type](str(self.__value))
 
 class BoolVal(Constant):
     def __init__(self, value):
@@ -68,14 +77,39 @@ class BoolVal(Constant):
            raise TypeError()
         super().__init__(Type.Bool, 'true' if value == True else 'false')
 
+    @property
+    def value(self):
+        return bool(self.cvalue)
+
+    @value.setter
+    def value(self, value:bool):
+        self.cvalue = value
+
+
 class RealVal(Constant, ArithRef):
     def __init__(self, value):
         super().__init__(Type.Real, value)
+
+    @property
+    def value(self):
+        return float(self.cvalue)
+
+    @value.setter
+    def value(self, value:float):
+        self.cvalue = value
 
 
 class IntVal(Constant, ArithRef):
     def __init__(self, value):
         super().__init__(Type.Int, value)
+
+    @property
+    def value(self):
+        return int(self.cvalue)
+
+    @value.setter
+    def value(self, value:int):
+        self.cvalue = value
 
 class Variable(Leaf):
     def __init__(self, varType, varId):
@@ -115,7 +149,29 @@ class Bool(Variable):
  
 class Real(Variable, ArithRef):
     def __init__(self, id):
+        self.__id = id
+        self.__var_dic = dict()
+        self.__value = 0.0
         super().__init__(Type.Real, id)
+
+    # should call after dic is setted
+    @property
+    def value(self):
+        self.__value = self.__var_dic[self.__id]
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        self.__value = value
+
+    @property
+    def var_dic(self):
+        return self.__var_dic
+
+    @var_dic.setter
+    def var_dic(self, var_dic):
+        self.__var_dic = var_dic
+
         
 class Int(Variable, ArithRef):
     def __init__(self, id):
@@ -202,19 +258,43 @@ class BinaryArithmetic(nonLeaf,_BinaryOp):
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):
+        self.__left = left
+        self.__right = right
         super().__init__('+', left, right)
+
+    @property
+    def value(self):
+        return self.__left.value + self.__right.value
 
 class Minus(BinaryArithmetic):
     def __init__(self, left, right):
+        self.__left = left
+        self.__right = right
         super().__init__('-', left, right)
+
+    @property
+    def value(self):
+        return self.__left.value - self.__right.value
 
 class Mul(BinaryArithmetic):
     def __init__(self, left, right):
+        self.__left = left
+        self.__right = right
         super().__init__('*', left, right)
+
+    @property
+    def value(self):
+        return self.__left.value * self.__right.value
 
 class Div(BinaryArithmetic):
     def __init__(self, left, right):
+        self.__left = left
+        self.__right = right
         super().__init__('/', left, right)
+
+    @property
+    def value(self):
+        return self.__left.value / self.__right.value
 
 class Pow(BinaryArithmetic):
     def __init__(self, left, right):

@@ -3,6 +3,11 @@ from core.syntax.modelParser import modelParser
 from core.syntax.modelVisitor import modelVisitor
 from core.model import *
 
+class VisitorException(Exception):
+    def __init__(self, expression, message):
+        print("Exception occured : " + str(type(expression)))
+        print("=======> " + message)
+
 class modelVisitorImpl(modelVisitor):
 
     def __init__(self):
@@ -49,24 +54,37 @@ class modelVisitorImpl(modelVisitor):
     def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
         return ContVar(self.visit(ctx.var_range()), ctx.VARIABLE().getText())
 
-    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext):
+    
+    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict()):
+        left = None
+        right = None
         op = ctx.op.text
-        left = self.visit(ctx.expression()[0])
-        right = self.visit(ctx.expression()[1])
+        # var_dic is empty
+        if not var_dic:
+            left = self.visit(ctx.expression()[0])
+            right = self.visit(ctx.expression()[1])
+        else:
+            left = self.visitExpression(ctx.expression()[0], var_dic)
+            right = self.visitExpression(ctx.expression()[1], var_dic)
         return BinaryExp(op, left, right)
-
+        
     '''
     Not yet
     '''
-    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext):
-        raise "Not yet in Unary Expression"
+    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dict):
+        raise VisitorException(ctx, "Not yet in Unary Expression")
 
-    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext):
-        return self.visit(ctx.expression())
+    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):
+        if not var_dict:
+            return self.visit(ctx.expression())
+        else:
+            return self.visitExpression(ctx.expression(), var_dict)
 
-    def visitConstantExp(self, ctx:modelParser.ConstantExpContext):
+    def visitConstantExp(self, ctx:modelParser.ConstantExpContext, var_dict=dict()):
         if ctx.VARIABLE():
-            return Real(ctx.VARIABLE().getText())
+            r = Real(ctx.VARIABLE().getText())
+            r.var_dic = var_dict
+            return r
         elif ctx.VALUE():
             return RealVal(ctx.VALUE().getText())
         else:
@@ -77,6 +95,7 @@ class modelVisitorImpl(modelVisitor):
         left = self.visit(ctx.condition()[0])
         right = self.visit(ctx.condition()[1])
         return CompCond(op, left, right)
+
 
     def visitCompExp(self, ctx:modelParser.CompExpContext):
         op = ctx.op.text
@@ -168,17 +187,32 @@ class modelVisitorImpl(modelVisitor):
         
         return (leftBracket, leftNumber,  rightNumber, rightBracket)
 
+    # new function for expression
+    def visitExpression(self, ctx:modelParser.ExpressionContext, var_dict=dict()):
+        # empty
+        if not var_dict:
+            return self.visit(ctx)
+        else:
+            if isinstance(ctx, modelParser.ConstantExpContext):
+                return self.visitConstantExp(ctx, var_dict)
+            elif isinstance(ctx, modelParser.BinaryExpContext):
+                return self.visitBinaryExp(ctx, var_dict)
+            elif isinstance(ctx, modelParser.ParenthesisExpContext):
+                return self.visitParenthesisExp(ctx, var_dict)
+            elif isinstance(ctx, modelParser.UnaryExpContext):
+                print("Not implemented")
+        
     '''
     flow differential equation type
     '''
-    def visitDiff_eq(self, ctx:modelParser.Diff_eqContext):
-        return DiffEq(ctx.VARIABLE().getText(), self.visit(ctx.expression()))
-
+    def visitDiff_eq(self, ctx:modelParser.Diff_eqContext, var_dict=dict()):
+        return DiffEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), var_dict))
+    
     '''
     flow solution equation type
     '''
-    def visitSol_eq(self, ctx:modelParser.Sol_eqContext):
-        return SolEq(ctx.VARIABLE()[0].getText(), self.visit(ctx.expression()))
+    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict()):
+        return SolEq(ctx.VARIABLE()[0].getText(), self.visitExpression(ctx.expression(), var_dict))
 
     '''
     mode module
@@ -213,13 +247,34 @@ class modelVisitorImpl(modelVisitor):
         if ctx.diff_eq():
            expType = "diff"
            for i in range(len(ctx.diff_eq())):
-               result.append(self.visit(ctx.diff_eq()[i])) 
+               result.append(self.visit(ctx.diff_eq()[i]))
+        #elif ctx.sol_eq():
+        #    expType = "sol"
+        #    for i in range(len(ctx.sol_eq())):
+        #        result.append(self.visit(ctx.sol_eq()[i]))
+        v_list = []
+        f_result = []
+        # variable dic setting loop
+        if ctx.diff_eq():
+            for e in result:
+                # get var ID
+                v_list.append(e.contVar)
+        var_dict = dict()
+        for e in v_list:
+            var_dict[e]=0.0
+
+        if ctx.diff_eq():
+            expType = "diff"
+            # check if there exist variable
+            for i in range(len(ctx.diff_eq())):
+                a = self.visitDiff_eq(ctx.diff_eq()[i], var_dict)
+                f_result.append(a)
         elif ctx.sol_eq():
             expType = "sol"
+            # testing....
             for i in range(len(ctx.sol_eq())):
-                result.append(self.visit(ctx.sol_eq()[i]))
-
-        return flowDecl(expType, result)
+                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], var_dict))
+        return flowDecl(expType, f_result, var_dict)
 
     '''
     jump declaration

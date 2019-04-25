@@ -5,6 +5,19 @@ from .z3Consts import *
 import time
 from visualize import *
 
+def flatten(l):
+    res = []
+    if isinstance(l, list):
+        for elem in l:
+            if isinstance(elem, list):
+                for elemofelem in elem:
+                    res.append(elemofelem)
+            else:
+                res.append(elem)
+    else:
+        res.append(l)
+    return res
+
 def isNumber(s):
     try:
         float(s)
@@ -21,18 +34,30 @@ def printResult(result, k, tauMax, cSize, fSize, generationTime, solvingTime, to
 
 class Variable:
      def __init__(self, varType, varId):
-         self.type = varType
-         self.varId = varId
+         self.__type = varType
+         self.__varId = varId
+     
      def __repr__(self):
-         return str(self.type) + " " + str(self.varId)
-     def getVarString(self):
-         return str(self.type) + " " + str(self.varId)
-     def getType(self):
-         return str(self.type)
-     def getId(self):
-         return str(self.varId)
+         return str(self.__type) + " " + str(self.__varId)
+     
+     @property
+     def type(self):
+         return str(self.__type)
+
+     @type.setter
+     def type(self, type):
+         self.__type = type
+     
+     @property
+     def id(self):
+         return str(self.__varId)
+
+     @id.setter
+     def id(self, id):
+         self.__varId = id
+     
      def getExpression(self):
-         return {'bool' : Bool, 'int' : Int, 'real' : Real}[self.type](self.varId)
+         return {'bool' : Bool, 'int' : Int, 'real' : Real}[self.__type](self.__varId)
 
 class Mode(Variable):
      def __init__(self, varType, varId):
@@ -41,6 +66,7 @@ class Mode(Variable):
 class ContVar(Variable):
      def __init__(self, interval, varId):
          super().__init__("real", varId)
+         self.__varId = varId
          self.leftend = interval[0]
          self.left = interval[1]
          self.right = interval[2]
@@ -48,7 +74,7 @@ class ContVar(Variable):
      def __repr__(self):
          return super(ContVar,self).getVarString() + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(self.right) + (']' if self.rightend else ')')
      def getConstraint(self):
-         variable =  {'bool' : Bool, 'int' : Int, 'real' : Real}[self.type](self.varId)
+         variable =  {'bool' : Bool, 'int' : Int, 'real' : Real}[self.type](self.__varId)
          consts = list()
          if self.leftend:
              consts.append(variable >= RealVal(float(self.left)))
@@ -68,6 +94,7 @@ class BinaryExp:
          if isinstance(left, str) and isinstance(right, str):
              self.left = RealVal(float(left)) if isNumber(left) else left
              self.right = RealVal(float(right)) if isNumber(right) else right
+
      def __repr__(self):
          return str(self.left) + str(self.op) + str(self.right)
      def getExpression(self, varDict):
@@ -91,6 +118,24 @@ class BinaryExp:
              return left / right
          else:
              raise "Not yet in Binary Expression"
+    
+     @property
+     def value(self):
+         vleft = self.left
+         vright = self.right
+         if isinstance(self.left, BinaryExp):
+             left = self.left.value
+         if isinstance(self.right, BinaryExp):
+             right = self.right.value
+         if self.op == '+':
+             return vleft.value + vright.value
+         if self.op == '-':
+             return vleft.value - vright.value
+         if self.op == '*':
+             return vleft.value * vright.value
+         if self.op == '/':
+             return vleft.value / vright.value
+
      def getType(self):
          return Type.Real
 
@@ -197,18 +242,37 @@ class DiffEq:
     def __init__(self, contVar, flow):
         self.contVar = contVar
         self.flow = flow
+        self.__ode = []
+
+    @property
+    def var_dic(self):
+        return self.__var_dic
+
+    @var_dic.setter
+    def var_dic(self, vdic):
+        self.__var_dic = vdic
+
     def __repr__(self):
         return str(self.contVar) + " = " + str(self.flow)
+    
     def getVarId(self):
         return str(self.contVar)
+    
     def getFlow(self, varDict):
         if type(self.flow) in [RealVal, IntVal, BoolVal, Real]:
             return self.flow
         return self.flow.getExpression(varDict)
+    
     def getExpression(self, varDict):
         result = dict()
         result[self.contVar] = self.flow.getExpression(varDict)
         return result
+    
+    @property
+    def ode(self):
+        self.__ode.append(self.flow.value)
+        return self.__ode
+
 
 class SolEq:
     def __init__(self, contVar, Sol):
@@ -247,13 +311,41 @@ class modeModule:
         return(self.jump)
 
 class flowDecl:
-    def __init__(self, expType, exps):
+    def __init__(self, expType, exps, var_dict):
         self.type = expType   # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
+        self.__var_dict = var_dict
+        #for e in self.exps:
+        #    varlist.append(e.contVar)
+        #self.__cont_id_dict = dict()
+        #for i in range(len(varlist)):
+        #    self.__cont_id_dict[Real(varlist[i])]=0.0
+       
+    @property
+    def var_dict(self):
+        return self.__var_dict
+
+
     def __repr__(self):
         return str(self.type) + " " +  str(self.exps)
     def getExpression(self, varDict):
         return self.exps
+
+    def exp2exp(self):
+        ode_list = []
+        for elem in self.exps:
+            #elem.var_dic = self.__cont_id_dict
+            ode_inner_list = []
+            #for e in elem.flow:
+            if isinstance(elem.flow, RealVal):
+                ode_list.append(elem.flow.value)
+            elif isinstance(elem.flow, Real):
+                ode_list.append(elem.flow.value)
+                # every thing goes in here
+            else:
+                ode_list.append(elem.flow.value)
+        return ode_list 
+
  
 class jumpRedeclModule:
     def __init__(self, cond, jumpRedecl):
@@ -333,9 +425,14 @@ class StlMC:
         self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
         self.formulaText = formulaText
         self.bound = 0       # initial value is 0
-        self.cont_id_dict = dict()
-        for i in range(len(self.contVar)):
-         
+        
+    @property
+    def cont_id_dict(self):
+        return self.__cont_id_dict
+    
+    @cont_id_dict.setter
+    def cont_id_dict(self, id_dict_param):
+        self.__cont_id_dict = id_dict_param
 
 
     def getStlFormsList(self):
@@ -349,9 +446,9 @@ class StlMC:
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
         result = dict()
         for i in range(len(self.modeVar)):
-            result[str(self.modeVar[i].getId())] = op[self.modeVar[i].getType()](self.modeVar[i].getId())
+            result[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id)
         for i in range(len(self.contVar)):
-            result[str(self.contVar[i].getId())] = op[self.contVar[i].getType()](self.contVar[i].getId())
+            result[str(self.contVar[i].id)] = op[self.contVar[i].type](self.contVar[i].id)
         result['false'] = BoolVal(False)
         result['true'] = BoolVal(True)
         return result
@@ -360,7 +457,7 @@ class StlMC:
         ODE = dict()
         for i in range(len(self.modeModule)):
             ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
-        return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound)
+        return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound, self.modeModule[0].getFlow())
 
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
