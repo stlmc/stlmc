@@ -1,7 +1,8 @@
 import z3
 import core.encoding as ENC
 from .node import *
-from .z3Handler import checkSat
+from .z3Handler import *
+#from .z3Handler import checkSat
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
