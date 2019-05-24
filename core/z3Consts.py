@@ -149,7 +149,10 @@ class z3Consts:
         for i in range(len(variables)):
             keyIndex = str(variables[i]).find('_')
             key = str(variables[i])[:keyIndex]
-            if (key.find('time') != -1 or key.find('tau') != -1 or key.find('TauIndex') != -1):
+            if (key.find('time') != -1): 
+                result.append(variables[i] > RealVal(0))
+                result.append(variables[i] <= RealVal(timeBound))
+            if (key.find('tau') != -1 or key.find('TauIndex') != -1):
                 result.append(variables[i] >= RealVal(0))
                 result.append(variables[i] <= RealVal(timeBound))
         return result

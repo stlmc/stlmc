@@ -59,7 +59,7 @@ class Api:
             for i in range(self.bound+1):
                 declares = self.model.decls()
                 for k in declares:
-                    if "tau_" + str(i) == k.name():
+                    if "time" + str(i) == k.name():
                         result.append(float(self.model[k].as_decimal(6).replace("?", "")))
         return result
    
