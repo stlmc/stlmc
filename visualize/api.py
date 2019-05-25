@@ -15,6 +15,9 @@ class Api:
         self.bound = bound
         self.flowdecl = flowdecl
 
+    def setStrStlFormula(self, strStlFormula):
+        self.stl = strStlFormula
+
     # return continuous variables id
     def getVarsId(self):
         result = []
@@ -101,13 +104,16 @@ class Api:
         if self.model is not None:
             for i in range(len(self.props)):
                 subResult = []
+                propID = str(self.props[i].getId())
+                idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
                 for j in range(self.bound+2):
                     declares = self.model.decls()
                     for k in declares:
-                        if str(self.props[i].getId()) + "_" + str(j) == k.name():
+                        if idCheck and (propID + "_" + str(j) == k.name()):
                             subResult.append(self.model[k])
                             declares.remove(k)
-                result[str(self.props[i].getId())] = subResult
+                if idCheck: 
+                    result[str(self.props[i].getId())] = subResult
         return result 
     
     def visualize(self):
