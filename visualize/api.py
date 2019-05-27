@@ -142,13 +142,21 @@ class Api:
                 #for i in range(len(var_list)):
             ###????????????????????????
             p = []
+            d_ttt = dict()
+            d_ttt['var'] = var_list
             for i in range(len(z)):   
                 print(z[i])
+                d_ttt[str(i)] = z[i].tolist()
                 p = plt.plot(t, z[i])
                 plt.axvline(x=0.5, color='r', linestyle='--', linewidth=3)
                 plt.ylabel('variables')
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
+            import json
+            f = open("test.json", "w")
+
+            print(json.dump(d_ttt, f))
+            f.close()
             plt.show()
     
     #        self.flowdecl.var_dict['constx1'] = 21.0
