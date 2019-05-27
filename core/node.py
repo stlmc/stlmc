@@ -75,7 +75,7 @@ class BoolVal(Constant):
     def __init__(self, value):
         if not(isinstance(value, bool)):
            raise TypeError()
-        super().__init__(Type.Bool, 'true' if value == True else 'false')
+        super().__init__(Type.Bool, True if value else False)
 
     @property
     def value(self):

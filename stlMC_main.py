@@ -31,6 +31,7 @@ def main(argv):
             timeBound = 60
             (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
             visualize = stlMC.getSpecificModel()
+            visualize.setStrStlFormula(strFormula)
 #            '''
             print(visualize.getVarsId())
             print(visualize.getContValues())

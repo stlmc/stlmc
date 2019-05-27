@@ -40,7 +40,7 @@ def z3Obj(const:Node):
 def _(const):
     op = {Type.Bool: z3.BoolVal, Type.Real: z3.RealVal, Type.Int: z3.IntVal}
     if const.getType() == Type.Bool:
-        value = True if const.value == 'true' else False
+        value = True if const.value else False
     else:
         value = str(const.value)
     return op[const.getType()](value)

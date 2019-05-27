@@ -98,10 +98,10 @@ init:
 
 propositions:
 reachability = x1 > 27 ;
-a = x1 > 21 ;
+trash = x1 > 21 ;
 
 goal:
-([] [0.0, 20.0] (reachability)) ;
+([] [0.0, 20.0] (x1 > 27)) ;
 
 
 

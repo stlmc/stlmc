@@ -1,7 +1,8 @@
 import z3
 import core.encoding as ENC
 from .node import *
-from .z3Handler import checkSat
+from .z3Handler import *
+#from .z3Handler import checkSat
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -148,7 +149,10 @@ class z3Consts:
         for i in range(len(variables)):
             keyIndex = str(variables[i]).find('_')
             key = str(variables[i])[:keyIndex]
-            if (key.find('time') != -1 or key.find('tau') != -1 or key.find('TauIndex') != -1):
+            if (key.find('time') != -1): 
+                result.append(variables[i] > RealVal(0))
+                result.append(variables[i] <= RealVal(timeBound))
+            if (key.find('tau') != -1 or key.find('TauIndex') != -1):
                 result.append(variables[i] >= RealVal(0))
                 result.append(variables[i] <= RealVal(timeBound))
         return result
