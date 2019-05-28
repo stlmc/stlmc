@@ -121,7 +121,7 @@ class Api:
             var_list = self.getVarsId()
             tsp = self.getTauValues()
             c_val = self.getContValues()
-            t = np.linspace(tsp[0], tsp[1])
+            t = np.linspace(0, tsp[0]) #, tsp[1])
             print(len(tsp))
             #t = np.linspace(0, 33.3333)
 #            i_val = [ 21.0 for i in range(len(var_list))]
@@ -132,18 +132,21 @@ class Api:
             for ikk in range(len(s_val)):
                 i_val = []
                 for key in c_val:
-                    print(str(c_val[key][ikk][0]))
-                    print(key)
                     i_val.append(c_val[key][ikk][0])
                     self.flowdecl.var_dict[key] = c_val[key][ikk][0]
                     #rrr = self.flowdecl.exp2exp()
+                print(self.flowdecl.var_dict)
+                print(self.flowdecl.exp2exp())
                 z.append(odeint(lambda z,t: self.flowdecl.exp2exp(), i_val, t))
                 #c = ['b', 'r', 'c', 'm']
                 #for i in range(len(var_list)):
             ###????????????????????????
             p = []
+            vv = []
             d_ttt = dict()
-            d_ttt['var'] = var_list
+            for key in self.flowdecl.var_dict:
+                vv.append(self.flowdecl.var_dict[key])
+            d_ttt['var'] = vv
             for i in range(len(z)):   
                 print(z[i])
                 d_ttt[str(i)] = z[i].tolist()
@@ -153,7 +156,7 @@ class Api:
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
             import json
-            f = open("test.json", "w")
+            f = open("visualize/src/data/test.json", "w")
 
             print(json.dump(d_ttt, f))
             f.close()
@@ -161,8 +164,8 @@ class Api:
     
     #        self.flowdecl.var_dict['constx1'] = 21.0
     #        self.flowdecl.var_dict['constx2'] = 21.0
-    #        self.flowdecl.var_dict['x1']=0.0
-    #        self.flowdecl.var_dict['x2']=0.0
+    #        self.flowdecl.var_dict['x1']=21.0
+    #        self.flowdecl.var_dict['x2']=21.0
     #        rrr = self.flowdecl.exp2exp()
             #print(rrr)
     #        z = odeint(lambda z,t: rrr, i_val, t)
