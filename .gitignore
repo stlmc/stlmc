@@ -9,3 +9,4 @@ __pycache__
 data/
 *.smt2
 venv/
+node_modules/
