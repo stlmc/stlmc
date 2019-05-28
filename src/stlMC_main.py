@@ -34,6 +34,7 @@ def main(argv):
             visualize.setStrStlFormula(strFormula)
 #            '''
             print(visualize.getVarsId())
+            print(visualize.getModesId())
             print(visualize.getContValues())
             print(visualize.getTauValues())
             print(visualize.getODE())

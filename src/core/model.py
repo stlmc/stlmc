@@ -344,6 +344,7 @@ class flowDecl:
                 # every thing goes in here
             else:
                 ode_list.append(elem.flow.value)
+        print(self.exps)
         return ode_list 
 
  
@@ -457,7 +458,7 @@ class StlMC:
         ODE = dict()
         for i in range(len(self.modeModule)):
             ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
-        return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound, self.modeModule[0].getFlow())
+        return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound, self.modeModule)
 
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):

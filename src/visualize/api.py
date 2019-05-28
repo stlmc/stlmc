@@ -6,14 +6,14 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 class Api:
-    def __init__(self, model, modeVar, contVar, ODE, props, bound, flowdecl):
+    def __init__(self, model, modeVar, contVar, ODE, props, bound, mode_module):
         self.model = model
         self.modeVar = modeVar
         self.contVar = contVar
         self.ODE = ODE
         self.props = props
         self.bound = bound
-        self.flowdecl = flowdecl
+        self.mode_module = mode_module
 
     def setStrStlFormula(self, strStlFormula):
         self.stl = strStlFormula
@@ -118,47 +118,76 @@ class Api:
     
     def visualize(self):
         try:
-            var_list = self.getVarsId()
+            #var_list = self.getVarsId()
+            var_list = []
             tsp = self.getTauValues()
             c_val = self.getContValues()
-            t = np.linspace(0, tsp[0]) #, tsp[1])
-            print(len(tsp))
+            ode_l = self.getODE()
+            for i in range(len(ode_l)):
+                var_list_tmp = []
+                for j in ode_l[i]:
+                    x = j.split("=")
+                    var_list_tmp.append(x[0].replace(" ", ""))
+                var_list.append(var_list_tmp)
+
+            t = []
+            sum = 0.0
+            sum_pre = 0.0
+            for t_el in range(len(tsp)+1):
+                if t_el == len(tsp):
+                    sum_pre = sum
+                else:
+                    sum_pre = sum
+                    sum += tsp[t_el]
+                if t_el == 0:
+                    t.append(np.linspace(0, sum))
+                    #t_tmp = list()
+                    #t_tmp.append(0)
+                    #t_tmp.append(sum)
+                    #print(t_tmp)
+                    #t.append(t_tmp)
+                    print("0 ~ "+str(sum))
+                else:
+                    #t_tmp = list()
+                    #t_tmp.append(sum_pre)
+                    #t_tmp.append(sum)
+                    #print(t_tmp)
+                    print(str(sum_pre) + " ~ " + str(sum))
+                    t.append(np.linspace(sum_pre, sum))
+            t.append(np.linspace(sum, sum))
+
+            #t = np.linspace(0, tsp[0]) #, tsp[1])
             #t = np.linspace(0, 33.3333)
 #            i_val = [ 21.0 for i in range(len(var_list))]
         
             fig = plt.figure()
-            s_val = c_val[var_list[0]]
+            #s_val = c_val[var_list[0]]
             z = []
-            for ikk in range(len(s_val)):
+            for var in range(len(var_list)):
                 i_val = []
-                for key in c_val:
-                    i_val.append(c_val[key][ikk][0])
-                    self.flowdecl.var_dict[key] = c_val[key][ikk][0]
-                    #rrr = self.flowdecl.exp2exp()
-                print(self.flowdecl.var_dict)
-                print(self.flowdecl.exp2exp())
-                z.append(odeint(lambda z,t: self.flowdecl.exp2exp(), i_val, t))
+                for key in var_list[var]:
+                    i_val.append(c_val[key][var][0])
+                    self.mode_module[var].getFlow().var_dict[key] = c_val[key][var][0]
+                z.append(odeint(lambda z,t: self.mode_module[var].getFlow().exp2exp(), i_val, t[var]))
                 #c = ['b', 'r', 'c', 'm']
                 #for i in range(len(var_list)):
             ###????????????????????????
             p = []
             vv = []
             d_ttt = dict()
-            for key in self.flowdecl.var_dict:
-                vv.append(self.flowdecl.var_dict[key])
-            d_ttt['var'] = vv
+            d_ttt['var'] = var_list
             for i in range(len(z)):   
                 print(z[i])
                 d_ttt[str(i)] = z[i].tolist()
-                p = plt.plot(t, z[i])
+                p = plt.plot(t[i], z[i])
                 plt.axvline(x=0.5, color='r', linestyle='--', linewidth=3)
                 plt.ylabel('variables')
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
             import json
             f = open("visualize/src/data/test.json", "w")
-
-            print(json.dump(d_ttt, f))
+            json.dump(d_ttt, f)
+#            print(json.dump(d_ttt, f))
             f.close()
             plt.show()
     
