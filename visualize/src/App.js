@@ -30,7 +30,7 @@ class App extends React.Component {
     super(props);
     this.List = this.List.bind(this);
     this.state = {
-      json: require('./data/test.json'), 
+      json: require('./ode_data/test.json'), 
       div:['0', '1', '2'],
       options: {
         dataLabels: {

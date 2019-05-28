@@ -8,5 +8,10 @@
 __pycache__
 data/
 *.smt2
+
+# Virtual Env for python
 venv/
+
+# NPM dependencies
+package-lock.json
 node_modules/
