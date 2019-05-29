@@ -320,7 +320,7 @@ class flowDecl:
         #self.__cont_id_dict = dict()
         #for i in range(len(varlist)):
         #    self.__cont_id_dict[Real(varlist[i])]=0.0
-       
+   
     @property
     def var_dict(self):
         return self.__var_dict
@@ -330,7 +330,7 @@ class flowDecl:
         return str(self.type) + " " +  str(self.exps)
     def getExpression(self, varDict):
         return self.exps
-
+    
     def exp2exp(self):
         ode_list = []
         for elem in self.exps:
@@ -344,7 +344,6 @@ class flowDecl:
                 # every thing goes in here
             else:
                 ode_list.append(elem.flow.value)
-        print(self.exps)
         return ode_list 
 
  
