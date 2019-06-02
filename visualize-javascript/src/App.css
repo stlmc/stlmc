@@ -31,3 +31,8 @@
     transform: rotate(360deg);
   }
 }
+
+#darkbg .dygraph-axis-label { color: white; }
+.dygraph-legend { text-align: right; }
+#darkbg .dygraph-legend { background-color: #101015; }
+

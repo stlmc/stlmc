@@ -185,7 +185,7 @@ class Api:
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
             import json
-            f = open("visualize/src/ode_data/test.json", "w")
+            f = open("visualize/src/Data/test.json", "w")
             json.dump(d_ttt, f)
 #            print(json.dump(d_ttt, f))
             f.close()
