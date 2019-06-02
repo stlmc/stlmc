@@ -3,7 +3,12 @@ from core.node import *
 from core.z3Handler import checkSat
 import numpy as np
 from scipy.integrate import odeint
+# add mac dependency
+# that use TkAgg
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+
 
 class Api:
     def __init__(self, model, modeVar, contVar, ODE, props, bound, mode_module):
@@ -154,14 +159,8 @@ class Api:
                     #print(t_tmp)
                     print(str(sum_pre) + " ~ " + str(sum))
                     t.append(np.linspace(sum_pre, sum))
-            t.append(np.linspace(sum, sum))
-
-            #t = np.linspace(0, tsp[0]) #, tsp[1])
-            #t = np.linspace(0, 33.3333)
-#            i_val = [ 21.0 for i in range(len(var_list))]
-        
+            #t.append(np.linspace(sum, sum))
             fig = plt.figure()
-            #s_val = c_val[var_list[0]]
             z = []
             for var in range(len(var_list)):
                 i_val = []
@@ -171,11 +170,31 @@ class Api:
                 z.append(odeint(lambda z,t: self.mode_module[var].getFlow().exp2exp(), i_val, t[var]))
                 #c = ['b', 'r', 'c', 'm']
                 #for i in range(len(var_list)):
-            ###????????????????????????
             p = []
             vv = []
             d_ttt = dict()
             d_ttt['var'] = var_list
+            #d_ttt2 = dict()
+            #d_ttt3 = dict()
+            # time space array and data array size must be same!
+            # len(t) === len(z)
+            outer=[]
+            for i in range(len(var_list)):
+                #outer=[]
+                d_ttt2=dict()
+                for k in range(len(var_list[i])):
+                    inner=[]
+                    for j in range(len(z[i])):
+                        pair = []
+                        pair.append(t[i][j])
+                        pair.append(z[i][j][k])
+                        inner.append(pair)
+                    #outer.append(inner)
+                    d_ttt2[var_list[i][k]] = inner
+                outer.append(d_ttt2)    
+            print(outer)
+
+            
             for i in range(len(z)):   
                 print(z[i])
                 d_ttt[str(i)] = z[i].tolist()
@@ -185,8 +204,8 @@ class Api:
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
             import json
-            f = open("visualize/src/Data/test.json", "w")
-            json.dump(d_ttt, f)
+            f = open("../visualize/src/Data/test.json", "w")
+            json.dump(outer, f)
 #            print(json.dump(d_ttt, f))
             f.close()
             plt.show()
