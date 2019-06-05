@@ -4,7 +4,7 @@ import './App.css';
 import './Style/scss/main.scss';
 import { Link } from 'react-router-dom';
 import { Switch, BrowserRouter as Router, Route } from 'react-router-dom';
-import LinePlot from './Component/LinePlot';
+import LinePlot from './Component/LinePlot/LinePlot';
 
 
 const App: React.FC = () => {

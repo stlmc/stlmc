@@ -1,14 +1,20 @@
-export interface margin{
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
+export class margin{
+    constructor(
+        public top: number=0.0,
+        public right: number=0.0,
+        public bottom: number=0.0,
+        public left: number=0.0,
+        ){}
 }
 
-export interface size{
-    width_upper: number;
-    height_upper: number;
-    width_lower: number;
-    height_lower: number;
+export class size{
+    constructor(
+        public width: number=0.0,
+        public height: number=0.0,
+        public width_upper: number=0.0,
+        public height_upper: number=0.0,
+        public width_lower: number=0.0,
+        public height_lower: number=0.0,
+    ){}
 }
 

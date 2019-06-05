@@ -1,6 +1,8 @@
+@import 'variable.module.scss';
+
 .main_theme{
     margin-left:auto;
     margin-right: auto;
     // this must be same as LinePlot's original width
-    width: 400px;
+    width: $width;
 }
