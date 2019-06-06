@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
-import {margin, size, DataManager, ptype, pelem, plist} from './util/util';
+import {margin, size, DataManager, ptype, pelem, plist, pair, point} from './util/util';
 import $ from "jquery";
+import { color } from 'd3';
 
 // 1회성 클래스라고 생각하자.
 export class Line {
@@ -46,12 +47,102 @@ export class Line {
         this.dataManager.data = jd;
     }
 
+    
+    pointExtent(v:string){
+        var tmp:pair[] = [];
+        for(let xx of this.dataManager.points){
+            for(let yy of xx){
+                if (yy.name==v){
+                    tmp = tmp.concat(yy.point_list as plist);
+                }
+            }
+        }
+        return tmp;
+    }
+
+    // may be died because of ptype
+    // ptype must be [number, number] in this case
+    // flag true = x
+    // flag false = y
+    // default x
+    extent(flag: boolean=true){
+        var tmp_inner:[string, number, number, ptype][] = [];
+        var tmp_outer:[string, number, number, ptype][][] = [];
+        if (flag){
+            for(let xx of this.dataManager.x){
+                tmp_inner = []
+                for(let yy of xx){
+                    tmp_inner.push(
+                        [yy.name, d3.min(yy.point_list as pelem) as number, 
+                            d3.max(yy.point_list as pelem) as number, yy.point_list]);
+                }
+                tmp_outer.push(tmp_inner);
+            }
+            //console.log(tmp_outer)
+        } else {
+            for(let xx of this.dataManager.y){
+                tmp_inner = []
+                for(let yy of xx){
+                    tmp_inner.push(
+                        [yy.name, d3.min(yy.point_list as pelem) as number, 
+                            d3.max(yy.point_list as pelem) as number, yy.point_list]);
+                }
+                tmp_outer.push(tmp_inner);
+            }
+        }
+        return tmp_outer;
+        //return [d3.min(tmp), d3.max(tmp)];
+    }
+
+    // get interval
+    getInterval(v:string){
+        var t = this.extent();
+        var tmp:[number, number][] = [];
+        for (let e of t){
+            for(let n of e){
+                if(n[0]==v){
+                    tmp.push([n[1], n[2]]);
+                }
+            }
+        }
+        return tmp;
+    }
+
+    getPoints(v:string, flag:boolean=true){
+        var t = this.extent(flag);
+        var tmp:number[][] = [];
+        for (let e of t){
+            for(let n of e){
+                if(n[0]==v){
+                    tmp.push(n[3] as pelem);
+                }
+            }
+        }
+        return tmp;
+    }
+
+
+    flattenInterval(t:[number, number][] ){
+        var tmp:[number, number] = [0,0];
+        tmp[0] = (t.shift() as [number, number])[0];     
+        tmp[1] = (t.pop() as [number, number])[1];   
+        return tmp;
+    }
+
+    flattenPoints(t:number[][]){
+        var tmp:number[] = []
+        for(let e of t){
+            tmp = tmp.concat(e)
+        }  
+        return tmp;
+    }
+
     draw(){
 
 
         // color
         // https://github.com/d3/d3-scale/blob/master/README.md#sequential-scales
-        var rainbow = d3.scaleSequential(d3.interpolateRainbow);
+        
 
         var main = 
         d3.select(this._tag)
@@ -89,8 +180,20 @@ export class Line {
         // but domain has type number only
         // so you need explicit type casting
         // takes more than hour to know this...
-        let x:pelem = this.dataManager.x[0][2].point_list as pelem;
-        console.log(this.dataManager.x);
+        
+        //console.log(this.pointExtent("x1"));
+        //console.log(this.flattenPoints(this.getPoints("x1")));
+        //console.log(this.flattenPoints(this.getPoints("x1", false)));
+        //console.log(this.flattenInterval(this.getInterval("x1")));
+        //console.log(this.extent());
+        //console.log(this.dataManager.variables);
+        //console.log(this.dataManager.x);
+        let x:pelem = this.flattenPoints(this.getPoints("constx1"));//this.dataManager.x[0][2].point_list as pelem;
+        
+        // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
+        var rainbow = d3.scaleSequential(d3.interpolateRainbow)
+        .domain([d3.min(x) as number, d3.max(x) as number]);
+        //console.log(this.dataManager.x);
         /*
         for(let xx of this.dataManager.x){
             for(let yy of xx){
@@ -101,8 +204,9 @@ export class Line {
         //x=x.map(function(el:number){return el*100;})
         //console.log(x);
 
-        let y:pelem = this.dataManager.y[0][2].point_list as pelem;
-        console.log(this.dataManager.y);
+        let y:pelem = this.flattenPoints(this.getPoints("constx1", false));//this.dataManager.y[0][2].point_list as pelem;
+        console.log(y);
+        //console.log(this.dataManager.y);
         /*
         for(let xx of this.dataManager.y){
             for(let yy of xx){
@@ -111,8 +215,16 @@ export class Line {
             }
         }*/
 
-        let d:ptype = this.dataManager.points[0][2].point_list;
-        console.log(this.dataManager.points);
+        let d:ptype = this.pointExtent("constx1");//this.dataManager.points[0][2].point_list;
+        let d1:ptype = this.pointExtent("x1");
+        let d2:ptype = this.pointExtent("x2");
+        let d33:ptype = this.pointExtent("constx2");
+        let ddd:ptype[] = [];
+        ddd.push(d);
+        ddd.push(d1);
+        ddd.push(d2);
+        ddd.push(d33);
+        //console.log(this.dataManager.points);
         // for(let xx of this.dataManager.points){
         //     //console.log(xx);
         //     for (let yy of xx){
@@ -206,11 +318,24 @@ export class Line {
             .y1(function(d) { return scaleY(d[1]); }).curve(d3.curveMonotoneX);
             console.log(d);
         var pathString = lineGenerator(d as plist) as string;
-        var lineGraph = g_viewer.append("path")
-            .attr("d", pathString)
-            .attr("stroke", "blue")
+
+        var lineGraph = g_viewer
+            .selectAll(".linegraph")
+            
+            .append("g")
+            .attr("class", "linegraph")
+            .data(ddd)
+            .enter()
+            
+
+            lineGraph.append("path")
+            .attr("d", (d)=>{ return lineGenerator(d as [number, number][])})
+            .attr("stroke", (d)=>{ return rainbow((d as [number, number][])[0][0]);  })
+            .attr("fill", "none")
             .attr("stroke-width", 1)
-            .attr("transform", "translate(0,"+this._margin_viewer.top+")")
+            .attr("transform", () => { return "translate(0,"+this._margin_viewer.top+")"})
+            //.attr("class", "linegraph")
+            
 
         // https://www.d3-graph-gallery.com/graph/area_basic.html
         // using basic area tutorial
@@ -261,8 +386,11 @@ export class Line {
         // focus tracking
         //http://bl.ocks.org/mikehadlow/93b471e569e31af07cd3
 
-        var focus = g_viewer.append('g').style('display', 'none')
-        .attr("transform", "translate(0,"+this._margin_viewer.top+")");
+
+        var focus = g_viewer
+            //.append('g').style('display', 'none')
+            .attr("transform", "translate(0,"+this._margin_viewer.top+")");
+
         focus.append("text")
             .attr('id', 'focusText')
             .attr("transform", "translate(2,-3)")
@@ -274,10 +402,19 @@ export class Line {
         focus.append('line')
             .attr('id', 'focusLineY')
             .attr('class', 'focusLine');
-        focus.append('circle')
+
+            lineGraph.append('circle')
+            .attr("r", 7)
+            .style("stroke", "black")
+            .style("fill", "none")
+            .style("stroke-width", "1px")
             .attr('id', 'focusCircle')
-            .attr('r', 3)
-            .attr('class', 'circle focusCircle');
+            .attr("transform", () => { return "translate(0,"+this._margin_viewer.top+")"})
+            //.style("opacity", "0");
+            
+            //.attr('id', 'focusCircle')
+            //.attr('r', 3)
+            //.attr('class', 'circle focusCircle');
 
 
         var bisectDate = d3.bisector(function(d:[number, number]) { return d[0]; }).left;
@@ -287,8 +424,8 @@ export class Line {
             .attr('height', this.viewer_height-2*this._margin_viewer.top)
             .attr("transform", "translate("+this.axis_delta+","+this._margin_viewer.top+")")
             .style("fill-opacity", "0.0")
-            .on('mouseover', function() { focus.style('display', null); })
-            .on('mouseout', function() { focus.style('display', 'none'); })
+            //.on('mouseover', function() { lineGraph.selectAll("#focusCircle").style('opacity', "1"); })
+            //.on('mouseout', function() { lineGraph.selectAll("#focusCircle").style("opacity", "0");/*focus.style('display', 'none');*/ })
             .on("mousemove", ()=>{
                 var mouse = d3.mouse($(this._tag)[0]);
                 var pos = scaleX.invert(mouse[0]);
@@ -309,10 +446,22 @@ export class Line {
                         .attr('x', xx)
                         .attr('y', yy)
                         .text("("+d3.format(".2f")(scaleX.invert(mouse[0]))+" , "+d3.format(".2f")(scaleY.invert(mouse[1]))+")")
-                    focus.select('#focusCircle')
+                  /*  focus.select('#focusCircle')
                         .attr('cx', xx)
                         .attr('cy', yy)
-                        .style("fill", rainbow(0.859))
+                        .style("fill", rainbow(0.859))*/
+                        lineGraph.selectAll("#focusCircle")
+                        .attr('cx', xx)
+                        .attr('cy', (d,i2)=>{
+                            var dd0:[number, number] = (ddd[i2] as plist)[i-1];
+                            var dd1:[number, number] = (ddd[i2] as plist)[i];
+                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = scaleX(ffinal_value[0]);
+                            var yyt = scaleY(ffinal_value[1]);
+                            return yyt;    
+                        });///.style('opacity', "1");
+
+                    
                     focus.select('#focusLineX')
                         .attr('x1', xx).attr('y1', scaleY(d3.min(y) as number))
                         .attr('x2', xx).attr('y2', scaleY(d3.max(y) as number))

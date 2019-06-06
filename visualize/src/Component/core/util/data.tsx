@@ -2,7 +2,7 @@
  * Data class for mathematical objects
  * Json should follow this format
  */
-interface point{
+export interface point{
     name: string;
     point_list: ptype;
 }
@@ -11,8 +11,9 @@ export type ptype = (plist | pelem)
 export type points = point[][];
 export type pointsElem = point[];
 export type pelem = number[];
-export type plist = [number, number][];
+export type plist = pair[];
 export type json = string;
+export type pair = [number, number];
 
 
 export class DataManager {
@@ -20,6 +21,7 @@ export class DataManager {
     private _x:points=[[]];
     private _y:points=[[]];
     private _p_elem:pointsElem=[];
+    private _variables:string[]=[];
     constructor(
         private _data: json=''
     ){}
@@ -31,6 +33,7 @@ export class DataManager {
         this.update();
         this.updateX();
         this.updateY();
+        this.updateVariables();
     }
 
     // update this function will effect every thing that is related with
@@ -95,6 +98,29 @@ export class DataManager {
             this._p_elem = [];
         }
         //this._y.shift();
+    }
+
+    // mode can change variables????
+    // assumes not...
+    updateVariables(){
+        this._variables = [];
+        // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+        // need to take both key and value.
+        for(let i=0; i<this._data.length;i++){
+            let obj = this._data[i];
+            for(let [key, value] of Object.entries(obj)){
+                if (this._variables.includes(key)){
+                    // do nothing
+                }
+                else{
+                    this._variables.push(key);
+                }
+            }
+        }
+    }
+
+    get variables():string[]{
+        return this._variables;
     }
 
     get points():points{
