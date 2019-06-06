@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
-import {margin, size, DataManager, ptype, pelem, plist, pair, point} from './util/util';
+import {margin, size, DataManager, ptype, pelem, plist, pair, point} from './Util/util';
+import { Json } from '../Visualize/Visualize';
 import $ from "jquery";
-import { color } from 'd3';
 
 // 1회성 클래스라고 생각하자.
 export class Line {
@@ -14,6 +14,7 @@ export class Line {
     private axis_delta:number = 50.0;
     private effective_controller_height_difference:number = 100;
     private effective_controller_height:number = 50;
+    private j:Json;
 
     constructor(
         private _size: size,
@@ -45,6 +46,7 @@ export class Line {
 
     setdata(jd: string){
         this.dataManager.data = jd;
+        this.j = new Json(jd);
     }
 
     
@@ -139,6 +141,8 @@ export class Line {
 
     draw(){
 
+        //this.j.parse();
+        console.log(this.j.dataById(0));
 
         // color
         // https://github.com/d3/d3-scale/blob/master/README.md#sequential-scales
@@ -188,6 +192,8 @@ export class Line {
         //console.log(this.extent());
         //console.log(this.dataManager.variables);
         //console.log(this.dataManager.x);
+        let x123 = this.j.dataByName("constx1");
+        
         let x:pelem = this.flattenPoints(this.getPoints("constx1"));//this.dataManager.x[0][2].point_list as pelem;
         
         // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
