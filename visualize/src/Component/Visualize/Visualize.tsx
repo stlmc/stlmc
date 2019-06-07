@@ -1,7 +1,3 @@
-import { Intervals, Interval, Point } from "../Core/Util/MathModel";
-import * as d3 from 'd3';
-import {margin, size, DataManager, ptype, pelem, plist, pair, point} from '../Core/Util/util';
-import $ from "jquery";
 /**
  * Basic wrapper class for *visualize* **project**.
  * This class uses MathModel's objects and this class is extremely specific
@@ -10,6 +6,14 @@ import $ from "jquery";
  * Written by Geunyeol Ryu
  * @ 2019.06.06
  */
+
+ /**
+  * Packages.
+  */
+import { Intervals, Interval, Point } from "../Core/Util/MathModel";
+import * as d3 from 'd3';
+import {margin, size, DataManager, ptype, pelem, plist, pair, point} from '../Core/Util/util';
+import $ from "jquery";
 
  /**
   * Json:
@@ -149,7 +153,7 @@ class Renderer{
     private axis_delta:number = 50.0;
     private effective_controller_height_difference:number = 100;
     private effective_controller_height:number = 50;
-    private j:Json;
+    private json:Json;
 
     constructor(
         private _size: size,
@@ -180,13 +184,34 @@ class Renderer{
     }
 
     setdata(jd: string){
-        this.j = new Json(jd);
+        this.json = new Json(jd);
     }
 
     draw(){
 
         // color
         // https://github.com/d3/d3-scale/blob/master/README.md#sequential-scales
+        // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
+        // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
+        
+
+
+        var jdata = this.json.data;
+        var jdataList = this.json.dataList();
+        var jdataIntervalList = this.json.intervalList();
+        var jdataName = jdata.names;
+        console.log(jdataName);
+
+        var len = jdataList.length;
+        var tmp:string[] = []
+        for(let i=0; i<len; i++){
+            tmp.push(i.toString());
+        }
+        var colorScale = d3.scaleOrdinal(d3.schemeSet3)
+        //.domain(tmp);
+
+        console.log(jdataList)
+
         var main = 
         d3.select(this._tag)
                 .append("svg")
@@ -203,34 +228,18 @@ class Renderer{
                 .attr("class", "viewer")
                 .attr("width", this.viewer_width)
                 .attr("heght", this.viewer_height);
+
         
-        let cx1 = this.j.dataByName("constx1");
-        let cx2 = this.j.dataByName("constx2");
-        let x1 = this.j.dataByName("x1");
-        let x2 = this.j.dataByName("x2");
-
-        var ilist = this.j.intervalList();
-        console.log(ilist);
-
-        /*
-        let scaleX = 
-            d3.scaleLinear()
-                .domain([d3.min([1, 20, 40, 60, 80, 100, 110]) as number, d3.max([1, 20, 40, 60, 80, 100, 110]) as number])
-                .range([this._margin_viewer.left, this._size.width_upper-this._margin_viewer.right]);
-        let scaleY = 
-            d3.scaleLinear()
-                .domain([d3.min([5, 20, 40, 50, 5, 60, 80]) as number, d3.max([5, 20, 40, 50, 5, 60, 80]) as number])
-                .range([this._size.height_upper-this._margin_viewer.bottom, this._margin_viewer.top]);*/
 
         let scaleX = 
             d3.scaleLinear()
-                .domain(this.j.data.xExtent())
+                .domain(jdata.xRange())
                 .range([this.axis_delta, this.viewer_width-this.axis_delta]);
         
         var newHeight = this.viewer_height-this._margin_viewer.top;
         let scaleY = 
             d3.scaleLinear()
-                .domain(this.j.data.yExtent())
+                .domain(jdata.yRange())
                 .range([this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top]);
 
 
@@ -268,7 +277,6 @@ class Renderer{
         g_controller
             .call( brush )
 
-        console.log(ilist);    
         var lineGenerator = 
             d3.line()
             //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
@@ -280,14 +288,14 @@ class Renderer{
             .selectAll(".linegraph")
             .append("g")
             .attr("class", "linegraph")
-            .data(this.j.dataList())
+            .data(jdataList)
             .enter()
             
 
             lineGraph.append("path")
             .attr("d", (d)=>{ return lineGenerator(d)})
             .attr("stroke", "blue")
-            //.attr("stroke", (d)=>{ return rainbow((d as [number, number][])[0][0]);  })
+            .attr("stroke", (d, i)=>{return colorScale(i.toString())})
             .attr("fill", "none")
             .attr("stroke-width", 1)
             .attr("transform", () => { return "translate(0,"+this._margin_viewer.top+")"})
@@ -300,10 +308,10 @@ class Renderer{
             //.append('g').style('display', 'none')
             .attr("transform", "translate(0,"+this._margin_viewer.top+")");
 
-        focus.append("text")
+        lineGraph.append("text")
             .attr('id', 'focusText')
-            .attr("transform", "translate(2,-3)")
-            .style("font-size", "11px");
+            .attr("transform", ()=> { return "translate(2,"+(this._margin_viewer.top-3)+")"})
+            .style("font-size", ()=>{ return "11px" });
 
         focus.append('line')
             .attr('id', 'focusLineX')
@@ -314,7 +322,8 @@ class Renderer{
 
             lineGraph.append('circle')
             .attr("r", 7)
-            .style("stroke", "black")
+            .attr("stroke", (d, i2)=>{return colorScale(i2.toString())})
+            //.style("stroke", "black")
             .style("fill", "none")
             .style("stroke-width", "1px")
             .attr('id', 'focusCircle')
@@ -324,7 +333,7 @@ class Renderer{
             //.attr('id', 'focusCircle')
             //.attr('r', 3)
             //.attr('class', 'circle focusCircle');
-            var mainlist = this.j.dataList();
+        var cx1 = this.json.dataByNameList("constx1");
 
         var bisectDate = d3.bisector(function(d:[number, number]) { return d[0]; }).left;
         g_viewer
@@ -338,14 +347,14 @@ class Renderer{
             .on("mousemove", ()=>{
                 var mouse = d3.mouse($(this._tag)[0]);
                 var pos = scaleX.invert(mouse[0]);
-                var i = bisectDate(this.j.dataByNameList("constx1"),pos);
+                var i = bisectDate(cx1,pos);
                 console.log(pos);
-                if (i <= 0 || this.j.dataByNameList("constx1").length < i){
+                if (i <= 0 || cx1.length < i){
                     // below 0 is undefined
                 }else{
                     
-                    var d0:[number, number] = (this.j.dataByNameList("constx1"))[i - 1];
-                    var d1:[number, number] = (this.j.dataByNameList("constx1"))[i];
+                    var d0:[number, number] = cx1[i - 1];
+                    var d1:[number, number] = cx1[i];
 
                     
                     // work out which date value is closest to the mouse
@@ -353,10 +362,26 @@ class Renderer{
                     var xx = scaleX(final_value[0]);
                     var yy = scaleY(final_value[1]);
                     
-                    focus.select("#focusText")
+                    lineGraph.selectAll("#focusText")
                         .attr('x', xx)
-                        .attr('y', yy)
-                        .text("("+d3.format(".2f")(scaleX.invert(mouse[0]))+" , "+d3.format(".2f")(scaleY.invert(mouse[1]))+")")
+                        .attr('y', (d,i2)=>{
+                            var dd0:[number, number] = (jdataList[i2])[i-1];
+                            var dd1:[number, number] = (jdataList[i2])[i];
+                            //console.log(dd1)
+                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = scaleX(ffinal_value[0]);
+                            var yyt = scaleY(ffinal_value[1]);
+                            return yyt;    
+                        })
+                        .text((d, i2) => { 
+                            var dd0:[number, number] = (jdataList[i2])[i-1];
+                            var dd1:[number, number] = (jdataList[i2])[i];
+                            //console.log(dd1)
+                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = scaleX(ffinal_value[0]);
+                            var yyt = scaleY(ffinal_value[1]);    
+                            return jdataName[i2]+"("+d3.format(".2f")(scaleX.invert(mouse[0]))+" , "+d3.format(".2f")(scaleY.invert(yyt))+")" 
+                        })
                   /*  focus.select('#focusCircle')
                         .attr('cx', xx)
                         .attr('cy', yy)
@@ -364,8 +389,8 @@ class Renderer{
                         lineGraph.selectAll("#focusCircle")
                         .attr('cx', xx)
                         .attr('cy', (d,i2)=>{
-                            var dd0:[number, number] = (this.j.dataList()[i2])[i-1];
-                            var dd1:[number, number] = (this.j.dataList()[i2])[i];
+                            var dd0:[number, number] = (jdataList[i2])[i-1];
+                            var dd1:[number, number] = (jdataList[i2])[i];
                             //console.log(dd1)
                             var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
                             var xxx = scaleX(ffinal_value[0]);
@@ -375,13 +400,13 @@ class Renderer{
 
                     
                     focus.select('#focusLineX')
-                        .attr('x1', xx).attr('y1', scaleY(this.j.data.yExtent()[0]))
-                        .attr('x2', xx).attr('y2', scaleY(this.j.data.yExtent()[1]))
+                        .attr('x1', xx).attr('y1', scaleY(jdata.yRange()[0]))
+                        .attr('x2', xx).attr('y2', scaleY(jdata.yRange()[1]))
                         //.style("stroke", rainbow(0.8))
                         .style("stroke-width",  "1px");
                     focus.select('#focusLineY')
-                        .attr('x1', scaleX(this.j.data.xExtent()[0])).attr('y1', yy)
-                        .attr('x2', scaleX(this.j.data.xExtent()[1])).attr('y2', yy)
+                        .attr('x1', scaleX(jdata.xRange()[0])).attr('y1', yy)
+                        .attr('x2', scaleX(jdata.xRange()[1])).attr('y2', yy)
                         //.style("stroke", rainbow(0.8))
                         .style("stroke-width",  "1px");
 

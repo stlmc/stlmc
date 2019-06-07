@@ -276,12 +276,13 @@ class Interval<V=string, T=number, U=string>{
 
  /**
  * Intervals:
- * * Array of intervals with name.
- * * It has polymorphic type T and U same as point class.
- * @typeparam W the array of intervals name. Default type is string.
- * @typeparam V the array's name type. Default type is string.
- * @typeparam T the array's point value type. Default type is number.
- * @typeparam U the array's point name type. Default type is string.
+ * * Array of Interval with name. 
+ * * It's element, interval has polymorphic type V, T and U.
+ * 
+ * @typeparam W the array of Interval name's type. Default type is string.
+ * @typeparam V the element, Interval name's type. Default type is string.
+ * @typeparam T the element, Interval's point value type. Default type is number.
+ * @typeparam U the elemet, Interval's point name type. Default type is string.
  */
 class Intervals<W=string, V=string, T=number, U=string> {
     private _intervals: Interval<V,T,U>[] = [];
@@ -295,16 +296,22 @@ class Intervals<W=string, V=string, T=number, U=string> {
     ){}
 
     /**
-     * Get the length of intervals
+     * Length of array of interval.
+     * 
+     * @returns Length of array of interval.
      */
-    get length(){
+    get length():number{
         return this._intervals.length;
     }
 
     /**
-     * Get list of the intervals.
+     * Array of the interval to array of [T, T] type.
+     * 
+     * @deprecated This method will be deprecated soon.
+     * @todo Redesigning this method to return any array.
+     * @returns It will return [T, T][][] type list.
      */
-    get list():[T, T][][]{
+    toTTList():[T, T][][]{
         var tmp: [T, T][][] = [];
         for(let elem of this._intervals){
             tmp.push(elem.list);
@@ -343,14 +350,16 @@ class Intervals<W=string, V=string, T=number, U=string> {
 
 
     /**
-     * Get name of the interval.
+     * Name of this array of interval.
      */
     get name(): W{
         return this._name;
     }
 
     /**
-     * Get array of interval's names. This method will automatically remove overlapping names.
+     * Array of interval's names. Names will automatically does not count overlapping names.
+     * 
+     * @returns Array of names. 
      */
     get names(): V[]{
         var tmp:V[] = [];
@@ -365,7 +374,10 @@ class Intervals<W=string, V=string, T=number, U=string> {
     }
 
     /**
-     * Get certain intervals with name. 
+     * Get certain intervals that has certain name. There might be some numbers of intervals.
+     * 
+     * @param name Name that you expect for Intervals to have.
+     * @returns Array of intervals that matches naming condition.
      */
     intervalByName(name:V): Interval<V, T, U>[]{
         var tmp: Interval<V, T, U>[] = [];
@@ -378,7 +390,10 @@ class Intervals<W=string, V=string, T=number, U=string> {
     }
 
     /**
-     * Get certain intervals with id. 
+     * Get certain intervals that has certain id. There might be some numbers of intervals.
+     * 
+     * @param id Unique id that you expect for Intervals to have.
+     * @returns Array of intervals that matches above condition.
      */
     intervalById(id:number): Interval<V, T, U>[]{
         var tmp: Interval<V, T, U>[] = [];
@@ -391,9 +406,12 @@ class Intervals<W=string, V=string, T=number, U=string> {
     }
 
     /**
-     * Get certain intervals extent of the first element with name.
+     * Get range of intervals of the first element with certain name.
+     * 
+     * @param name Name of the interval that you want to get range.
+     * @returns Range of intervals.
      */
-    xExtentByName(name:V):[T, T]{
+    xRangeByName(name:V):[T, T]{
         var tmp:[T, T][] = [];
         for(let elem of this.intervalByName(name)){
             tmp.push(elem.xExtent);
@@ -416,9 +434,40 @@ class Intervals<W=string, V=string, T=number, U=string> {
     }
 
     /**
-     * Get certain intervals extent of the first element with id.
+     * Get range of intervals of the second element with certain name.
+     * 
+     * @param name Name of the interval that you want to get range.
+     * @returns Range of intervals.
      */
-    xExtentById(id:number):[T, T]{
+    yRangeByName(name:V):[T, T]{
+        var tmp:[T, T][] = [];
+        for(let elem of this.intervalByName(name)){
+            tmp.push(elem.yExtent);
+        }
+
+        var tmp_flat:T[] = tmp.flat();
+
+        var max = tmp_flat.reduce(
+            (acc, cur) => {
+                return acc > cur? acc:cur;
+            }
+        )
+
+        var min = tmp_flat.reduce(
+            (acc, cur) => {
+                return acc > cur? cur:acc;
+            }
+        )
+        return [min, max];
+    }
+
+    /**
+     * Get range of intervals of the first element with certain id.
+     * 
+     * @param id Unique id of the interval that you want to get range.
+     * @returns Range of intervals.
+     */
+    xRangeById(id:number):[T, T]{
         var tmp:[T, T][] = [];
         for(let elem of this.intervalById(id)){
             tmp.push(elem.xExtent);
@@ -441,12 +490,43 @@ class Intervals<W=string, V=string, T=number, U=string> {
     }
 
     /**
-     * Get whole intervals of the first element extent..
+     * Get range of intervals of the second element with certain id.
+     * 
+     * @param id Unique id of the interval that you want to get range.
+     * @returns Range of intervals.
      */
-    xExtent():[T, T]{
+    yRangeById(id:number):[T, T]{
+        var tmp:[T, T][] = [];
+        for(let elem of this.intervalById(id)){
+            tmp.push(elem.yExtent);
+        }
+
+        var tmp_flat:T[] = tmp.flat();
+
+        var max = tmp_flat.reduce(
+            (acc, cur) => {
+                return acc > cur? acc:cur;
+            }
+        )
+
+        var min = tmp_flat.reduce(
+            (acc, cur) => {
+                return acc > cur? cur:acc;
+            }
+        )
+        return [min, max];
+    }
+
+    /**
+     * Get range this Intervals with respect to the first element. 
+     * This will return whole range of whole Intervals.
+     * 
+     * @returns First element's range of this Intervals.
+     */
+    xRange():[T, T]{
         var tmp:[T, T][] = []; 
         for(let e of this._intervals){
-            let t = this.xExtentByName(e.name).flat();
+            let t = this.xRangeByName(e.name).flat();
             let max = t.reduce(
                 (acc, cur) => {
                     return acc > cur? acc:cur;
@@ -475,63 +555,16 @@ class Intervals<W=string, V=string, T=number, U=string> {
         return [min, max];
     }
 
-        /**
-     * Get certain intervals extent of the second element with name.
-     */
-    yExtentByName(name:V):[T, T]{
-        var tmp:[T, T][] = [];
-        for(let elem of this.intervalByName(name)){
-            tmp.push(elem.yExtent);
-        }
-
-        var tmp_flat:T[] = tmp.flat();
-
-        var max = tmp_flat.reduce(
-            (acc, cur) => {
-                return acc > cur? acc:cur;
-            }
-        )
-
-        var min = tmp_flat.reduce(
-            (acc, cur) => {
-                return acc > cur? cur:acc;
-            }
-        )
-        return [min, max];
-    }
-
     /**
-     * Get certain intervals extent of the second element with id.
+     * Get range this Intervals with respect to the second element. 
+     * This will return whole range of whole Intervals.
+     * 
+     * @returns Second element's range of this Intervals.
      */
-    yExtentById(id:number):[T, T]{
-        var tmp:[T, T][] = [];
-        for(let elem of this.intervalById(id)){
-            tmp.push(elem.yExtent);
-        }
-
-        var tmp_flat:T[] = tmp.flat();
-
-        var max = tmp_flat.reduce(
-            (acc, cur) => {
-                return acc > cur? acc:cur;
-            }
-        )
-
-        var min = tmp_flat.reduce(
-            (acc, cur) => {
-                return acc > cur? cur:acc;
-            }
-        )
-        return [min, max];
-    }
-
-    /**
-     * Get whole intervals of the second element extent..
-     */
-    yExtent():[T, T]{
+    yRange():[T, T]{
         var tmp:[T, T][] = []; 
         for(let e of this._intervals){
-            let t = this.yExtentByName(e.name).flat();
+            let t = this.yRangeByName(e.name).flat();
             let max = t.reduce(
                 (acc, cur) => {
                     return acc > cur? acc:cur;
