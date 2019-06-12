@@ -115,7 +115,7 @@ class Api:
                     declares = self.model.decls()
                     for k in declares:
                         if idCheck and (propID + "_" + str(j) == k.name()):
-                            subResult.append(self.model[k])
+                            subResult.append(str(self.model[k]))
                             declares.remove(k)
                 if idCheck: 
                     result[str(self.props[i].getId())] = subResult
@@ -193,7 +193,10 @@ class Api:
                     d_ttt2[var_list[i][k]] = inner
                 outer.append(d_ttt2)    
             print(outer)
-
+            outer2 = dict()
+            outer2['data'] = outer
+            print(self.getProposition())
+            outer2['prop'] = self.getProposition()
             
             for i in range(len(z)):   
                 print(z[i])
@@ -205,7 +208,7 @@ class Api:
                 plt.legend(p, var_list, loc='best')
             import json
             f = open("../visualize/src/Data/test.json", "w")
-            json.dump(outer, f)
+            json.dump(outer2, f)
 #            print(json.dump(d_ttt, f))
             f.close()
             plt.show()

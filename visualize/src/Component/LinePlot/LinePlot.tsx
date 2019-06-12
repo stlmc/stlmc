@@ -3,8 +3,8 @@ import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import { Line } from '../Core/graph';
 import { size, margin } from '../Core/Util/util';
-import { Renderer } from '../Visualize/Visualize';
-
+//import { Renderer } from '../Visualize/Visualize';
+import {Renderer} from '../Comb/Visualize/Visualize';
 /*
  * Props and State
  */ 
@@ -107,6 +107,7 @@ class LinePlot extends React.Component<Props, State> {
         console.log();
         this.renderer.setdata(this.state.data);
         this.renderer.draw();
+    
         //this.line.setdata(this.state.data);
         //this.line.draw();
     }

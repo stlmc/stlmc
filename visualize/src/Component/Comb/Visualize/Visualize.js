@@ -1,215 +1,33 @@
-/**
- * Basic wrapper class for *visualize* **project**.
- * This class uses MathModel's objects and this class is extremely specific
- * to certain project. Do not reuse this class. This is just wrapper class!
- *  
- * Written by Geunyeol Ryu
- * @ 2019.06.06
- */
-
-  /**
-  * Packages.
-  */
-import { Intervals, Interval, Point } from "../Core/Util/MathModel";
 import * as d3 from 'd3';
-import {margin, size, DataManager, ptype, pelem, plist, pair, point} from '../Core/Util/util';
+import {Json} from '../../Visualize/Visualize';
 import $ from "jquery";
-import './visualize.scss';
-import * as Popper from 'popper.js';
-import { json } from "d3";
-
-/**
- * This is props calss
- */
-class Prop{
-
-    constructor(
-        public _name:string="", 
-        private _value:string[]=[]
-        ){}
-    get value():string[]{
-        return this._value;
-    }
-
-    set value(value: string[]){
-        this._value = value;
-    }
-
-    push(value: string){
-        this._value.push(value);
-    }
-}
-
- /**
-  * Json:
-  * * Wrapper class for visualize project
-  */
-class Json {
-
-    /**
-     * Internally has intervals.
-     */
-    private _intervals: Intervals = new Intervals("data");
-    public _prop:Prop[] = [];
-    /**
-     * 
-     * @param _jsonString String parsing by internal json parser to string.
-     */
-    constructor(
-        private _jsonString:string = ""
-    ){
-        //...
-    }
-
-    get data(){
-        if(this._intervals.isEmpty()){
-            this.parse();
-            return this._intervals;
-        }
-        return this._intervals;
-    }
-
-    /**
-     * @params jsonString Simple string that looks like Json file.
-     */
-    set string(jsonString:string){
-        this._jsonString = jsonString;
-        this.parse();
-    }
-
-    /**
-     * Parsing interanl jsonString to make object.
-     */
-    parse = () => {
-        this._intervals.removeAll();
-        // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
-        // need to take both key and value.
-        for(let [key1, value1] of Object.entries(this._jsonString)){
-            if(key1=="data"){
-                for(let i=0; i<value1.length;i++){
-                    let obj = value1[i];
-                    for(let [key, value] of Object.entries(obj)){
-                        let tmp_interval:Interval = new Interval(key, i);
-                        for (let v of Object.values(value)){
-                            tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
-                        }
-                        this._intervals.push(tmp_interval);
-                        //this._p_elem.push({name:key, point_list: tmp_point_list});
-                    }
-                }
-            }
-            // for the 
-            else{
-                console.log(value1)
-                for(let [key2, value2] of Object.entries(value1)){
-                    let tmp: string[] = []
-                    for(let v of value2){
-                        /*
-                        if(v == "False"){
-                            tmp.push(false)
-                        }
-                        else{
-                            tmp.push(true);
-                        }*/
-                        tmp.push(v);
-                    }
-                    this._prop.push(new Prop(key2, tmp))
-                }
-                //console.log(this._prop);
-            }
-        }
-    }
-
-    /**
-     * This will find every intervals that have id which are the same as searching parameter.
-     * @params id Interval number.
-     */
-    dataById = (id:number):Interval[] => {
-        return this._intervals.intervalById(id);
-    }
-
-    /**
-     * Usually, this will be variables name.
-     * @params name Interval name.
-     */
-    dataByName = (name:string):Interval[] => {
-        return this._intervals.intervalByName(name);
-    }
-
-    /**
-     * Usually, this will be variables name.
-     * @params name Interval name.
-     */
-    dataByNameList(name:string):[number, number][]{
-        let tmp: [number, number][][] = [];
-        let interv:Interval[] = this._intervals.intervalByName(name);
-        for(let elem of interv){
-            if(name==elem.name){
-                tmp.push(elem.list);
-            }
-        }
-        return tmp.flat();
-    }
-
-    /**
-     * Get data List item... update... later..
-     */
-    dataList():[number, number][][]{
-        var tmp: [number, number][][] = [];
-        for(let e of this._intervals.names){
-            tmp.push(this.dataByNameList(e));
-        }
-        return tmp;
-    }
-
-    intervalList(){
-        var tmp: number[] = [];
-        this.parse();
-        for(let e of this._intervals.names){
-            let interv:Interval[] = this._intervals.intervalByName(e);
-            for(let el of interv){
-                var min = el.xMin;
-                var max = el.xMax;
-                if (tmp.includes(max)){
-
-                }
-                else if (tmp.includes(min)){
-
-                }
-                else{
-                    if(min==max){
-                        tmp.push(min);
-                    }
-                    else{
-                        tmp.push(min);
-                        tmp.push(max);
-                    }
-                }
-            }
-        }
-        return tmp;
-    }
-}
 
 class Renderer{
 
-    private viewer_width:number = 0.0;
-    private viewer_height:number = 0.0;
-    private controller_width:number = 0.0;
-    private controller_height:number = 0.0;
-    private height_delta:number = 100.0;
-    private axis_delta:number = 50.0;
-    private effective_controller_height_difference:number = 100;
-    private effective_controller_height:number = 50;
-    public json:Json;
 
     constructor(
-        private _size: size,
-        private _margin_viewer: margin, 
-        private _margin_controller: margin, 
-        private _tag: string = "#graph",
-        private _jd: string = ''
+        _size,
+        _margin_viewer, 
+        _margin_controller, 
+        _tag = "#graph",
+        _jd = ''
         ){
+        this.viewer_width = 0.0;
+        this.viewer_height = 0.0;
+        this.controller_width = 0.0;
+        this.controller_height = 0.0;
+        this.height_delta = 100.0;
+        this.axis_delta = 50.0;
+        this.effective_controller_height_difference = 100;
+        this.effective_controller_height = 50;
+
+        console.log("hey!")
+        
+        this._size = _size;
+        this._margin_viewer = _margin_viewer;
+        this._margin_controller = _margin_controller;
+        this._tag = _tag;
+        this._jd = _jd;
         this._size = {
             width: this._size.width,
             height: this._size.height,
@@ -228,7 +46,7 @@ class Renderer{
     }
 
 
-    setdata(jd: string){
+    setdata(jd){
         this.json = new Json(jd);
     }
 
@@ -248,11 +66,11 @@ class Renderer{
         console.log(jdataName);
 
         var len = jdataList.length;
-        var tmp:string[] = []
+        var tmp = []
         for(let i=0; i<len; i++){
             tmp.push(i.toString());
         }
-        var colorScale = d3.scaleOrdinal(d3.schemeSet3)
+        var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
         //.domain(tmp);
 
         console.log(jdataList)
@@ -274,22 +92,41 @@ class Renderer{
                 .attr("width", this.viewer_width)
                 .attr("heght", this.viewer_height)
 
+                var clip = g_viewer.append("clipPath")
+.attr("id", "clip")
+.append("rect")
+.style("fill", "red")
+.attr("width", this.viewer_width-2*this.axis_delta )
+.attr("height", this.viewer_height-3*this._margin_viewer.top )
+.attr("x", this.axis_delta-1)
+.attr("y", 3*this._margin_viewer.top)
 
+var g_viewer2 = 
+        main.append("g")
+        .attr("clip-path", "url(#clip)");
+     
+        var xrange = jdata.xRange();
+        var yrange = jdata.yRange();
 
         let scaleX = 
             d3.scaleLinear()
-                .domain(jdata.xRange())
+                .domain([xrange[0], xrange[1] + 1])
+                .range([this.axis_delta, this.viewer_width-this.axis_delta]);
+
+        let scaleXBottom = 
+            d3.scaleLinear()
+                .domain([xrange[0], xrange[1] + 1])
                 .range([this.axis_delta, this.viewer_width-this.axis_delta]);
         
         var newHeight = this.viewer_height-this._margin_viewer.top;
         let scaleY = 
             d3.scaleLinear()
-                .domain(jdata.yRange())
+                .domain([yrange[0] - 1, yrange[1] + 1])
                 .range([this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top]);
 
 
         let x_axis = d3.axisBottom(scaleX);
-        let x_axis_bottom = d3.axisBottom(scaleX);
+        let x_axis_bottom = d3.axisBottom(scaleXBottom);
         let y_axis = d3.axisLeft(scaleY);
 
         var make_y_grid = () => { return d3.axisBottom(scaleX); }
@@ -309,9 +146,6 @@ class Renderer{
             //.extent( [ [0,newHeight], [this.controller_width,this.effective_controller_height] ] )
             //.extent([[0, 0], [this._size.width_upper, this._size.height_upper]]);
 
-        var zoom = ()=>{ console.log("sivalk?"); return d3.zoom().on("zoom", ()=>{
-            console.log("fuck");
-        })}
 
         var xaxis_grid=g_viewer.append("g")
             .attr("id", "xaxis_grid")
@@ -363,14 +197,13 @@ class Renderer{
         .style("fill", "red")
         .style("fill-opacity", "0.5");
 */
-        
-    
+var newX = scaleX;
+var newY = scaleY;
 
-        var lineGraph = g_viewer
-            .attr("clip-path", "url(#clip)")
+
+        var lineGraph = g_viewer2
             .selectAll(".linegraph")
             .append("g")
-            .attr("class", "linegraph")
             .data(jdataList)
             .enter()
             
@@ -388,10 +221,11 @@ class Renderer{
             var lg = lineGraph.append("path")
             .attr("d", (d)=>{ return lineGenerator(d)})
             .attr("stroke", "blue")
-            .attr("stroke", (d, i)=>{return colorScale(i.toString())})
+            .attr("class", "liness")
+            .attr("stroke", (d, i)=>{return colorScale((i+2).toString())})
             .attr("fill", "none")
-            .attr("stroke-width", 1)
-            .attr("transform", () => { return "translate(0,"+this._margin_viewer.top+")"})
+            .attr("stroke-width", 1.5)
+            .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
             //.attr("class", "linegraph")
  
 
@@ -413,21 +247,109 @@ class Renderer{
 
             lineGraph.append('circle')
             .attr("r", 7)
-            .attr("stroke", (d, i2)=>{return colorScale(i2.toString())})
+            .attr("stroke", (d, i2)=>{return colorScale((i2+2).toString())})
             //.style("stroke", "black")
             .style("fill", "none")
             .style("stroke-width", "1px")
             .attr('id', 'focusCircle')
-            .attr("transform", () => { return "translate(0,"+this._margin_viewer.top+")"})
+            .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
             //.style("opacity", "0");
             
             //.attr('id', 'focusCircle')
             //.attr('r', 3)
             //.attr('class', 'circle focusCircle');
         var cx1 = this.json.dataByNameList("constx1");
+        var zoom = d3.zoom()
+        .scaleExtent([1, Infinity])
+        //.translateExtent([[0, 0], [this.viewer_width, this.viewer_height]])
+        .extent([[0, 0], [this.viewer_width, this.viewer_height]])
+        .on("zoom", ()=>{
+            // recover the new scale
+    //var newX = d3.event.transform.rescaleX(scaleX);
+    //var newY = d3.event.transform.rescaleY(scaleY);
+    newX = d3.event.transform.rescaleX(scaleX);
+    newY = d3.event.transform.rescaleY(scaleY);
+    // update axes with these new boundaries
+    xaxis.call(d3.axisBottom(newX))
+    yaxis.call(d3.axisLeft(newY))
 
+    var lineGenerator = 
+            d3.line()
+            //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
+            .x(function(d) { return newX(d[0]); })
+            .y(function(d) { return newY(d[1]); }).curve(d3.curveMonotoneX);
+    // update circle position
+    lineGraph
+      .selectAll(".liness")
+      .attr("d", (d) => { return lineGenerator(d) })
+      //.attr('x', function(d) {return newX(d.Sepal_Length)})
+      //.attr('y', function(d) {return newY(d.Petal_Length)});
+  //Line_chart.select(".line").attr("d", line);
+  //focus.select(".axis--x").call(xAxis);
+  //context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
+  var mouse = d3.mouse($(this._tag)[0]);
+  var pos = newX.invert(mouse[0]);
+  var i = bisectDate(cx1,pos);
+  if (i <= 0 || cx1.length < i){
+    // below 0 is undefined
+}else{
+    if (cx1.length === i){
+        i = cx1.length -1;
+    }
+    if(i === 0){
+        i = 1;
+    }
+    var d0 = cx1[i - 1];
+    var d1 = cx1[i];
+
+    
+    // work out which date value is closest to the mouse
+    var final_value = pos - d0[0] > d1[0] - pos ? d1 : d0;
+    var xx = newX(final_value[0]);
+    var yy = newY(final_value[1]);
+    
+    lineGraph.selectAll("#focusText")
+        .attr('x', xx)
+        .attr('y', (d,i2)=>{
+            var dd0 = (jdataList[i2])[i-1];
+            var dd1 = (jdataList[i2])[i];
+            //console.log(dd1)
+            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+            var xxx = newX(ffinal_value[0]);
+            var yyt = newY(ffinal_value[1]);
+            return yyt;    
+        })
+        .text((d, i2) => { 
+            var dd0 = (jdataList[i2])[i-1];
+            var dd1 = (jdataList[i2])[i];
+            //console.log(dd1)
+            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+            var xxx = newX(ffinal_value[0]);
+            var yyt = newY(ffinal_value[1]);    
+            return jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+"),"+this.json._prop[0]._name+"::"+this.json._prop[0]._value
+        })
+  /*  focus.select('#focusCircle')
+        .attr('cx', xx)
+        .attr('cy', yy)
+        .style("fill", rainbow(0.859))*/
+        lineGraph.selectAll("#focusCircle")
+        .attr('cx', xx)
+        .attr('cy', (d,i2)=>{
+            var dd0 = (jdataList[i2])[i-1];
+            var dd1 = (jdataList[i2])[i];
+            //console.log(dd1)
+            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+            var xxx = newX(ffinal_value[0]);
+            var yyt = newY(ffinal_value[1]);
+            return yyt;    
+        });///.style('opacity', "1")
+        //scaleX = newX;
+        //scaleY = newY;
+}
+        });
+    
           
-        var bisectDate = d3.bisector(function(d:[number, number]) { return d[0]; }).left;
+        var bisectDate = d3.bisector(function(d) { return d[0]; }).left;
         g_viewer
             .append("rect")
             .attr("id", "mainrect")
@@ -439,42 +361,53 @@ class Renderer{
             //.on('mouseover', function() { lineGraph.selectAll("#focusCircle").style('opacity', "1"); })
             //.on('mouseout', function() { lineGraph.selectAll("#focusCircle").style("opacity", "0");/*focus.style('display', 'none');*/ })
             .on("mousemove", ()=>{
+                //var transform = d3.zoomTransform(this);
+                //var xt = transform.rescaleX(scaleX), yt = transform.rescaleY(scaleY);
                 var mouse = d3.mouse($(this._tag)[0]);
-                var pos = scaleX.invert(mouse[0]);
+                var pos = newX.invert(mouse[0]);
                 var i = bisectDate(cx1,pos);
                 //console.log(pos);
                 if (i <= 0 || cx1.length < i){
                     // below 0 is undefined
+                    console.log(i)
+                     
                 }else{
                     
-                    var d0:[number, number] = cx1[i - 1];
-                    var d1:[number, number] = cx1[i];
-
-                    
+                    console.log("heh")
+                    if (cx1.length === i){
+                        i = cx1.length -1;
+                    }    
+                    if(i === 0){
+                        i = 1;
+                    }
+                    var d0 = cx1[i - 1];
+                    var d1 = cx1[i];
+                    console.log(i)
+                    console.log(d1)                    
                     // work out which date value is closest to the mouse
-                    var final_value:[number, number] = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                    var xx = scaleX(final_value[0]);
-                    var yy = scaleY(final_value[1]);
+                    var final_value = pos - d0[0] > d1[0] - pos ? d1 : d0;
+                    var xx = newX(final_value[0]);
+                    var yy = newY(final_value[1]);
                     
                     lineGraph.selectAll("#focusText")
                         .attr('x', xx)
                         .attr('y', (d,i2)=>{
-                            var dd0:[number, number] = (jdataList[i2])[i-1];
-                            var dd1:[number, number] = (jdataList[i2])[i];
+                            var dd0 = (jdataList[i2])[i-1];
+                            var dd1 = (jdataList[i2])[i];
                             //console.log(dd1)
-                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
-                            var xxx = scaleX(ffinal_value[0]);
-                            var yyt = scaleY(ffinal_value[1]);
+                            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = newX(ffinal_value[0]);
+                            var yyt = newY(ffinal_value[1]);
                             return yyt;    
                         })
                         .text((d, i2) => { 
-                            var dd0:[number, number] = (jdataList[i2])[i-1];
-                            var dd1:[number, number] = (jdataList[i2])[i];
+                            var dd0 = (jdataList[i2])[i-1];
+                            var dd1 = (jdataList[i2])[i];
                             //console.log(dd1)
-                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
-                            var xxx = scaleX(ffinal_value[0]);
-                            var yyt = scaleY(ffinal_value[1]);    
-                            return jdataName[i2]+"("+d3.format(".2f")(scaleX.invert(mouse[0]))+" , "+d3.format(".2f")(scaleY.invert(yyt))+")" 
+                            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = newX(ffinal_value[0]);
+                            var yyt = newY(ffinal_value[1]);    
+                            return jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+")" 
                         })
                   /*  focus.select('#focusCircle')
                         .attr('cx', xx)
@@ -483,12 +416,12 @@ class Renderer{
                         lineGraph.selectAll("#focusCircle")
                         .attr('cx', xx)
                         .attr('cy', (d,i2)=>{
-                            var dd0:[number, number] = (jdataList[i2])[i-1];
-                            var dd1:[number, number] = (jdataList[i2])[i];
+                            var dd0 = (jdataList[i2])[i-1];
+                            var dd1 = (jdataList[i2])[i];
                             //console.log(dd1)
-                            var ffinal_value:[number, number] = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
-                            var xxx = scaleX(ffinal_value[0]);
-                            var yyt = scaleY(ffinal_value[1]);
+                            var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
+                            var xxx = newX(ffinal_value[0]);
+                            var yyt = newY(ffinal_value[1]);
                             return yyt;    
                         });///.style('opacity', "1");
 
@@ -505,22 +438,10 @@ class Renderer{
                         .style("stroke-width",  "1px");
 
                 }
-            })
+            }).call(
+                zoom
+            )
 
-
-            const refEl = document.querySelector('#focusCircle');
-            const popEl = document.querySelector('#focusText');
-            console.log("hello")
-            console.log(popEl);
-            var popper = new Popper.default(refEl as Element, popEl as Element, {
-                modifiers: {
-                    flip: {
-                          behavior: ['left', 'right', 'top','bottom']
-                    }
-                },
-
-              });
-              console.log(popper);
             
             
             /*.on("ondragstart",()=>{
@@ -543,5 +464,8 @@ class Renderer{
             .style("stroke-dasharray", "4");*/
                 //.attr("transform", "translate("+this._margin_controller.left+","+(this._margin_viewer.top+this._size.height_upper-this._size.height_lower+this._margin_controller.top)+")");
     }
+
+    
 }
-export { Json, Renderer };
+
+export {Renderer};
