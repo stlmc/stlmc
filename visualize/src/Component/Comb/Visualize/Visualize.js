@@ -63,28 +63,20 @@ class Renderer{
         var jdataList = this.json.dataList();
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
-        console.log(jdataName);
+        var jdataInter = this.json._prop[0];
 
-        var len = jdataList.length;
-        var tmp = []
-        for(let i=0; i<len; i++){
-            tmp.push(i.toString());
-        }
         var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-        //.domain(tmp);
-
-        console.log(jdataList)
 
         var main = 
         d3.select(this._tag)
                 .append("svg")
                 .attr("width", this._size.width)
                 .attr("height", this._size.height);
-                
+        
         var g_controller = 
-        main.append("g")
-        .attr("width", this.controller_width)
-        .attr("heght", this.controller_height)
+                main.append("g")
+                .attr("width", this.controller_width)
+                .attr("heght", this.controller_height)
 
         var g_viewer = 
         main.append("g")
@@ -101,19 +93,38 @@ class Renderer{
 .attr("x", this.axis_delta-1)
 .attr("y", 3*this._margin_viewer.top)
 
+g_controller.append("clipPath")
+.attr("id", "clip2")
+.append("rect")
+.style("fill", "red")
+.attr("width", this.viewer_width-2*this.axis_delta )
+.attr("height", this.viewer_height+this.controller_height )
+.attr("x", this.axis_delta-1)
+.attr("y", 3*this._margin_viewer.top)
+
 var g_viewer2 = 
         main.append("g")
         .attr("clip-path", "url(#clip)");
+
+        var g_controller2 = 
+        main.append("g")
+        .attr("clip-path", "url(#clip2)");
+
      
         var xrange = jdata.xRange();
         var yrange = jdata.yRange();
 
-        let scaleX = 
-            d3.scaleLinear()
-                .domain([xrange[0], xrange[1] + 1])
-                .range([this.axis_delta, this.viewer_width-this.axis_delta]);
+        var scaleBandX = d3.scaleLinear()
+        .range([ this.axis_delta, this.viewer_width-this.axis_delta ])
+        .domain([0, 1, 2, 3, 4])
+        //.padding(0.01);
 
-        let scaleXBottom = 
+        var scaleBandY = d3.scaleLinear()
+        .range([ this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top ])
+        .domain([1])
+        //.padding(0.05);
+
+        let scaleX = 
             d3.scaleLinear()
                 .domain([xrange[0], xrange[1] + 1])
                 .range([this.axis_delta, this.viewer_width-this.axis_delta]);
@@ -126,11 +137,13 @@ var g_viewer2 =
 
 
         let x_axis = d3.axisBottom(scaleX);
-        let x_axis_bottom = d3.axisBottom(scaleXBottom);
         let y_axis = d3.axisLeft(scaleY);
 
         var make_y_grid = () => { return d3.axisBottom(scaleX); }
         var make_x_grid = () => { return d3.axisLeft(scaleY); }
+        var make_interval_grid = () => {
+            return d3.axisBottom(scaleX);
+        }
      
         // Add the brush feature using the d3.brush function
         // initialize the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
@@ -150,7 +163,8 @@ var g_viewer2 =
         var xaxis_grid=g_viewer.append("g")
             .attr("id", "xaxis_grid")
             .attr("transform", "translate(0," +  newHeight + ")")
-        
+        //var ticks = scaleX.ticks();
+        //ticks.push(scaleX(1.0))
         xaxis_grid.call(make_y_grid().tickSize(-(this.viewer_height-3*this._margin_viewer.top)).tickPadding(10).tickFormat(null))
   
         var xaxis=g_viewer.append("g")
@@ -168,15 +182,41 @@ var g_viewer2 =
             .attr("id", "yaxis")
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis.call(y_axis);
-        
-        g_controller.append("g")
-            .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-            .call(x_axis_bottom);
-        
+
+        var xaxis_bottom2 = g_controller2.append("g")
+        .attr("id", "xaxis_bottom")
+        .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
+        xaxis_bottom2.call(make_y_grid().tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
+        /*
+        for (let el of jdataIntervalList){
+            main.append("line")
+                .attr("class", "zero")
+                .attr("x1", scaleX(el))
+                .attr("x2", scaleX(el))
+                .attr("y1", scaleY(10))
+                .attr("y2", scaleY((newHeight + this.effective_controller_height_difference+1)))
+                .style("stroke", "black")
+                //.attr("transform", "translate(0,"+(1)+")")
+                .style("stroke-dasharray", "4");
+            
+        }*/
+
         
         g_controller
-            .call( brush )
-            .call( brush.move, scaleX.range());
+            .append("g")
+            .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
+            //.call( brush )
+            //.call( brush.move, scaleX.range())
+            .call(d3.axisBottom(scaleBandX).tickFormat(
+                (d)=>{
+                    return d+"hey";
+                }
+            ));
+/*
+        g_controller
+            .append("g")
+            .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
+            .call(d3.axisLeft(scaleBandY))*/
 
         var lineGenerator = 
             d3.line()
@@ -272,6 +312,8 @@ var newY = scaleY;
     // update axes with these new boundaries
     xaxis.call(d3.axisBottom(newX))
     yaxis.call(d3.axisLeft(newY))
+    //xaxis_bottom.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height)).tickPadding(10).tickFormat(null)).select(".domain").remove()
+    xaxis_bottom2.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
 
     var lineGenerator = 
             d3.line()
