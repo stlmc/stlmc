@@ -9,7 +9,7 @@ import LinePlot from './Component/LinePlot/LinePlot';
 
 const App: React.FC = () => {
   return (
-    <div><LinePlot /></div>
+    <div className="main-container"><LinePlot /></div>
   );
 }
 /*

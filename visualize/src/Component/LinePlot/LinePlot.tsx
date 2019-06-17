@@ -12,8 +12,13 @@ interface Props {
     jsonpath: string;
 }
 
+interface Popup{
+    isEnabled: boolean;
+}
+
 interface State {
     data: string;
+    popup: Popup;
 }
 
 /*
@@ -99,6 +104,15 @@ class LinePlot extends React.Component<Props, State> {
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
         data: require('../../Data/test.json'),
+        popup: {
+            isEnabled: true,
+        },
+    }
+
+    constructor(props:Props){
+        super(props)
+        this.onPopupChange = this.onPopupChange.bind(this)
+        this.onPopupClick = this.onPopupClick.bind(this)
     }
 
 
@@ -112,8 +126,29 @@ class LinePlot extends React.Component<Props, State> {
         //this.line.draw();
     }
 
+    onPopupChange(e: React.ChangeEvent<HTMLInputElement>){
+    }
+
+    onPopupClick(e: React.MouseEvent<HTMLInputElement, MouseEvent>){
+        this.setState({
+            popup: {
+                isEnabled: e.currentTarget.checked
+            }
+        }, ()=>{ this.renderer.updatePopup(this.state.popup.isEnabled) })
+        console.log("mouse event")
+        console.log(this.state)
+    }
+
     render() {
-        return <div id="graph" className={lineplotStyle.main_theme}></div>;
+        return (
+        <div id="graph" className={lineplotStyle.main_theme}>
+            <div className="form-check">
+                <label>
+                <input className="form-check-input" type="checkbox" checked={this.state.popup.isEnabled} onClick={this.onPopupClick} onChange={this.onPopupChange}/>
+                Enabled Popups
+                </label>
+            </div>
+        </div>);
     }
 }
 

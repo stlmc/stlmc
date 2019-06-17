@@ -17,26 +17,86 @@ import $ from "jquery";
 import './visualize.scss';
 import * as Popper from 'popper.js';
 import { json } from "d3";
+import { pushd } from "shelljs";
 
 /**
- * This is props calss
+ * This is prop class
  */
-class Prop{
+class PropValue{
 
+    /**
+     * 
+     * @param _value the actual value of proposition, true or false.
+     * @param _extent the extent of proposition value.
+     */
     constructor(
-        public _name:string="", 
-        private _value:string[]=[]
+        private _value:string="",
+        private _extent:[number, number]
         ){}
-    get value():string[]{
+
+    get value():string{
         return this._value;
     }
 
-    set value(value: string[]){
+    set value(value: string){
         this._value = value;
     }
 
-    push(value: string){
-        this._value.push(value);
+    get extent():[number, number]{
+        return this._extent;
+    }
+}
+
+class Prop{
+    private _prop_value:PropValue[] = []
+
+    constructor(
+        private _name:string="",
+    ){}
+
+    get name():string{
+        return this._name;
+    }
+
+    set name(name:string){
+        this._name = name;
+    }
+
+    push(value:string, extent:[number, number]){
+        this._prop_value.push(new PropValue(value, extent))
+    }
+
+    get elems(){
+        return this._prop_value;
+    }
+
+    includes(num:number):(string | undefined) {
+        for(let el of this._prop_value){
+            if(el.extent.includes(num)){
+                return el.value;
+            }
+        }
+        return undefined;
+    }
+
+    removeAll(){
+        this._prop_value = [];
+    }
+}
+
+class Props{
+    private _props: Prop[] = []
+
+    push(prop:Prop){
+        this._props.push(prop);
+    }
+
+    removeAll(){
+        this._props=[];
+    }
+
+    get elems(){
+        return this._props;
     }
 }
 
@@ -50,7 +110,7 @@ class Json {
      * Internally has intervals.
      */
     private _intervals: Intervals = new Intervals("data");
-    public _prop:Prop[] = [];
+    public _props:Props = new Props();
     /**
      * 
      * @param _jsonString String parsing by internal json parser to string.
@@ -82,6 +142,7 @@ class Json {
      */
     parse = () => {
         this._intervals.removeAll();
+        this._props.removeAll();
         // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
         // need to take both key and value.
         for(let [key1, value1] of Object.entries(this._jsonString)){
@@ -94,28 +155,25 @@ class Json {
                             tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
                         }
                         this._intervals.push(tmp_interval);
-                        //this._p_elem.push({name:key, point_list: tmp_point_list});
                     }
                 }
             }
             // for the 
             else{
-                console.log(value1)
+                let intv_len = this._intervals.length
+                let counter = 0
+                let intv = this.intervalList();
                 for(let [key2, value2] of Object.entries(value1)){
-                    let tmp: string[] = []
+                    let tmp: Prop = new Prop(key2)
                     for(let v of value2){
-                        /*
-                        if(v == "False"){
-                            tmp.push(false)
+                        if(counter != intv_len-1){
+                            tmp.push(v, [intv[counter], intv[counter+1]])
                         }
-                        else{
-                            tmp.push(true);
-                        }*/
-                        tmp.push(v);
+                        counter++;
                     }
-                    this._prop.push(new Prop(key2, tmp))
+                    this._props.push(tmp)
                 }
-                //console.log(this._prop);
+                console.log(this._props);
             }
         }
     }
@@ -162,9 +220,26 @@ class Json {
         return tmp;
     }
 
+    extentList(){
+        var tmp:[number, number][][] = [];
+        for(let el of this._intervals.elems){
+            let tmp2:[number, number][] = [];
+            tmp2.push([el.xExtent[0],2]);
+            tmp2.push([el.xExtent[1],2]);
+            if(tmp.includes(tmp2)){
+
+            }
+            else{
+                tmp.push(tmp2);
+            }
+        }
+        return tmp;
+    }
+
     intervalList(){
         var tmp: number[] = [];
-        this.parse();
+        // assert that parse being called before this function.
+        //this.parse();
         for(let e of this._intervals.names){
             let interv:Interval[] = this._intervals.intervalByName(e);
             for(let el of interv){

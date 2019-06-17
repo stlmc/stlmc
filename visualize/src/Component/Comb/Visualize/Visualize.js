@@ -41,13 +41,17 @@ class Renderer{
         this.viewer_height = this._size.height-this._margin_viewer.top-this._margin_viewer.bottom-this.height_delta;
         this.controller_width = this._size.width;
         this.controller_height = this._size.height-this._margin_controller.top-this._margin_controller.bottom-this.height_delta;
-
+        this.popup = true;
 
     }
 
 
     setdata(jd){
         this.json = new Json(jd);
+    }
+
+    updatePopup(popup){
+        this.popup = popup
     }
 
     draw(){
@@ -63,7 +67,7 @@ class Renderer{
         var jdataList = this.json.dataList();
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
-        var jdataInter = this.json._prop[0];
+        var jdataInter = this.json._props;
 
         var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
 
@@ -116,7 +120,7 @@ var g_viewer2 =
 
         var scaleBandX = d3.scaleLinear()
         .range([ this.axis_delta, this.viewer_width-this.axis_delta ])
-        .domain([0, 1, 2, 3, 4])
+        .domain([d3.min(jdataIntervalList), d3.max(jdataIntervalList)])
         //.padding(0.01);
 
         var scaleBandY = d3.scaleLinear()
@@ -136,8 +140,15 @@ var g_viewer2 =
                 .range([this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top]);
 
 
+        let scaleYBottom = 
+            d3.scaleLinear()
+                .domain([0, 3])
+                .range([this.effective_controller_height, 0]);
+
+
         let x_axis = d3.axisBottom(scaleX);
         let y_axis = d3.axisLeft(scaleY);
+        let y_axisBottom = d3.axisLeft(scaleYBottom);
 
         var make_y_grid = () => { return d3.axisBottom(scaleX); }
         var make_x_grid = () => { return d3.axisLeft(scaleY); }
@@ -183,6 +194,11 @@ var g_viewer2 =
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis.call(y_axis);
 
+        var yaxis_bottom = g_controller2.append("g")
+            .attr("id", "yaxis_bottom")
+            .attr("transform", "translate(" +this.axis_delta+","+(newHeight + this.effective_controller_height_difference - this.effective_controller_height+1)+")")
+            yaxis_bottom.call(y_axisBottom.ticks(3));
+
         var xaxis_bottom2 = g_controller2.append("g")
         .attr("id", "xaxis_bottom")
         .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
@@ -201,17 +217,62 @@ var g_viewer2 =
             
         }*/
 
-        
-        g_controller
+        var xaxis_bottom2_1 = g_controller
             .append("g")
             .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
             //.call( brush )
             //.call( brush.move, scaleX.range())
-            .call(d3.axisBottom(scaleBandX).tickFormat(
-                (d)=>{
-                    return d+"hey";
+            .call(d3.axisBottom(scaleX).tickFormat(
+                (d, i)=>{
+                    if (jdataIntervalList.includes(d)){
+                        let v = jdataInter.elems[0].includes(d)
+                        return v;
+                    }
+                    else{
+                        return "";
+                    }
                 }
             ));
+
+            /*
+        g_controller.append("defs").append("marker")
+            .attr("id", "triangle-end")
+            .attr("refX", 12)
+            .attr("refY", 6)
+            .attr("markerWidth", 30)
+            .attr("markerHeight", 30)
+            .attr("markerUnits","userSpaceOnUse")
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M 0 0 12 6 0 12 3 6")
+            //.attr("d", "M -6 0 6 6 -6 12 -3 6")
+            .style("fill", "black");
+        
+            g_controller.append("defs").append("marker")
+            .attr("id", "triangle-start")
+            .attr("refX", 0)
+            .attr("refY", 6)
+            .attr("markerWidth", 30)
+            .attr("markerHeight", 30)
+            .attr("markerUnits","userSpaceOnUse")
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M 0 6 12 0 9 6 12 12")
+            .style("fill", "black");
+
+        g_controller
+            .append("g")
+            .append("line")
+            .attr("class", "zero")
+            .attr("x1", scaleX(0))
+            .attr("x2", scaleX(1))
+            .attr("y1", scaleY(20))
+            .attr("y2", scaleY(20))
+            .style("stroke", "black")
+            .attr("marker-end", "url(#triangle-end)")
+            .attr("marker-start", "url(#triangle-start)")
+            .attr("transform", "translate(0,"+(this.effective_controller_height+this.effective_controller_height_difference)+")")
+            .style("stroke-dasharray", "4");*/
 /*
         g_controller
             .append("g")
@@ -223,6 +284,13 @@ var g_viewer2 =
             //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
             .x(function(d) { return scaleX(d[0]); })
             .y(function(d) { return scaleY(d[1]); }).curve(d3.curveMonotoneX);
+
+
+            var lineGenerator2 = 
+            d3.line()
+            //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
+            .x(function(d) { return scaleX(d[0]); })
+            .y(function(d) { return scaleYBottom(d[1]); }).curve(d3.curveMonotoneX);
 
         // https://visualize.tistory.com/331
         // Add a clipPath: everything out of this area won't be drawn.
@@ -239,8 +307,9 @@ var g_viewer2 =
 */
 var newX = scaleX;
 var newY = scaleY;
+var newBY = scaleYBottom;
 
-
+                
         var lineGraph = g_viewer2
             .selectAll(".linegraph")
             .append("g")
@@ -268,6 +337,21 @@ var newY = scaleY;
             .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
             //.attr("class", "linegraph")
  
+            var lineGraph2 = g_controller2
+            .selectAll(".linegraph")
+            .append("g")
+            .data(this.json.extentList())
+            .enter()
+            
+            lineGraph2.append("path")
+            .attr("d", (d)=>{ return lineGenerator2(d)})
+            .attr("stroke", "blue")
+            .attr("class", "liness2")
+            .attr("stroke", (d, i)=>{return colorScale((i+2).toString())})
+            .attr("fill", "none")
+            .attr("stroke-width", 1.5)
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
+
 
         var focus = g_viewer
             //.append('g').style('display', 'none')
@@ -276,6 +360,65 @@ var newY = scaleY;
         lineGraph.append("text")
             .attr('id', 'focusText')
             .attr("transform", ()=> { return "translate(2,"+(this._margin_viewer.top-3)+")"})
+            .style("font-size", ()=>{ return "11px" });
+
+        var tooltip2 = d3.select(this._tag)
+            .append("div")
+              .style("position", "absolute")
+              .style("visibility", "hidden")
+              .style("background-color", "rgba(0, 0, 0, 0.7)")
+              .style("border", "solid")
+              .style("border-width", "1px")
+              .style("border-radius", "5px")
+              .style("padding", "10px")
+              /*.html(`
+              <p>I'm a tooltip written in HTML</p>
+              <img src='https://github.com/holtzy/D3-graph-gallery/blob/master/img/section/ArcSmal.png?raw=true'></img>
+              <br>Fancy<br>
+              <span style='font-size: 40px;'>Isn't it?</span>`);*/
+
+        
+        // for caching.
+        var lineGraph2x2 = [];
+        var lineGraphText = [];
+        lineGraph2.append("text")
+            .attr('id', 'focusText2')
+            .attr("transform", ()=> { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
+            .text((d, i)=>{ 
+                if(i==0){
+
+                
+                for(let el of d){          
+                    if (jdataIntervalList.includes(el[0])){
+                        let v = jdataInter.elems[0].includes(el[0])
+                        lineGraphText.push(v)
+                        return v;
+                    }
+                    else{
+                        lineGraphText.push("")
+                        return "";
+                    }          
+                }     
+            }
+            })
+            .attr("x", (d)=>{
+                console.log(d);
+                let min = d.reduce(
+                    (acc, cur) => {
+                        return acc[0] > cur[0]? cur:acc;
+                    }
+                )
+                let max = d.reduce(
+                    (acc, cur) => {
+                        return acc[0] > cur[0]? acc:cur;
+                    }
+                )
+                lineGraph2x2.push((min[0]+max[0])/2);
+                return scaleX((min[0]+max[0])/2);
+            })
+            .attr("y", (d)=>{
+                return scaleYBottom(2);
+            })
             .style("font-size", ()=>{ return "11px" });
 
         focus.append('line')
@@ -309,11 +452,43 @@ var newY = scaleY;
     //var newY = d3.event.transform.rescaleY(scaleY);
     newX = d3.event.transform.rescaleX(scaleX);
     newY = d3.event.transform.rescaleY(scaleY);
+    newBY = d3.event.transform.rescaleY(scaleYBottom);
     // update axes with these new boundaries
     xaxis.call(d3.axisBottom(newX))
     yaxis.call(d3.axisLeft(newY))
     //xaxis_bottom.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height)).tickPadding(10).tickFormat(null)).select(".domain").remove()
     xaxis_bottom2.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
+    xaxis_bottom2_1.call(d3.axisBottom(newX).tickFormat(
+        (d, i)=>{
+            if (jdataIntervalList.includes(d)){
+                let v = jdataInter.elems[0].includes(d)
+                return v;
+            }
+            else{
+                return "";
+            }
+        }
+    ));
+
+
+    lineGraph2.selectAll("#focusText2")
+            .attr("x", (d, i2)=>{
+                return newX(lineGraph2x2[i2]);
+            })
+
+
+    var lineGenerator2 = 
+    d3.line()
+    //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
+    .x(function(d) { return newX(d[0]); })
+    .y(function(d) { return scaleYBottom(d[1]); }).curve(d3.curveMonotoneX);
+
+
+    g_controller2
+            .selectAll(".liness2")
+            .attr("d", (d)=>{ return lineGenerator2(d)})
+
+   
 
     var lineGenerator = 
             d3.line()
@@ -368,7 +543,7 @@ var newY = scaleY;
             var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
             var xxx = newX(ffinal_value[0]);
             var yyt = newY(ffinal_value[1]);    
-            return jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+"),"+this.json._prop[0]._name+"::"+this.json._prop[0]._value
+            return jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+")"
         })
   /*  focus.select('#focusCircle')
         .attr('cx', xx)
@@ -400,6 +575,12 @@ var newY = scaleY;
             .attr("transform", "translate("+this.axis_delta+","+this._margin_viewer.top+")")
             //.style("fill", "red")
             .style("fill-opacity", "0.0")
+            .on("mouseover", ()=>{
+                if (this.popup){
+                    return tooltip2.style("visibility", "visible");
+                }
+            })
+            .on("mouseout", function(){return tooltip2.style("visibility", "hidden");})
             //.on('mouseover', function() { lineGraph.selectAll("#focusCircle").style('opacity', "1"); })
             //.on('mouseout', function() { lineGraph.selectAll("#focusCircle").style("opacity", "0");/*focus.style('display', 'none');*/ })
             .on("mousemove", ()=>{
@@ -431,6 +612,7 @@ var newY = scaleY;
                     var xx = newX(final_value[0]);
                     var yy = newY(final_value[1]);
                     
+                    var tmpText = [];
                     lineGraph.selectAll("#focusText")
                         .attr('x', xx)
                         .attr('y', (d,i2)=>{
@@ -449,8 +631,23 @@ var newY = scaleY;
                             var ffinal_value = pos - dd0[0] > dd1[0] - pos ? dd1 : dd0;
                             var xxx = newX(ffinal_value[0]);
                             var yyt = newY(ffinal_value[1]);    
-                            return jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+")" 
+                            let tstring = jdataName[i2]+"("+d3.format(".2f")(newX.invert(mouse[0]))+" , "+d3.format(".2f")(newY.invert(yyt))+")" 
+                            if(!tmpText.includes(tstring)){
+                                tmpText.push(tstring);
+                            }
+                            return tstring;
                         })
+
+                        let newTString = tmpText.reduce((acc, cur)=>{
+                            if(acc == ""){
+                                console.log("???");
+                            }
+                            return acc += ('<p style="color:white")>' + cur + '</p>');
+                        }, "")
+
+                        tooltip2.style("top", (200)+"px").style("left",(200)+"px").html(
+                            newTString
+                        )
                   /*  focus.select('#focusCircle')
                         .attr('cx', xx)
                         .attr('cy', yy)
@@ -478,6 +675,7 @@ var newY = scaleY;
                         .attr('x2', scaleX(jdata.xRange()[1])).attr('y2', yy)
                         //.style("stroke", rainbow(0.8))
                         .style("stroke-width",  "1px");
+                    
 
                 }
             }).call(

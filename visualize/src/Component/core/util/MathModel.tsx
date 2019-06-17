@@ -296,12 +296,28 @@ class Intervals<W=string, V=string, T=number, U=string> {
     ){}
 
     /**
+     * Get intervals.
+     */
+    get elems():Interval<V,T,U>[]{
+        return this._intervals;
+    }
+
+    /**
      * Length of array of interval.
      * 
-     * @returns Length of array of interval.
+     * @returns Actual length of array of interval with duplicate interval id removal.
      */
     get length():number{
-        return this._intervals.length;
+        var id_list:number[] = []
+        for(let el of this._intervals){
+            if(id_list.includes(el.id)){
+
+            }
+            else{
+                id_list.push(el.id)
+            }
+        }
+        return id_list.length;
     }
 
     /**
