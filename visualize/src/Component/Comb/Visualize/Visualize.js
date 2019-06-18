@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import {Json} from '../../Visualize/Visualize';
 import $ from "jquery";
+import "./Visualize.scss";
 
 class Renderer{
 
@@ -54,6 +55,10 @@ class Renderer{
         this.popup = popup
     }
 
+    getPropList(){
+        return this.json.propNames;
+    }
+
     draw(){
 
         // color
@@ -65,11 +70,15 @@ class Renderer{
 
         var jdata = this.json.data;
         var jdataList = this.json.dataList();
+        var newJdataList = this.json.getDataList();
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
+        console.log(jdataName)
         var jdataInter = this.json._props;
 
         var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+        var propColor = d3.scaleLinear().domain([0,2])
+        .range(["red", "blue"])
 
         var main = 
         d3.select(this._tag)
@@ -94,7 +103,7 @@ class Renderer{
 .style("fill", "red")
 .attr("width", this.viewer_width-2*this.axis_delta )
 .attr("height", this.viewer_height-3*this._margin_viewer.top )
-.attr("x", this.axis_delta-1)
+.attr("x", this.axis_delta+1)
 .attr("y", 3*this._margin_viewer.top)
 
 g_controller.append("clipPath")
@@ -103,7 +112,7 @@ g_controller.append("clipPath")
 .style("fill", "red")
 .attr("width", this.viewer_width-2*this.axis_delta )
 .attr("height", this.viewer_height+this.controller_height )
-.attr("x", this.axis_delta-1)
+.attr("x", this.axis_delta+1)
 .attr("y", 3*this._margin_viewer.top)
 
 var g_viewer2 = 
@@ -286,6 +295,7 @@ var g_viewer2 =
             .y(function(d) { return scaleY(d[1]); }).curve(d3.curveMonotoneX);
 
 
+
             var lineGenerator2 = 
             d3.line()
             //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
@@ -313,7 +323,8 @@ var newBY = scaleYBottom;
         var lineGraph = g_viewer2
             .selectAll(".linegraph")
             .append("g")
-            .data(jdataList)
+            //.data(jdataList)
+            .data(newJdataList)
             .enter()
             
             let drag = d3.drag()
@@ -327,16 +338,28 @@ var newBY = scaleYBottom;
                 console.log("dragend")
             });
 
+            var lineGraphColor = [];
             var lg = lineGraph.append("path")
-            .attr("d", (d)=>{ return lineGenerator(d)})
+            .attr("d", (d)=>{ 
+                var res = ""
+                for(let e of d.value){
+                    res += lineGenerator(e)
+                }
+                return res
+            })
             .attr("stroke", "blue")
             .attr("class", "liness")
-            .attr("stroke", (d, i)=>{return colorScale((i+2).toString())})
+            .attr("stroke", (d, i)=>{
+                let c = colorScale((i+2).toString())
+                lineGraphColor.push(c)
+                return c
+            })
             .attr("fill", "none")
             .attr("stroke-width", 1.5)
             .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
             //.attr("class", "linegraph")
- 
+            
+            console.log(this.json.extentList())
             var lineGraph2 = g_controller2
             .selectAll(".linegraph")
             .append("g")
@@ -344,10 +367,12 @@ var newBY = scaleYBottom;
             .enter()
             
             lineGraph2.append("path")
-            .attr("d", (d)=>{ return lineGenerator2(d)})
+            .attr("d", (d)=>{ 
+                return lineGenerator2(d)
+            })
             .attr("stroke", "blue")
             .attr("class", "liness2")
-            .attr("stroke", (d, i)=>{return colorScale((i+2).toString())})
+            .attr("stroke", (d, i)=>{return propColor((i+2).toString())})
             .attr("fill", "none")
             .attr("stroke-width", 1.5)
             .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
@@ -371,6 +396,8 @@ var newBY = scaleYBottom;
               .style("border-width", "1px")
               .style("border-radius", "5px")
               .style("padding", "10px")
+              //.style("width", "300px")
+              //.style("height", "300px")
               /*.html(`
               <p>I'm a tooltip written in HTML</p>
               <img src='https://github.com/holtzy/D3-graph-gallery/blob/master/img/section/ArcSmal.png?raw=true'></img>
@@ -384,10 +411,7 @@ var newBY = scaleYBottom;
         lineGraph2.append("text")
             .attr('id', 'focusText2')
             .attr("transform", ()=> { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
-            .text((d, i)=>{ 
-                if(i==0){
-
-                
+            .text((d, i)=>{
                 for(let el of d){          
                     if (jdataIntervalList.includes(el[0])){
                         let v = jdataInter.elems[0].includes(el[0])
@@ -399,10 +423,8 @@ var newBY = scaleYBottom;
                         return "";
                     }          
                 }     
-            }
             })
             .attr("x", (d)=>{
-                console.log(d);
                 let min = d.reduce(
                     (acc, cur) => {
                         return acc[0] > cur[0]? cur:acc;
@@ -420,6 +442,21 @@ var newBY = scaleYBottom;
                 return scaleYBottom(2);
             })
             .style("font-size", ()=>{ return "11px" });
+
+
+
+        lineGraph2.append('circle')
+            .attr("r", 7)
+            .attr("stroke", (d, i2)=>{ return lineGraphColor[i2]})
+            //.style("stroke", "black")
+            .style("fill", "none")
+            .style("stroke-width", "1px")
+            .attr('id', 'focusCircle2')
+            .attr("transform", () => { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
+            .attr('cy', (d,i2)=>{
+                var yyt = newBY(2);
+                return yyt;    
+            });
 
         focus.append('line')
             .attr('id', 'focusLineX')
@@ -441,7 +478,8 @@ var newBY = scaleYBottom;
             //.attr('id', 'focusCircle')
             //.attr('r', 3)
             //.attr('class', 'circle focusCircle');
-        var cx1 = this.json.dataByNameList("constx1");
+        
+        var cx1 = this.json.dataByNameList(this.json.names[0]).flat();
         var zoom = d3.zoom()
         .scaleExtent([1, Infinity])
         //.translateExtent([[0, 0], [this.viewer_width, this.viewer_height]])
@@ -498,7 +536,13 @@ var newBY = scaleYBottom;
     // update circle position
     lineGraph
       .selectAll(".liness")
-      .attr("d", (d) => { return lineGenerator(d) })
+      .attr("d", (d) => {
+        var res = ""
+        for(let e of d.value){
+            res += lineGenerator(e)
+        }
+        return res
+      })
       //.attr('x', function(d) {return newX(d.Sepal_Length)})
       //.attr('y', function(d) {return newY(d.Petal_Length)});
   //Line_chart.select(".line").attr("d", line);
@@ -562,10 +606,11 @@ var newBY = scaleYBottom;
         });///.style('opacity', "1")
         //scaleX = newX;
         //scaleY = newY;
+        lineGraph2.selectAll("#focusCircle2")
+        .attr('cx', xx)
 }
         });
     
-          
         var bisectDate = d3.bisector(function(d) { return d[0]; }).left;
         g_viewer
             .append("rect")
@@ -592,11 +637,8 @@ var newBY = scaleYBottom;
                 //console.log(pos);
                 if (i <= 0 || cx1.length < i){
                     // below 0 is undefined
-                    console.log(i)
                      
                 }else{
-                    
-                    console.log("heh")
                     if (cx1.length === i){
                         i = cx1.length -1;
                     }    
@@ -604,9 +646,7 @@ var newBY = scaleYBottom;
                         i = 1;
                     }
                     var d0 = cx1[i - 1];
-                    var d1 = cx1[i];
-                    console.log(i)
-                    console.log(d1)                    
+                    var d1 = cx1[i];             
                     // work out which date value is closest to the mouse
                     var final_value = pos - d0[0] > d1[0] - pos ? d1 : d0;
                     var xx = newX(final_value[0]);
@@ -638,12 +678,23 @@ var newBY = scaleYBottom;
                             return tstring;
                         })
 
-                        let newTString = tmpText.reduce((acc, cur)=>{
+                        // http://jsfiddle.net/VRyS2/1/
+                        let newTString = tmpText.reduce((acc, cur, i22)=>{
                             if(acc == ""){
                                 console.log("???");
                             }
-                            return acc += ('<p style="color:white")>' + cur + '</p>');
+                            return acc += (`
+                                <li class="liclass">
+                                    <div class="input-color">
+                                        <input type="text" value="`+ cur + ` "/>
+                                        <div class="color-box" style="background-color: `+lineGraphColor[i22]+`;"></div>
+                                        <!-- Replace "#FF850A" to change the color -->
+                                    </div>
+                                </li>`);
+                            //return acc += ('<p style="color:white")>' + cur + '</p>');
                         }, "")
+
+                        newTString = ('<ul class=ulclass>' + newTString + '</ul>');
 
                         tooltip2.style("top", (200)+"px").style("left",(200)+"px").html(
                             newTString
@@ -663,6 +714,9 @@ var newBY = scaleYBottom;
                             var yyt = newY(ffinal_value[1]);
                             return yyt;    
                         });///.style('opacity', "1");
+                    
+                        lineGraph2.selectAll("#focusCircle2")
+                        .attr('cx', xx)
 
                     
                     focus.select('#focusLineX')

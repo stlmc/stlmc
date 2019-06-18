@@ -5,6 +5,7 @@ import { Line } from '../Core/graph';
 import { size, margin } from '../Core/Util/util';
 //import { Renderer } from '../Visualize/Visualize';
 import {Renderer} from '../Comb/Visualize/Visualize';
+import {Json} from '../Visualize/Visualize';
 /*
  * Props and State
  */ 
@@ -19,6 +20,7 @@ interface Popup{
 interface State {
     data: string;
     popup: Popup;
+    props: string[];
 }
 
 /*
@@ -101,27 +103,32 @@ class LinePlot extends React.Component<Props, State> {
         jsonpath: '../../Data/test.json',
     }
 
+    private json = new Json(require('../../Data/test.json'));
+
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
         data: require('../../Data/test.json'),
         popup: {
             isEnabled: true,
         },
+        props: []
     }
 
     constructor(props:Props){
         super(props)
         this.onPopupChange = this.onPopupChange.bind(this)
         this.onPopupClick = this.onPopupClick.bind(this)
+        this.json.parse();
+        console.log(this.json.propNames);
     }
 
 
     componentDidMount(){
         // must invoke setdata() before draw()
-        console.log();
+        console.log("componentDidMount");
         this.renderer.setdata(this.state.data);
         this.renderer.draw();
-    
+        console.log(this.renderer.getPropList())
         //this.line.setdata(this.state.data);
         //this.line.draw();
     }
@@ -140,13 +147,36 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     render() {
+        /*this.setState({
+            props: this.renderer.getPropList()
+        });*/
         return (
         <div id="graph" className={lineplotStyle.main_theme}>
-            <div className="form-check">
-                <label>
-                <input className="form-check-input" type="checkbox" checked={this.state.popup.isEnabled} onClick={this.onPopupClick} onChange={this.onPopupChange}/>
-                Enabled Popups
-                </label>
+            <div className="row">
+                <div className="col-md-4">
+                    <div className="form-check">
+                        <label>Enabled Popups &nbsp;
+                            <input className="form-check-input" type="checkbox" checked={this.state.popup.isEnabled} onClick={this.onPopupClick} onChange={this.onPopupChange}/>
+                        </label>
+                    </div>
+                </div>
+
+                <div className="col-md-6"></div>
+                
+                <div className="col-md-2">
+                    <div className="form-group">
+                        <label>Example select
+                            <select className="form-control" id="exampleFormControlSelect1">
+                                {this.json.propNames.map(
+                                    (v, i)=>{
+                                        return (<option key={i}>{v}</option>);
+                                    }
+                                )}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+    
             </div>
         </div>);
     }
