@@ -100,14 +100,14 @@ class LinePlot extends React.Component<Props, State> {
 
     // default props
     static defaultProps:Props = {
-        jsonpath: '../../Data/test.json',
+        jsonpath: '../../DataDir/test.json',
     }
 
-    private json = new Json(require('../../Data/test.json'));
+    private json = new Json(require('../../DataDir/test.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
-        data: require('../../Data/test.json'),
+        data: require('../../DataDir/test.json'),
         popup: {
             isEnabled: true,
         },

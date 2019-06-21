@@ -625,6 +625,7 @@ var newBY = scaleYBottom;
             .attr('height', this.effective_controller_height)
             .attr("transform", "translate("+this.axis_delta+","+(this.viewer_height+2*this._margin_viewer.top-8.5)+")")
             .style("fill-opacity", "0.0")
+            .on("mouseover")
            
         g_viewer
             .append("rect")
