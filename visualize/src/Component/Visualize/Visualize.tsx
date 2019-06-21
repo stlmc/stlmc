@@ -270,8 +270,8 @@ class Json {
         var tmp:[number, number][][] = [];
         for(let el of this._intervals.elems){
             let tmp2:[number, number][] = [];
-            tmp2.push([el.xExtent[0],2]);
-            tmp2.push([el.xExtent[1],2]);
+            tmp2.push([el.xExtent[0],1]);
+            tmp2.push([el.xExtent[1],1]);
 
             // check difference, true for not same.
             let truth = 1;

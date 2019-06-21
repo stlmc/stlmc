@@ -2,6 +2,7 @@ import * as d3 from 'd3';
 import {Json} from '../../Visualize/Visualize';
 import $ from "jquery";
 import "./Visualize.scss";
+import { isExportDefaultSpecifier } from '@babel/types';
 
 class Renderer{
 
@@ -127,16 +128,6 @@ var g_viewer2 =
         var xrange = jdata.xRange();
         var yrange = jdata.yRange();
 
-        var scaleBandX = d3.scaleLinear()
-        .range([ this.axis_delta, this.viewer_width-this.axis_delta ])
-        .domain([d3.min(jdataIntervalList), d3.max(jdataIntervalList)])
-        //.padding(0.01);
-
-        var scaleBandY = d3.scaleLinear()
-        .range([ this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top ])
-        .domain([1])
-        //.padding(0.05);
-
         let scaleX = 
             d3.scaleLinear()
                 .domain([xrange[0], xrange[1] + 1])
@@ -203,10 +194,22 @@ var g_viewer2 =
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis.call(y_axis);
 
-        var yaxis_bottom = g_controller2.append("g")
+        var yaxis_bottom = g_controller.append("g")
             .attr("id", "yaxis_bottom")
             .attr("transform", "translate(" +this.axis_delta+","+(newHeight + this.effective_controller_height_difference - this.effective_controller_height+1)+")")
-            yaxis_bottom.call(y_axisBottom.ticks(3));
+            yaxis_bottom.call(y_axisBottom.ticks(4).tickFormat(
+                (d)=>{
+                    if (d==1){
+                        return "false"
+                    }
+                    else if (d==2){
+                        return "true"
+                    }
+                    else {
+                        return " "
+                    }
+            }));
+            //yaxis_bottom.call(y_axis);
 
         var xaxis_bottom2 = g_controller2.append("g")
         .attr("id", "xaxis_bottom")
@@ -375,7 +378,7 @@ var newBY = scaleYBottom;
             .attr("stroke", (d, i)=>{return propColor((i+2).toString())})
             .attr("fill", "none")
             .attr("stroke-width", 1.5)
-            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
 
 
         var focus = g_viewer
@@ -408,6 +411,7 @@ var newBY = scaleYBottom;
         // for caching.
         var lineGraph2x2 = [];
         var lineGraphText = [];
+        /*
         lineGraph2.append("text")
             .attr('id', 'focusText2')
             .attr("transform", ()=> { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
@@ -442,7 +446,7 @@ var newBY = scaleYBottom;
                 return scaleYBottom(2);
             })
             .style("font-size", ()=>{ return "11px" });
-
+*/
 
 
         lineGraph2.append('circle')
@@ -452,9 +456,10 @@ var newBY = scaleYBottom;
             .style("fill", "none")
             .style("stroke-width", "1px")
             .attr('id', 'focusCircle2')
-            .attr("transform", () => { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
+            // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
             .attr('cy', (d,i2)=>{
-                var yyt = newBY(2);
+                var yyt = newBY(1);
                 return yyt;    
             });
 
@@ -490,7 +495,7 @@ var newBY = scaleYBottom;
     //var newY = d3.event.transform.rescaleY(scaleY);
     newX = d3.event.transform.rescaleX(scaleX);
     newY = d3.event.transform.rescaleY(scaleY);
-    newBY = d3.event.transform.rescaleY(scaleYBottom);
+    //newBY = d3.event.transform.rescaleY(scaleYBottom);
     // update axes with these new boundaries
     xaxis.call(d3.axisBottom(newX))
     yaxis.call(d3.axisLeft(newY))
@@ -505,15 +510,17 @@ var newBY = scaleYBottom;
             else{
                 return "";
             }
-        }
+        }        
     ));
 
 
+
+    /*
     lineGraph2.selectAll("#focusText2")
             .attr("x", (d, i2)=>{
                 return newX(lineGraph2x2[i2]);
             })
-
+*/
 
     var lineGenerator2 = 
     d3.line()
@@ -551,18 +558,16 @@ var newBY = scaleYBottom;
   var mouse = d3.mouse($(this._tag)[0]);
   var pos = newX.invert(mouse[0]);
   var i = bisectDate(cx1,pos);
-  if (i <= 0 || cx1.length < i){
-    // below 0 is undefined
-}else{
-    if (cx1.length === i){
+
+    if (cx1.length -1 < i){
         i = cx1.length -1;
-    }
+    }    
     if(i === 0){
         i = 1;
     }
+    console.log(cx1.length)
     var d0 = cx1[i - 1];
     var d1 = cx1[i];
-
     
     // work out which date value is closest to the mouse
     var final_value = pos - d0[0] > d1[0] - pos ? d1 : d0;
@@ -609,9 +614,18 @@ var newBY = scaleYBottom;
         lineGraph2.selectAll("#focusCircle2")
         .attr('cx', xx)
 }
-        });
+        );
     
         var bisectDate = d3.bisector(function(d) { return d[0]; }).left;
+
+        g_controller
+            .append("rect")
+            .attr("id", "controllerRect")
+            .attr("width", this.viewer_width-2*this.axis_delta)
+            .attr('height', this.effective_controller_height)
+            .attr("transform", "translate("+this.axis_delta+","+(this.viewer_height+2*this._margin_viewer.top-8.5)+")")
+            .style("fill-opacity", "0.0")
+           
         g_viewer
             .append("rect")
             .attr("id", "mainrect")
@@ -635,16 +649,11 @@ var newBY = scaleYBottom;
                 var pos = newX.invert(mouse[0]);
                 var i = bisectDate(cx1,pos);
                 //console.log(pos);
-                if (i <= 0 || cx1.length < i){
+                if (i <= 0 || cx1.length -1 < i){
                     // below 0 is undefined
-                     
+                    console.log("??!!")
+                    
                 }else{
-                    if (cx1.length === i){
-                        i = cx1.length -1;
-                    }    
-                    if(i === 0){
-                        i = 1;
-                    }
                     var d0 = cx1[i - 1];
                     var d1 = cx1[i];             
                     // work out which date value is closest to the mouse
