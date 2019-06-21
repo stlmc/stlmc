@@ -21,7 +21,7 @@ class Node:
     def __truediv__(self, num):
         return Div(self, num)
     def __eq__(self, num):
-        if num.getType() == Type.Bool:
+        if self.getType() == Type.Bool:
             return Beq(self, num)
         else:
             return Numeq(self, num)

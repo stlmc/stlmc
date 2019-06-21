@@ -86,96 +86,128 @@ class ContVar(Variable):
              consts.append(variable < RealVal(float(self.right)))
          return And(*consts) 
 
-class BinaryExp:
-     def __init__(self, op, left, right):
-         self.op = op
-         self.left = left
-         self.right = right
-         if isinstance(left, str) and isinstance(right, str):
-             self.left = RealVal(float(left)) if isNumber(left) else left
-             self.right = RealVal(float(right)) if isNumber(right) else right
+class UnaryFunc:
+     def __init__(self, func, val):
+         self.func = func
+         self.val = val
 
      def __repr__(self):
-         return str(self.left) + str(self.op) + str(self.right)
-     def getExpression(self, varDict):
-         left = self.left
-         right = self.right
-         if isinstance(left, BinaryExp):
-             left = left.getExpression(varDict)
-         if isinstance(right, BinaryExp):
-             right = right.getExpression(varDict)
-         if str(self.left) in varDict.keys(): 
-             left = varDict[str(self.left)]
-         if str(self.right) in varDict.keys():
-            right = varDict[str(self.right)]
-         if self.op == '+':
-             return left + right
-         elif self.op == '-':
-             return left - right
-         elif self.op == '*':
-             return left * right
-         elif self.op == '/':
-             return left / right
-         else:
-             raise "Not yet in Binary Expression"
-    
-     @property
-     def value(self):
-         vleft = self.left
-         vright = self.right
-         if isinstance(self.left, BinaryExp):
-             left = self.left.value
-         if isinstance(self.right, BinaryExp):
-             right = self.right.value
-         if self.op == '+':
-             return vleft.value + vright.value
-         if self.op == '-':
-             return vleft.value - vright.value
-         if self.op == '*':
-             return vleft.value * vright.value
-         if self.op == '/':
-             return vleft.value / vright.value
+         return str(self.func) + "(" + str(self.val) + ")"
 
-     def getType(self):
-         return Type.Real
+     def getExpression(self, varDict):
+         if str(self.val) in varDict.keys():
+             degree = varDict[str(self.val)]  
+         elif str(self.val).isdigit():
+             degree = RealVal(float(self.val))
+         else:
+             degree = Real(str(self.val))
+         if self.func == 'sin':
+             return degree - degree * degree * degree / RealVal(6)
+         elif self.func == 'cos':
+             return degree - degree * degree / RealVal(2)
+         elif self.func == 'tan':
+             return degree + degree * degree * degree
+         elif self.func == '-':
+             return RealVal(0) - degree
+         else:
+             raise "Not yet in Unary function"
+
+class BinaryExp:
+    def __init__(self, op, left, right):
+        self.op = op
+        self.left = left
+        self.right = right
+        if isinstance(left, str) and isinstance(right, str):
+            self.left = RealVal(float(left)) if isNumber(left) else left
+            self.right = RealVal(float(right)) if isNumber(right) else right
+
+    def __repr__(self):
+        return str(self.left) + str(self.op) + str(self.right)
+    def getExpression(self, varDict):
+        left = self.left
+        right = self.right
+        if isinstance(left, BinaryExp) or isinstance(left, UnaryFunc):
+            left = left.getExpression(varDict)
+        if isinstance(right, BinaryExp) or isinstance(right, UnaryFunc):
+            right = right.getExpression(varDict)
+        if str(self.left) in varDict.keys(): 
+            left = varDict[str(self.left)]
+        if str(self.right) in varDict.keys():
+           right = varDict[str(self.right)]
+        else:
+            pass
+
+        if self.op == '+':
+            return left + right
+        elif self.op == '-':
+            return left - right
+        elif self.op == '*':
+            return left * right
+        elif self.op == '/':
+            return left / right
+        else:
+            raise "Not yet in Binary Expression"
+    def substitution(self, subDict):
+        opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
+        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
+    
+    @property
+    def value(self):
+        vleft = self.left
+        vright = self.right
+        if isinstance(self.left, BinaryExp):
+            left = self.left.value
+        if isinstance(self.right, BinaryExp):
+            right = self.right.value
+        if self.op == '+':
+            return vleft.value + vright.value
+        if self.op == '-':
+            return vleft.value - vright.value
+        if self.op == '*':
+            return vleft.value * vright.value
+        if self.op == '/':
+            return vleft.value / vright.value
+
+    def getType(self):
+        return Type.Real
 
 class CompCond:
-     def __init__(self, op, left, right):
-         self.op = op
-         self.left = left
-         self.right = right
-         if isinstance(left, str) and isinstance(right, str):
-             self.left = RealVal(float(left)) if isNumber(left) else left
-             self.right = RealVal(float(right)) if isNumber(right) else right
-     def __repr__(self):
-         return str(self.left) + str(self.op) + str(self.right)
-     def getExpression(self, varDict):
-         left = self.left
-         right = self.right
-         if isinstance(left, BinaryExp):
-             left = left.getExpression(varDict)
-         if isinstance(right, BinaryExp):
-             right = right.getExpression(varDict)
-         if str(self.left) in varDict.keys():
-             left = varDict[str(self.left)]
-         if str(self.right) in varDict.keys():
-            right = varDict[str(self.right)]
-         if self.op == '<':
-             return left < right
-         elif self.op == '<=':
-             return left <= right
-         elif self.op == '>':
-             return left > right
-         elif self.op == '>=':
-             return left >= right
-         elif self.op == '==':
-             return left == right
-         elif self.op == '!=':
-             return left != right
-         else:
-             raise "Not yet in Compare Condition"
-     def getType(self):
-         return Type.Bool
+    def __init__(self, op, left, right):
+        self.op = op
+        self.left = left
+        self.right = right
+        if isinstance(left, str) and isinstance(right, str):
+            self.left = RealVal(float(left)) if isNumber(left) else left
+            self.right = RealVal(float(right)) if isNumber(right) else right
+    def __repr__(self):
+        return str(self.left) + str(self.op) + str(self.right)
+    def getExpression(self, varDict):
+        left = self.left
+        right = self.right
+        if isinstance(left, BinaryExp):
+            left = left.getExpression(varDict)
+        if isinstance(right, BinaryExp):
+            right = right.getExpression(varDict)
+        if str(self.left) in varDict.keys():
+            left = varDict[str(self.left)]
+        if str(self.right) in varDict.keys():
+           right = varDict[str(self.right)]
+        if self.op == '<':
+            return left < right
+        elif self.op == '<=':
+            return left <= right
+        elif self.op == '>':
+            return left > right
+        elif self.op == '>=':
+            return left >= right
+        elif self.op == '==':
+            return left == right
+        elif self.op == '!=':
+            return left != right
+        else:
+            raise "Not yet in Compare Condition"
+    def getType(self):
+        return Type.Bool
 
 class Multy:
     def __init__(self, op, props):
@@ -187,7 +219,13 @@ class Multy:
     def getExpression(self, varDict):
         result = list()
         for i in range(len(self.props)):
-            result.append(self.props[i].getExpression(varDict))
+            if isinstance(self.props[i], NextVar):
+                exp = self.props[i]
+            elif self.props[i] in varDict.keys():
+                exp = varDict[self.props[i]]
+            else:
+                exp = self.props[i].getExpression(varDict)
+            result.append(exp)
         return {'and' : And, 'or' : Or}[self.op](*result)
 
 class Binary:
@@ -198,8 +236,15 @@ class Binary:
     def __repr__(self):
         return "(" + str(self.op) + " " + str(self.left) + " " + str(self.right) + ")"
     def getExpression(self, varDict):
-        left = self.left.getExpression(varDict)
-        right = self.right.getExpression(varDict)
+        if str(self.left) in varDict.keys():
+            left = varDict[str(self.left)]
+        else:
+            left = self.left.getExpression(varDict)
+        
+        if str(self.right) in varDict.keys():
+            right = varDict[str(self.right)]
+        else:
+            right = self.right.getExpression(varDict)
         return {'and' : And, 'or' : Or}[self.op](left, right)
 
 class Unary:
@@ -213,7 +258,7 @@ class Unary:
             prop = varDict[self.prop]
         else: 
             prop = self.prop.getExpression(varDict)           
-        return {'not' : Not}[self.op](prop)
+        return {'not' : Not, '~' : Not}[self.op](prop)
 
 class MultyCond(Multy):
     pass
@@ -399,6 +444,8 @@ class propDecl:
     def __repr__(self):
         return str(self.id) + " = " + str(self.cond)
     def getExpression(self, varDict):
+        if self.cond in varDict.keys():
+            return varDict[self.cond]
         return self.cond.getExpression(varDict)
     def getId(self):
         return Bool(str(self.id))

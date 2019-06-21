@@ -71,8 +71,8 @@ class modelVisitorImpl(modelVisitor):
     '''
     Not yet
     '''
-    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dict):
-        raise VisitorException(ctx, "Not yet in Unary Expression")
+    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict()):
+        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic))
 
     def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):
         if not var_dict:
@@ -200,7 +200,7 @@ class modelVisitorImpl(modelVisitor):
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
                 return self.visitParenthesisExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
-                print("Not implemented")
+                return self.visitUnaryExp(ctx, var_dict)
         
     '''
     flow differential equation type

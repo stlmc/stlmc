@@ -69,7 +69,7 @@ class z3Consts:
             subresult.append(And(*steadyStateConsts))
             '''
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
-           
+
         result = []
         for k in range(bound+1):
             time = Real('time' + str(k))

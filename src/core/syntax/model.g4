@@ -15,10 +15,10 @@ COMPARE_OP : (GT | GTE | LT | LTE | COM_EQ | NEQ) ;
 
 fragment OP_SIN    : 'sin' ;
 fragment OP_COS    : 'cos' ;
+fragment OP_TAN    : 'tan' ;
 fragment OP_LOG    : 'log' ;
 fragment OP_SQRT   : 'sqrt' ;
-
-FUNC_OP : (OP_SIN | OP_COS | OP_LOG | OP_SQRT) ;
+FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_LOG | OP_SQRT) ;
 
 PLUS     : '+' ;
 MINUS    : '-' ;
@@ -68,7 +68,7 @@ VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 fragment LOWERCASE : [a-z] ;
 fragment UPPERCASE : [A-Z] ;
 
-VARIABLE     : (LOWERCASE | UPPERCASE)+ DIGIT* ;
+VARIABLE     : (LOWERCASE | UPPERCASE)+ (LOWERCASE | UPPERCASE | DIGIT)* ;
 
 NEXT_VAR   : VARIABLE '\'' ;
 
@@ -91,7 +91,7 @@ expression  :
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
-              ;
+            ;
 
 condition   :
               LPAREN condition RPAREN  # parenthesisCond

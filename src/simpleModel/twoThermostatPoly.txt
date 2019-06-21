@@ -94,14 +94,20 @@ bool b;
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));
 }
 init:
-(and (a == false) (b == false) (x1 <= 21 + 0.1) (x1 >= 21 - 0.1) (x2 <= 21 + 0.1) (x2 >= 21 - 0.1) ((constx1 == x1) and (constx2 == x2)));
+(and (a == false) (b == false) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 0.1) (x2 >= 20 - 0.1) ((constx1 == x1) and (constx2 == x2)));
 
 propositions:
-reachability = x1 > 27 ;
-trash = x1 > 21 ;
+reachability = x1 < 27 ;
+x2l20 = x2 <= 20 ;
+x2g10 = x1 > 10;
+x1T = a ;
+x2T = b ;
 
 goal:
-([] [0.0, 20.0] (x1 > 27)) ;
+([] [0.0, 40.0] (~reachability)) ;
+(~<> [0.0, 20.0] (x2l20 U[2.0, 12.0) x2g10)) ;
+([] [0.0, 10.0] (~x2l20 U[0.0, 5.0] x1T)) ;
+(<> [0.0, 20.0] ((~x1T and ~x2T) -> [][0.0, 5.0] (x1T and x2T))) ;
 
 
 

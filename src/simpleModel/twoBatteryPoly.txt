@@ -22,17 +22,17 @@ bool c;
         d/dt[g2] = -0.5 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 {
     mode:
@@ -49,17 +49,17 @@ bool c;
         d/dt[g2] = 0 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 {
     mode:
@@ -76,17 +76,17 @@ bool c;
         d/dt[g2] = -1 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 {
     mode:
@@ -103,17 +103,17 @@ bool c;
         d/dt[g2] = -1 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 {
     mode:
@@ -130,17 +130,17 @@ bool c;
         d/dt[g2] = 0 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 {
     mode:
@@ -157,26 +157,32 @@ bool c;
         d/dt[g2] = 0 ;
     jump:
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 > ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
         (and (g1 <= ((1 - 0.166) * d1)) (g2 > ((1 - 0.166) * d2))) ==>
-          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==>
-          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+          (and (not a') (b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 > ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (not c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
+        (and (g1 <= ((1 - 0.166) * d1)) (g2 <= ((1 - 0.166) * d2))) ==> 
+          (and (a') (not b') (c') (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2) (constd1' = d1) (constd2' = d2));
 }
 init:
 (and not(a) not(b) not(c) (g1 == 8.5) (d1 == 0) (g2 == 7.5) (d2 == 0) (constd1 == d1) (constd2 == d2)) ;
 
 propositions:
 reachability = d1 > 1.4 ;
+modeFFF = (and (not a) (not b) (not c));
+donegzero = d1 > 0.5 ;
+dtwogzero = d2 > 0.5;
+modeTFT = (and a (not b) c);
 
 goal:
 ([] (0.0, 20.5) (<> [3.0, 14.0] reachability)) ;
-
+(<> (5.0,30.0] (modeFFF -> [][7.5,25) modeFFF));
+([] (0.0,50.0) (donegzero and dtwogzero));
+([] (10.0,50.0] (((g1 >= 0) or (g2 >= 0)) U(1.0,15.0) modeTFT));
 
 

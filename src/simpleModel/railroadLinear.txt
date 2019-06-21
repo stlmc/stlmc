@@ -81,9 +81,13 @@ init:
 
 propositions:
 reachability = tx < 0 ;
+barg80 = bx >= 80;
+barl60 = bx < 60;
 
 goal:
-([] [0.0, 50.0] tx < 50) ;
-
+(<> (0.0,50.0) reachability);
+([] [20.0,40.0] (barg80 -> (<>[1.0,20.0] reachability)));
+([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl60)));
 
 
