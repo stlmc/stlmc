@@ -4,16 +4,13 @@
  * to certain project. Do not reuse this class. This is just wrapper class!
  *  
  * Written by Geunyeol Ryu
- * @ 2019.06.06
+ * @ 2019.06.22
  */
 
   /**
   * Packages.
   */
 import { Intervals, Interval, Point } from "../Core/Util/MathModel";
-import './visualize.scss';
-import { exportDefaultSpecifier } from "@babel/types";
-import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from "constants";
 
 /**
  * This is prop class

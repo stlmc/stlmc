@@ -2,7 +2,6 @@ import * as d3 from 'd3';
 import {Json} from '../../Visualize/Visualize';
 import $ from "jquery";
 import "./Visualize.scss";
-import { isExportDefaultSpecifier } from '@babel/types';
 
 class Renderer{
 
@@ -49,7 +48,7 @@ class Renderer{
 
 
     setdata(jd){
-        this.json = new Json(jd);
+        this.json = jd;
     }
 
     updatePopup(popup){
@@ -209,12 +208,13 @@ var g_viewer2 =
                         return " "
                     }
             }));
-            //yaxis_bottom.call(y_axis);
+           
 
         var xaxis_bottom2 = g_controller2.append("g")
         .attr("id", "xaxis_bottom")
         .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-        xaxis_bottom2.call(make_y_grid().tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
+        console.log(jdataIntervalList)
+        xaxis_bottom2.call(d3.axisBottom(scaleX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(3).tickFormat(()=>{ return "" })).select(".domain").remove();
         /*
         for (let el of jdataIntervalList){
             main.append("line")
@@ -229,11 +229,10 @@ var g_viewer2 =
             
         }*/
 
+        /*
         var xaxis_bottom2_1 = g_controller
             .append("g")
             .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-            //.call( brush )
-            //.call( brush.move, scaleX.range())
             .call(d3.axisBottom(scaleX).tickFormat(
                 (d, i)=>{
                     if (jdataIntervalList.includes(d)){
@@ -244,7 +243,16 @@ var g_viewer2 =
                         return "";
                     }
                 }
-            ));
+            ));*/
+        
+        var xaxis_bottom2_1 = g_controller
+            .append("g")
+            .attr('id', 'xaxis_bottom2_1')
+            .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
+            .call(d3.axisBottom(scaleX).tickFormat(
+                ()=>{ 
+                    return ""
+                }));
 
             /*
         g_controller.append("defs").append("marker")
@@ -501,6 +509,8 @@ var newBY = scaleYBottom;
     yaxis.call(d3.axisLeft(newY))
     //xaxis_bottom.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height)).tickPadding(10).tickFormat(null)).select(".domain").remove()
     xaxis_bottom2.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
+    
+    /*
     xaxis_bottom2_1.call(d3.axisBottom(newX).tickFormat(
         (d, i)=>{
             if (jdataIntervalList.includes(d)){
@@ -511,7 +521,9 @@ var newBY = scaleYBottom;
                 return "";
             }
         }        
-    ));
+    ));*/
+
+    xaxis_bottom2_1.call(d3.axisBottom(newX).tickFormat(()=>{ return "" }));
 
 
 

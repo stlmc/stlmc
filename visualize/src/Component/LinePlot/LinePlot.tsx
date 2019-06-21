@@ -119,16 +119,18 @@ class LinePlot extends React.Component<Props, State> {
         this.onPopupChange = this.onPopupChange.bind(this)
         this.onPopupClick = this.onPopupClick.bind(this)
         this.json.parse();
-        console.log(this.json.propNames);
+        console.log("Contructor")
+        console.log(this.json._props);
     }
 
 
     componentDidMount(){
         // must invoke setdata() before draw()
         console.log("componentDidMount");
-        this.renderer.setdata(this.state.data);
-        this.renderer.draw();
+        this.renderer.setdata(this.json);
         console.log(this.renderer.getPropList())
+        this.renderer.draw();
+        
         //this.line.setdata(this.state.data);
         //this.line.draw();
     }

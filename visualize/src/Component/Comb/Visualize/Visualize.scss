@@ -21,3 +21,26 @@
     left: 5px;
     top: 5px;
 }
+
+// for renderer class
+#xaxis_grid {
+    line{
+        stroke: rgb(214, 214, 214);
+    }
+    text { display: none; }
+}
+
+#yaxis_grid {
+    line{
+        stroke: rgb(214, 214, 214);
+    }
+    text { display: none; }
+}
+
+#xaxis_bottom {
+    line{
+        stroke: black;
+        stroke-dasharray: 4px;
+    }
+    text { display: none; }
+}
