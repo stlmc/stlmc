@@ -11,6 +11,11 @@ import {Json} from '../Visualize/Visualize';
  */ 
 interface Props {
     jsonpath: string;
+    files: {
+        category: string;
+        dir: string;
+        title: string;
+    }[];
 }
 
 interface Popup{
@@ -21,6 +26,11 @@ interface State {
     data: string;
     popup: Popup;
     props: string[];
+    value: {
+        category: string;
+        dir: string;
+        title: string;
+    };
 }
 
 /*
@@ -101,36 +111,105 @@ class LinePlot extends React.Component<Props, State> {
     // default props
     static defaultProps:Props = {
         jsonpath: '../../DataDir/test.json',
+        files:[{
+            category: "railroad",
+            dir: "../../DataDir/railRoadPoly_1.json",
+            title: "railRoadPoly_1"
+        },{
+            category: "railroad",
+            dir: "../../DataDir/railRoadPoly_2.json",
+            title: "railRoadPoly_2"
+        },{
+            category: "railroad",
+            dir: "../../DataDir/railRoadPoly_3.json",
+            title: "railRoadPoly_3"
+        },{
+            category: "twobattery",
+            dir: "../../DataDir/twoBatteryPoly_1.json",
+            title: "twoBatteryPoly_1"
+        },{
+            category: "twobattery",
+            dir: "../../DataDir/twoBatteryPoly_2.json",
+            title: "twoBatteryPoly_2"
+        },{
+            category: "twobattery",
+            dir: "../../DataDir/twoBatteryPoly_3.json",
+            title: "twoBatteryPoly_3"
+        },{
+            category: "twobattery",
+            dir: "../../DataDir/twoBatteryPoly_4.json",
+            title: "twoBatteryPoly_4"
+        },{
+            category: "twothermostat",
+            dir: "../../DataDir/twoThermostatPoly_1.json",
+            title: "twoThermostatPoly_1"
+        },{
+            category: "twothermostat",
+            dir: "../../DataDir/twoThermostatPoly_2.json",
+            title: "twoThermostatPoly_2"
+        },{
+            category: "twothermostat",
+            dir: "../../DataDir/twoThermostatPoly_3.json",
+            title: "twoThermostatPoly_3"
+        },{
+            category: "twothermostat",
+            dir: "../../DataDir/twoThermostatPoly_4.json",
+            title: "twoThermostatPoly_4"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankPoly_1.json",
+            title: "twoWatertankPoly_1"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankPoly_2.json",
+            title: "twoWatertankPoly_2"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankPoly_3.json",
+            title: "twoWatertankPoly_3"
+        }]
     }
 
-    private json = new Json(require('../../DataDir/test.json'));
+    private json = new Json(require('../../DataDir/railRoadPoly_1.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
-        data: require('../../DataDir/test.json'),
+        data: require('../../DataDir/railRoadPoly_1.json'),
         popup: {
             isEnabled: true,
         },
-        props: []
+        props: [],
+        value: {
+            category: "",
+            dir: "",
+            title: ""
+        }
     }
 
     constructor(props:Props){
         super(props)
         this.onPopupChange = this.onPopupChange.bind(this)
         this.onPopupClick = this.onPopupClick.bind(this)
+        this.onPropSelect = this.onPropSelect.bind(this)
+        this.onPropListSelect = this.onPropListSelect.bind(this)
         this.json.parse();
-        console.log("Contructor")
-        console.log(this.json._props);
+         // first name
+        // if there is not any error..........
+        this.renderer.updateProp(this.json.propNames[0]);
     }
 
 
     componentDidMount(){
         // must invoke setdata() before draw()
-        console.log("componentDidMount");
+        //console.log("componentDidMount");
+        //this.json.parse();
         this.renderer.setdata(this.json);
-        console.log(this.renderer.getPropList())
-        this.renderer.draw();
-        
+        //console.log(this.renderer.getPropList())
+        if(!this.json.isEmpty()){
+            this.renderer.setCanvas();
+            this.renderer.draw();
+        }
+       
         //this.line.setdata(this.state.data);
         //this.line.draw();
     }
@@ -148,13 +227,50 @@ class LinePlot extends React.Component<Props, State> {
         console.log(this.state)
     }
 
+    onPropSelect(e: React.ChangeEvent<HTMLSelectElement>){
+        console.log("propselect: "+e.target.value);
+        this.renderer.redrawPropCanvas(e.target.value)
+    }
+
+    onPropListSelect(e: React.ChangeEvent<HTMLSelectElement>){
+        console.log("propListselect: "+e.target.value);
+        this.json.string = require("../../DataDir/"+e.target.value);
+        this.renderer.setdata(this.json);
+        this.renderer.updateProp(this.json.propNames[0]);
+        //this.renderer.resetdata(this.json);
+        //console.log(this.json);
+        /*
+        if(!this.json.isEmpty()){
+            this.renderer.setCanvas();
+            this.renderer.draw();
+        }*/
+
+        //this.forceUpdate()
+        //this.renderer.redrawPropCanvas(this.json.propNames[0]);
+        this.forceUpdate();
+        this.renderer.reload(this.json.isEmpty());
+        //this.renderer.redrawPropCanvas(e.target.value)
+    }
+
     render() {
         /*this.setState({
             props: this.renderer.getPropList()
         });*/
         return (
         <div id="graph" className={lineplotStyle.main_theme}>
-            <div className="row">
+            <div className="form-group">
+                <label>Models
+                    <select className="form-control" id="exampleFormControlSelect12" onChange={this.onPropListSelect}>
+                        {this.props.files.map(
+                            (v, i)=>{
+                                return (<option key={i}>{v.title}</option>);
+                            }
+                        )}
+                    </select>
+                </label>
+            </div>
+            {!this.json.isEmpty() ?
+            (<div className="row">
                 <div className="col-md-4">
                     <div className="form-check">
                         <label>Enabled Popups &nbsp;
@@ -167,8 +283,8 @@ class LinePlot extends React.Component<Props, State> {
                 
                 <div className="col-md-2">
                     <div className="form-group">
-                        <label>Example select
-                            <select className="form-control" id="exampleFormControlSelect1">
+                        <label>Propositions
+                            <select className="form-control" id="exampleFormControlSelect1" onChange={this.onPropSelect}>
                                 {this.json.propNames.map(
                                     (v, i)=>{
                                         return (<option key={i}>{v}</option>);
@@ -179,7 +295,12 @@ class LinePlot extends React.Component<Props, State> {
                     </div>
                 </div>
     
-            </div>
+            </div>) 
+            : (
+                <div className="alert alert-warning" role="alert">
+                    Nothing to show!
+                </div>
+            )}
         </div>);
     }
 }

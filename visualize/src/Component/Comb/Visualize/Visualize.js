@@ -42,22 +42,215 @@ class Renderer{
         this.viewer_height = this._size.height-this._margin_viewer.top-this._margin_viewer.bottom-this.height_delta;
         this.controller_width = this._size.width;
         this.controller_height = this._size.height-this._margin_controller.top-this._margin_controller.bottom-this.height_delta;
-        this.popup = true;
+        this.popup = true;     
 
     }
 
+    /**
+     * d3.select must be invoke after Reactjs's componentdidmount called.
+     * This will get DOM elements well.
+     */
+    setCanvas(){
+        // set main canvas
+        this.canvas = d3.select(this._tag).append("svg").attr("width", this._size.width).attr("height", this._size.height);   
+        // set data canvas
+        this.setDataCanvas();
+        // set prop canvas
+        this.setPropCanvas();
+    }
+
+    reload(isEmpty){
+        d3.select("svg").remove();
+        this.setCanvas();
+        if(!isEmpty)
+            this.draw();
+    }
+    /**
+     * data canvas has 2 cavases innerly, back data canvas does nothing
+     * and front data canvas is for user interactions (such as, zooming, clipping, mouse moving etc)
+     * 
+     * Need to use dataCanvasFront for interactions and dataCanvas(back) for data showing or redraw, update.
+     */
+    setDataCanvas(){
+        this.dataCanvas = this.canvas.append("g").attr("class", "viewer").attr("width", this.viewer_width).attr("heght", this.viewer_height)
+        
+        this.dataCanvas
+            .append("clipPath")
+            .attr("id", "dataCanvasClip")
+                .append("rect")
+                .style("fill", "red")
+                .attr("width", this.viewer_width-2*this.axis_delta )
+                .attr("height", this.viewer_height-3*this._margin_viewer.top )
+                .attr("x", this.axis_delta+1)
+                .attr("y", 3*this._margin_viewer.top)
+
+        this.dataCanvasFront = 
+                this.canvas.append("g")
+                .attr("clip-path", "url(#dataCanvasClip)");
+    }
+
+    /**
+     * Set base scale X for both data and proposition.
+     * newScaleX for zooming and panning.
+     */
+    setBaseScale(){
+        // get original data's x's extent since it is same as proposition's.
+        let xrange = this.json.data.xRange();
+
+        // set scale function for x
+        this.ScaleX = 
+            d3.scaleLinear()
+            .domain([xrange[0], xrange[1] + 1])
+            .range([this.axis_delta, this.viewer_width-this.axis_delta]);
+
+        this.newScaleX = this.ScaleX;
+    }
+
+        /**
+     * prop canvas has 2 cavases innerly, back prop canvas does nothing
+     * and front prop canvas is for user interactions (such as, zooming, clipping, mouse moving etc)
+     * 
+     * Need to use propCanvasFront for interactions and propCanvas(back) for data showing or redraw, update.
+     */
+    setPropCanvas(){
+
+        // set prop line color function
+        this.propColor = d3.scaleLinear().domain([0,2]).range(["red", "blue"])
+        // set prop canvas
+        this.propCanvas = this.canvas.append("g").attr("width", this.controller_width).attr("heght", this.controller_height);
+        // set clipping path
+        this.propCanvas.append("clipPath")
+            .attr("id", "propCanvasClip")
+                .append("rect")
+                .style("fill", "red")
+                .attr("width", this.viewer_width-2*this.axis_delta )
+                .attr("height", this.viewer_height+this.controller_height )
+                .attr("x", this.axis_delta+1)
+                .attr("y", 3*this._margin_viewer.top)
+        // set canvas front
+        this.propCanvasFront = 
+            this.canvas.append("g")
+            .attr("clip-path", "url(#propCanvasClip)");
+    }
+
+    drawPropCanvas(){
+
+        // update when redraw, remove previous proposition graph.
+        this.propCanvasFront.selectAll("#propGraphGroup").remove();
+        this.propCanvasFront.selectAll("#focusCircle2").remove();
+        /**
+         * this is proposition's graph group
+         */
+        let data = this.json.extentListByName(this.propName);
+        //console.log(this.json.extentListByName(this.propName))
+        this.propGraphGroup = this.propCanvasFront
+            .append("g")
+            .attr("id", "propGraphGroup")
+            .selectAll(".propGraphData")
+            .data([data])
+            .enter()
+
+        // set scale function for y
+        // 0: none, 1: false, 2: true, 3:none
+        let propScaleY =
+            d3.scaleLinear()
+            .domain([0, 3])
+            .range([this.effective_controller_height, 0]);
+
+        let scaleX = this.newScaleX;
+
+        // set propostion graph line generator
+        this.propLineGenerator = 
+            d3.line()
+            //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
+            .x(function(d) { return scaleX(d[0]); })
+            .y(function(d) { return propScaleY(d[1]); }).curve(d3.curveMonotoneX);
+
+        /**
+         * this is actual data of propsition graph
+         */
+        this.propGraphGroup
+            .append("path")
+            .attr("d", (d)=>{
+
+                var res = ""
+                for(let e of d.value){
+                    res += this.propLineGenerator(e)
+                }
+                return res
+            })
+            .attr("class", "propGraphData")
+            .attr("stroke", "red")
+            .attr("fill", "none")
+            .attr("stroke-width", 1.5)
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
+
+        /**
+         * Draw circle
+         */
+        if(data.value.length != 0){
+   
+            let pos = this.pos;
+            this.propGraphGroup
+            .append('circle')
+            .attr("r", 7)
+            .attr("stroke", "red")
+            //.style("stroke", "black")
+            .style("fill", "none")
+            .style("stroke-width", "1px")
+            .attr('id', 'focusCircle2')
+            // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
+            .attr('cx', this.xx)
+            .attr('cy', (d,i2)=>{
+                var i222 = d3.bisect(d.xs,pos);
+                var yyt = propScaleY(d.ys[i222]);
+                return yyt;    
+            });
+        }
+
+            /*.attr('cy', (d,i2)=>{
+                console.log("hello")
+                console.log(d.xs)
+                var i222 = d3.bisect(d.xs,this.pos);
+                console.log(this.pos)
+                console.log(i222)
+                var yyt = newBY(d.ys[i222]);
+                return yyt;    
+            });*/
+    }
+
+    redrawPropCanvas(propName){
+        this.propName = propName;
+        this.drawPropCanvas();
+    }
+
+    resetdata(jd){
+        this.json = jd;
+        if (!this.json.isEmpty()){
+            this.setBaseScale();
+        }
+    }
 
     setdata(jd){
         this.json = jd;
+        if (!this.json.isEmpty()){
+            this.setBaseScale();
+        }
     }
 
     updatePopup(popup){
-        this.popup = popup
+        this.popup = popup;
+    }
+
+    updateProp(propName){
+        this.propName = propName;
     }
 
     getPropList(){
         return this.json.propNames;
     }
+
 
     draw(){
 
@@ -66,63 +259,20 @@ class Renderer{
         // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
         // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
         
-
-
         var jdata = this.json.data;
         var jdataList = this.json.dataList();
         var newJdataList = this.json.getDataList();
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
-        console.log(jdataName)
         var jdataInter = this.json._props;
 
+        //this.main22 = d3.select(this._tag).append("svg").attr("width", this._size.width).attr("height", this._size.height);
+        //this.g_controller22 = this.main22.append("g").attr("width", this.controller_width).attr("heght", this.controller_height);
+
         var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-        var propColor = d3.scaleLinear().domain([0,2])
-        .range(["red", "blue"])
 
-        var main = 
-        d3.select(this._tag)
-                .append("svg")
-                .attr("width", this._size.width)
-                .attr("height", this._size.height);
-        
-        var g_controller = 
-                main.append("g")
-                .attr("width", this.controller_width)
-                .attr("heght", this.controller_height)
 
-        var g_viewer = 
-        main.append("g")
-                .attr("class", "viewer")
-                .attr("width", this.viewer_width)
-                .attr("heght", this.viewer_height)
-
-                var clip = g_viewer.append("clipPath")
-.attr("id", "clip")
-.append("rect")
-.style("fill", "red")
-.attr("width", this.viewer_width-2*this.axis_delta )
-.attr("height", this.viewer_height-3*this._margin_viewer.top )
-.attr("x", this.axis_delta+1)
-.attr("y", 3*this._margin_viewer.top)
-
-g_controller.append("clipPath")
-.attr("id", "clip2")
-.append("rect")
-.style("fill", "red")
-.attr("width", this.viewer_width-2*this.axis_delta )
-.attr("height", this.viewer_height+this.controller_height )
-.attr("x", this.axis_delta+1)
-.attr("y", 3*this._margin_viewer.top)
-
-var g_viewer2 = 
-        main.append("g")
-        .attr("clip-path", "url(#clip)");
-
-        var g_controller2 = 
-        main.append("g")
-        .attr("clip-path", "url(#clip2)");
-
+    
      
         var xrange = jdata.xRange();
         var yrange = jdata.yRange();
@@ -170,30 +320,30 @@ var g_viewer2 =
             //.extent([[0, 0], [this._size.width_upper, this._size.height_upper]]);
 
 
-        var xaxis_grid=g_viewer.append("g")
+        var xaxis_grid=this.dataCanvas.append("g")
             .attr("id", "xaxis_grid")
             .attr("transform", "translate(0," +  newHeight + ")")
         //var ticks = scaleX.ticks();
         //ticks.push(scaleX(1.0))
         xaxis_grid.call(make_y_grid().tickSize(-(this.viewer_height-3*this._margin_viewer.top)).tickPadding(10).tickFormat(null))
   
-        var xaxis=g_viewer.append("g")
+        var xaxis=this.dataCanvas.append("g")
             .attr("id", "xaxis")
             .attr("transform", "translate(0," +  newHeight + ")")
         
         xaxis.call(x_axis)
         //.tickFormat(null));
-        var yaxis_grid = g_viewer.append("g")
+        var yaxis_grid = this.dataCanvas.append("g")
             .attr("id", "yaxis_grid")
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis_grid.call(make_x_grid().tickSizeInner(-(this.viewer_width-2*this.axis_delta)).tickPadding(10).tickFormat(null));
 
-        var yaxis = g_viewer.append("g")
+        var yaxis = this.dataCanvas.append("g")
             .attr("id", "yaxis")
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis.call(y_axis);
 
-        var yaxis_bottom = g_controller.append("g")
+        var yaxis_bottom = this.propCanvas.append("g")
             .attr("id", "yaxis_bottom")
             .attr("transform", "translate(" +this.axis_delta+","+(newHeight + this.effective_controller_height_difference - this.effective_controller_height+1)+")")
             yaxis_bottom.call(y_axisBottom.ticks(4).tickFormat(
@@ -210,10 +360,9 @@ var g_viewer2 =
             }));
            
 
-        var xaxis_bottom2 = g_controller2.append("g")
+        var xaxis_bottom2 = this.propCanvasFront.append("g")
         .attr("id", "xaxis_bottom")
         .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-        console.log(jdataIntervalList)
         xaxis_bottom2.call(d3.axisBottom(scaleX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(3).tickFormat(()=>{ return "" })).select(".domain").remove();
         /*
         for (let el of jdataIntervalList){
@@ -245,7 +394,7 @@ var g_viewer2 =
                 }
             ));*/
         
-        var xaxis_bottom2_1 = g_controller
+        var xaxis_bottom2_1 = this.propCanvas
             .append("g")
             .attr('id', 'xaxis_bottom2_1')
             .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
@@ -331,7 +480,7 @@ var newY = scaleY;
 var newBY = scaleYBottom;
 
                 
-        var lineGraph = g_viewer2
+        var lineGraph = this.dataCanvasFront
             .selectAll(".linegraph")
             .append("g")
             //.data(jdataList)
@@ -349,7 +498,7 @@ var newBY = scaleYBottom;
                 console.log("dragend")
             });
 
-            var lineGraphColor = [];
+            this.lineGraphColor = [];
             var lg = lineGraph.append("path")
             .attr("d", (d)=>{ 
                 var res = ""
@@ -362,7 +511,7 @@ var newBY = scaleYBottom;
             .attr("class", "liness")
             .attr("stroke", (d, i)=>{
                 let c = colorScale((i+2).toString())
-                lineGraphColor.push(c)
+                this.lineGraphColor.push(c)
                 return c
             })
             .attr("fill", "none")
@@ -370,26 +519,14 @@ var newBY = scaleYBottom;
             .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
             //.attr("class", "linegraph")
             
-            console.log(this.json.extentList())
-            var lineGraph2 = g_controller2
-            .selectAll(".linegraph")
-            .append("g")
-            .data(this.json.extentList())
-            .enter()
+           
+
+        this.drawPropCanvas();
             
-            lineGraph2.append("path")
-            .attr("d", (d)=>{ 
-                return lineGenerator2(d)
-            })
-            .attr("stroke", "blue")
-            .attr("class", "liness2")
-            .attr("stroke", (d, i)=>{return propColor((i+2).toString())})
-            .attr("fill", "none")
-            .attr("stroke-width", 1.5)
-            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
 
 
-        var focus = g_viewer
+
+        var focus = this.dataCanvas
             //.append('g').style('display', 'none')
             .attr("transform", "translate(0,"+this._margin_viewer.top+")");
 
@@ -456,20 +593,9 @@ var newBY = scaleYBottom;
             .style("font-size", ()=>{ return "11px" });
 */
 
+        
 
-        lineGraph2.append('circle')
-            .attr("r", 7)
-            .attr("stroke", (d, i2)=>{ return lineGraphColor[i2]})
-            //.style("stroke", "black")
-            .style("fill", "none")
-            .style("stroke-width", "1px")
-            .attr('id', 'focusCircle2')
-            // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
-            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
-            .attr('cy', (d,i2)=>{
-                var yyt = newBY(1);
-                return yyt;    
-            });
+            
 
         focus.append('line')
             .attr('id', 'focusLineX')
@@ -502,6 +628,7 @@ var newBY = scaleYBottom;
     //var newX = d3.event.transform.rescaleX(scaleX);
     //var newY = d3.event.transform.rescaleY(scaleY);
     newX = d3.event.transform.rescaleX(scaleX);
+    this.newScaleX = newX;
     newY = d3.event.transform.rescaleY(scaleY);
     //newBY = d3.event.transform.rescaleY(scaleYBottom);
     // update axes with these new boundaries
@@ -541,10 +668,11 @@ var newBY = scaleYBottom;
     .y(function(d) { return scaleYBottom(d[1]); }).curve(d3.curveMonotoneX);
 
 
-    g_controller2
+    /*
+    this.propCanvasFront
             .selectAll(".liness2")
             .attr("d", (d)=>{ return lineGenerator2(d)})
-
+*/
    
 
     var lineGenerator = 
@@ -562,6 +690,18 @@ var newBY = scaleYBottom;
         }
         return res
       })
+
+
+      this.propGraphGroup
+            .select(".propGraphData")
+            .attr("d", (d)=>{ 
+                //return lineGenerator2(d)
+                var res = ""
+                for(let e of d.value){
+                    res += lineGenerator2(e)
+                }
+                return res
+            })
       //.attr('x', function(d) {return newX(d.Sepal_Length)})
       //.attr('y', function(d) {return newY(d.Petal_Length)});
   //Line_chart.select(".line").attr("d", line);
@@ -569,6 +709,7 @@ var newBY = scaleYBottom;
   //context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
   var mouse = d3.mouse($(this._tag)[0]);
   var pos = newX.invert(mouse[0]);
+  this.pos = pos;
   var i = bisectDate(cx1,pos);
 
     if (cx1.length -1 < i){
@@ -577,7 +718,6 @@ var newBY = scaleYBottom;
     if(i === 0){
         i = 1;
     }
-    console.log(cx1.length)
     var d0 = cx1[i - 1];
     var d1 = cx1[i];
     
@@ -623,23 +763,23 @@ var newBY = scaleYBottom;
         });///.style('opacity', "1")
         //scaleX = newX;
         //scaleY = newY;
-        lineGraph2.selectAll("#focusCircle2")
+        this.propGraphGroup.selectAll("#focusCircle2")
         .attr('cx', xx)
-}
+    }
         );
     
         var bisectDate = d3.bisector(function(d) { return d[0]; }).left;
 
-        g_controller
+        this.propCanvas
             .append("rect")
             .attr("id", "controllerRect")
             .attr("width", this.viewer_width-2*this.axis_delta)
             .attr('height', this.effective_controller_height)
             .attr("transform", "translate("+this.axis_delta+","+(this.viewer_height+2*this._margin_viewer.top-8.5)+")")
             .style("fill-opacity", "0.0")
-            .on("mouseover")
+            //.on("mouseover")
            
-        g_viewer
+        this.dataCanvas
             .append("rect")
             .attr("id", "mainrect")
             .attr('width', this.viewer_width-2*this.axis_delta)
@@ -660,11 +800,12 @@ var newBY = scaleYBottom;
                 //var xt = transform.rescaleX(scaleX), yt = transform.rescaleY(scaleY);
                 var mouse = d3.mouse($(this._tag)[0]);
                 var pos = newX.invert(mouse[0]);
+                this.pos = pos;
                 var i = bisectDate(cx1,pos);
                 //console.log(pos);
                 if (i <= 0 || cx1.length -1 < i){
                     // below 0 is undefined
-                    console.log("??!!")
+             
                     
                 }else{
                     var d0 = cx1[i - 1];
@@ -703,13 +844,13 @@ var newBY = scaleYBottom;
                         // http://jsfiddle.net/VRyS2/1/
                         let newTString = tmpText.reduce((acc, cur, i22)=>{
                             if(acc == ""){
-                                console.log("???");
+                               
                             }
                             return acc += (`
                                 <li class="liclass">
                                     <div class="input-color">
                                         <input type="text" value="`+ cur + ` "/>
-                                        <div class="color-box" style="background-color: `+lineGraphColor[i22]+`;"></div>
+                                        <div class="color-box" style="background-color: `+this.lineGraphColor[i22]+`;"></div>
                                         <!-- Replace "#FF850A" to change the color -->
                                     </div>
                                 </li>`);
@@ -736,9 +877,14 @@ var newBY = scaleYBottom;
                             var yyt = newY(ffinal_value[1]);
                             return yyt;    
                         });///.style('opacity', "1");
-                    
-                        lineGraph2.selectAll("#focusCircle2")
+                        this.xx = xx;
+                        this.propGraphGroup.selectAll("#focusCircle2")
                         .attr('cx', xx)
+                        .attr('cy', (d,i2)=>{
+                            var i222 = d3.bisect(d.xs,pos);
+                            var yyt = newBY(d.ys[i222]);
+                            return yyt;    
+                        });
 
                     
                     focus.select('#focusLineX')

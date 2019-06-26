@@ -207,7 +207,7 @@ class Api:
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
             import json
-            f = open("../visualize/src/Data/test.json", "w")
+            f = open("../visualize/src/DataDir/test.json", "w")
             json.dump(outer2, f)
 #            print(json.dump(d_ttt, f))
             f.close()
