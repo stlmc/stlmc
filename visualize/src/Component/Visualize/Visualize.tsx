@@ -288,6 +288,19 @@ class Json {
     }
 
     /**
+     * this will replace dataList() eventually.
+     */
+    getDataListMinor(name:string[]): DataList[]{
+        var tmp: DataList[] = [];
+        for(let e of this._intervals.names){
+            if(name.includes(e)){
+                tmp.push(new DataList(e, this.dataByNameList(e)))
+            }
+        }
+        return tmp;
+    }
+
+    /**
      * Get data List item... update... later..
      */
     dataList():[number, number][][]{

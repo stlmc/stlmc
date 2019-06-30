@@ -1,5 +1,4 @@
 import * as d3 from 'd3';
-import {Json} from '../../Visualize/Visualize';
 import $ from "jquery";
 import "./Visualize.scss";
 
@@ -44,6 +43,7 @@ class Renderer{
         this.controller_height = this._size.height-this._margin_controller.top-this._margin_controller.bottom-this.height_delta;
         this.popup = true;     
 
+        this._selectedVariables = [];
     }
 
     /**
@@ -52,18 +52,22 @@ class Renderer{
      */
     setCanvas(){
         // set main canvas
-        this.canvas = d3.select(this._tag).append("svg").attr("width", this._size.width).attr("height", this._size.height);   
+        this.canvas = d3.select(this._tag).append("svg").attr("id", "main_svg").attr("width", this._size.width).attr("height", this._size.height);   
         // set data canvas
         this.setDataCanvas();
         // set prop canvas
         this.setPropCanvas();
     }
 
-    reload(isEmpty){
-        d3.select("svg").remove();
+    reload(isEmpty, propName){
+        d3.selectAll("#main_svg").remove();
+        d3.selectAll("#tooltip").remove();
         this.setCanvas();
-        if(!isEmpty)
+        if(!isEmpty){
+            this.updateProp(propName)
             this.draw();
+        }
+            
     }
     /**
      * data canvas has 2 cavases innerly, back data canvas does nothing
@@ -234,6 +238,7 @@ class Renderer{
 
     setdata(jd){
         this.json = jd;
+        this._selectedVariables = this.json.names
         if (!this.json.isEmpty()){
             this.setBaseScale();
         }
@@ -251,6 +256,21 @@ class Renderer{
         return this.json.propNames;
     }
 
+    get selectedVariables(){
+        return this._selectedVariables;
+    }
+
+    set selectedVariables(selected){
+        //this._selectedVariables = selected
+        if(selected){
+            this._selectedVariables = [];
+            for(let el of selected){
+                console.log("selected: "+ el)
+                this._selectedVariables.push(el)
+            }
+        }
+    }
+
 
     draw(){
 
@@ -261,7 +281,10 @@ class Renderer{
         
         var jdata = this.json.data;
         var jdataList = this.json.dataList();
-        var newJdataList = this.json.getDataList();
+        var newJdataList = this.json.getDataListMinor(this._selectedVariables);
+        console.log(this._selectedVariables)
+        console.log(this.json.names)
+        console.log("newJdata: "+newJdataList)
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
         var jdataInter = this.json._props;
@@ -537,6 +560,7 @@ var newBY = scaleYBottom;
 
         var tooltip2 = d3.select(this._tag)
             .append("div")
+              .attr("id", "tooltip")
               .style("position", "absolute")
               .style("visibility", "hidden")
               .style("background-color", "rgba(0, 0, 0, 0.7)")
@@ -884,21 +908,7 @@ var newBY = scaleYBottom;
                             var i222 = d3.bisect(d.xs,pos);
                             var yyt = newBY(d.ys[i222]);
                             return yyt;    
-                        });
-
-                    
-                    focus.select('#focusLineX')
-                        .attr('x1', xx).attr('y1', scaleY(jdata.yRange()[0]))
-                        .attr('x2', xx).attr('y2', scaleY(jdata.yRange()[1]))
-                        //.style("stroke", rainbow(0.8))
-                        .style("stroke-width",  "1px");
-                    focus.select('#focusLineY')
-                        .attr('x1', scaleX(jdata.xRange()[0])).attr('y1', yy)
-                        .attr('x2', scaleX(jdata.xRange()[1])).attr('y2', yy)
-                        //.style("stroke", rainbow(0.8))
-                        .style("stroke-width",  "1px");
-                    
-
+                        });             
                 }
             }).call(
                 zoom
