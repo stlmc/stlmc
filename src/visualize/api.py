@@ -11,14 +11,17 @@ import matplotlib.pyplot as plt
 
 
 class Api:
-    def __init__(self, model, modeVar, contVar, ODE, props, bound, mode_module):
+    def __init__(self, model, modeVar, contVar, subvars, props, bound, mode_module):
         self.model = model
         self.modeVar = modeVar
         self.contVar = contVar
-        self.ODE = ODE
+        self.subvars = subvars
         self.props = props
         self.bound = bound
         self.mode_module = mode_module
+        self.IDmodeModule = {}
+        for k in range(len(self.mode_module)):
+            self.IDmodeModule[k] = self.mode_module[k]
 
     def setStrStlFormula(self, strStlFormula):
         self.stl = strStlFormula
@@ -70,57 +73,60 @@ class Api:
                     if "time" + str(i) == k.name():
                         result.append(float(self.model[k].as_decimal(6).replace("?", "")))
         return result
-   
+  
     def getODE(self):
-        result = []
-        modeResult = []
-        if self.model is not None:
-            for i in range(self.bound+2):
-                getModeConsts = []
-                curModeValue = {}
-                for j in self.getModesId():
-                    declares = self.model.decls()
-                    for k in declares:
-                        if (j + "_" + str(i)) == k.name():
-                            if isinstance(self.model[k], z3.z3.BoolRef):
-                                curModeValue[k.name()] = self.model[k]
-                                getModeConsts.append(Bool(k.name()[:-2]) == BoolVal(True if str(self.model[k]) == "True" else False))
-                            else:
-                                curModeValue[k.name()] = float(self.model[k].as_decimal(6).replace("?", ""))
-                                getModeConsts.append(Real(k.name()[:-2]) == RealVal(self.model[k]))
-                            declares.remove(k)
+       result = []
 
-                for k in self.ODE.keys():
-                    getModeConsts.append(k)
-                    coincide = checkSat(getModeConsts)[0]
-                    if coincide == z3.sat:
-                        toString = list()
-                        for m in range(len(self.ODE[k])):
-                            toString.append(str(self.ODE[k][m]))
-                        result.append(toString)
-                        break
-                    getModeConsts.pop()
+       if self.model is not None:
+           for i in range(self.bound+2):
+               getModeConsts = []
+               for j in self.getModesId():
+                   declares = self.model.decls()
+                   for k in declares:
+                       if (j + "_" + str(i)) == k.name():
+                           if isinstance(self.model[k], z3.z3.BoolRef):
+                               getModeConsts.append(Bool(k.name()[:-2]) == BoolVal(True if str(self.model[k]) == "True" else False))
+                           else:
+                               getModeConsts.append(Real(k.name()[:-2]) == RealVal(self.model[k]))
+                           declares.remove(k)
 
-                modeResult.append(curModeValue)   
-        return result
+               for k in range(len(self.mode_module)):
+                   mode = self.IDmodeModule[k].getMode().getExpression(self.subvars)
+                   getModeConsts.append(mode)
+                   coincide = checkSat(getModeConsts)[0]
+                   if coincide == z3.sat:
+                       result.append(k)
+                       break
+                   getModeConsts.pop()
+
+
+           #check matched modeModule’s mode
+           #for i in range(len(result)):
+           #    print(self.IDmodeModule[result[i]])
+
+       return result
+
 
     def getProposition(self):
-        result = {}
-        if self.model is not None:
-            for i in range(len(self.props)):
-                subResult = []
-                propID = str(self.props[i].getId())
-                idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
-                for j in range(self.bound+2):
-                    declares = self.model.decls()
-                    for k in declares:
-                        if idCheck and (propID + "_" + str(j) == k.name()):
-                            subResult.append(str(self.model[k]))
-                            declares.remove(k)
-                if idCheck: 
-                    result[str(self.props[i].getId())] = subResult
-        return result 
-    
+       result = {}
+       idPropExp = {}
+       if self.model is not None:
+           for i in range(len(self.props)):
+               subResult = []
+               propID = str(self.props[i].getId())
+               idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
+               for j in range(self.bound+2):
+                   declares = self.model.decls()
+                   for k in declares:
+                       if idCheck and (propID + "_" + str(j) == k.name()):
+                           subResult.append(str(self.model[k]))
+                           declares.remove(k)
+               if idCheck and (len(subResult) > 0):
+                   result[str(self.props[i].getId())] = subResult
+                   idPropExp[str(self.props[i].getId())] = str(self.props[i].getExpStr())
+       print(idPropExp)
+       return result
+
     def visualize(self):
         try:
             #var_list = self.getVarsId()
@@ -130,11 +136,22 @@ class Api:
             ode_l = self.getODE()
             for i in range(len(ode_l)):
                 var_list_tmp = []
+                modexps = self.mode_module[ode_l[i]].getFlow().exp()
+                for j in modexps:
+                    var_list_tmp.append(j.var2str())
+                var_list.append(var_list_tmp)
+
+            #print(var_list)
+
+            #ode_effective = self.ODE()
+            '''
+            for i in range(len(ode_l)):
+                var_list_tmp = []
                 for j in ode_l[i]:
                     x = j.split("=")
                     var_list_tmp.append(x[0].replace(" ", ""))
                 var_list.append(var_list_tmp)
-
+            '''
             t = []
             sum = 0.0
             sum_pre = 0.0
@@ -146,41 +163,33 @@ class Api:
                     sum += tsp[t_el]
                 if t_el == 0:
                     t.append(np.linspace(0, sum))
-                    #t_tmp = list()
-                    #t_tmp.append(0)
-                    #t_tmp.append(sum)
-                    #print(t_tmp)
-                    #t.append(t_tmp)
                     print("0 ~ "+str(sum))
                 else:
-                    #t_tmp = list()
-                    #t_tmp.append(sum_pre)
-                    #t_tmp.append(sum)
-                    #print(t_tmp)
                     print(str(sum_pre) + " ~ " + str(sum))
                     t.append(np.linspace(sum_pre, sum))
-            #t.append(np.linspace(sum, sum))
             fig = plt.figure()
             z = []
+            print("start")
+            print(c_val)
+            print(str(len(self.mode_module)))
             for var in range(len(var_list)):
                 i_val = []
+                print(str(var))
                 for key in var_list[var]:
+                    print("meme => "+str(var)+"===>"+str(c_val[key][var][0]))
                     i_val.append(c_val[key][var][0])
-                    self.mode_module[var].getFlow().var_dict[key] = c_val[key][var][0]
-                z.append(odeint(lambda z,t: self.mode_module[var].getFlow().exp2exp(), i_val, t[var]))
-                #c = ['b', 'r', 'c', 'm']
-                #for i in range(len(var_list)):
+                    self.mode_module[ode_l[var]].getFlow().var_dict[key] = c_val[key][var][0]
+                    print("meme end =>"+str(var))
+                    #print("Time iter: "+str(var)+" and var iter: "+str(c_val[key][var][0])+" ival:"+str(i_val)+" time t list:"+str(t[var]))
+                z.append(odeint(lambda z,t: self.mode_module[ode_l[var]].getFlow().exp2exp(), i_val, t[var]))
             p = []
             vv = []
             d_ttt = dict()
             d_ttt['var'] = var_list
-            #d_ttt2 = dict()
-            #d_ttt3 = dict()
             # time space array and data array size must be same!
             # len(t) === len(z)
             outer=[]
             for i in range(len(var_list)):
-                #outer=[]
                 d_ttt2=dict()
                 for k in range(len(var_list[i])):
                     inner=[]
@@ -189,7 +198,6 @@ class Api:
                         pair.append(t[i][j])
                         pair.append(z[i][j][k])
                         inner.append(pair)
-                    #outer.append(inner)
                     d_ttt2[var_list[i][k]] = inner
                 outer.append(d_ttt2)    
             print(outer)
@@ -197,7 +205,8 @@ class Api:
             outer2['data'] = outer
             print(self.getProposition())
             outer2['prop'] = self.getProposition()
-            
+           
+        
             for i in range(len(z)):   
                 print(z[i])
                 d_ttt[str(i)] = z[i].tolist()
@@ -206,29 +215,14 @@ class Api:
                 plt.ylabel('variables')
                 plt.xlabel('time')
                 plt.legend(p, var_list, loc='best')
+            
             import json
             f = open("../visualize/src/DataDir/test.json", "w")
             json.dump(outer2, f)
-#            print(json.dump(d_ttt, f))
             f.close()
             plt.show()
     
-    #        self.flowdecl.var_dict['constx1'] = 21.0
-    #        self.flowdecl.var_dict['constx2'] = 21.0
-    #        self.flowdecl.var_dict['x1']=21.0
-    #        self.flowdecl.var_dict['x2']=21.0
-    #        rrr = self.flowdecl.exp2exp()
-            #print(rrr)
-    #        z = odeint(lambda z,t: rrr, i_val, t)
             print("ode z : " + str(len(z)))
-            # plot results
-    #        c = ['b', 'r', 'c', 'm']
-    #        for i in range(len(var_list)):
-    #            plt.plot(t,z[:,i], c=c[i], label=var_list[i])
-    #        plt.ylabel('variables')
-    #        plt.xlabel('time')
-    #        plt.legend(loc='best')
-    #        plt.show()
         except Exception as ex:
-            print('Nothing to draw!', ex)
+            print('Nothing to draw!', str(ex))
             

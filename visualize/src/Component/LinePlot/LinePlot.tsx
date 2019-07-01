@@ -177,10 +177,22 @@ class LinePlot extends React.Component<Props, State> {
             category: "twowatertank",
             dir: "../../DataDir/twoWatertankPoly_3.json",
             title: "twoWatertankPoly_3"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankLinear_2.json",
+            title: "twoWatertankLinear_2"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankLinear_3.json",
+            title: "twoWatertankLinear_3"
+        },{
+            category: "twowatertank",
+            dir: "../../DataDir/twoWatertankLinear_4.json",
+            title: "twoWatertankLinear_4"
         }]
     }
 
-    private json = new Json(require('../../DataDir/railRoadPoly_1.json'));
+    private json = new Json(require('../../DataDir/test.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
@@ -272,14 +284,18 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     onVariableChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta){
-        console.log("hello")
-        console.log((value2 as ({ value: string; label: string; }[])));
+        //console.log("hello")
+        //console.log((value2 as ({ value: string; label: string; }[])));
+        let target = (value2 as ({ value: string; label: string; }[]))
         let tmp:string[] = []
-        for(let el of (value2 as { value: string; label: string; }[])){
-            tmp.push(el["value"])
+        if(target){        
+            for(let el of target){
+                tmp.push(el["value"])
+            }
         }
         this.renderer.selectedVariables = tmp;
         this.renderer.reload(this.json.isEmpty(), this.json.propNames[0]);
+        //this.renderer.draw()
         //this.selectedVariables = (value2 as { value: string; label: string; }[])
     }
 

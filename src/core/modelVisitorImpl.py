@@ -366,6 +366,12 @@ class modelVisitorImpl(modelVisitor):
         child = self.visit(ctx.formula())
         return {'[]': GloballyFormula, '<>': FinallyFormula}[ctx.op.text](time, universeInterval, child)
 
+    # Visit a parse tree produced by stlParser#binaryTemporalFormula.
+    def visitBinaryTemporalFormula(self, ctx:modelParser.BinaryTemporalFormulaContext):
+       time = self.visit(ctx.interval())
+       left = self.visit(ctx.formula()[0])
+       right = self.visit(ctx.formula()[1])
+       return {'U': UntilFormula, 'R': ReleaseFormula}[ctx.op.text](time, universeInterval, left, right)
 
     # Visit a parse tree produced by modelParser#unaryFormula.
     def visitUnaryFormula(self, ctx:modelParser.UnaryFormulaContext):

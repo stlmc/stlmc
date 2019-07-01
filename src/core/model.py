@@ -180,7 +180,7 @@ class CompCond:
             self.left = RealVal(float(left)) if isNumber(left) else left
             self.right = RealVal(float(right)) if isNumber(right) else right
     def __repr__(self):
-        return str(self.left) + str(self.op) + str(self.right)
+        return str(self.left) + " " + str(self.op) + " " + str(self.right)
     def getExpression(self, varDict):
         left = self.left
         right = self.right
@@ -299,7 +299,10 @@ class DiffEq:
 
     def __repr__(self):
         return str(self.contVar) + " = " + str(self.flow)
-    
+   
+    def var2str(self):
+        return str(self.contVar)
+
     def getVarId(self):
         return str(self.contVar)
     
@@ -373,6 +376,10 @@ class flowDecl:
 
     def __repr__(self):
         return str(self.type) + " " +  str(self.exps)
+    
+    def exp(self):
+        return self.exps
+
     def getExpression(self, varDict):
         return self.exps
     
@@ -451,6 +458,8 @@ class propDecl:
         return Bool(str(self.id))
     def getType(self):
         return Type.Bool
+    def getExpStr(self):
+        return str(self.cond)
 
 class formulaDecl:
     def __init__(self, formulaList):
@@ -501,10 +510,13 @@ class StlMC:
         return result
 
     def getSpecificModel(self):
+        '''
         ODE = dict()
         for i in range(len(self.modeModule)):
             ODE[self.modeModule[i].getMode().getExpression(self.subvars)] = self.modeModule[i].getFlow().getExpression(self.subvars)
         return Api(self.model, self.modeVar, self.contVar, ODE, self.prop, self.bound, self.modeModule)
+        '''
+        return Api(self.model, self.modeVar, self.contVar, self.subvars, self.prop, self.bound, self.modeModule)
 
    # an implementation of Algorithm 1 in the paper
     def modelCheck(self, stlFormula, bound, timeBound, iterative=True):

@@ -93,269 +93,47 @@ class Renderer{
                 .attr("clip-path", "url(#dataCanvasClip)");
     }
 
-    /**
-     * Set base scale X for both data and proposition.
-     * newScaleX for zooming and panning.
-     */
-    setBaseScale(){
-        // get original data's x's extent since it is same as proposition's.
-        let xrange = this.json.data.xRange();
-
-        // set scale function for x
-        this.ScaleX = 
-            d3.scaleLinear()
-            .domain([xrange[0], xrange[1] + 1])
-            .range([this.axis_delta, this.viewer_width-this.axis_delta]);
-
-        this.newScaleX = this.ScaleX;
-    }
-
-        /**
-     * prop canvas has 2 cavases innerly, back prop canvas does nothing
-     * and front prop canvas is for user interactions (such as, zooming, clipping, mouse moving etc)
-     * 
-     * Need to use propCanvasFront for interactions and propCanvas(back) for data showing or redraw, update.
-     */
-    setPropCanvas(){
-
-        // set prop line color function
-        this.propColor = d3.scaleLinear().domain([0,2]).range(["red", "blue"])
-        // set prop canvas
-        this.propCanvas = this.canvas.append("g").attr("width", this.controller_width).attr("heght", this.controller_height);
-        // set clipping path
-        this.propCanvas.append("clipPath")
-            .attr("id", "propCanvasClip")
-                .append("rect")
-                .style("fill", "red")
-                .attr("width", this.viewer_width-2*this.axis_delta )
-                .attr("height", this.viewer_height+this.controller_height )
-                .attr("x", this.axis_delta+1)
-                .attr("y", 3*this._margin_viewer.top)
-        // set canvas front
-        this.propCanvasFront = 
-            this.canvas.append("g")
-            .attr("clip-path", "url(#propCanvasClip)");
-    }
-
-    drawPropCanvas(){
-
-        // update when redraw, remove previous proposition graph.
-        this.propCanvasFront.selectAll("#propGraphGroup").remove();
-        this.propCanvasFront.selectAll("#focusCircle2").remove();
-        /**
-         * this is proposition's graph group
-         */
-        let data = this.json.extentListByName(this.propName);
-        //console.log(this.json.extentListByName(this.propName))
-        this.propGraphGroup = this.propCanvasFront
-            .append("g")
-            .attr("id", "propGraphGroup")
-            .selectAll(".propGraphData")
-            .data([data])
-            .enter()
-
-        // set scale function for y
-        // 0: none, 1: false, 2: true, 3:none
-        let propScaleY =
-            d3.scaleLinear()
-            .domain([0, 3])
-            .range([this.effective_controller_height, 0]);
-
-        let scaleX = this.newScaleX;
-
-        // set propostion graph line generator
-        this.propLineGenerator = 
-            d3.line()
-            //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
-            .x(function(d) { return scaleX(d[0]); })
-            .y(function(d) { return propScaleY(d[1]); }).curve(d3.curveMonotoneX);
-
-        /**
-         * this is actual data of propsition graph
-         */
-        this.propGraphGroup
-            .append("path")
-            .attr("d", (d)=>{
-
-                var res = ""
-                for(let e of d.value){
-                    res += this.propLineGenerator(e)
-                }
-                return res
-            })
-            .attr("class", "propGraphData")
-            .attr("stroke", "red")
-            .attr("fill", "none")
-            .attr("stroke-width", 1.5)
-            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
-
-        /**
-         * Draw circle
-         */
-        if(data.value.length != 0){
-   
-            let pos = this.pos;
-            this.propGraphGroup
-            .append('circle')
-            .attr("r", 7)
-            .attr("stroke", "red")
-            //.style("stroke", "black")
-            .style("fill", "none")
-            .style("stroke-width", "1px")
-            .attr('id', 'focusCircle2')
-            // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
-            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
-            .attr('cx', this.xx)
-            .attr('cy', (d,i2)=>{
-                var i222 = d3.bisect(d.xs,pos);
-                var yyt = propScaleY(d.ys[i222]);
-                return yyt;    
-            });
-        }
-
-            /*.attr('cy', (d,i2)=>{
-                console.log("hello")
-                console.log(d.xs)
-                var i222 = d3.bisect(d.xs,this.pos);
-                console.log(this.pos)
-                console.log(i222)
-                var yyt = newBY(d.ys[i222]);
-                return yyt;    
-            });*/
-    }
-
-    redrawPropCanvas(propName){
-        this.propName = propName;
-        this.drawPropCanvas();
-    }
-
-    resetdata(jd){
-        this.json = jd;
-        if (!this.json.isEmpty()){
-            this.setBaseScale();
-        }
-    }
-
-    setdata(jd){
-        this.json = jd;
-        this._selectedVariables = this.json.names
-        if (!this.json.isEmpty()){
-            this.setBaseScale();
-        }
-    }
-
-    updatePopup(popup){
-        this.popup = popup;
-    }
-
-    updateProp(propName){
-        this.propName = propName;
-    }
-
-    getPropList(){
-        return this.json.propNames;
-    }
-
-    get selectedVariables(){
-        return this._selectedVariables;
-    }
-
-    set selectedVariables(selected){
-        //this._selectedVariables = selected
-        if(selected){
-            this._selectedVariables = [];
-            for(let el of selected){
-                console.log("selected: "+ el)
-                this._selectedVariables.push(el)
-            }
-        }
-    }
-
-
-    draw(){
-
-        // color
-        // https://github.com/d3/d3-scale/blob/master/README.md#sequential-scales
-        // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
-        // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
-        
+    drawDataCanvas(){
         var jdata = this.json.data;
         var jdataList = this.json.dataList();
+        //var newJdataList = this.json.getDataList();
         var newJdataList = this.json.getDataListMinor(this._selectedVariables);
         console.log(this._selectedVariables)
         console.log(this.json.names)
         console.log("newJdata: "+newJdataList)
         var jdataIntervalList = this.json.intervalList();
         var jdataName = jdata.names;
-        var jdataInter = this.json._props;
-
-        //this.main22 = d3.select(this._tag).append("svg").attr("width", this._size.width).attr("height", this._size.height);
-        //this.g_controller22 = this.main22.append("g").attr("width", this.controller_width).attr("heght", this.controller_height);
 
         var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-
-
-    
-     
-        var xrange = jdata.xRange();
         var yrange = jdata.yRange();
-
-        let scaleX = 
-            d3.scaleLinear()
-                .domain([xrange[0], xrange[1] + 1])
-                .range([this.axis_delta, this.viewer_width-this.axis_delta]);
         
         var newHeight = this.viewer_height-this._margin_viewer.top;
+
         let scaleY = 
             d3.scaleLinear()
                 .domain([yrange[0] - 1, yrange[1] + 1])
                 .range([this.viewer_height-2*this._margin_viewer.top, this._margin_viewer.top]);
 
 
-        let scaleYBottom = 
-            d3.scaleLinear()
-                .domain([0, 3])
-                .range([this.effective_controller_height, 0]);
 
 
-        let x_axis = d3.axisBottom(scaleX);
+        let x_axis = d3.axisBottom(this.ScaleX);
         let y_axis = d3.axisLeft(scaleY);
-        let y_axisBottom = d3.axisLeft(scaleYBottom);
+        //let y_axisBottom = d3.axisLeft(scaleYBottom);
 
-        var make_y_grid = () => { return d3.axisBottom(scaleX); }
+        var make_y_grid = () => { return d3.axisBottom(this.ScaleX); }
         var make_x_grid = () => { return d3.axisLeft(scaleY); }
-        var make_interval_grid = () => {
-            return d3.axisBottom(scaleX);
-        }
-     
-        // Add the brush feature using the d3.brush function
-        // initialize the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area
-        let brush = 
-        d3.brushX()                 
-            .extent( [ 
-                [this.axis_delta-1,newHeight+this.effective_controller_height_difference-this.effective_controller_height], 
-                [this.viewer_width-this.axis_delta+1, newHeight + this.effective_controller_height_difference] 
-            ]) 
-            .on("start brush", ()=>{
-               
-            }) // Each time the brush selection changes, trigger the 'updateChart' function
-            //.extent( [ [0,newHeight], [this.controller_width,this.effective_controller_height] ] )
-            //.extent([[0, 0], [this._size.width_upper, this._size.height_upper]]);
-
 
         var xaxis_grid=this.dataCanvas.append("g")
             .attr("id", "xaxis_grid")
             .attr("transform", "translate(0," +  newHeight + ")")
-        //var ticks = scaleX.ticks();
-        //ticks.push(scaleX(1.0))
         xaxis_grid.call(make_y_grid().tickSize(-(this.viewer_height-3*this._margin_viewer.top)).tickPadding(10).tickFormat(null))
   
         var xaxis=this.dataCanvas.append("g")
             .attr("id", "xaxis")
-            .attr("transform", "translate(0," +  newHeight + ")")
-        
+            .attr("transform", "translate(0," +  newHeight + ")")        
         xaxis.call(x_axis)
-        //.tickFormat(null));
+
         var yaxis_grid = this.dataCanvas.append("g")
             .attr("id", "yaxis_grid")
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
@@ -366,6 +144,7 @@ class Renderer{
             .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
         yaxis.call(y_axis);
 
+        /*
         var yaxis_bottom = this.propCanvas.append("g")
             .attr("id", "yaxis_bottom")
             .attr("transform", "translate(" +this.axis_delta+","+(newHeight + this.effective_controller_height_difference - this.effective_controller_height+1)+")")
@@ -381,95 +160,24 @@ class Renderer{
                         return " "
                     }
             }));
-           
+           */
 
         var xaxis_bottom2 = this.propCanvasFront.append("g")
         .attr("id", "xaxis_bottom")
         .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-        xaxis_bottom2.call(d3.axisBottom(scaleX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(3).tickFormat(()=>{ return "" })).select(".domain").remove();
-        /*
-        for (let el of jdataIntervalList){
-            main.append("line")
-                .attr("class", "zero")
-                .attr("x1", scaleX(el))
-                .attr("x2", scaleX(el))
-                .attr("y1", scaleY(10))
-                .attr("y2", scaleY((newHeight + this.effective_controller_height_difference+1)))
-                .style("stroke", "black")
-                //.attr("transform", "translate(0,"+(1)+")")
-                .style("stroke-dasharray", "4");
-            
-        }*/
+        xaxis_bottom2.call(d3.axisBottom(this.ScaleX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(3).tickFormat(()=>{ return "" })).select(".domain").remove();
 
-        /*
-        var xaxis_bottom2_1 = g_controller
-            .append("g")
-            .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-            .call(d3.axisBottom(scaleX).tickFormat(
-                (d, i)=>{
-                    if (jdataIntervalList.includes(d)){
-                        let v = jdataInter.elems[0].includes(d)
-                        return v;
-                    }
-                    else{
-                        return "";
-                    }
-                }
-            ));*/
         
         var xaxis_bottom2_1 = this.propCanvas
             .append("g")
             .attr('id', 'xaxis_bottom2_1')
             .attr("transform", "translate(0," +  (newHeight + this.effective_controller_height_difference+1) + ")")
-            .call(d3.axisBottom(scaleX).tickFormat(
+            .call(d3.axisBottom(this.ScaleX).tickFormat(
                 ()=>{ 
                     return ""
                 }));
 
-            /*
-        g_controller.append("defs").append("marker")
-            .attr("id", "triangle-end")
-            .attr("refX", 12)
-            .attr("refY", 6)
-            .attr("markerWidth", 30)
-            .attr("markerHeight", 30)
-            .attr("markerUnits","userSpaceOnUse")
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M 0 0 12 6 0 12 3 6")
-            //.attr("d", "M -6 0 6 6 -6 12 -3 6")
-            .style("fill", "black");
-        
-            g_controller.append("defs").append("marker")
-            .attr("id", "triangle-start")
-            .attr("refX", 0)
-            .attr("refY", 6)
-            .attr("markerWidth", 30)
-            .attr("markerHeight", 30)
-            .attr("markerUnits","userSpaceOnUse")
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M 0 6 12 0 9 6 12 12")
-            .style("fill", "black");
-
-        g_controller
-            .append("g")
-            .append("line")
-            .attr("class", "zero")
-            .attr("x1", scaleX(0))
-            .attr("x2", scaleX(1))
-            .attr("y1", scaleY(20))
-            .attr("y2", scaleY(20))
-            .style("stroke", "black")
-            .attr("marker-end", "url(#triangle-end)")
-            .attr("marker-start", "url(#triangle-start)")
-            .attr("transform", "translate(0,"+(this.effective_controller_height+this.effective_controller_height_difference)+")")
-            .style("stroke-dasharray", "4");*/
-/*
-        g_controller
-            .append("g")
-            .attr("transform", "translate(" +this.axis_delta+","+this._margin_viewer.top+")")
-            .call(d3.axisLeft(scaleBandY))*/
+        let scaleX = this.ScaleX
 
         var lineGenerator = 
             d3.line()
@@ -478,29 +186,9 @@ class Renderer{
             .y(function(d) { return scaleY(d[1]); }).curve(d3.curveMonotoneX);
 
 
-
-            var lineGenerator2 = 
-            d3.line()
-            //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
-            .x(function(d) { return scaleX(d[0]); })
-            .y(function(d) { return scaleYBottom(d[1]); }).curve(d3.curveMonotoneX);
-
-        // https://visualize.tistory.com/331
-        // Add a clipPath: everything out of this area won't be drawn.
-        /*
-        var clip = g_viewer.append("defs").append("SVG:clipPath")
-        .attr("id", "clip")
-        .append("SVG:rect")
-        ///.attr("width", 100)
-        .attr('width', this.viewer_width-2*this.axis_delta)
-        .attr('height', this.viewer_height-2*this._margin_viewer.top+this.effective_controller_height)
-        .attr("transform", "translate("+this.axis_delta+","+this._margin_viewer.top+")")
-        .style("fill", "red")
-        .style("fill-opacity", "0.5");
-*/
-var newX = scaleX;
+var newX = this.ScaleX;
 var newY = scaleY;
-var newBY = scaleYBottom;
+//var newBY = scaleYBottom;
 
                 
         var lineGraph = this.dataCanvasFront
@@ -509,26 +197,17 @@ var newBY = scaleYBottom;
             //.data(jdataList)
             .data(newJdataList)
             .enter()
-            
-            let drag = d3.drag()
-            .on('start', ()=>{
-                console.log("dragstart")
-            })
-            .on('drag', ()=>{
-                console.log("dragging")
-            })
-            .on('end', ()=>{
-                console.log("dragend")
-            });
 
             this.lineGraphColor = [];
             var lg = lineGraph.append("path")
             .attr("d", (d)=>{ 
-                var res = ""
-                for(let e of d.value){
-                    res += lineGenerator(e)
+                if(this._selectedVariables.includes(d.name)){
+                    var res = ""
+                    for(let e of d.value){
+                        res += lineGenerator(e)
+                    }
+                    return res
                 }
-                return res
             })
             .attr("stroke", "blue")
             .attr("class", "liness")
@@ -540,14 +219,6 @@ var newBY = scaleYBottom;
             .attr("fill", "none")
             .attr("stroke-width", 1.5)
             .attr("transform", () => { return "translate(0,"+2*this._margin_viewer.top+")"})
-            //.attr("class", "linegraph")
-            
-           
-
-        this.drawPropCanvas();
-            
-
-
 
         var focus = this.dataCanvas
             //.append('g').style('display', 'none')
@@ -568,56 +239,7 @@ var newBY = scaleYBottom;
               .style("border-width", "1px")
               .style("border-radius", "5px")
               .style("padding", "10px")
-              //.style("width", "300px")
-              //.style("height", "300px")
-              /*.html(`
-              <p>I'm a tooltip written in HTML</p>
-              <img src='https://github.com/holtzy/D3-graph-gallery/blob/master/img/section/ArcSmal.png?raw=true'></img>
-              <br>Fancy<br>
-              <span style='font-size: 40px;'>Isn't it?</span>`);*/
-
-        
-        // for caching.
-        var lineGraph2x2 = [];
-        var lineGraphText = [];
-        /*
-        lineGraph2.append("text")
-            .attr('id', 'focusText2')
-            .attr("transform", ()=> { return "translate(2,"+(this.viewer_height+2*this._margin_viewer.top)+")"})
-            .text((d, i)=>{
-                for(let el of d){          
-                    if (jdataIntervalList.includes(el[0])){
-                        let v = jdataInter.elems[0].includes(el[0])
-                        lineGraphText.push(v)
-                        return v;
-                    }
-                    else{
-                        lineGraphText.push("")
-                        return "";
-                    }          
-                }     
-            })
-            .attr("x", (d)=>{
-                let min = d.reduce(
-                    (acc, cur) => {
-                        return acc[0] > cur[0]? cur:acc;
-                    }
-                )
-                let max = d.reduce(
-                    (acc, cur) => {
-                        return acc[0] > cur[0]? acc:cur;
-                    }
-                )
-                lineGraph2x2.push((min[0]+max[0])/2);
-                return scaleX((min[0]+max[0])/2);
-            })
-            .attr("y", (d)=>{
-                return scaleYBottom(2);
-            })
-            .style("font-size", ()=>{ return "11px" });
-*/
-
-        
+ 
 
             
 
@@ -651,7 +273,7 @@ var newBY = scaleYBottom;
             // recover the new scale
     //var newX = d3.event.transform.rescaleX(scaleX);
     //var newY = d3.event.transform.rescaleY(scaleY);
-    newX = d3.event.transform.rescaleX(scaleX);
+    newX = d3.event.transform.rescaleX(this.ScaleX);
     this.newScaleX = newX;
     newY = d3.event.transform.rescaleY(scaleY);
     //newBY = d3.event.transform.rescaleY(scaleYBottom);
@@ -661,44 +283,16 @@ var newBY = scaleYBottom;
     //xaxis_bottom.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height)).tickPadding(10).tickFormat(null)).select(".domain").remove()
     xaxis_bottom2.call(d3.axisBottom(newX).tickValues(jdataIntervalList).tickSize(-(this.viewer_height+100)).tickPadding(10).tickFormat(null)).select(".domain").remove();
     
-    /*
-    xaxis_bottom2_1.call(d3.axisBottom(newX).tickFormat(
-        (d, i)=>{
-            if (jdataIntervalList.includes(d)){
-                let v = jdataInter.elems[0].includes(d)
-                return v;
-            }
-            else{
-                return "";
-            }
-        }        
-    ));*/
 
     xaxis_bottom2_1.call(d3.axisBottom(newX).tickFormat(()=>{ return "" }));
 
-
-
     /*
-    lineGraph2.selectAll("#focusText2")
-            .attr("x", (d, i2)=>{
-                return newX(lineGraph2x2[i2]);
-            })
-*/
-
     var lineGenerator2 = 
     d3.line()
     //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
     .x(function(d) { return newX(d[0]); })
     .y(function(d) { return scaleYBottom(d[1]); }).curve(d3.curveMonotoneX);
-
-
-    /*
-    this.propCanvasFront
-            .selectAll(".liness2")
-            .attr("d", (d)=>{ return lineGenerator2(d)})
 */
-   
-
     var lineGenerator = 
             d3.line()
             //.defined(function(d, i, da){ console.log("hehe"); console.log(d[0]); var r= !ilist.includes(d[0]); console.log(r); return r;})
@@ -708,29 +302,15 @@ var newBY = scaleYBottom;
     lineGraph
       .selectAll(".liness")
       .attr("d", (d) => {
+        if(this._selectedVariables.includes(d.name)){
         var res = ""
         for(let e of d.value){
             res += lineGenerator(e)
         }
         return res
-      })
+      }
+    })
 
-
-      this.propGraphGroup
-            .select(".propGraphData")
-            .attr("d", (d)=>{ 
-                //return lineGenerator2(d)
-                var res = ""
-                for(let e of d.value){
-                    res += lineGenerator2(e)
-                }
-                return res
-            })
-      //.attr('x', function(d) {return newX(d.Sepal_Length)})
-      //.attr('y', function(d) {return newY(d.Petal_Length)});
-  //Line_chart.select(".line").attr("d", line);
-  //focus.select(".axis--x").call(xAxis);
-  //context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
   var mouse = d3.mouse($(this._tag)[0]);
   var pos = newX.invert(mouse[0]);
   this.pos = pos;
@@ -886,10 +466,6 @@ var newBY = scaleYBottom;
                         tooltip2.style("top", (200)+"px").style("left",(200)+"px").html(
                             newTString
                         )
-                  /*  focus.select('#focusCircle')
-                        .attr('cx', xx)
-                        .attr('cy', yy)
-                        .style("fill", rainbow(0.859))*/
                         lineGraph.selectAll("#focusCircle")
                         .attr('cx', xx)
                         .attr('cy', (d,i2)=>{
@@ -902,39 +478,223 @@ var newBY = scaleYBottom;
                             return yyt;    
                         });///.style('opacity', "1");
                         this.xx = xx;
+                        
                         this.propGraphGroup.selectAll("#focusCircle2")
                         .attr('cx', xx)
                         .attr('cy', (d,i2)=>{
                             var i222 = d3.bisect(d.xs,pos);
-                            var yyt = newBY(d.ys[i222]);
+                            var yyt = this.propScaleY(d.ys[i222]);
                             return yyt;    
-                        });             
+                        });    
                 }
             }).call(
                 zoom
             )
+    }
 
-            
-            
-            /*.on("ondragstart",()=>{
-                console.log("dragstart")
-            }).on("ondrag",()=>{
-                console.log("drag")
-            }).on("ondragend", ()=>{
-                console.log("dragend")
-            })*/
+    /**
+     * Set base scale X for both data and proposition.
+     * newScaleX for zooming and panning.
+     */
+    setBaseScale(){
+        // get original data's x's extent since it is same as proposition's.
+        let xrange = this.json.data.xRange();
 
-            /*
-            g_viewer.append("line")
-            .attr("class", "zero")
-            .attr("x1", scaleX(1))
-            .attr("x2", scaleX(1))
-            .attr("y1", scaleY(20))
-            .attr("y2", scaleY(21))
-            .style("stroke", "black")
-            .attr("transform", "translate(0,"+this._margin_viewer.top+")")
-            .style("stroke-dasharray", "4");*/
-                //.attr("transform", "translate("+this._margin_controller.left+","+(this._margin_viewer.top+this._size.height_upper-this._size.height_lower+this._margin_controller.top)+")");
+        // set scale function for x
+        this.ScaleX = 
+            d3.scaleLinear()
+            .domain([xrange[0], xrange[1] + 1])
+            .range([this.axis_delta, this.viewer_width-this.axis_delta]);
+
+        this.newScaleX = this.ScaleX;
+    }
+
+    /**
+     * prop canvas has 2 cavases innerly, back prop canvas does nothing
+     * and front prop canvas is for user interactions (such as, zooming, clipping, mouse moving etc)
+     * 
+     * Need to use propCanvasFront for interactions and propCanvas(back) for data showing or redraw, update.
+     */
+    setPropCanvas(){
+
+        // set prop line color function
+        this.propColor = d3.scaleLinear().domain([0,2]).range(["red", "blue"])
+        // set prop canvas
+        this.propCanvas = this.canvas.append("g").attr("width", this.controller_width).attr("heght", this.controller_height);
+        // set clipping path
+        this.propCanvas.append("clipPath")
+            .attr("id", "propCanvasClip")
+                .append("rect")
+                .style("fill", "red")
+                .attr("width", this.viewer_width-2*this.axis_delta )
+                .attr("height", this.viewer_height+this.controller_height )
+                .attr("x", this.axis_delta+1)
+                .attr("y", 3*this._margin_viewer.top)
+        // set canvas front
+        this.propCanvasFront = 
+            this.canvas.append("g")
+            .attr("clip-path", "url(#propCanvasClip)");
+
+        // set scale function for y
+        // 0: none, 1: false, 2: true, 3:none
+        this.propScaleY =
+            d3.scaleLinear()
+            .domain([0, 3])
+            .range([this.effective_controller_height, 0]);
+    }
+
+    drawPropCanvas(){
+
+        // update when redraw, remove previous proposition graph.
+        this.propCanvasFront.selectAll("#propGraphGroup").remove();
+        this.propCanvasFront.selectAll("#focusCircle2").remove();
+        /**
+         * this is proposition's graph group
+         */
+        let data = this.json.extentListByName(this.propName);
+        //console.log(this.json.extentListByName(this.propName))
+        this.propGraphGroup = this.propCanvasFront
+            .append("g")
+            .attr("id", "propGraphGroup")
+            .selectAll(".propGraphData")
+            .data([data])
+            .enter()
+
+    
+
+        let propAxis = d3.axisLeft(this.propScaleY);
+        let newHeight = this.viewer_height-this._margin_viewer.top;
+
+        // add y axis
+        var propAxisWithTick = this.propCanvas.append("g")
+            .attr("id", "yaxis_bottom")
+            .attr("transform", "translate(" +this.axis_delta+","+(newHeight + this.effective_controller_height_difference - this.effective_controller_height+1)+")")
+        propAxisWithTick.call(propAxis.ticks(4).tickFormat(
+                (d)=>{
+                    if (d==1){
+                        return "false"
+                    }
+                    else if (d==2){
+                        return "true"
+                    }
+                    else {
+                        return " "
+                    }
+            }));
+
+        let scaleX = this.newScaleX;
+        let scaleY = this.propScaleY;
+
+        // set propostion graph line generator
+        this.propLineGenerator = 
+            d3.line()
+            .x(function(d) { return scaleX(d[0]); })
+            .y(function(d) { return scaleY(d[1]); }).curve(d3.curveMonotoneX);
+
+        /**
+         * this is actual data of propsition graph
+         */
+        this.propGraphGroup
+            .append("path")
+            .attr("d", (d)=>{
+
+                var res = ""
+                for(let e of d.value){
+                    res += this.propLineGenerator(e)
+                }
+                return res
+            })
+            .attr("class", "propGraphData")
+            .attr("stroke", "red")
+            .attr("fill", "none")
+            .attr("stroke-width", 1.5)
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
+
+        /**
+         * Draw circle
+         */
+        if(data.value.length != 0){
+   
+            let pos = this.pos;
+            this.propGraphGroup
+            .append('circle')
+            .attr("r", 7)
+            .attr("stroke", "red")
+            //.style("stroke", "black")
+            .style("fill", "none")
+            .style("stroke-width", "1px")
+            .attr('id', 'focusCircle2')
+            // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
+            .attr("transform", () => { return "translate(0,"+(this.viewer_height+2*this._margin_viewer.top-8.5)+")"})
+            .attr('cx', this.xx)
+            .attr('cy', (d,i2)=>{
+                var i222 = d3.bisect(d.xs,pos);
+                var yyt = this.propScaleY(d.ys[i222]);
+                return yyt;    
+            });
+        }
+
+
+
+
+        
+    }
+
+    redrawPropCanvas(propName){
+        this.propName = propName;
+        this.drawPropCanvas();
+    }
+
+    resetdata(jd){
+        this.json = jd;
+        if (!this.json.isEmpty()){
+            this.setBaseScale();
+        }
+    }
+
+    setdata(jd){
+        this.json = jd;
+        this._selectedVariables = this.json.names
+        if (!this.json.isEmpty()){
+            this.setBaseScale();
+        }
+    }
+
+    updatePopup(popup){
+        this.popup = popup;
+    }
+
+    updateProp(propName){
+        this.propName = propName;
+    }
+
+    getPropList(){
+        return this.json.propNames;
+    }
+
+    get selectedVariables(){
+        return this._selectedVariables;
+    }
+
+    set selectedVariables(selected){
+        if(selected){
+            this._selectedVariables = [];
+            for(let el of selected){
+                console.log("selected: "+ el)
+                this._selectedVariables.push(el)
+            }
+        }
+    }
+
+
+    draw(){
+
+        // color
+        // https://github.com/d3/d3-scale/blob/master/README.md#sequential-scales
+        // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
+        // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
+        this.drawDataCanvas();
+        this.drawPropCanvas();
     }
 
     

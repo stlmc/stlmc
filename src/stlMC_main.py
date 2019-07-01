@@ -24,7 +24,7 @@ def main(argv):
         with open(rel_path, 'w' ) as fle:
             print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         #args : (0, bound, step)
-        for k in range(2, 4, 2):
+        for k in range(4, 5, 2):
             strFormula = stlMC.getStlFormsText()[i]
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + strFormula + " bound: " + str(k))
