@@ -18,10 +18,10 @@ class PropositionFormula(Atomic, Formula):
 
 
 class AndFormula(Multiary, Formula):
-    op = '/\\'
+    op = 'and'
 
 class OrFormula(Multiary, Formula):
-    op = '\\/'
+    op = 'or'
 
 
 class ImpliesFormula(Binary, Formula):
