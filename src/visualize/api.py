@@ -11,7 +11,29 @@ import matplotlib.pyplot as plt
 
 
 class Api:
-    def __init__(self, model, modeVar, contVar, subvars, props, bound, mode_module):
+    def __init__(self):
+        pass
+    
+    @property
+    def stackID(self):
+        return self._stackID
+
+    # give file name and it will generate stackID
+    # this must be invoke after data method called
+    @stackID.setter
+    def stackID(self, stackID):
+        self._stackID = stackID + "_" + self.stl + "_" + str(self.bound)
+        print("ID")
+        print(self._stackID)
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
+        (model, modeVar, contVar, subvars, props, bound, mode_module, strStlFormula) = self._data
         self.model = model
         self.modeVar = modeVar
         self.contVar = contVar
@@ -23,7 +45,6 @@ class Api:
         for k in range(len(self.mode_module)):
             self.IDmodeModule[k] = self.mode_module[k]
 
-    def setStrStlFormula(self, strStlFormula):
         self.stl = strStlFormula
 
     # return continuous variables id
@@ -217,7 +238,7 @@ class Api:
                 plt.legend(p, var_list, loc='best')
             
             import json
-            f = open("../visualize/src/DataDir/test.json", "w")
+            f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
             plt.show()
