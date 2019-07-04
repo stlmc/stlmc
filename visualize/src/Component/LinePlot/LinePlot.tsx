@@ -192,7 +192,7 @@ class LinePlot extends React.Component<Props, State> {
         }]
     }
 
-    private json = new Json(require('../../DataDir/test.json'));
+    private json = new Json(require('../../DataDir/twoThermostatPoly_1.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state:State = {
@@ -275,7 +275,7 @@ class LinePlot extends React.Component<Props, State> {
             (v)=>{
                 return {value: v, label:v}
             })
-        this.setState({selectFile: names})
+        this.setState({selectFile: names});
 
         if(this.myRef.current){
             this.myRef.current!.handleChange(names);
@@ -286,8 +286,8 @@ class LinePlot extends React.Component<Props, State> {
     onVariableChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta){
         //console.log("hello")
         //console.log((value2 as ({ value: string; label: string; }[])));
-        let target = (value2 as ({ value: string; label: string; }[]))
-        let tmp:string[] = []
+        let target = (value2 as ({ value: string; label: string; }[]));
+        let tmp:string[] = [];
         if(target){        
             for(let el of target){
                 tmp.push(el["value"])
@@ -303,7 +303,7 @@ class LinePlot extends React.Component<Props, State> {
         /*this.setState({
             props: this.renderer.getPropList()
         });*/    
-        const { data, popup, selectFile, props, value} = this.state
+        const { data, popup, selectFile, props, value} = this.state;
         
         return (
         <div id="graph" className={lineplotStyle.main_theme}>
