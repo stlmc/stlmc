@@ -205,17 +205,31 @@ class Interval<V=string, T=number, U=string>{
     /**
      * Helper method for extent x and y.
      */
-    private extent = ():[Point<T, U>, Point<T, U>] => {
-        var max:Point<T,U> = this._points.reduce( 
-        (acc, cur) => { 
-            return acc.x > cur.x ? acc:cur;
-        })
+    private extent = (isX:boolean):[Point<T, U>, Point<T, U>] => {
+        if(isX){
+            var max:Point<T,U> = this._points.reduce(
+                (acc, cur) => {
+                    return acc.x > cur.x ? acc:cur;
+                })
 
-        var min:Point<T,U> = this._points.reduce( 
-        (acc, cur) => { 
-            return acc.x > cur.x ? cur:acc;
-        })
-        return [min, max]
+            var min:Point<T,U> = this._points.reduce(
+                (acc, cur) => {
+                    return acc.x > cur.x ? cur:acc;
+                })
+            return [min, max]
+        }
+        else{
+            var max:Point<T,U> = this._points.reduce(
+                (acc, cur) => {
+                    return acc.y > cur.y ? acc:cur;
+                })
+
+            var min:Point<T,U> = this._points.reduce(
+                (acc, cur) => {
+                    return acc.y > cur.y ? cur:acc;
+                })
+            return [min, max]
+        }
     }
 
     /**
@@ -223,7 +237,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Tuple of min and max value of the points' first elements.
      */
     get xExtent():[T, T] { 
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(true);
         return [extent[0].x, extent[1].x];
     }
 
@@ -232,7 +246,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Tuple of min and max value of the points' second elements.
      */
     get yExtent():[T, T] {
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(false);
         return [extent[0].y, extent[1].y];
     }
 
@@ -241,7 +255,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Max value of the points' first elements.
      */
     get xMax():T {
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(true);
         return extent[1].x;
     }
 
@@ -250,7 +264,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Min value of the points' first elements.
      */
     get xMin() {
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(true);
         return extent[0].x;
     }
 
@@ -259,7 +273,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Max value of the points' second elements.
      */
     get yMax() {
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(false);
         return extent[1].y;
     }
 
@@ -268,7 +282,7 @@ class Interval<V=string, T=number, U=string>{
      * @returns Min value of the points' second elements.
      */
     get yMin() {
-        var extent:[Point<T, U>, Point<T, U>] = this.extent();
+        var extent:[Point<T, U>, Point<T, U>] = this.extent(false);
         return extent[0].y;
     }
 

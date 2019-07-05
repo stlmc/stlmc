@@ -193,7 +193,7 @@ class LinePlot extends React.Component<Props, State> {
         }]
     }
 
-    private json = new Json(require('../../DataDir/twoWatertankLinear_(<>_[5.0,15.0]^[0.0,inf) ((~ x1T) -> (<>_[0.0,7.0]^[0.0,inf) (x1T and x1g5))))_4.json'));
+    private json = new Json(require('../../DataDir/twoBatteryLinear_([]_(0.0,20.5)^[0.0,inf) (___[3.0,14.0]^[0.0,inf) reachability))_20.json'));
     private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
