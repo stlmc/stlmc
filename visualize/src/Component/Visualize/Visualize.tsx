@@ -160,6 +160,8 @@ class Json {
      */
     private _intervals: Intervals = new Intervals("data");
     private _isEmpty: Boolean = false;
+    // TODO: This will be move to Prop class later.
+    private _proposition_names: { [prop: string] :string; } = {};
 
     // Array of propositions. ["x>1", "x<0", ...]
     public _props:Props = new Props();
@@ -201,6 +203,10 @@ class Json {
         return this._isEmpty;
     }
 
+    get proposition_names(){
+        return this._proposition_names;
+    }
+
     /**
      * Parsing interanl jsonString to make object.
      */
@@ -223,27 +229,35 @@ class Json {
                     }
                 }
             }
+            else if (key1=="proplist"){
+                //console.log("Prol"+Object.entries(value1));
+
+                for(let [key, value] of Object.entries(value1)){
+                    console.log("Proplist: "+value);
+                    this._proposition_names[key] = value;
+                }
+            }
             // for the 
             else{
-                let intv_len = this._intervals.length
-                let counter = 0
+                let intv_len = this._intervals.length;
+                let counter = 0;
                 let intv = this.intervalList();
                 for(let [key2, value2] of Object.entries(value1)){
-                    let tmp: Prop = new Prop(key2)
+                    let tmp: Prop = new Prop(key2);
                     for(let v of value2){
                         if(counter != intv_len-1){
-                            tmp.push(v, [intv[counter], intv[counter+1]])
+                            tmp.push(v, [intv[counter], intv[counter+1]]);
                         }
                         counter++;
                     }
-                    this._props.push(tmp)
+                    this._props.push(tmp);
                 }
             }
         }
         if(this._intervals.isEmpty()){
             this._isEmpty = true;
         }
-    }
+    };
 
     /**
      * This will find every intervals that have id which are the same as searching parameter.
@@ -407,4 +421,38 @@ class Json {
     }
 }
 
-export { Json };
+/**
+ * WorkspaceJson:
+ * * Wrapper class for visualize project
+ */
+class WorkspaceJson {
+
+    private _file_list: string[] = [];
+    /**
+     *
+     * @param _jsonString String parsing by internal json parser to string.
+     */
+    constructor(
+        private _jsonString:string = ""
+    ){
+        // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+        // need to take both key and value.
+        for(let [key1, value1] of Object.entries(this._jsonString)){
+            if(key1=="file_list"){
+                for(let i=0; i<value1.length;i++){
+                    let obj = value1[i];
+                    this._file_list.push(obj);
+                }
+            }
+            else{
+               console.log("Workspace error!")
+            }
+        }
+    };
+
+    get file_list(){
+        return this._file_list;
+    }
+}
+
+export { Json, WorkspaceJson };

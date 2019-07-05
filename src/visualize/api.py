@@ -145,8 +145,7 @@ class Api:
                if idCheck and (len(subResult) > 0):
                    result[str(self.props[i].getId())] = subResult
                    idPropExp[str(self.props[i].getId())] = str(self.props[i].getExpStr())
-       print(idPropExp)
-       return result
+       return idPropExp, result
 
     def visualize(self):
         try:
@@ -221,15 +220,13 @@ class Api:
                         inner.append(pair)
                     d_ttt2[var_list[i][k]] = inner
                 outer.append(d_ttt2)    
-            print(outer)
+            #print(outer)
             outer2 = dict()
             outer2['data'] = outer
-            print(self.getProposition())
-            outer2['prop'] = self.getProposition()
-           
+            outer2['proplist'], outer2['prop'] = self.getProposition()
         
             for i in range(len(z)):   
-                print(z[i])
+                #print(z[i])
                 d_ttt[str(i)] = z[i].tolist()
                 p = plt.plot(t[i], z[i])
                 plt.axvline(x=0.5, color='r', linestyle='--', linewidth=3)
