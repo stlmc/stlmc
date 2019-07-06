@@ -4,7 +4,7 @@ from core.syntax.modelLexer import modelLexer
 from core.syntax.modelParser import modelParser
 from core.modelVisitorImpl import modelVisitorImpl
 import io, os, sys
-from visualize import *
+from DataGenerator import *
 
 def main(argv):
     input = FileStream(argv[1])
@@ -28,7 +28,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(49, 50, 2):
+        for k in range(4, 5, 2):
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60

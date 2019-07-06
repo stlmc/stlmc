@@ -151,7 +151,7 @@ class DataList{
 
  /**
   * Json:
-  * * Wrapper class for visualize project
+  * * Wrapper class for DataGenerator project
   */
 class Json {
 
@@ -423,7 +423,7 @@ class Json {
 
 /**
  * WorkspaceJson:
- * * Wrapper class for visualize project
+ * * Wrapper class for DataGenerator project
  */
 class WorkspaceJson {
 
