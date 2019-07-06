@@ -10,7 +10,7 @@
   /**
   * Packages.
   */
-import { Intervals, Interval, Point } from "../Core/Util/MathModel";
+import { Intervals, Interval, Point } from "./MathModel";
 
 /**
  * This is prop class

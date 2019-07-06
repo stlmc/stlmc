@@ -1,26 +1,17 @@
 import React from 'react';
 import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
-import {Line} from '../Core/graph';
-import {size, margin} from '../Core/Util/util';
-//import { Renderer } from '../Visualize/Visualize';
-import {Renderer} from '../Comb/Visualize/Visualize';
-import {Json, WorkspaceJson} from '../Visualize/Visualize';
+import {margin, size} from '../Core/Util/Util';
+import {Renderer} from '../Renderer/MainRenderer';
+import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
-import {ValueType, ActionMeta} from 'react-select/src/types';
-import SelectComponent from '../Select/Select';
+import {ActionMeta, ValueType} from 'react-select/src/types';
 
 /*
 
  * Props and State
  */
 interface Props {
-    jsonpath: string;
-    files: {
-        category: string;
-        dir: string;
-        title: string;
-    }[];
 }
 
 interface Popup {
@@ -63,11 +54,6 @@ class LinePlot extends React.Component<Props, State> {
     private margin_controller_bottom: number = parseFloat(styleVariable.margin_controller_bottom.replace("px", ""));
     private margin_controller_left: number = parseFloat(styleVariable.margin_controller_left.replace("px", ""));
 
-    private options = [
-        {value: 'chocolate', label: 'Chocolate'},
-        {value: 'strawberry', label: 'Strawberry'},
-        {value: 'vanilla', label: 'Vanilla'},
-    ];
     private renderer: Renderer = new Renderer(
         new size(
             this.width,
@@ -94,105 +80,6 @@ class LinePlot extends React.Component<Props, State> {
         "." + lineplotStyle.main_theme
     );
 
-    private line: Line = new Line(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "." + lineplotStyle.main_theme);
-
-    // default props
-    static defaultProps: Props = {
-        jsonpath: '../../DataDir/test.json',
-        files: [{
-            category: "railroad",
-            dir: "../../DataDir/railRoadPoly_1.json",
-            title: "railRoadPoly_1"
-        }, {
-            category: "railroad",
-            dir: "../../DataDir/railRoadPoly_2.json",
-            title: "railRoadPoly_2"
-        }, {
-            category: "railroad",
-            dir: "../../DataDir/railRoadPoly_3.json",
-            title: "railRoadPoly_3"
-        }, {
-            category: "twobattery",
-            dir: "../../DataDir/twoBatteryPoly_1.json",
-            title: "twoBatteryPoly_1"
-        }, {
-            category: "twobattery",
-            dir: "../../DataDir/twoBatteryPoly_2.json",
-            title: "twoBatteryPoly_2"
-        }, {
-            category: "twobattery",
-            dir: "../../DataDir/twoBatteryPoly_3.json",
-            title: "twoBatteryPoly_3"
-        }, {
-            category: "twobattery",
-            dir: "../../DataDir/twoBatteryPoly_4.json",
-            title: "twoBatteryPoly_4"
-        }, {
-            category: "twothermostat",
-            dir: "../../DataDir/twoThermostatPoly_1.json",
-            title: "twoThermostatPoly_1"
-        }, {
-            category: "twothermostat",
-            dir: "../../DataDir/twoThermostatPoly_2.json",
-            title: "twoThermostatPoly_2"
-        }, {
-            category: "twothermostat",
-            dir: "../../DataDir/twoThermostatPoly_3.json",
-            title: "twoThermostatPoly_3"
-        }, {
-            category: "twothermostat",
-            dir: "../../DataDir/twoThermostatPoly_4.json",
-            title: "twoThermostatPoly_4"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankPoly_1.json",
-            title: "twoWatertankPoly_1"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankPoly_2.json",
-            title: "twoWatertankPoly_2"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankPoly_3.json",
-            title: "twoWatertankPoly_3"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankLinear_2.json",
-            title: "twoWatertankLinear_2"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankLinear_3.json",
-            title: "twoWatertankLinear_3"
-        }, {
-            category: "twowatertank",
-            dir: "../../DataDir/twoWatertankLinear_4.json",
-            title: "twoWatertankLinear_4"
-        }]
-    }
-
     private json = new Json(require('../../DataDir/twoBatteryLinear_([]_(0.0,20.5)^[0.0,inf) (___[3.0,14.0]^[0.0,inf) reachability))_20.json'));
     private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
 
@@ -209,9 +96,7 @@ class LinePlot extends React.Component<Props, State> {
             dir: "",
             title: ""
         }
-    }
-
-    private myRef: React.RefObject<SelectComponent>
+    };
     private selectedVariables: { value: string; label: string; }[] = [];
 
     constructor(props: Props) {
@@ -226,7 +111,6 @@ class LinePlot extends React.Component<Props, State> {
         // first name
         // if there is not any error..........
         this.renderer.updateProp(this.json.propNames[0]);
-        this.myRef = React.createRef();
 
     }
 
@@ -291,9 +175,6 @@ class LinePlot extends React.Component<Props, State> {
             });
         this.setState({selectFile: names});
 
-        if (this.myRef.current) {
-            this.myRef.current!.handleChange(names);
-        }
         this.forceUpdate();
     }
 
@@ -314,10 +195,6 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     render() {
-        /*this.setState({
-            props: this.renderer.getPropList()
-        });*/
-        const {data, popup, selectFile, props, value} = this.state;
 
         return (
             <div id="graph" className={lineplotStyle.main_theme}>
@@ -345,9 +222,9 @@ class LinePlot extends React.Component<Props, State> {
                                 <div className="col-md-6">
                                     <div className="form-group">
                                         <label>Variables</label>
-                                        <Select className="select_theme" options={selectFile}
+                                        <Select className="select_theme" options={[]}
                                                 onChange={this.onVariableChange}
-                                                defaultValue={selectFile} isMulti={true} isSearchable={true}
+                                                defaultValue={[]} isMulti={true} isSearchable={true}
                                                 closeMenuOnSelect={false}>
                                         </Select>
 

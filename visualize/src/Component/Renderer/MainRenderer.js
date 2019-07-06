@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import $ from "jquery";
-import "./Visualize.scss";
+import "./MainRenderer.scss";
 
 class Renderer {
 
