@@ -45,6 +45,7 @@ class Renderer {
         this.popup = true;
 
         this._selectedVariables = [];
+        this.isRedraw = false;
     }
 
     get selectedVariables() {
@@ -55,8 +56,8 @@ class Renderer {
         if (selected) {
             this._selectedVariables = [];
             for (let el of selected) {
-                console.log("selected: " + el)
-                this._selectedVariables.push(el)
+                console.log("selected: " + el);
+                this._selectedVariables.push(el);
             }
         }
     }
@@ -82,18 +83,18 @@ class Renderer {
      */
     loadDataset() {
         this.data = this.json.data;
-        this.dataList = this.json.dataList();
         this.dataListWithVariables = this.json.getDataListMinor(this._selectedVariables);
         this.intervalList = this.json.intervalList();
         this.dataName = this.data.names;
-        this.refData = this.json.dataByNameList(this.json.names[0]).flat();
+        this.refData = this.json.dataByNameList(this.json.variables[0]).flat();
     }
 
-    reload(isEmpty, propName) {
+    reload(isEmpty, propName, isRedraw) {
+        this.isRedraw = isRedraw;
         d3.selectAll("#main_svg").remove();
         d3.selectAll("#tooltip").remove();
-        this.setCanvas();
         if (!isEmpty) {
+            this.setCanvas();
             this.updateProp(propName);
             this.draw();
         }
@@ -137,6 +138,7 @@ class Renderer {
         // This will automatically add colors to your lines.
         this.colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
+
         // Set x and y axis of dataCanvas.
         this.setDataCanvasAxis();
 
@@ -172,13 +174,11 @@ class Renderer {
                 // Update lines positions.
                 this.lineGraph.selectAll(".lines")
                     .attr("d", (d) => {
-                        if (this._selectedVariables.includes(d.name)) {
-                            let res = "";
-                            for (let e of d.value) {
-                                res += this.lineGenerator(e)
-                            }
-                            return res
+                        let res = "";
+                        for (let e of d.value) {
+                            res += this.lineGenerator(e)
                         }
+                        return res
                     });
 
                 let scaleX = this.dataCanvasXscaleZoom;
@@ -227,14 +227,14 @@ class Renderer {
                 this.lineGraph.selectAll("#focusText")
                     .attr('x', x)
                     .attr('y', (d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
+                        let d0 = (this.dataListWithVariables[i].value.flat())[bisectData - 1];
+                        let d1 = (this.dataListWithVariables[i].value.flat())[bisectData];
                         let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                         return this.dataCanvasYscaleZoom(final_data[1]);
                     })
                     .text((d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
+                        let d0 = (this.dataListWithVariables[i].value.flat())[bisectData - 1];
+                        let d1 = (this.dataListWithVariables[i].value.flat())[bisectData];
                         var final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                         var newY = this.dataCanvasYscaleZoom(final_data[1]);
                         return this.dataName[i] + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")"
@@ -243,8 +243,8 @@ class Renderer {
                 this.lineGraph.selectAll("#focusCircle")
                     .attr('cx', x)
                     .attr('cy', (d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
+                        let d0 = (this.dataListWithVariables[i].value.flat())[bisectData - 1];
+                        let d1 = (this.dataListWithVariables[i].value.flat())[bisectData];
                         //console.log(dd1)
                         let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                         return this.dataCanvasYscaleZoom(final_data[1]);
@@ -287,6 +287,9 @@ class Renderer {
         this.dataCanvasYscale = d3.scaleLinear()
             .domain([this.dataYrange[0] - YscaleError, this.dataYrange[1] + YscaleError])
             .range([this.viewer_height - 2 * this._margin_viewer.top, this._margin_viewer.top]);
+
+        this.dataCanvasXscaleZoom = this.dataCanvasXscale;
+        this.dataCanvasYscaleZoom = this.dataCanvasYscale;
 
         // Add scaling function generators for x and y.
         let make_y_grid = () => {
@@ -355,11 +358,14 @@ class Renderer {
         this.lineGraph.append('circle')
             .attr("r", 7)
             .attr("stroke", (d, i) => {
-                return this.colorScale((i + 2).toString())
+                return this.lineGraphColor[d.name]
             })
             .style("fill", "none")
             .style("stroke-width", "1px")
             .attr('id', 'focusCircle')
+            .attr("transform", ()=>{
+                return "translate(0, -20)"
+            })
             .style("visibility", "hidden");
 
         this.lineGraph.append("text")
@@ -373,6 +379,7 @@ class Renderer {
             .style("visibility", "hidden");
     }
 
+    // TODO: Remove setBaseScale() later...
     /**
      * Set base scale X for both data and proposition.
      * newScaleX for zooming and panning.
@@ -657,6 +664,8 @@ class Renderer {
 
                 this.dataCanvasXscaleZoom = this.dataCanvasXscaleZoom ? this.dataCanvasXscaleZoom : this.dataCanvasXscale;
                 this.dataCanvasYscaleZoom = this.dataCanvasYscaleZoom ? this.dataCanvasYscaleZoom : this.dataCanvasYscale;
+
+
                 // Get current mouse position.
                 let mouse = d3.mouse($("#dataCanvasBack")[0]);
                 let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
@@ -760,19 +769,14 @@ class Renderer {
         this.drawPropCanvas();
     }
 
-    resetdata(jd) {
-        this.json = jd;
-        if (!this.json.isEmpty()) {
-            this.setBaseScale();
-        }
-    }
 
     setdata(jd) {
-        this.json = jd;
-        this._selectedVariables = this.json.names;
-        if (!this.json.isEmpty()) {
+        if (!jd.isEmpty()) {
+            this.json = jd;
+            this._selectedVariables = this.json.variables;
             this.setBaseScale();
         }
+
     }
 
     updatePopup(popup) {
@@ -806,29 +810,45 @@ class Renderer {
             .data(this.dataListWithVariables)
             .enter();
 
-
-        // Set extra tooltips.
-        // This function needs to be called after data is set.
-        this.setDataCanvasTooltip();
-
-        this.lineGraphColor = [];
-        this.lineGraph.append("path")
-            .attr("d", (d) => {
-                if (this._selectedVariables.includes(d.name)) {
+        // Distinguish between original one and redrawn one because of graph coloring
+        if (!this.isRedraw) {
+            this.lineGraphColor = {};
+            this.lineGraph.append("path")
+                .attr("d", (d) => {
                     let res = "";
                     for (let e of d.value) {
                         res += this.lineGenerator(e)
                     }
                     return res
-                }
-            })
-            .attr("class", "lines")
-            .attr("stroke", (d, i) => {
-                let c = this.colorScale((i + 2).toString());
-                this.lineGraphColor.push(c);
-                return c
-            })
-            .attr("stroke-width", 1.5);
+                })
+                .attr("class", "lines")
+                .attr("stroke", (d, i) => {
+                    let c = this.colorScale((i + 2).toString());
+                    this.lineGraphColor[d.name] = c;
+                    return c
+                })
+                .attr("transform", "translate(0, -20)")
+                .attr("stroke-width", 1.5);
+        } else {
+            this.lineGraph.append("path")
+                .attr("d", (d) => {
+                    let res = "";
+                    for (let e of d.value) {
+                        res += this.lineGenerator(e)
+                    }
+                    return res
+                })
+                .attr("class", "lines")
+                .attr("stroke", (d, i) => {
+                    return this.lineGraphColor[d.name];
+                })
+                .attr("transform", "translate(0, -20)")
+                .attr("stroke-width", 1.5);
+        }
+
+        // Set extra tooltips.
+        // This function needs to be called after data is set.
+        this.setDataCanvasTooltip();
 
         // Add rect to the dataCanvasFront.
         // [mainrect] will be used to interacting with users.
@@ -864,8 +884,6 @@ class Renderer {
             })
             .on("mousemove", () => {
 
-                this.dataCanvasXscaleZoom = this.dataCanvasXscaleZoom ? this.dataCanvasXscaleZoom : this.dataCanvasXscale;
-                this.dataCanvasYscaleZoom = this.dataCanvasYscaleZoom ? this.dataCanvasYscaleZoom : this.dataCanvasYscale;
                 // Get current mouse position.
                 let mouse = d3.mouse($("#dataCanvasBack")[0]);
                 let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
@@ -881,36 +899,40 @@ class Renderer {
                     let x = this.dataCanvasXscaleZoom(final_data[0]);
 
                     let tmpText = [];
+                    let tmpColor = [];
                     this.lineGraph.selectAll("#focusText")
                         .attr('x', x)
                         .attr('y', (d, i) => {
                             // Another d0, d1.
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
 
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             return this.dataCanvasYscaleZoom(final_data[1]);
                         })
                         .text((d, i) => {
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
                             //console.log(dd1)
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             let newY = this.dataCanvasYscaleZoom(final_data[1]);
-                            let tstring = this.dataName[i] + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")";
+                            let tstring = d.name + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")";
                             if (!tmpText.includes(tstring)) {
                                 tmpText.push(tstring);
+                                tmpColor.push(d.name);
                             }
                             return tstring;
                         });
 
+
                     // http://jsfiddle.net/VRyS2/1/
                     let newTString = tmpText.reduce((acc, cur, i22) => {
+                        //console.log(acc);
                         return acc += (`
                                 <li class="liclass">
                                     <div class="input-color">
                                         <input type="text" value="` + cur + ` "/>
-                                        <div class="color-box" style="background-color: ` + this.lineGraphColor[i22] + `;"></div>
+                                        <div class="color-box" style="background-color: ` + this.lineGraphColor[tmpColor[i22]] + `;"></div>
                                         <!-- Replace "#FF850A" to change the color -->
                                     </div>
                                 </li>`);
@@ -925,8 +947,8 @@ class Renderer {
                     this.lineGraph.selectAll("#focusCircle")
                         .attr('cx', x)
                         .attr('cy', (d, i) => {
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             return this.dataCanvasYscaleZoom(final_data[1]);
                         });

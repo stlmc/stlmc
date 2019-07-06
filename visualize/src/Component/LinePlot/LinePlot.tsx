@@ -2,13 +2,12 @@ import React from 'react';
 import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import {margin, size} from '../Core/Util/Util';
-import {Renderer} from '../Renderer/MainRenderer';
+import {Renderer} from '../Core/Renderer/MainRenderer';
 import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 
 /*
-
  * Props and State
  */
 interface Props {
@@ -19,15 +18,10 @@ interface Popup {
 }
 
 interface State {
-    data: string;
     popup: Popup;
-    selectFile: { value: string; label: string; }[];
-    props: string[];
-    value: {
-        category: string;
-        dir: string;
-        title: string;
-    };
+    selectedVariables: string[];
+    allVariables: string[];
+    isRedraw: boolean;
 }
 
 /*
@@ -80,24 +74,18 @@ class LinePlot extends React.Component<Props, State> {
         "." + lineplotStyle.main_theme
     );
 
-    private json = new Json(require('../../DataDir/twoBatteryLinear_([]_(0.0,20.5)^[0.0,inf) (___[3.0,14.0]^[0.0,inf) reachability))_20.json'));
+    private json = new Json("");
     private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state: State = {
-        data: require('../../DataDir/railRoadPoly_1.json'),
         popup: {
             isEnabled: true,
         },
-        selectFile: [],
-        props: [],
-        value: {
-            category: "",
-            dir: "",
-            title: ""
-        }
+        selectedVariables: [],
+        allVariables: [],
+        isRedraw: false,
     };
-    private selectedVariables: { value: string; label: string; }[] = [];
 
     constructor(props: Props) {
         super(props);
@@ -105,31 +93,28 @@ class LinePlot extends React.Component<Props, State> {
         this.onPopupClick = this.onPopupClick.bind(this);
         this.onPropSelect = this.onPropSelect.bind(this);
         this.onPropListSelect = this.onPropListSelect.bind(this);
-        this.onVariableChange = this.onVariableChange.bind(this);
-
-        this.json.parse();
-        // first name
-        // if there is not any error..........
-        this.renderer.updateProp(this.json.propNames[0]);
-
+        this.onVariablesChange = this.onVariablesChange.bind(this);
     }
-
 
     componentDidMount() {
         // must invoke setdata() before draw()
-        //console.log("componentDidMount");
-        //this.json.parse();
+        console.log(this.json.isEmpty());
         this.renderer.setdata(this.json);
-        this.renderer.selectedVariables = this.json.names;
-        console.log(this.renderer.selectedVariables)
-        //console.log(this.renderer.getPropList())
-        if (!this.json.isEmpty()) {
-            this.renderer.setCanvas();
-            this.renderer.draw();
-        }
+        this.setState({
+            selectedVariables: this.json.variables,
+            allVariables: this.json.variables,
+            isRedraw: false,
+        })
+    }
 
-        //this.line.setdata(this.state.data);
-        //this.line.draw();
+    componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
+        console.log("ComponentUpdate");
+        console.log(this.state.selectedVariables);
+        this.renderer.selectedVariables = this.state.selectedVariables;
+
+        console.log(this.state.isRedraw);
+        // redraw whole thing.
+        this.renderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
     }
 
     onPopupChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -142,73 +127,111 @@ class LinePlot extends React.Component<Props, State> {
             }
         }, () => {
             this.renderer.updatePopup(this.state.popup.isEnabled)
-        })
+        });
         console.log("mouse event");
         console.log(this.state)
     }
 
-
-    /* onPropSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-         //console.log("propselect: "+e.target.value);
-         this.renderer.redrawPropCanvas(e.target.value)
-     }
-
-     */
-
     onPropSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-
         this.renderer.redrawPropCanvas((value2 as { value: string, label: string; })["value"]);
     }
 
     onPropListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-        //console.log("propListselect: "+e.target.value);
-        //console.log("propListSelect: "+(value2 as { value: string; label: string; })["value"])
-        //let tmp_json = new Json(require("../../DataDir/"+(value2 as { value: string; label: string; })["value"]+".json"));
-        //tmp_json.parse();
+
         this.json.string = require("../../DataDir/" + (value2 as { value: string; label: string; })["value"]);
         this.renderer.setdata(this.json);
-        this.renderer.reload(this.json.isEmpty(), this.json.propNames[0]);
-
-        let names = this.json.names.map(
-            (v) => {
-                return {value: v, label: v}
-            });
-        this.setState({selectFile: names});
-
-        this.forceUpdate();
+        // get reloaded new variables.
+        this.setState({
+            allVariables: this.json.variables,
+            selectedVariables: this.json.variables,
+            isRedraw: false,
+        });
     }
 
-    onVariableChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-        //console.log("hello")
-        //console.log((value2 as ({ value: string; label: string; }[])));
+    // This will get multiple choices.
+    onVariablesChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
+        console.log(`action: ${actionMeta.action}`);
         let target = (value2 as ({ value: string; label: string; }[]));
+
         let tmp: string[] = [];
         if (target) {
             for (let el of target) {
                 tmp.push(el["value"])
             }
         }
-        this.renderer.selectedVariables = tmp;
-        this.renderer.reload(this.json.isEmpty(), this.json.propNames[0]);
-        //this.renderer.draw()
-        //this.selectedVariables = (value2 as { value: string; label: string; }[])
+        if (actionMeta.action == "remove-value") {
+            this.setState({
+                selectedVariables: tmp,
+                isRedraw: true,
+            });
+        } else if (actionMeta.action == "select-option") {
+            this.setState({
+                selectedVariables: tmp,
+                isRedraw: true,
+            });
+        } else if (actionMeta.action == "clear") {
+            this.setState({
+                selectedVariables: [],
+                isRedraw: true,
+            });
+        }
     }
 
     render() {
-
+        let options = this.state.allVariables.map((v) => {
+            return ({value: v, label: v})
+        });
+        let selected = this.state.selectedVariables.map((v) => {
+            return ({value: v, label: v})
+        });
+        // TODO: Update precision of graph after update.
         return (
             <div id="graph" className={lineplotStyle.main_theme}>
-                <div className="form-group">
-                    <label>Models</label>
-                    <Select isSearchable={true} options={this.workspace_info.file_list.map(
-                        (v) => {
-                            return ({value: v, label: v});
-                        }
-                    )} onChange={this.onPropListSelect}/>
+                <div className="row">
+                    <div className="col-md-1"/>
+                    <div className="col-md-10">
+                        <label>Models</label>
+                        <Select isSearchable={true} options={this.workspace_info.file_list.map(
+                            (v) => {
+                                return ({value: v, label: v});
+                            }
+                        )} onChange={this.onPropListSelect}/>
+                    </div>
+                    <div className="col-md-1"/>
+                </div>
+                <div className="row">
+                    <div className="col-md-1"/>
+                    <div className="col-md-10">
+                        <label>Variables</label>
+                        <Select className="select_theme" options={options}
+                                onChange={this.onVariablesChange}
+                                value={selected}
+                                isMulti={true} isSearchable={true}
+                                closeMenuOnSelect={false}>
+                        </Select>
+                    </div>
+                    <div className="col-md-1"/>
+                </div>
+                <div className="row">
+                    <div className="col-md-1"/>
+                    <div className="col-md-10">
+                        <label>Propositions</label>
+                        <Select isSearchable={true} options={this.json.propNames.map(
+                            (v) => {
+                                //this.json.proposition_names[v]
+                                return ({
+                                    value: v,
+                                    label: (v + " = (" + this.json.proposition_names[v] + ")")
+                                });
+                            }
+                        )} onChange={this.onPropSelect}/>
+                    </div>
+                    <div className="col-md-1"/>
                 </div>
                 {!this.json.isEmpty() ?
                     (<div>
                             <div className="row">
+                                <div className="col-md-1"/>
                                 <div className="col-md-4">
                                     <div className="form-check">
                                         <label>Enabled Popups &nbsp;
@@ -218,33 +241,9 @@ class LinePlot extends React.Component<Props, State> {
                                         </label>
                                     </div>
                                 </div>
-
-                                <div className="col-md-6">
-                                    <div className="form-group">
-                                        <label>Variables</label>
-                                        <Select className="select_theme" options={[]}
-                                                onChange={this.onVariableChange}
-                                                defaultValue={[]} isMulti={true} isSearchable={true}
-                                                closeMenuOnSelect={false}>
-                                        </Select>
-
-                                    </div>
-                                </div>
+                                <div className="col-md-7"/>
                             </div>
-                            <div className="row">
-                                <div className="form-group">
-                                    <label>Propositions</label>
-                                    <Select isSearchable={true} options={this.json.propNames.map(
-                                        (v) => {
-                                            //this.json.proposition_names[v]
-                                            return ({
-                                                value: v,
-                                                label: (v + " = (" + this.json.proposition_names[v] + ")")
-                                            });
-                                        }
-                                    )} onChange={this.onPropSelect}/>
-                                </div>
-                            </div>
+
                         </div>
                     )
                     : (

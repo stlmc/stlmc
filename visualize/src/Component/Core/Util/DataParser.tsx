@@ -109,10 +109,10 @@ class Props{
 
 class DataList{
     // xs list only
-    private _xs: number[] = []
+    private _xs: number[] = [];
 
     // ys list only
-    private _ys: number[] = []
+    private _ys: number[] = [];
 
     constructor(
         private _name: string,
@@ -133,8 +133,8 @@ class DataList{
         for (let el of this._value){
             for(let elem of el){
                 if(!this._xs.includes(elem[0])){
-                    this._xs.push(elem[0])
-                    this._ys.push(elem[1])
+                    this._xs.push(elem[0]);
+                    this._ys.push(elem[1]);
                 }
             }
         }
@@ -159,7 +159,7 @@ class Json {
      * Internally has intervals.
      */
     private _intervals: Intervals = new Intervals("data");
-    private _isEmpty: Boolean = false;
+    private _isEmpty: Boolean = true;
     // TODO: This will be move to Prop class later.
     private _proposition_names: { [prop: string] :string; } = {};
 
@@ -179,7 +179,7 @@ class Json {
         return this._props.names;
     }
 
-    get names(){
+    get variables(){
         return this._intervals.names;
     }
 
@@ -195,8 +195,10 @@ class Json {
      * @params jsonString Simple string that looks like Json file.
      */
     set string(jsonString:string){
-        this._jsonString = jsonString;
-        this.parse();
+        if(jsonString != ""){
+            this._jsonString = jsonString;
+            this.parse();
+        }
     }
 
     isEmpty():Boolean {
@@ -211,50 +213,55 @@ class Json {
      * Parsing interanl jsonString to make object.
      */
     parse = () => {
-        this._intervals.removeAll();
-        this._props.removeAll();
-        this._isEmpty = false;
-        // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
-        // need to take both key and value.
-        for(let [key1, value1] of Object.entries(this._jsonString)){
-            if(key1=="data"){
-                for(let i=0; i<value1.length;i++){
-                    let obj = value1[i];
-                    for(let [key, value] of Object.entries(obj)){
-                        let tmp_interval:Interval = new Interval(key, i);
-                        for (let v of Object.values(value)){
-                            tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
+        if(this._jsonString!="") {
+            console.log("parsing!");
+            this._intervals.removeAll();
+            this._props.removeAll();
+            this._isEmpty = false;
+            // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+            // need to take both key and value.
+            for (let [key1, value1] of Object.entries(this._jsonString)) {
+                if (key1 == "data") {
+                    for (let i = 0; i < value1.length; i++) {
+                        let obj = value1[i];
+                        for (let [key, value] of Object.entries(obj)) {
+                            let tmp_interval: Interval = new Interval(key, i);
+                            for (let v of Object.values(value)) {
+                                tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
+                            }
+                            this._intervals.push(tmp_interval);
                         }
-                        this._intervals.push(tmp_interval);
                     }
-                }
-            }
-            else if (key1=="proplist"){
-                //console.log("Prol"+Object.entries(value1));
+                } else if (key1 == "proplist") {
+                    //console.log("Prol"+Object.entries(value1));
 
-                for(let [key, value] of Object.entries(value1)){
-                    console.log("Proplist: "+value);
-                    this._proposition_names[key] = value;
+                    for (let [key, value] of Object.entries(value1)) {
+                        console.log("Proplist: " + value);
+                        this._proposition_names[key] = value;
+                    }
+                }
+                // for the
+                else {
+                    let intv_len = this._intervals.length;
+                    let counter = 0;
+                    let intv = this.intervalList();
+                    for (let [key2, value2] of Object.entries(value1)) {
+                        let tmp: Prop = new Prop(key2);
+                        for (let v of value2) {
+                            if (counter != intv_len - 1) {
+                                tmp.push(v, [intv[counter], intv[counter + 1]]);
+                            }
+                            counter++;
+                        }
+                        this._props.push(tmp);
+                    }
                 }
             }
-            // for the 
-            else{
-                let intv_len = this._intervals.length;
-                let counter = 0;
-                let intv = this.intervalList();
-                for(let [key2, value2] of Object.entries(value1)){
-                    let tmp: Prop = new Prop(key2);
-                    for(let v of value2){
-                        if(counter != intv_len-1){
-                            tmp.push(v, [intv[counter], intv[counter+1]]);
-                        }
-                        counter++;
-                    }
-                    this._props.push(tmp);
-                }
+            if (this._intervals.isEmpty()) {
+                this._isEmpty = true;
             }
         }
-        if(this._intervals.isEmpty()){
+        else{
             this._isEmpty = true;
         }
     };
@@ -310,17 +317,6 @@ class Json {
             if(name.includes(e)){
                 tmp.push(new DataList(e, this.dataByNameList(e)))
             }
-        }
-        return tmp;
-    }
-
-    /**
-     * Get data List item... update... later..
-     */
-    dataList():[number, number][][]{
-        var tmp: [number, number][][] = [];
-        for(let e of this._intervals.names){
-            tmp.push(this.dataByNameList(e).flat());
         }
         return tmp;
     }
