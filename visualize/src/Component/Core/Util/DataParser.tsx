@@ -134,6 +134,8 @@ class DataList{
             for(let elem of el){
                 if(!this._xs.includes(elem[0])){
                     this._xs.push(elem[0]);
+                }
+                if(!this._ys.includes(elem[1])){
                     this._ys.push(elem[1]);
                 }
             }
@@ -247,6 +249,7 @@ class Json {
                     let intv = this.intervalList();
                     for (let [key2, value2] of Object.entries(value1)) {
                         let tmp: Prop = new Prop(key2);
+                        counter = 0;
                         for (let v of value2) {
                             if (counter != intv_len - 1) {
                                 tmp.push(v, [intv[counter], intv[counter + 1]]);
@@ -323,6 +326,7 @@ class Json {
 
     extentListByName(name:string): (DataList | undefined){
         let exList = this.extentList();
+        console.log(exList);
         for(let el of exList){
             if(el.name == name){
                 return el
@@ -364,10 +368,10 @@ class Json {
          * Props : list of prop.
          */
         //var tmp:[number, number][] = [];
-        var tmpData: DataList[] = [];
-        let tmp:[number, number][][] = []
+        let tmpData: DataList[] = [];
+        let tmp:[number, number][][] = [];
         for(let el in this._props.elems){
-            tmp = []
+            tmp = [];
             for(let propvals of this._props.elems[el].elems){
                 let tmp2:[number, number][] = [];
                 if(propvals.value == "True"){

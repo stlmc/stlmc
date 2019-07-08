@@ -72,8 +72,10 @@ class Renderer {
         this.canvas = d3.select(this._tag).append("svg").attr("id", "main_svg").attr("width", this._size.width).attr("height", this._size.height);
         // set data canvas
         this.setDataCanvas();
-        // set prop canvas
-        this.setPropCanvas();
+    }
+
+    resize(child_index){
+        d3.select("#main_svg").attr("height", this._size.height + this.effective_controller_height*child_index)
     }
 
     /**
@@ -156,10 +158,15 @@ class Renderer {
                 // Update axis.
                 this.dataCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
                 this.dataCanvasYaxis.call(d3.axisLeft(this.dataCanvasYscaleZoom));
-                this.propCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
-                this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(this.intervalList).tickSize(-(this.viewer_height + 100)).tickPadding(3).tickFormat(() => {
+                //this.propCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
+                d3.selectAll("#propCanvasXaxis").call(d3.axisBottom(this.dataCanvasXscaleZoom));
+                d3.selectAll("#propCanvasIntervalLinesBase").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(this.intervalList).tickSize(-(this.viewer_height + 100)).tickPadding(3).tickFormat(() => {
                     return ""
                 })).select(".domain").remove();
+                d3.selectAll("#propCanvasIntervalLines").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(this.intervalList).tickSize(-(this.effective_controller_height)).tickPadding(3).tickFormat(() => {
+                    return ""
+                })).select(".domain").remove();
+
 
                 // Make new line scale functions using latest scale functions.
                 this.lineGenerator = d3.line()
@@ -181,11 +188,14 @@ class Renderer {
                         return res
                     });
 
+
                 let scaleX = this.dataCanvasXscaleZoom;
-                let scaleY = this.propCanvasYscale;
+                let scaleY = d3.scaleLinear()
+                    .domain([0, 3])
+                    .range([this.effective_controller_height, 0]);
 
                 // set proposition graph line generator
-                this.propLineGenerator = d3.line()
+                let propLineGenerator = d3.line()
                     .x(function (d) {
                         return scaleX(d[0]);
                     })
@@ -193,11 +203,11 @@ class Renderer {
                         return scaleY(d[1]);
                     }).curve(d3.curveMonotoneX);
 
-                this.propGraph.selectAll(".propGraphData")
+                d3.selectAll(".propGraphData")
                     .attr("d", (d) => {
                         let res = "";
                         for (let e of d.value) {
-                            res += this.propLineGenerator(e)
+                            res += propLineGenerator(e)
                         }
                         return res
                     });
@@ -249,8 +259,6 @@ class Renderer {
                         let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                         return this.dataCanvasYscaleZoom(final_data[1]);
                     });
-
-
             });
 
 
@@ -397,84 +405,9 @@ class Renderer {
         this.newScaleX = this.ScaleX;
     }
 
-    /**
-     * prop canvas has 2 cavases innerly, back prop canvas does nothing
-     * and front prop canvas is for user interactions (such as, zooming, clipping, mouse moving etc)
-     *
-     * Need to use propCanvasFront for interactions and propCanvas(back) for data showing or redraw, update.
-     */
-    setPropCanvas() {
-
-        // set prop line color function
-        this.propColor = d3.scaleLinear().domain([0, 2]).range(["red", "blue"]);
-        // set prop canvas
-        this.propCanvas = this.canvas.append("g").attr("width", this.controller_width).attr("height", this.controller_height);
-        // set clipping path
-
-        this.propCanvas.append("clipPath")
-            .attr("id", "propCanvasClip")
-            .append("rect")
-            .attr("width", this.viewer_width - this.x_clip_margin)
-            .attr("height", this.viewer_height + this.controller_height);
-        //.attr("x", this.axis_delta + 1)
-        //.attr("y", 3 * this._margin_viewer.top);
-
-        // set canvas front
-        this.propCanvasBack = this.propCanvas.append("g")
-            .attr("id", "propCanvasBack")
-            .attr("clip-path", "url(#propCanvasClip)")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (3 * this._margin_viewer.top) + ")");
-
-        // TODO: Add user interactions to propCanvas.
-        this.propCanvasFront = this.propCanvas.append("g");
-
-        // set scale function for y
-        // 0: none, 1: false, 2: true, 3:none
-        this.propCanvasYscale =
-            d3.scaleLinear()
-                .domain([0, 3])
-                .range([this.effective_controller_height, 0]);
-
-        let newHeight = this.viewer_height - this._margin_viewer.top;
-
-
-        // Add interval lines.
-        this.propCanvasIntervalLines = this.propCanvas.append("g")
-            .attr("id", "propCanvasIntervalLines")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + this.effective_controller_height_difference + 1) + ")");
-
-        this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscale).tickValues(this.intervalList).tickSize(-(this.viewer_height + 100)).tickPadding(3).tickFormat(() => {
-            return ""
-        })).select(".domain").remove();
-
-        // Add x axis for propCanvas.
-        this.propCanvasXaxis = this.propCanvas.append("g")
-            .attr("id", "propCanvasXaxis")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + this.effective_controller_height_difference + 1) + ")")
-            .call(d3.axisBottom(this.dataCanvasXscale));
-
-        // Add y axis.
-        this.propCanvasYaxis = this.propCanvas.append("g")
-            .attr("id", "propCanvasYaxis")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + this.effective_controller_height_difference - this.effective_controller_height + 1) + ")");
-
-        this.propCanvasYaxis.call(d3.axisLeft(this.propCanvasYscale).ticks(4).tickFormat(
-            (d) => {
-                if (d === 1) {
-                    return "false"
-                } else if (d === 2) {
-                    return "true"
-                } else {
-                    return " "
-                }
-            }));
-    }
 
     drawPropCanvas() {
 
-        // update when redraw, remove previous proposition graph.
-        this.propCanvas.selectAll("#propGraphGroup").remove();
-        this.propCanvas.selectAll("#focusCircle2").remove();
         /**
          * this is proposition's graph group
          */
@@ -685,15 +618,15 @@ class Renderer {
                         .attr('x', x)
                         .attr('y', (d, i) => {
                             // Another d0, d1.
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
 
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             return this.dataCanvasYscaleZoom(final_data[1]);
                         })
                         .text((d, i) => {
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
                             //console.log(dd1)
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             let newY = this.dataCanvasYscaleZoom(final_data[1]);
@@ -725,8 +658,8 @@ class Renderer {
                     this.lineGraph.selectAll("#focusCircle")
                         .attr('cx', x)
                         .attr('cy', (d, i) => {
-                            let d0 = (this.dataList[i])[bisectPos - 1];
-                            let d1 = (this.dataList[i])[bisectPos];
+                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
+                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
                             let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
                             return this.dataCanvasYscaleZoom(final_data[1]);
                         });
@@ -763,12 +696,6 @@ class Renderer {
 
 
     }
-
-    redrawPropCanvas(propName) {
-        this.propName = propName;
-        this.drawPropCanvas();
-    }
-
 
     setdata(jd) {
         if (!jd.isEmpty()) {
@@ -967,7 +894,7 @@ class Renderer {
         // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
         // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
         this.drawDataCanvas();
-        this.drawPropCanvas();
+        //this.drawPropCanvas();
     }
 
 

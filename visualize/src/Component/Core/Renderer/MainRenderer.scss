@@ -44,3 +44,11 @@
     }
     text { display: none; }
 }
+
+#propCanvasIntervalLinesBase {
+    line{
+        stroke: black;
+        stroke-dasharray: 4px;
+    }
+    text { display: none; }
+}

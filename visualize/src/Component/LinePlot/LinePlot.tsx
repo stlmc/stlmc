@@ -1,8 +1,10 @@
 import React from 'react';
 import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
+import './style/LinePlotStyle.scss';
 import {margin, size} from '../Core/Util/Util';
 import {Renderer} from '../Core/Renderer/MainRenderer';
+import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
 import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
@@ -22,6 +24,9 @@ interface State {
     selectedVariables: string[];
     allVariables: string[];
     isRedraw: boolean;
+
+    selectedProps: string[];
+    allProps: string[];
 }
 
 /*
@@ -71,8 +76,64 @@ class LinePlot extends React.Component<Props, State> {
         ),
         // need to concat . before string of className for d3.js
         // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "." + lineplotStyle.main_theme
+        "#graph"
     );
+
+    private propRenderers: PropositionRenderer[] = [];
+
+    private propRenderer: PropositionRenderer = new PropositionRenderer(
+        new size(
+            this.width,
+            this.height,
+            this.width_viewer,
+            this.height_viewer,
+            this.width_controller,
+            this.height_controller
+        ),
+        new margin(
+            this.margin_viewer_top,
+            this.margin_viewer_right,
+            this.margin_viewer_bottom,
+            this.margin_viewer_left
+        ),
+        new margin(
+            this.margin_controller_top,
+            this.margin_controller_right,
+            this.margin_controller_bottom,
+            this.margin_controller_left
+        ),
+        // need to concat . before string of className for d3.js
+        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+        "#graph"
+    );
+
+    private propRenderer2: PropositionRenderer = new PropositionRenderer(
+        new size(
+            this.width,
+            this.height,
+            this.width_viewer,
+            this.height_viewer,
+            this.width_controller,
+            this.height_controller
+        ),
+        new margin(
+            this.margin_viewer_top,
+            this.margin_viewer_right,
+            this.margin_viewer_bottom,
+            this.margin_viewer_left
+        ),
+        new margin(
+            this.margin_controller_top,
+            this.margin_controller_right,
+            this.margin_controller_bottom,
+            this.margin_controller_left
+        ),
+        // need to concat . before string of className for d3.js
+        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+        "#graph",
+        1
+    );
+
 
     private json = new Json("");
     private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
@@ -85,6 +146,9 @@ class LinePlot extends React.Component<Props, State> {
         selectedVariables: [],
         allVariables: [],
         isRedraw: false,
+
+        selectedProps: [],
+        allProps: [],
     };
 
     constructor(props: Props) {
@@ -98,12 +162,16 @@ class LinePlot extends React.Component<Props, State> {
 
     componentDidMount() {
         // must invoke setdata() before draw()
-        console.log(this.json.isEmpty());
         this.renderer.setdata(this.json);
+        //this.propRenderer.setdata(this.json);
+        //this.propRenderer2.setdata(this.json);
         this.setState({
             selectedVariables: this.json.variables,
             allVariables: this.json.variables,
             isRedraw: false,
+
+            selectedProps: this.json.propNames,
+            allProps: this.json.propNames,
         })
     }
 
@@ -115,6 +183,12 @@ class LinePlot extends React.Component<Props, State> {
         console.log(this.state.isRedraw);
         // redraw whole thing.
         this.renderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
+        this.renderer.resize(this.json.propNames.length);
+        //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
+        //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
+        for (let e=0;  e<this.state.selectedProps.length; e++) {
+            this.propRenderers[e].reload(this.json.isEmpty(), this.state.selectedProps[e], this.state.isRedraw);
+        }
     }
 
     onPopupChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -133,18 +207,77 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     onPropSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-        this.renderer.redrawPropCanvas((value2 as { value: string, label: string; })["value"]);
+        //this.renderer.redrawPropCanvas((value2 as { value: string, label: string; })["value"]);
+        console.log(`action: ${actionMeta.action}`);
+        let target = (value2 as ({ value: string; label: string; }[]));
+
+        let tmp: string[] = [];
+        if (target) {
+            for (let el of target) {
+                tmp.push(el["value"])
+            }
+        }
+        if (actionMeta.action == "remove-value") {
+            this.setState({
+                selectedProps: tmp,
+            });
+        } else if (actionMeta.action == "select-option") {
+            this.setState({
+                selectedProps: tmp,
+            });
+        } else if (actionMeta.action == "clear") {
+            this.setState({
+                selectedProps: [],
+            });
+        }
     }
 
     onPropListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
 
         this.json.string = require("../../DataDir/" + (value2 as { value: string; label: string; })["value"]);
         this.renderer.setdata(this.json);
+        this.propRenderers = [];
+        for (let e=0;  e<this.json.propNames.length; e++){
+            let pr = new PropositionRenderer(
+                new size(
+                    this.width,
+                    this.height,
+                    this.width_viewer,
+                    this.height_viewer,
+                    this.width_controller,
+                    this.height_controller
+                ),
+                new margin(
+                    this.margin_viewer_top,
+                    this.margin_viewer_right,
+                    this.margin_viewer_bottom,
+                    this.margin_viewer_left
+                ),
+                new margin(
+                    this.margin_controller_top,
+                    this.margin_controller_right,
+                    this.margin_controller_bottom,
+                    this.margin_controller_left
+                ),
+                // need to concat . before string of className for d3.js
+                // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+                "#graph",
+                e
+            );
+            pr.setdata(this.json);
+            this.propRenderers.push(pr);
+        }
+
+        //this.propRenderer.setdata(this.json);
+        //this.propRenderer2.setdata(this.json);
         // get reloaded new variables.
         this.setState({
             allVariables: this.json.variables,
             selectedVariables: this.json.variables,
             isRedraw: false,
+
+            allProps: this.json.propNames,
+            selectedProps: this.json.propNames,
         });
     }
 
@@ -184,9 +317,20 @@ class LinePlot extends React.Component<Props, State> {
         let selected = this.state.selectedVariables.map((v) => {
             return ({value: v, label: v})
         });
+        let props = [{value:"All", label:"All"}].concat(this.state.allProps.map(
+            (v) => {
+                //this.json.proposition_names[v]
+                return ({
+                    value: v,
+                    label: (v + " = (" + this.json.proposition_names[v] + ")")
+                });
+            }));
+        let selectedProps = this.state.selectedProps.map((v) => {
+            return ({value: v, label: v})
+        });
         // TODO: Update precision of graph after update.
         return (
-            <div id="graph" className={lineplotStyle.main_theme}>
+            <div className={lineplotStyle.main_theme}>
                 <div className="row">
                     <div className="col-md-1"/>
                     <div className="col-md-10">
@@ -212,24 +356,21 @@ class LinePlot extends React.Component<Props, State> {
                     </div>
                     <div className="col-md-1"/>
                 </div>
-                <div className="row">
+                <div className="row line_plot_container">
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Propositions</label>
-                        <Select isSearchable={true} options={this.json.propNames.map(
-                            (v) => {
-                                //this.json.proposition_names[v]
-                                return ({
-                                    value: v,
-                                    label: (v + " = (" + this.json.proposition_names[v] + ")")
-                                });
-                            }
-                        )} onChange={this.onPropSelect}/>
+                        <Select isSearchable={true} options={props}
+                                onChange={this.onPropSelect}
+                                value={selectedProps}
+                                isMulti={true}
+                                closeMenuOnSelect={false}/>
                     </div>
                     <div className="col-md-1"/>
                 </div>
                 {!this.json.isEmpty() ?
-                    (<div>
+                    (
+                        <div>
                             <div className="row">
                                 <div className="col-md-1"/>
                                 <div className="col-md-4">
@@ -244,11 +385,20 @@ class LinePlot extends React.Component<Props, State> {
                                 <div className="col-md-7"/>
                             </div>
 
+                            <div className="row">
+                            <div id="graph" className="svg_div"/>
+                            <div id="proposition" className="prop_div"/>
+                            </div>
+
                         </div>
                     )
                     : (
-                        <div className="alert alert-warning" role="alert">
-                            Nothing to show!
+                        <div className="row line_plot_div">
+                            <div className="col-md-1"/>
+                            <div className="col-md-10 alert alert-warning" role="alert">
+                                Nothing to show!
+                            </div>
+                            <div className="col-md-1"/>
                         </div>
                     )}
             </div>);
