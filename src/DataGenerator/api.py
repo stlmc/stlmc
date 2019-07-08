@@ -96,36 +96,14 @@ class Api:
         return result
   
     def getODE(self):
-       result = []
-
-       if self.model is not None:
-           for i in range(self.bound+2):
-               getModeConsts = []
-               for j in self.getModesId():
-                   declares = self.model.decls()
-                   for k in declares:
-                       if (j + "_" + str(i)) == k.name():
-                           if isinstance(self.model[k], z3.z3.BoolRef):
-                               getModeConsts.append(Bool(k.name()[:-2]) == BoolVal(True if str(self.model[k]) == "True" else False))
-                           else:
-                               getModeConsts.append(Real(k.name()[:-2]) == RealVal(self.model[k]))
-                           declares.remove(k)
-
-               for k in range(len(self.mode_module)):
-                   mode = self.IDmodeModule[k].getMode().getExpression(self.subvars)
-                   getModeConsts.append(mode)
-                   coincide = checkSat(getModeConsts)[0]
-                   if coincide == z3.sat:
-                       result.append(k)
-                       break
-                   getModeConsts.pop()
-
-
-           #check matched modeModule’s mode
-           #for i in range(len(result)):
-           #    print(self.IDmodeModule[result[i]])
-
-       return result
+        result = []
+        if self.model is not None:
+            for i in range(self.bound+2):
+                declares = self.model.decls()
+                for k in declares:
+                    if ("currentMode_" + str(i)) == k.name():
+                        result.append(int(str(self.model[k])))
+        return result
 
 
     def getProposition(self):

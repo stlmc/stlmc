@@ -97,7 +97,15 @@ class z3Consts:
                         flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.subvars)
                     else:
                         raise ("Flow id is not declared")
-                flowConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule)))
+                modeConsts = list()
+                for otherModeID in range(0, i):
+                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                for otherModeID in range(i+1, len(self.modeModule)):
+                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                modeConsts.append(Int('currentMode_'+str(k)) == IntVal(i))
+                modeConsts.append(curMode.substitution(self.makeSubMode(k)))
+                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule)))
+                flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
 
