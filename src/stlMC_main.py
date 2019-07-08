@@ -25,7 +25,6 @@ def main(argv):
     dataGenerator = Api()
     path_dir="../visualize/src/DataDir/"
     file_list = os.listdir(path_dir)
-    print(file_list)
     workspace_info = dict()
     title = argv[1]
 

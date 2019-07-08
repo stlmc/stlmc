@@ -103,7 +103,40 @@ class Api:
                 for k in declares:
                     if ("currentMode_" + str(i)) == k.name():
                         result.append(int(str(self.model[k])))
+
+
         return result
+
+
+    def getSol(self):
+        var_list = []
+        tsp = self.getTauValues()
+        c_val = self.getContValues()
+        ode_l = result
+        initial_val = dict()
+        for i in c_val.keys():
+            subResult = []
+            for j in range(self.bound+2):
+                subResult.append(c_val[i][j][0])
+            initial_val[i] = subResult
+        print(initial_val)
+        strOdeBound = list()
+        for i in range(len(ode_l)):
+            modexps = self.mode_module[ode_l[i]].getFlow().exp()
+            print(modexps)
+            strOde = dict()
+            for j in range(len(modexps)):
+                subResult = modexps[j].getSolStr()
+                for k in initial_val.keys():
+                    if k in subResult:
+                        subResult = subResult.replace(k, str(initial_val[k][i]))
+                strOde[modexps[j].getVarId()] = subResult
+            strOdeBound.append(strOde)
+            print("after replacement")
+        print(strOdeBound)
+        return strOdeBound
+
+
 
 
     def getProposition(self):

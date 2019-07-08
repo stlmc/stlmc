@@ -55,13 +55,27 @@ class Variable:
      def id(self, id):
          self.__varId = id
      
-     def getExpression(self):
+     def getExpression(self, varDict = dict()):
          return {'bool' : Bool, 'int' : Int, 'real' : Real}[self.__type](self.__varId)
 
 class Mode(Variable):
      def __init__(self, varType, varId):
          super().__init__(varType, varId)
          
+class InitVal(Variable):
+    def __init__(self, varId):
+        super().__init__("real", str(varId)[0:-3])
+    def __repr__(self):
+         return str(self.id)
+    def getType(self):
+        return Type.Real
+    def getInitValue(self, step):
+        return Real(str(self.__varId) + "_" + str(step))
+    def getVars(self):
+        return self.getExpression().getVars()
+    def substitution(self, subDict):
+        return self.getExpression().substitution(subDict)
+
 class ContVar(Variable):
      def __init__(self, interval, varId):
          super().__init__("real", varId)
@@ -325,18 +339,32 @@ class SolEq:
     def __init__(self, contVar, Sol):
         self.contVar = contVar
         self.sol = Sol
+        self.__ode = []
+
     def __repr__(self):
         return str(self.contVar) + " = " + str(self.sol)
+
     def getVarId(self):
         return str(self.contVar)
+
+    def getSolStr(self):
+        return str(self.sol)
+
     def getFlow(self, varDict):
-        if isinstance(self.sol, str):
-            return self.sol           
         return self.sol.getExpression(varDict)
+
     def getExpression(self, varDict):
         result = dict()
         resutl[self.contVar] = self.sol.getExpression(varDict)
         return result
+
+    def var2str(self):
+        return str(self.contVar)
+
+    @property
+    def ode(self):
+        self.__ode.append(self.sol.value)
+        return self.__ode
 
 class modeModule:
     def __init__(self, mode, inv, flow, jump):
@@ -362,12 +390,7 @@ class flowDecl:
         self.type = expType   # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
         self.__var_dict = var_dict
-        #for e in self.exps:
-        #    varlist.append(e.contVar)
-        #self.__cont_id_dict = dict()
-        #for i in range(len(varlist)):
-        #    self.__cont_id_dict[Real(varlist[i])]=0.0
-   
+    
     @property
     def var_dict(self):
         return self.__var_dict
@@ -376,6 +399,9 @@ class flowDecl:
     def __repr__(self):
         return str(self.type) + " " +  str(self.exps)
     
+    def getFlowType(self):
+        return self.type
+
     def exp(self):
         return self.exps
 
@@ -396,6 +422,11 @@ class flowDecl:
             else:
                 ode_list.append(elem.flow.value)
         return ode_list 
+
+    @property
+    def ode(self):
+        self.__ode.append(self.flow.value)
+        return self.__ode
 
  
 class jumpRedeclModule:

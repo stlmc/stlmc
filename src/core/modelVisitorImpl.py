@@ -85,10 +85,16 @@ class modelVisitorImpl(modelVisitor):
             r = Real(ctx.VARIABLE().getText())
             r.var_dic = var_dict
             return r
+        elif ctx.TIME():
+            r = Real('time')
+            return r
         elif ctx.VALUE():
             return RealVal(ctx.VALUE().getText())
         else:
             raise ("error in constant expression")
+
+    def visitInitialValue(self, ctx:modelParser.InitialValueContext, var_dict=dict()):
+        return InitVal(ctx.INITIALVAL().getText())
 
     def visitCompCond(self, ctx:modelParser.CompCondContext):
         op = ctx.op.text
@@ -212,7 +218,7 @@ class modelVisitorImpl(modelVisitor):
     flow solution equation type
     '''
     def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict()):
-        return SolEq(ctx.VARIABLE()[0].getText(), self.visitExpression(ctx.expression(), var_dict))
+        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), var_dict))
 
     '''
     mode module
@@ -248,13 +254,8 @@ class modelVisitorImpl(modelVisitor):
            expType = "diff"
            for i in range(len(ctx.diff_eq())):
                result.append(self.visit(ctx.diff_eq()[i]))
-        #elif ctx.sol_eq():
-        #    expType = "sol"
-        #    for i in range(len(ctx.sol_eq())):
-        #        result.append(self.visit(ctx.sol_eq()[i]))
         v_list = []
         f_result = []
-        # variable dic setting loop
         if ctx.diff_eq():
             for e in result:
                 # get var ID

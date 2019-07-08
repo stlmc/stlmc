@@ -368,7 +368,7 @@ class Not(Logical,_UnaryOp):
 
 
 class Integral(Node):
-    def __init__(self, endList, startList, time, ode):
+    def __init__(self, endList, startList, time, ode, flowType):
         self.startList = []
         self.endList = []
         for i in endList.keys():
@@ -377,6 +377,7 @@ class Integral(Node):
         self.ode = ode
         self.time = time
 #        self.flowIndex = str(index)
+        self.flowType = flowType
         super().__init__(Type.Bool)
     def __repr__(self):
         start = '[' + ' '.join([str(sl) for sl in self.startList]) + ']'

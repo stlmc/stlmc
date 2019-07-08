@@ -104,7 +104,7 @@ class z3Consts:
                     modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
                 modeConsts.append(Int('currentMode_'+str(k)) == IntVal(i))
                 modeConsts.append(curMode.substitution(self.makeSubMode(k)))
-                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule)))
+                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)

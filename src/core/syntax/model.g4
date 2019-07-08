@@ -67,8 +67,12 @@ VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 
 fragment LOWERCASE : [a-z] ;
 fragment UPPERCASE : [A-Z] ;
+TIME : 't' ;
 
 VARIABLE     : (LOWERCASE | UPPERCASE)+ (LOWERCASE | UPPERCASE | DIGIT)* ;
+
+INITIALVAL : VARIABLE '(0)' ;
+
 
 NEXT_VAR   : VARIABLE '\'' ;
 
@@ -87,7 +91,9 @@ variable_var_decl : var_range VARIABLE SEMICOLON ;
 expression  : 
               LPAREN expression RPAREN # parenthesisExp
             | VALUE     # constantExp
+            | TIME      # constantExp
             | VARIABLE  # constantExp
+            | INITIALVAL # initialValue
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp
@@ -122,7 +128,7 @@ var_range   : LBRACK VALUE RBRACK #exactValue
             ;
 
 diff_eq : DIFF LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
-sol_eq : VARIABLE LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;
+sol_eq : VARIABLE LPAREN TIME RPAREN EQUAL expression SEMICOLON ;
 
 mode_module : LCURLY mode_decl inv_decl flow_decl jump_decl RCURLY ;
 

@@ -4,6 +4,7 @@
 *Lexer.py
 *.pyc
 *.swp
+src/run.sh
 .DS_Store
 __pycache__
 data/
