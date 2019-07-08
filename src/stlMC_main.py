@@ -4,7 +4,15 @@ from core.syntax.modelLexer import modelLexer
 from core.syntax.modelParser import modelParser
 from core.modelVisitorImpl import modelVisitorImpl
 import io, os, sys
-from DataGenerator import *
+from visualize import *
+import multiprocessing
+
+def module(title, stlModel, formula, k ,timeBound, dataGenerator):
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
+    dataGenerator.data = stlModel.data
+    dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
+    dataGenerator.visualize()
+
 
 def main(argv):
     input = FileStream(argv[1])
@@ -18,6 +26,7 @@ def main(argv):
     file_list = os.listdir(path_dir)
     print(file_list)
     workspace_info = dict()
+    title = argv[1]
 
     workspace_info["file_list"] = file_list
 
@@ -28,15 +37,12 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(4, 5, 2):
+        for k in range(40, 51, 10):
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
-            (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlMC.modelCheck(formula, k, timeBound, False)
-#            visualize = stlMC.getSpecificModel()
-            #dataGenerator.data = stlMC.data
-            #dataGenerator.stackID = str(argv[1]).rsplit('/',1)[1].split(".")[0]
-            #dataGenerator.visualize()
+            p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))
+            p.start()
             '''
             print(visualize.getVarsId())
             print(visualize.getModesId())
