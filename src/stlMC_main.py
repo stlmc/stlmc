@@ -37,7 +37,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(1, 2, 10):
+        for k in range(3, 4, 10):
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60

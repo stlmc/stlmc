@@ -103,14 +103,12 @@ class Api:
                 for k in declares:
                     if ("currentMode_" + str(i)) == k.name():
                         result.append(int(str(self.model[k])))
-
-
+        self.getSol(result)
+     
         return result
 
 
-    def getSol(self):
-        var_list = []
-        tsp = self.getTauValues()
+    def getSol(self, result):
         c_val = self.getContValues()
         ode_l = result
         initial_val = dict()
@@ -120,21 +118,23 @@ class Api:
                 subResult.append(c_val[i][j][0])
             initial_val[i] = subResult
         print(initial_val)
-        strOdeBound = list()
-        for i in range(len(ode_l)):
-            modexps = self.mode_module[ode_l[i]].getFlow().exp()
-            print(modexps)
-            strOde = dict()
-            for j in range(len(modexps)):
-                subResult = modexps[j].getSolStr()
-                for k in initial_val.keys():
-                    if k in subResult:
-                        subResult = subResult.replace(k, str(initial_val[k][i]))
-                strOde[modexps[j].getVarId()] = subResult
-            strOdeBound.append(strOde)
-            print("after replacement")
-        print(strOdeBound)
-        return strOdeBound
+        solutionBound = dict()
+        for i in c_val.keys():
+            solutionList = list()
+            for j in range(len(ode_l)):
+                modexps = self.mode_module[ode_l[j]].getFlow().exp()
+                for k in range(len(modexps)):
+                    if modexps[k].getVarId() == i:
+                        subResult = modexps[k].getSolStr()
+                        for l in initial_val.keys():
+                            if l in subResult:
+                                subResult = subResult.replace(l, str(initial_val[l][j]))
+                        solutionList.append(subResult)
+                        break
+            solutionBound[i] = solutionList
+        print("After replacement")
+        print(solutionBound)
+        return solutionBound
 
 
 
