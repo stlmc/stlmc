@@ -181,6 +181,7 @@ def _(const):
     else:
         raise FlowTypeEerror() 
 
+
     z3result = [z3Obj(c) for c in result]
     return z3.And(z3result) 
 

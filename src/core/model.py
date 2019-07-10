@@ -575,7 +575,6 @@ class StlMC:
 
             # check the satisfiability
             (result, cSize, self.model) = checkSat(modelConsts + partitionConsts + [formulaConst])
-
             stime2 = time.process_time()
 
             # calculate size
