@@ -143,8 +143,8 @@ class Api:
                 for k in range(len(modexps)):
                     if modexps[k].getVarId() == i:
                         subResult = modexps[k]
-                    solutionList.append(subResult)
-                    break
+                        solutionList.append(subResult)
+                        break
             solutionBound[i] = solutionList
         print("After replacement")
         print(solutionBound)
