@@ -119,6 +119,9 @@ class Api:
             initial_val[i] = subResult
         print(initial_val)
         solutionBound = dict()
+
+        #return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
+        '''
         for i in c_val.keys():
             solutionList = list()
             for j in range(len(ode_l)):
@@ -131,6 +134,17 @@ class Api:
                                 subResult = subResult.replace(l, str(initial_val[l][j]))
                         solutionList.append(subResult)
                         break
+            solutionBound[i] = solutionList
+        '''
+        for i in c_val.keys():
+            solutionList = list()
+            for j in range(len(ode_l)):
+                modexps = self.mode_module[ode_l[j]].getFlow().exp()
+                for k in range(len(modexps)):
+                    if modexps[k].getVarId() == i:
+                        subResult = modexps[k]
+                    solutionList.append(subResult)
+                    break
             solutionBound[i] = solutionList
         print("After replacement")
         print(solutionBound)
