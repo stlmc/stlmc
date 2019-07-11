@@ -109,6 +109,16 @@ class Api:
         return result
 
 
+    def getSolEqInitialValue(self):
+        c_val = self.getContValues()
+        initial_val = dict()
+        for i in c_val.keys():
+            subResult = []
+            for j in range(self.bound + 2):
+                subResult.append(c_val[i][j][0])
+            initial_val[i] = subResult
+        return initial_val
+
 
     def getSol(self, result):
         c_val = self.getContValues()
@@ -185,19 +195,19 @@ class Api:
             c_val = self.getContValues()
             ode_l = self.getODE()
             sol_l = self.getSol(ode_l)
+            sol_init_l = self.getSolEqInitialValue()
 
-            print("?????")
-            print(sol_l)
-            # if there exists any sol equations...
-            # Parsing it to key and values
-            if len(sol_l) != 0:
-                print("sol exists!")
-                # k is variable name of dic
-                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
-                for k in sol_l:
-                    for elem in sol_l[k]:
-                        print(elem)
 
+            print("this is tau")
+            print(tsp)
+
+            '''
+                if solution equation exists: 
+                checking it via sol_l's length,
+                first, it is parsing sol_l by key and value. (for k in sol_l line)
+                second, k is variable name of dic and { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
+            '''
+            print(ode_l)
 
 
 
@@ -235,6 +245,71 @@ class Api:
                     print(str(sum_pre) + " ~ " + str(sum))
                     t.append(np.linspace(sum_pre, sum))
             fig = plt.figure()
+
+
+
+
+
+
+
+            # TODO : Add new functions
+            test_res = []
+
+            # Parsing it to key and values
+            if len(sol_l) != 0:
+                print("sol exists!")
+                # k is variable name of dic
+                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
+                keys = []
+                for k in sol_l:
+                    keys.append(k)
+                    # TODO: Not sure about this.
+                    for i, elem in enumerate(sol_l[k]):
+                        self.mode_module[ode_l[i]].getFlow().var_dict[k] = sol_init_l[k][i]
+                        # test_res2 = []
+                        newT = t[i].tolist()
+                        for i2 in range(len(newT)):
+                            self.mode_module[ode_l[i]].getFlow().time_dict["time"] = newT[i2]
+                            test_res3 = []
+                            test_res3.append(newT[i2])
+                            # print("sival")
+                            test_res3 += self.mode_module[ode_l[i]].getFlow().exp2exp()
+                            test_res.append(test_res3)
+
+                        # test_res.append(test_res2)
+
+            # TODO : version2
+            test_res2 = []
+
+            # Parsing it to key and values
+            if len(sol_l) != 0:
+                print("sol2 exists!")
+                # k is variable name of dic
+                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
+                keys = []
+                for k in sol_l:
+                    keys.append(k)
+                    # TODO: Not sure about this.
+                    for i, elem in enumerate(sol_l[k]):
+                        self.mode_module[ode_l[i]].getFlow().var_dict[k] = sol_init_l[k][i]
+                        # test_res2 = []
+                        for i2 in range(1, 200):
+                            self.mode_module[ode_l[i]].getFlow().time_dict["time"] = i2+i*200
+                            test_res3 = []
+                            test_res3.append(i2+i*200)
+                            # print("sival")
+                            test_res3 += self.mode_module[ode_l[i]].getFlow().exp2exp()
+                            test_res2.append(test_res3)
+
+                        # test_res.append(test_res2)
+
+
+
+
+
+
+
+
             z = []
             print(c_val)
             print(str(len(self.mode_module)))
@@ -268,7 +343,19 @@ class Api:
                 outer.append(d_ttt2)    
             #print(outer)
             outer2 = dict()
+
+            test_res_dic = dict()
+            test_res_dic["x1sol"] = test_res
+
+            test_res_dic2 = dict()
+            test_res_dic2["x1sol-longer"] = test_res2
+
+
+
+            outer.append(test_res_dic)
+            outer.append(test_res_dic2)
             outer2['data'] = outer
+
             outer2['proplist'], outer2['prop'] = self.getProposition()
         
             for i in range(len(z)):   

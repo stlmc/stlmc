@@ -286,7 +286,7 @@ class modelVisitorImpl(modelVisitor):
             # testing....
             for i in range(len(ctx.sol_eq())):
                  f_result.append(self.visitSol_eq(ctx.sol_eq()[i], time_dict))
-        return flowDecl(expType, f_result, var_dict)
+        return flowDecl(expType, f_result, var_dict, time_dict)
 
     '''
     jump declaration

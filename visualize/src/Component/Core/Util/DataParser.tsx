@@ -140,6 +140,9 @@ class DataList{
                 }
             }
         }
+        console.log(this._value)
+        console.log(this._xs)
+        console.log(this._ys)
     }
 
     get xs(): number[]{
@@ -222,6 +225,7 @@ class Json {
             this._isEmpty = false;
             // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
             // need to take both key and value.
+            console.log(this._jsonString)
             for (let [key1, value1] of Object.entries(this._jsonString)) {
                 if (key1 == "data") {
                     for (let i = 0; i < value1.length; i++) {
@@ -234,6 +238,7 @@ class Json {
                             this._intervals.push(tmp_interval);
                         }
                     }
+                    console.log(this._intervals)
                 } else if (key1 == "proplist") {
                     //console.log("Prol"+Object.entries(value1));
 

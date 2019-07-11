@@ -368,13 +368,13 @@ class Renderer {
             .attr("stroke", (d, i) => {
                 return this.lineGraphColor[d.name]
             })
-            .style("fill", "none")
             .style("stroke-width", "1px")
             .attr('id', 'focusCircle')
             .attr("transform", ()=>{
                 return "translate(0, -20)"
             })
-            .style("visibility", "hidden");
+            .style("visibility", "hidden")
+            .style("fill", "none");
 
         this.lineGraph.append("text")
             .attr('id', 'focusText')
@@ -405,298 +405,6 @@ class Renderer {
         this.newScaleX = this.ScaleX;
     }
 
-
-    drawPropCanvas() {
-
-        /**
-         * this is proposition's graph group
-         */
-        let data = this.json.extentListByName(this.propName);
-        //console.log(this.json.extentListByName(this.propName))
-        this.propGraph = this.propCanvasBack
-            .append("g")
-            .attr("id", "propGraph")
-            .selectAll(".propGraphData")
-            .data([data])
-            .enter();
-
-
-        let scaleX = this.dataCanvasXscaleZoom ? this.dataCanvasXscaleZoom : this.dataCanvasXscale;
-        let scaleY = this.propCanvasYscale;
-
-        // set proposition graph line generator
-        this.propLineGenerator = d3.line()
-            .x(function (d) {
-                return scaleX(d[0]);
-            })
-            .y(function (d) {
-                return scaleY(d[1]);
-            }).curve(d3.curveMonotoneX);
-
-        /**
-         * this is actual data of proposition graph
-         */
-        this.propGraph
-            .append("path")
-            .attr("d", (d) => {
-
-                let res = "";
-                for (let e of d.value) {
-                    res += this.propLineGenerator(e)
-                }
-                return res
-            })
-            .attr("class", "propGraphData")
-            .attr("stroke", "red")
-            .attr("stroke-width", 1.5)
-            .attr("transform", () => {
-                return "translate(0," + (this.viewer_height - 2 * this._margin_viewer.top + 11.5) + ")"
-            });
-
-
-        // TODO: Update prop's zoom function. This is buggy code.
-        // Add zoom function to dataCanvas
-        let zoom = d3.zoom()
-            .extent([[0, 0], [this.viewer_width, this.viewer_height]])
-            .scaleExtent([1, Infinity])
-            .translateExtent([[0, -this.dataYrange[1]], [Infinity, Infinity]])
-            .on("zoom", () => {
-
-                // Update scale functions to zoomed ones.
-                this.dataCanvasXscaleZoom = d3.event.transform.rescaleX(this.dataCanvasXscale);
-                this.dataCanvasYscaleZoom = d3.event.transform.rescaleY(this.dataCanvasYscale);
-
-                // Update axis.
-                this.dataCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
-                //this.dataCanvasYaxis.call(d3.axisLeft(this.dataCanvasYscaleZoom));
-
-                this.lineGenerator = d3.line()
-                    .x((d) => {
-                        return this.dataCanvasXscaleZoom(d[0]);
-                    })
-                    .y((d) => {
-                        return this.dataCanvasYscaleZoom(d[1]);
-                    });
-
-                // Update lines positions.
-
-                this.lineGraph.selectAll(".lines")
-                    .attr("d", (d) => {
-                        if (this._selectedVariables.includes(d.name)) {
-                            let res = "";
-                            for (let e of d.value) {
-                                res += this.lineGenerator(e)
-                            }
-                            return res
-                        }
-                    });
-
-                let scaleX = this.dataCanvasXscaleZoom;
-                let scaleY = this.propCanvasYscale;
-
-                // set proposition graph line generator
-                this.propLineGenerator = d3.line()
-                    .x(function (d) {
-                        return scaleX(d[0]);
-                    })
-                    .y(function (d) {
-                        return scaleY(d[1]);
-                    }).curve(d3.curveMonotoneX);
-
-                this.propGraph.selectAll(".propGraphData")
-                    .attr("d", (d) => {
-                        let res = "";
-                        for (let e of d.value) {
-                            res += this.propLineGenerator(e)
-                        }
-                        return res
-                    });
-
-
-                let mouse = d3.mouse($("#dataCanvasBack")[0]);
-                let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
-                let bisectDate = d3.bisector((d) => {
-                    return d[0];
-                }).left;
-                let bisectData = bisectDate(this.refData, pos);
-
-                if (this.refData.length - 1 < bisectData) {
-                    bisectData = this.refData.length - 1;
-                }
-                if (bisectData === 0) {
-                    bisectData = 1;
-                }
-                let d0 = this.refData[bisectData - 1];
-                let d1 = this.refData[bisectData];
-
-                // work out which date value is closest to the mouse
-                let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                let x = this.dataCanvasXscaleZoom(final_data[0]);
-
-                this.lineGraph.selectAll("#focusText")
-                    .attr('x', x)
-                    .attr('y', (d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
-                        let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                        return this.dataCanvasYscaleZoom(final_data[1]);
-                    })
-                    .text((d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
-                        var final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                        var newY = this.dataCanvasYscaleZoom(final_data[1]);
-                        return this.dataName[i] + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")"
-                    });
-
-                this.lineGraph.selectAll("#focusCircle")
-                    .attr('cx', x)
-                    .attr('cy', (d, i) => {
-                        let d0 = (this.dataList[i])[bisectData - 1];
-                        let d1 = (this.dataList[i])[bisectData];
-                        //console.log(dd1)
-                        let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                        return this.dataCanvasYscaleZoom(final_data[1]);
-                    });
-
-
-            });
-
-        // Add rect to the dataCanvasFront.
-        // [mainrect] will be used to interacting with users.
-        // This rect is transparent but will be used for interactions.
-        // Translate y for 20 is fitting rectangle to data canvas's y axis.
-        // 20 is x axis height.
-        let tooltip = this.tooltip;
-        let refData = this.refData;
-        let bisectDate = d3.bisector((d) => {
-            return d[0];
-        }).left;
-
-        let lineGraph = this.lineGraph;
-        this.propCanvasFront
-            .append("rect")
-            .attr("id", "proprect")
-            .attr('width', this.viewer_width - this.x_clip_margin)
-            .attr('height', this.effective_controller_height)
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (this.viewer_height - this._margin_viewer.top + this.effective_controller_height_difference - this.effective_controller_height + 1) + ")")
-            .style("fill-opacity", "0.0")
-            .on("mouseover", () => {
-                if (this.popup) {
-                    tooltip.style("visibility", "visible");
-                }
-                lineGraph.selectAll("#focusCircle").style("visibility", "visible");
-                lineGraph.selectAll("#focusText").style("visibility", "visible");
-            })
-            .on("mouseout", function () {
-                tooltip.style("visibility", "hidden");
-                lineGraph.selectAll("#focusCircle").style("visibility", "hidden");
-                lineGraph.selectAll("#focusText").style("visibility", "hidden");
-            })
-            .on("mousemove", () => {
-
-                this.dataCanvasXscaleZoom = this.dataCanvasXscaleZoom ? this.dataCanvasXscaleZoom : this.dataCanvasXscale;
-                this.dataCanvasYscaleZoom = this.dataCanvasYscaleZoom ? this.dataCanvasYscaleZoom : this.dataCanvasYscale;
-
-
-                // Get current mouse position.
-                let mouse = d3.mouse($("#dataCanvasBack")[0]);
-                let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
-                let bisectPos = bisectDate(refData, pos);
-                if (bisectPos > 0 && refData.length - 1 >= bisectPos) {
-
-                    // Choose close one, between 2 of them.
-                    let d0 = refData[bisectPos - 1];
-                    let d1 = refData[bisectPos];
-
-                    // work out which date value is closest to the mouse
-                    let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                    let x = this.dataCanvasXscaleZoom(final_data[0]);
-
-                    let tmpText = [];
-                    this.lineGraph.selectAll("#focusText")
-                        .attr('x', x)
-                        .attr('y', (d, i) => {
-                            // Another d0, d1.
-                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
-                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
-
-                            let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                            return this.dataCanvasYscaleZoom(final_data[1]);
-                        })
-                        .text((d, i) => {
-                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
-                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
-                            //console.log(dd1)
-                            let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                            let newY = this.dataCanvasYscaleZoom(final_data[1]);
-                            let tstring = this.dataName[i] + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")";
-                            if (!tmpText.includes(tstring)) {
-                                tmpText.push(tstring);
-                            }
-                            return tstring;
-                        });
-
-                    // http://jsfiddle.net/VRyS2/1/
-                    let newTString = tmpText.reduce((acc, cur, i22) => {
-                        return acc += (`
-                                <li class="liclass">
-                                    <div class="input-color">
-                                        <input type="text" value="` + cur + ` "/>
-                                        <div class="color-box" style="background-color: ` + this.lineGraphColor[i22] + `;"></div>
-                                        <!-- Replace "#FF850A" to change the color -->
-                                    </div>
-                                </li>`);
-                    }, "");
-
-                    newTString = ('<ul class=ulclass>' + newTString + '</ul>');
-
-                    this.tooltip.style("top", (200) + "px").style("left", (200) + "px").html(
-                        newTString
-                    );
-
-                    this.lineGraph.selectAll("#focusCircle")
-                        .attr('cx', x)
-                        .attr('cy', (d, i) => {
-                            let d0 = (this.dataListWithVariables[i].value.flat())[bisectPos - 1];
-                            let d1 = (this.dataListWithVariables[i].value.flat())[bisectPos];
-                            let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                            return this.dataCanvasYscaleZoom(final_data[1]);
-                        });
-                }
-            })
-            .call(zoom);
-        /**
-         * Draw circle
-         */
-        /*
-        if (data.value.length !== 0) {
-
-            this.propGraphGroup
-                .append('circle')
-                .attr("r", 7)
-                .attr("stroke", "red")
-                //.style("stroke", "black")
-                .style("fill", "none")
-                .style("stroke-width", "1px")
-                .attr('id', 'focusCircleProp')
-                // newHeight + this.effective_controller_height_difference+1 is the maxium height of second axis bottom
-                .attr("transform", () => {
-                    return "translate(0," + (this.viewer_height + 2 * this._margin_viewer.top - 8.5) + ")"
-                })
-                .attr('cx', this.xx)
-                .attr('cy', (d, i2) => {
-                    var i222 = d3.bisect(d.xs, pos);
-                    var yyt = scaleY(d.ys[i222]);
-                    return yyt;
-                });
-        }
-
-         */
-
-
-    }
-
     setdata(jd) {
         if (!jd.isEmpty()) {
             this.json = jd;
@@ -714,9 +422,6 @@ class Renderer {
         this.propName = propName;
     }
 
-    getPropList() {
-        return this.json.propNames;
-    }
 
     drawDataCanvas() {
 
@@ -737,6 +442,8 @@ class Renderer {
             .data(this.dataListWithVariables)
             .enter();
 
+        console.log(this.dataListWithVariables)
+
         // Distinguish between original one and redrawn one because of graph coloring
         if (!this.isRedraw) {
             this.lineGraphColor = {};
@@ -755,7 +462,8 @@ class Renderer {
                     return c
                 })
                 .attr("transform", "translate(0, -20)")
-                .attr("stroke-width", 1.5);
+                .attr("stroke-width", 1.5)
+                .style("fill", "none");
         } else {
             this.lineGraph.append("path")
                 .attr("d", (d) => {
@@ -770,7 +478,8 @@ class Renderer {
                     return this.lineGraphColor[d.name];
                 })
                 .attr("transform", "translate(0, -20)")
-                .attr("stroke-width", 1.5);
+                .attr("stroke-width", 1.5)
+                .style("fill", "none");
         }
 
         // Set extra tooltips.

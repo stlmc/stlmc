@@ -456,14 +456,19 @@ class modeModule:
 
 
 class flowDecl:
-    def __init__(self, expType, exps, var_dict):
+    def __init__(self, expType, exps, var_dict, time_dict):
         self.type = expType  # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
         self.__var_dict = var_dict
+        self.__time_dict = time_dict
 
     @property
     def var_dict(self):
         return self.__var_dict
+
+    @property
+    def time_dict(self):
+        return self.__time_dict
 
     def __repr__(self):
         return str(self.type) + " " + str(self.exps)
@@ -491,8 +496,8 @@ class flowDecl:
             else:
                 # elem.flow is BinaryExp type
                 ode_list.append(elem.flow.value)
-        print("return")
-        print(ode_list)
+        #print("return")
+        #print(ode_list)
         return ode_list
 
     @property
