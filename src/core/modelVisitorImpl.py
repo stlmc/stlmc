@@ -87,14 +87,18 @@ class modelVisitorImpl(modelVisitor):
             return r
         elif ctx.TIME():
             r = Real('time')
+            r.var_dic = var_dict
             return r
         elif ctx.VALUE():
             return RealVal(ctx.VALUE().getText())
         else:
             raise ("error in constant expression")
 
+    # TODO: New feature!
     def visitInitialValue(self, ctx:modelParser.InitialValueContext, var_dict=dict()):
-        return InitVal(ctx.INITIALVAL().getText())
+        r = InitVal(ctx.INITIALVAL().getText())
+        r.var_dic = var_dict
+        return r
 
     def visitCompCond(self, ctx:modelParser.CompCondContext):
         op = ctx.op.text
@@ -199,7 +203,9 @@ class modelVisitorImpl(modelVisitor):
         if not var_dict:
             return self.visit(ctx)
         else:
-            if isinstance(ctx, modelParser.ConstantExpContext):
+            if isinstance(ctx, modelParser.InitialValueContext):
+                return self.visitInitialValue(ctx, var_dict)
+            elif isinstance(ctx, modelParser.ConstantExpContext):
                 return self.visitConstantExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.BinaryExpContext):
                 return self.visitBinaryExp(ctx, var_dict)

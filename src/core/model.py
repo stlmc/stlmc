@@ -73,20 +73,22 @@ class InitVal(Variable):
     def __init__(self, varId):
         self.__var_dic = dict()
         self.__value = 0.0
-        super().__init__("real", str(varId)[0:-3])
+        self.__id = str(varId[0:-3])
+        self.__var_dic[self.__id] = self.__value
+        super().__init__("real", self.__id)
 
     def __repr__(self):
-        return str(self.id)
+        return str(self.__id)
 
     # should call after dic is setted
     @property
     def value(self):
-        self.__value = self.__var_dic[self.__id]
         return self.__value
 
     @value.setter
     def value(self, value):
         self.__value = value
+        self.__var_dic[self.__id] = self.__value
 
     @property
     def var_dic(self):
@@ -416,7 +418,7 @@ class SolEq:
 
     def getExpression(self, varDict):
         result = dict()
-        resutl[self.contVar] = self.flow.getExpression(varDict)
+        result[self.contVar] = self.flow.getExpression(varDict)
         return result
 
     def var2str(self):
@@ -488,8 +490,6 @@ class flowDecl:
                 # every thing goes in here
             else:
                 # elem.flow is BinaryExp type
-                print("sole_eqsssss")
-                print(elem.flow.value)
                 ode_list.append(elem.flow.value)
         print("return")
         print(ode_list)
