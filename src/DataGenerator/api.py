@@ -94,7 +94,8 @@ class Api:
                     if "time" + str(i) == k.name():
                         result.append(float(self.model[k].as_decimal(6).replace("?", "")))
         return result
-  
+
+    # TODO : change function name to getModeIdList
     def getODE(self):
         result = []
         if self.model is not None:
@@ -106,6 +107,7 @@ class Api:
         #self.getSol(result)
      
         return result
+
 
 
     def getSol(self, result):
@@ -184,13 +186,18 @@ class Api:
             ode_l = self.getODE()
             sol_l = self.getSol(ode_l)
 
-
+            print("?????")
+            print(sol_l)
             # if there exists any sol equations...
             # Parsing it to key and values
             if len(sol_l) != 0:
                 print("sol exists!")
-                for (k, v) in sol_l.items():
-                    print(v)
+                # k is variable name of dic
+                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
+                for k in sol_l:
+                    for elem in sol_l[k]:
+                        print(elem)
+
 
 
 
