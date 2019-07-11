@@ -1,1 +1,1 @@
-python3 stlMC_main.py simpleModel/twoThermostatSol.txt
+python3 stlMC_main.py simpleModel/oneThermostatSol2.txt

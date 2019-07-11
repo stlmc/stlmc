@@ -5,7 +5,6 @@ from core.syntax.modelParser import modelParser
 from core.modelVisitorImpl import modelVisitorImpl
 from DataGenerator import *
 import io, os, sys
-from visualize import *
 import multiprocessing
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator):

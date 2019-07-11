@@ -217,8 +217,8 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow solution equation type
     '''
-    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict()):
-        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), var_dict))
+    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, time_dict=dict()):
+        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), time_dict))
 
     '''
     mode module
@@ -261,8 +261,13 @@ class modelVisitorImpl(modelVisitor):
                 # get var ID
                 v_list.append(e.contVar)
         var_dict = dict()
+        # time only have one variable, time.
+        # time_dict is single value not dict.
+        time_dict = dict()
         for e in v_list:
             var_dict[e]=0.0
+
+        time_dict["time"]=0.0
 
         if ctx.diff_eq():
             expType = "diff"
@@ -274,7 +279,7 @@ class modelVisitorImpl(modelVisitor):
             expType = "sol"
             # testing....
             for i in range(len(ctx.sol_eq())):
-                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], var_dict))
+                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], time_dict))
         return flowDecl(expType, f_result, var_dict)
 
     '''

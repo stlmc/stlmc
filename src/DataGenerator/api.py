@@ -103,7 +103,7 @@ class Api:
                 for k in declares:
                     if ("currentMode_" + str(i)) == k.name():
                         result.append(int(str(self.model[k])))
-        self.getSol(result)
+        #self.getSol(result)
      
         return result
 
@@ -148,6 +148,8 @@ class Api:
             solutionBound[i] = solutionList
         print("After replacement")
         print(solutionBound)
+        # solutionBound : Dict of variables and value of SolEq type object list
+        # "x1": [sol_eq1, sol_eq2, ...]
         return solutionBound
 
 
@@ -175,10 +177,23 @@ class Api:
     def visualize(self):
         try:
             #var_list = self.getVarsId()
+            print("visualize start")
             var_list = []
             tsp = self.getTauValues()
             c_val = self.getContValues()
             ode_l = self.getODE()
+            sol_l = self.getSol(ode_l)
+
+
+            # if there exists any sol equations...
+            # Parsing it to key and values
+            if len(sol_l) != 0:
+                print("sol exists!")
+                for (k, v) in sol_l.items():
+                    print(v)
+
+
+
             for i in range(len(ode_l)):
                 var_list_tmp = []
                 modexps = self.mode_module[ode_l[i]].getFlow().exp()
@@ -214,7 +229,6 @@ class Api:
                     t.append(np.linspace(sum_pre, sum))
             fig = plt.figure()
             z = []
-            print("start")
             print(c_val)
             print(str(len(self.mode_module)))
             for var in range(len(var_list)):
