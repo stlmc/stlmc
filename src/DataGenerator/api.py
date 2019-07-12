@@ -95,8 +95,35 @@ class Api:
                         result.append(float(self.model[k].as_decimal(6).replace("?", "")))
         return result
 
+    # return list of time points
+    def getNumpyTimeValues(self):
+        result = list()
+        if self.model is not None:
+            for i in range(self.bound + 1):
+                declares = self.model.decls()
+                for k in declares:
+                    if "time" + str(i) == k.name():
+                        result.append(float(self.model[k].as_decimal(6).replace("?", "")))
+
+        t = []
+        sum = 0.0
+        for t_el in range(len(result) + 1):
+            if t_el == len(result):
+                sum_pre = sum
+            else:
+                sum_pre = sum
+                sum += result[t_el]
+            if t_el == 0:
+                t.append(np.linspace(0, sum))
+                print("0 ~ " + str(sum))
+            else:
+                print(str(sum_pre) + " ~ " + str(sum))
+                t.append(np.linspace(sum_pre, sum))
+        return t
+
+
     # TODO : change function name to getModeIdList
-    def getODE(self):
+    def getModelIdList(self):
         result = []
         if self.model is not None:
             for i in range(self.bound+2):
@@ -120,9 +147,9 @@ class Api:
         return initial_val
 
 
-    def getSol(self, result):
+    def getSol(self):
         c_val = self.getContValues()
-        ode_l = result
+        ode_l = self.getModelIdList()
         initial_val = dict()
         for i in c_val.keys():
             subResult = []
@@ -186,6 +213,109 @@ class Api:
                    idPropExp[str(self.props[i].getId())] = str(self.props[i].getExpStr())
        return idPropExp, result
 
+
+
+    # inner function of sol equation
+    # generate list that correspond to indexed interval
+    def _calcSolEq(self, timeValues, model_id, index):
+        # TODO : Add new functions
+        sol_init_list = self.getSolEqInitialValue()
+        sol_l = self.getSol()
+        interval_dict = dict()
+
+        # k is variable name of dic
+        # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
+        for k in sol_l:
+            tmp_res = []
+            self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
+            # test_res2 = []
+            newT = timeValues[index].tolist()
+            for i in range(len(newT)):
+                self.mode_module[model_id].getFlow().time_dict["time"] = newT[i]
+                tmp = list()
+                tmp.append(newT[i])
+                tmp += self.mode_module[model_id].getFlow().exp2exp()
+                tmp_res.append(tmp)
+            interval_dict[k] = tmp_res
+
+        return interval_dict
+
+    # buggy
+    def _calcDiffEq(self, timeValues, index, var_list):
+        z = []
+        t = timeValues
+        c_val = self.getContValues()
+        for var in range(len(var_list)):
+            i_val = []
+            print(str(var))
+            for key in var_list[var]:
+                i_val.append(c_val[key][var][0])
+                self.mode_module[index].getFlow().var_dict[key] = c_val[key][var][0]
+            z.append(odeint(lambda z, t: self.mode_module[index].getFlow().exp2exp(), i_val, t[var]))
+        return z
+
+    def calcEq(self, timeValues):
+
+
+        # get total model id
+        model_id = self.getModelIdList()
+        sol_l = self.getSol()
+        var_list = self.intervalsVariables()
+
+        # Get unique solEq model id list
+        solEq_dict = []
+        diffEq_dict = []
+        for i,id in enumerate(model_id):
+            if self.mode_module[id].getFlow().type == "sol":
+                # check if it is in the list
+                tmp = dict()
+                tmp["interval"] = i
+                tmp["model_id"] = id
+                solEq_dict.append(tmp)
+
+            elif self.mode_module[id].getFlow().type == "diff":
+                tmp = dict()
+                tmp["interval"] = i
+                tmp["model_id"] = id
+                diffEq_dict.append(tmp)
+
+        res = []
+        # calculation start
+
+        #for i in model_id:
+        #    if i in solEq_id:
+        #        res.append(self._calcSolEq(timeValues, i))
+        #    elif i in diffEq_id:
+        #        res.append(self._calcDiffEq(timeValues, i, var_list))
+
+        for elem in solEq_dict:
+            elem["data"] = self._calcSolEq(timeValues, elem["model_id"], elem["interval"])
+
+
+        for i in range(len(model_id)):
+            for elem in solEq_dict:
+                if elem["interval"] == i:
+                    res.append(elem["data"])
+            for elem in diffEq_dict:
+                if elem["interval"] == i:
+                    res.append(elem["data"])
+
+        return res
+
+    # get intervals variable list
+    def intervalsVariables(self):
+        model_id = self.getModelIdList()
+        var_list = []
+        for i in range(len(model_id)):
+            var_list_tmp = []
+            modexps = self.mode_module[model_id[i]].getFlow().exp()
+            for j in modexps:
+                var_list_tmp.append(j.var2str())
+            var_list.append(var_list_tmp)
+        return var_list
+
+
+
     def visualize(self):
         try:
             #var_list = self.getVarsId()
@@ -193,8 +323,8 @@ class Api:
             var_list = []
             tsp = self.getTauValues()
             c_val = self.getContValues()
-            ode_l = self.getODE()
-            sol_l = self.getSol(ode_l)
+            model_id = self.getModelIdList()
+            sol_l = self.getSol()
             sol_init_l = self.getSolEqInitialValue()
 
 
@@ -207,76 +337,31 @@ class Api:
                 first, it is parsing sol_l by key and value. (for k in sol_l line)
                 second, k is variable name of dic and { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
             '''
-            print(ode_l)
+            print(model_id)
 
 
 
-            for i in range(len(ode_l)):
+            for i in range(len(model_id)):
                 var_list_tmp = []
-                modexps = self.mode_module[ode_l[i]].getFlow().exp()
+                modexps = self.mode_module[model_id[i]].getFlow().exp()
                 for j in modexps:
                     var_list_tmp.append(j.var2str())
                 var_list.append(var_list_tmp)
 
-            #print(var_list)
+            print(var_list)
 
-            #ode_effective = self.ODE()
-            '''
-            for i in range(len(ode_l)):
-                var_list_tmp = []
-                for j in ode_l[i]:
-                    x = j.split("=")
-                    var_list_tmp.append(x[0].replace(" ", ""))
-                var_list.append(var_list_tmp)
-            '''
-            t = []
-            sum = 0.0
-            sum_pre = 0.0
-            for t_el in range(len(tsp)+1):
-                if t_el == len(tsp):
-                    sum_pre = sum
-                else:
-                    sum_pre = sum
-                    sum += tsp[t_el]
-                if t_el == 0:
-                    t.append(np.linspace(0, sum))
-                    print("0 ~ "+str(sum))
-                else:
-                    print(str(sum_pre) + " ~ " + str(sum))
-                    t.append(np.linspace(sum_pre, sum))
+            t = self.getNumpyTimeValues()
             fig = plt.figure()
 
 
 
 
+            print("this is list")
+            print(len(self.mode_module))
 
 
-
-            # TODO : Add new functions
             test_res = []
-
-            # Parsing it to key and values
-            if len(sol_l) != 0:
-                print("sol exists!")
-                # k is variable name of dic
-                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
-                keys = []
-                for k in sol_l:
-                    keys.append(k)
-                    # TODO: Not sure about this.
-                    for i, elem in enumerate(sol_l[k]):
-                        self.mode_module[ode_l[i]].getFlow().var_dict[k] = sol_init_l[k][i]
-                        # test_res2 = []
-                        newT = t[i].tolist()
-                        for i2 in range(len(newT)):
-                            self.mode_module[ode_l[i]].getFlow().time_dict["time"] = newT[i2]
-                            test_res3 = []
-                            test_res3.append(newT[i2])
-                            # print("sival")
-                            test_res3 += self.mode_module[ode_l[i]].getFlow().exp2exp()
-                            test_res.append(test_res3)
-
-                        # test_res.append(test_res2)
+            #test_res = self.calcSolEq(t, self.mode_module, )
 
             # TODO : version2
             test_res2 = []
@@ -291,14 +376,14 @@ class Api:
                     keys.append(k)
                     # TODO: Not sure about this.
                     for i, elem in enumerate(sol_l[k]):
-                        self.mode_module[ode_l[i]].getFlow().var_dict[k] = sol_init_l[k][i]
+                        self.mode_module[model_id[i]].getFlow().var_dict[k] = sol_init_l[k][i]
                         # test_res2 = []
                         for i2 in range(1, 200):
-                            self.mode_module[ode_l[i]].getFlow().time_dict["time"] = i2+i*200
+                            self.mode_module[model_id[i]].getFlow().time_dict["time"] = i2+i*200
                             test_res3 = []
                             test_res3.append(i2+i*200)
                             # print("sival")
-                            test_res3 += self.mode_module[ode_l[i]].getFlow().exp2exp()
+                            test_res3 += self.mode_module[model_id[i]].getFlow().exp2exp()
                             test_res2.append(test_res3)
 
                         # test_res.append(test_res2)
@@ -319,54 +404,19 @@ class Api:
                 for key in var_list[var]:
                     print("meme => "+str(var)+"===>"+str(c_val[key][var][0]))
                     i_val.append(c_val[key][var][0])
-                    self.mode_module[ode_l[var]].getFlow().var_dict[key] = c_val[key][var][0]
+                    self.mode_module[model_id[var]].getFlow().var_dict[key] = c_val[key][var][0]
                     print("meme end =>"+str(var))
                     #print("Time iter: "+str(var)+" and var iter: "+str(c_val[key][var][0])+" ival:"+str(i_val)+" time t list:"+str(t[var]))
-                z.append(odeint(lambda z,t: self.mode_module[ode_l[var]].getFlow().exp2exp(), i_val, t[var]))
-            p = []
-            vv = []
-            d_ttt = dict()
-            d_ttt['var'] = var_list
-            # time space array and data array size must be same!
-            # len(t) === len(z)
-            outer=[]
-            for i in range(len(var_list)):
-                d_ttt2=dict()
-                for k in range(len(var_list[i])):
-                    inner=[]
-                    for j in range(len(z[i])):
-                        pair = []
-                        pair.append(t[i][j])
-                        pair.append(z[i][j][k])
-                        inner.append(pair)
-                    d_ttt2[var_list[i][k]] = inner
-                outer.append(d_ttt2)    
-            #print(outer)
+                z.append(odeint(lambda z,t: self.mode_module[model_id[var]].getFlow().exp2exp(), i_val, t[var]))
+
             outer2 = dict()
 
-            test_res_dic = dict()
-            test_res_dic["x1sol"] = test_res
-
-            test_res_dic2 = dict()
-            test_res_dic2["x1sol-longer"] = test_res2
-
-
-
-            outer.append(test_res_dic)
-            outer.append(test_res_dic2)
-            outer2['data'] = outer
+            #outer.append(test_res_dic2)
+            outer2['data'] = self.calcEq(t)#outer
 
             outer2['proplist'], outer2['prop'] = self.getProposition()
-        
-            for i in range(len(z)):   
-                #print(z[i])
-                d_ttt[str(i)] = z[i].tolist()
-                p = plt.plot(t[i], z[i])
-                plt.axvline(x=0.5, color='r', linestyle='--', linewidth=3)
-                plt.ylabel('variables')
-                plt.xlabel('time')
-                plt.legend(p, var_list, loc='best')
-            
+
+
             import json
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
