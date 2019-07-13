@@ -140,9 +140,11 @@ class ContVar(Variable):
 
 
 class UnaryFunc:
-    def __init__(self, func, val):
+    def __init__(self, func, val, var_dict, init_dict):
         self.func = func
         self.val = val
+        self._var_dict = var_dict
+        self._init_dict = init_dict
 
     def __repr__(self):
         return str(self.func) + "(" + str(self.val) + ")"
@@ -162,6 +164,34 @@ class UnaryFunc:
             return degree + degree * degree * degree
         elif self.func == '-':
             return RealVal(0) - degree
+        else:
+            raise "Not yet in Unary function"
+
+    @property
+    def value(self):
+        if str(self.val) in self._var_dict.keys():
+            degree = self._var_dict[str(self.val)]
+        #elif str(self.val).isdigit():
+        #    print("kekekek")
+        #    degree = RealVal(float(self.val)).value
+        # TODO: why need below? problems....
+        #else:
+        #    degree = Real(str(self.val)).value
+        else:
+            print("you here")
+            degree = RealVal(str(self.val)).value
+
+        print("comeone")
+        print(degree)
+
+        if self.func == 'sin':
+            return degree - degree * degree * degree / RealVal(6).value
+        elif self.func == 'cos':
+            return degree - degree * degree / RealVal(2).value
+        elif self.func == 'tan':
+            return degree + degree * degree * degree
+        elif self.func == '-':
+            return RealVal(0).value - degree
         else:
             raise "Not yet in Unary function"
 

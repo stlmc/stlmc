@@ -72,7 +72,7 @@ class modelVisitorImpl(modelVisitor):
     Not yet
     '''
     def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict(), init_dict=dict()):
-        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic, init_dict))
+        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic, init_dict), var_dic, init_dict)
 
     def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict(), init_dict=dict()):
         if not var_dict:
@@ -204,19 +204,32 @@ class modelVisitorImpl(modelVisitor):
             return self.visit(ctx)
         # sol case
         elif init_dict:
-            print(ctx.getText())
+            #print("herer???")
+            #print(ctx.getText())
             if isinstance(ctx, modelParser.InitialValueContext):
+                #print("initial")
+                #print(ctx.getText())
                 return self.visitInitialValue(ctx, init_dict)
             elif isinstance(ctx, modelParser.ConstantExpContext):
+                #print("constant")
+                #print(ctx.getText())
+                #print(var_dict)
                 return self.visitConstantExp(ctx, var_dict)
             # TODO: update this first.
             elif isinstance(ctx, modelParser.BinaryExpContext):
+                #print("binary")
+                #print(ctx.getText())
                 return self.visitBinaryExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
+                #print("parent")
+                #print(ctx.getText())
                 return self.visitParenthesisExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
+                #print("this case is ...")
+                #print(ctx.getText())
                 return self.visitUnaryExp(ctx, var_dict, init_dict)
         # sol or diff case
+        # TODO: Unary case will not be used in diff case..
         else:
             if isinstance(ctx, modelParser.InitialValueContext):
                 return self.visitInitialValue(ctx, init_dict)
@@ -227,7 +240,7 @@ class modelVisitorImpl(modelVisitor):
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
                 return self.visitParenthesisExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
-                return self.visitUnaryExp(ctx, var_dict)
+                return self.visitUnaryExp(ctx, var_dict, init_dict)
 
 
     '''
