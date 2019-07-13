@@ -83,6 +83,7 @@ class InitVal(Variable):
     # should call after dic is setted
     @property
     def value(self):
+        self.__value = self.__var_dic[self.__id]
         return self.__value
 
     @value.setter
@@ -483,10 +484,9 @@ class flowDecl:
         return self.exps
 
     def exp2exp(self):
+
         ode_list = []
         for elem in self.exps:
-            # elem.var_dic = self.__cont_id_dict
-            ode_inner_list = []
             # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
                 ode_list.append(elem.flow.value)

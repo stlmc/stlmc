@@ -6,11 +6,9 @@ bool a;
     inv:
         x1 < 50;
     flow:
-        x1(t) = t * t * t * t
+        x1(t) = t * t + x1(0);
     jump:
         (x1 > 26) ==>
-          (and (not a') (x1' = x1));
-        (x1 <= 24) ==>
           (and (a') (x1' = x1));
 }
 {
@@ -19,12 +17,10 @@ bool a;
     inv:
         x1 > 0;
     flow:
-       d/dt[x1] = -5
+       x1(t) = -5 * t + x1(0);
     jump:
-        (x1 > 26) ==>
+        (x1 < 20) ==>
           (and (not a') (x1' = x1));
-        (x1 <= 24) ==>
-          (and (a') (x1' = x1));
 }
 init:
 (and (not(a)) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1)); 

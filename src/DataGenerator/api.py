@@ -288,6 +288,8 @@ class Api:
         #    elif i in diffEq_id:
         #        res.append(self._calcDiffEq(timeValues, i, var_list))
 
+        print("??????????????????")
+
         for elem in solEq_dict:
             elem["data"] = self._calcSolEq(timeValues, elem["model_id"], elem["interval"])
 
@@ -320,13 +322,7 @@ class Api:
         try:
             #var_list = self.getVarsId()
             print("visualize start")
-            var_list = []
             tsp = self.getTauValues()
-            c_val = self.getContValues()
-            model_id = self.getModelIdList()
-            sol_l = self.getSol()
-            sol_init_l = self.getSolEqInitialValue()
-
 
             print("this is tau")
             print(tsp)
@@ -337,93 +333,21 @@ class Api:
                 first, it is parsing sol_l by key and value. (for k in sol_l line)
                 second, k is variable name of dic and { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
             '''
-            print(model_id)
-
-
-
-            for i in range(len(model_id)):
-                var_list_tmp = []
-                modexps = self.mode_module[model_id[i]].getFlow().exp()
-                for j in modexps:
-                    var_list_tmp.append(j.var2str())
-                var_list.append(var_list_tmp)
-
-            print(var_list)
 
             t = self.getNumpyTimeValues()
-            fig = plt.figure()
-
-
-
 
             print("this is list")
             print(len(self.mode_module))
-
-
-            test_res = []
-            #test_res = self.calcSolEq(t, self.mode_module, )
-
-            # TODO : version2
-            test_res2 = []
-
-            # Parsing it to key and values
-            if len(sol_l) != 0:
-                print("sol2 exists!")
-                # k is variable name of dic
-                # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
-                keys = []
-                for k in sol_l:
-                    keys.append(k)
-                    # TODO: Not sure about this.
-                    for i, elem in enumerate(sol_l[k]):
-                        self.mode_module[model_id[i]].getFlow().var_dict[k] = sol_init_l[k][i]
-                        # test_res2 = []
-                        for i2 in range(1, 200):
-                            self.mode_module[model_id[i]].getFlow().time_dict["time"] = i2+i*200
-                            test_res3 = []
-                            test_res3.append(i2+i*200)
-                            # print("sival")
-                            test_res3 += self.mode_module[model_id[i]].getFlow().exp2exp()
-                            test_res2.append(test_res3)
-
-                        # test_res.append(test_res2)
-
-
-
-
-
-
-
-
-            z = []
-            print(c_val)
-            print(str(len(self.mode_module)))
-            for var in range(len(var_list)):
-                i_val = []
-                print(str(var))
-                for key in var_list[var]:
-                    print("meme => "+str(var)+"===>"+str(c_val[key][var][0]))
-                    i_val.append(c_val[key][var][0])
-                    self.mode_module[model_id[var]].getFlow().var_dict[key] = c_val[key][var][0]
-                    print("meme end =>"+str(var))
-                    #print("Time iter: "+str(var)+" and var iter: "+str(c_val[key][var][0])+" ival:"+str(i_val)+" time t list:"+str(t[var]))
-                z.append(odeint(lambda z,t: self.mode_module[model_id[var]].getFlow().exp2exp(), i_val, t[var]))
-
             outer2 = dict()
-
-            #outer.append(test_res_dic2)
             outer2['data'] = self.calcEq(t)#outer
+            print("checkpoint222")
 
             outer2['proplist'], outer2['prop'] = self.getProposition()
-
-
             import json
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
-            plt.show()
-    
-            print("ode z : " + str(len(z)))
+
         except Exception as ex:
             print('Nothing to draw!', str(ex))
             

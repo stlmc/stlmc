@@ -40,7 +40,7 @@ class modelVisitorImpl(modelVisitor):
 
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText) 
+        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText)
 
     '''
     mode_var_decl
@@ -54,8 +54,8 @@ class modelVisitorImpl(modelVisitor):
     def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
         return ContVar(self.visit(ctx.var_range()), ctx.VARIABLE().getText())
 
-    
-    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict()):
+
+    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict(), init_dict=dict()):
         left = None
         right = None
         op = ctx.op.text
@@ -64,10 +64,10 @@ class modelVisitorImpl(modelVisitor):
             left = self.visit(ctx.expression()[0])
             right = self.visit(ctx.expression()[1])
         else:
-            left = self.visitExpression(ctx.expression()[0], var_dic)
-            right = self.visitExpression(ctx.expression()[1], var_dic)
+            left = self.visitExpression(ctx.expression()[0], var_dic, init_dict)
+            right = self.visitExpression(ctx.expression()[1], var_dic, init_dict)
         return BinaryExp(op, left, right)
-        
+
     '''
     Not yet
     '''
@@ -150,7 +150,7 @@ class modelVisitorImpl(modelVisitor):
         prop = list()
         for i in range(len(ctx.jump_redecl())):
             prop.append(self.visit(ctx.jump_redecl()[i]))
-        return MultyJump(ctx.op.text, prop) 
+        return MultyJump(ctx.op.text, prop)
 
     def visitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
         return BinaryJump(ctx.op.text, ctx.jump_redecl()[0], ctx.jump_redecl()[1])
@@ -177,14 +177,14 @@ class modelVisitorImpl(modelVisitor):
     '''
     def visitExactValue(self, ctx:modelParser.ExactValueContext):
         number = float(ctx.VALUE().getText())
-        return (True, number, number, True) 
+        return (True, number, number, True)
 
     '''
     variable range
     '''
     def visitVariableRange(self, ctx:modelParser.VariableRangeContext):
         leftBracket = True
-        rightBracket = True 
+        rightBracket = True
 
         if ctx.leftParen.text == '(' :
             leftBracket = False
@@ -194,37 +194,70 @@ class modelVisitorImpl(modelVisitor):
 
         leftNumber = float(ctx.leftVal.text)
         rightNumber = float(ctx.rightVal.text)
-        
+
         return (leftBracket, leftNumber,  rightNumber, rightBracket)
 
     # new function for expression
-    def visitExpression(self, ctx:modelParser.ExpressionContext, var_dict=dict()):
+    def visitExpression(self, ctx:modelParser.ExpressionContext, var_dict=dict(), init_dict=dict()):
         # empty
         if not var_dict:
             return self.visit(ctx)
-        else:
+        # sol case
+        elif init_dict:
+            print("init case")
+            print(ctx.getText())
             if isinstance(ctx, modelParser.InitialValueContext):
-                return self.visitInitialValue(ctx, var_dict)
+                print("initial")
+                return self.visitInitialValue(ctx, init_dict)
             elif isinstance(ctx, modelParser.ConstantExpContext):
+                print("const")
                 return self.visitConstantExp(ctx, var_dict)
+
+            # TODO: update this first.
             elif isinstance(ctx, modelParser.BinaryExpContext):
-                return self.visitBinaryExp(ctx, var_dict)
+                print("binary solcase")
+                print(ctx.getText())
+                print(init_dict)
+                print("==============")
+                return self.visitBinaryExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
+                print("parent")
                 return self.visitParenthesisExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
+                print("unary")
                 return self.visitUnaryExp(ctx, var_dict)
-        
+        # sol or diff case
+        else:
+            print("diff case")
+            print(ctx.getText())
+            if isinstance(ctx, modelParser.InitialValueContext):
+                print("initial")
+                return self.visitInitialValue(ctx, init_dict)
+            elif isinstance(ctx, modelParser.ConstantExpContext):
+                print("const")
+                return self.visitConstantExp(ctx, var_dict)
+            elif isinstance(ctx, modelParser.BinaryExpContext):
+                print("binary")
+                return self.visitBinaryExp(ctx, var_dict, init_dict)
+            elif isinstance(ctx, modelParser.ParenthesisExpContext):
+                print("parent")
+                return self.visitParenthesisExp(ctx, var_dict)
+            elif isinstance(ctx, modelParser.UnaryExpContext):
+                print("unary")
+                return self.visitUnaryExp(ctx, var_dict)
+
+
     '''
     flow differential equation type
     '''
     def visitDiff_eq(self, ctx:modelParser.Diff_eqContext, var_dict=dict()):
         return DiffEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), var_dict))
-    
+
     '''
     flow solution equation type
     '''
-    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, time_dict=dict()):
-        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), time_dict))
+    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict(), time_dict=dict()):
+        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), time_dict, var_dict))
 
     '''
     mode module
@@ -240,7 +273,7 @@ class modelVisitorImpl(modelVisitor):
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
         return MultyCond("and", element)
- 
+
     '''
     invariant declaration
     '''
@@ -248,7 +281,7 @@ class modelVisitorImpl(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return MultyCond("and", element) 
+        return MultyCond("and", element)
 
     '''
     flow declaration
@@ -260,12 +293,22 @@ class modelVisitorImpl(modelVisitor):
            expType = "diff"
            for i in range(len(ctx.diff_eq())):
                result.append(self.visit(ctx.diff_eq()[i]))
+        elif ctx.sol_eq():
+           expType = "sol"
+           for i in range(len(ctx.sol_eq())):
+               result.append(self.visit(ctx.sol_eq()[i]))
+
         v_list = []
         f_result = []
         if ctx.diff_eq():
             for e in result:
                 # get var ID
                 v_list.append(e.contVar)
+
+        elif ctx.sol_eq():
+            for e in result:
+                v_list.append(e.contVar)
+
         var_dict = dict()
         # time only have one variable, time.
         # time_dict is single value not dict.
@@ -285,14 +328,14 @@ class modelVisitorImpl(modelVisitor):
             expType = "sol"
             # testing....
             for i in range(len(ctx.sol_eq())):
-                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], time_dict))
+                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], var_dict, time_dict))
         return flowDecl(expType, f_result, var_dict, time_dict)
 
     '''
     jump declaration
     '''
     def visitJump_redecl_module(self, ctx:modelParser.Jump_redecl_moduleContext):
-        return jumpRedeclModule(self.visit(ctx.condition()), self.visit(ctx.jump_redecl())) 
+        return jumpRedeclModule(self.visit(ctx.condition()), self.visit(ctx.jump_redecl()))
 
     def visitJump_decl(self, ctx:modelParser.Jump_declContext):
         result = list()
@@ -341,7 +384,7 @@ class modelVisitorImpl(modelVisitor):
 
     def visitDirectCond(self, ctx:modelParser.DirectCondContext):
         newProp = "newPropDecl_" + str(len(self.newPropDecl))
- 
+
         op = ctx.op.text
         if ctx.expression():
             left = self.visit(ctx.expression()[0])
@@ -349,7 +392,7 @@ class modelVisitorImpl(modelVisitor):
         else:
             left = self.visit(ctx.condition()[0])
             right = self.visit(ctx.condition()[1])
-        self.newPropDecl.append(propDecl(newProp, CompCond(op, left, right))) 
+        self.newPropDecl.append(propDecl(newProp, CompCond(op, left, right)))
         return PropositionFormula(newProp)
 
     # Visit a parse tree produced by modelParser#binaryFormula.
@@ -398,7 +441,7 @@ class modelVisitorImpl(modelVisitor):
         return propDecl
 
     def visitProp(self, ctx:modelParser.PropContext):
-        return propDecl(ctx.VARIABLE().getText(), self.visit(ctx.condition())) 
+        return propDecl(ctx.VARIABLE().getText(), self.visit(ctx.condition()))
 
     '''
     goal declaration
@@ -410,5 +453,5 @@ class modelVisitorImpl(modelVisitor):
             formulaList.append(self.visit(ctx.formula()[i]))
         return formulaDecl(formulaList)
 
-            
+
 
