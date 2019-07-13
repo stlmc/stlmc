@@ -17,7 +17,7 @@ bool a;
     inv:
         x1 > 0;
     flow:
-       x1(t) = -5 * t + x1(0);
+       d/dt[x1] = -5
     jump:
         (x1 < 20) ==>
           (and (not a') (x1' = x1));

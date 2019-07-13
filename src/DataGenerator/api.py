@@ -96,7 +96,7 @@ class Api:
         return result
 
     # return list of time points
-    def getNumpyTimeValues(self):
+    def getNumpyGlobalTimeValues(self):
         result = list()
         if self.model is not None:
             for i in range(self.bound + 1):
@@ -119,6 +119,21 @@ class Api:
             else:
                 print(str(sum_pre) + " ~ " + str(sum))
                 t.append(np.linspace(sum_pre, sum))
+        return t
+
+    # return list of interval's time points
+    def getNumpyLocalTimeValues(self):
+        result = list()
+        if self.model is not None:
+            for i in range(self.bound + 1):
+                declares = self.model.decls()
+                for k in declares:
+                    if "time" + str(i) == k.name():
+                        result.append(float(self.model[k].as_decimal(6).replace("?", "")))
+
+        t = []
+        for t_el in range(len(result)):
+            t.append(np.linspace(0, result[t_el]))
         return t
 
 
@@ -217,11 +232,13 @@ class Api:
 
     # inner function of sol equation
     # generate list that correspond to indexed interval
-    def _calcSolEq(self, timeValues, model_id, index):
+    def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
         # TODO : Add new functions
         sol_init_list = self.getSolEqInitialValue()
         sol_l = self.getSol()
+
         interval_dict = dict()
+
 
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
@@ -229,11 +246,13 @@ class Api:
             tmp_res = []
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             # test_res2 = []
-            newT = timeValues[index].tolist()
-            for i in range(len(newT)):
-                self.mode_module[model_id].getFlow().time_dict["time"] = newT[i]
+            global_newT = global_timeValues[index].tolist()
+            local_newT = local_timeValues[index].tolist()
+            # modify this to use given initial value and time pairs
+            for i in range(len(local_newT)):
+                self.mode_module[model_id].getFlow().time_dict["time"] = local_newT[i]
                 tmp = list()
-                tmp.append(newT[i])
+                tmp.append(global_newT[i])
                 tmp += self.mode_module[model_id].getFlow().exp2exp()
                 tmp_res.append(tmp)
             interval_dict[k] = tmp_res
@@ -241,65 +260,87 @@ class Api:
         return interval_dict
 
     # buggy
-    def _calcDiffEq(self, timeValues, index, var_list):
-        z = []
-        t = timeValues
-        c_val = self.getContValues()
-        for var in range(len(var_list)):
-            i_val = []
-            print(str(var))
-            for key in var_list[var]:
-                i_val.append(c_val[key][var][0])
-                self.mode_module[index].getFlow().var_dict[key] = c_val[key][var][0]
-            z.append(odeint(lambda z, t: self.mode_module[index].getFlow().exp2exp(), i_val, t[var]))
-        return z
+    # TODO: Possible to merge both diffeq and soleq logic.
+    def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
-    def calcEq(self, timeValues):
+        c_val = self.getContValues()
+        var_list = self.intervalsVariables()
+
+
+        interval_dict = dict()
+
+        i_val = []
+        for var in range(len(var_list[index])):
+            key = var_list[index][var]
+            i_val.append(c_val[str(key)][index][0])
+            self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
+
+        res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
+        global_newT = global_timeValues[index].tolist()
+
+
+
+        # split by variables
+
+        for el in range(len(var_list[index])):
+            tmp_res = []
+            for i, e in enumerate(res):
+                pair = list()
+                pair.append(global_newT[i])
+                pair.append(e[el])
+                tmp_res.append(pair)
+            interval_dict[var_list[index][el]] = tmp_res
+
+        print("calcDIffEq")
+        print(interval_dict)
+        return interval_dict
+
+    def calcEq(self, global_timeValues, local_timeValues):
 
 
         # get total model id
         model_id = self.getModelIdList()
-        sol_l = self.getSol()
-        var_list = self.intervalsVariables()
 
         # Get unique solEq model id list
         solEq_dict = []
         diffEq_dict = []
-        for i,id in enumerate(model_id):
-            if self.mode_module[id].getFlow().type == "sol":
+        for i, ids in enumerate(model_id):
+            if self.mode_module[ids].getFlow().type == "sol":
                 # check if it is in the list
                 tmp = dict()
                 tmp["interval"] = i
-                tmp["model_id"] = id
+                tmp["model_id"] = ids
                 solEq_dict.append(tmp)
 
-            elif self.mode_module[id].getFlow().type == "diff":
+            elif self.mode_module[ids].getFlow().type == "diff":
                 tmp = dict()
                 tmp["interval"] = i
-                tmp["model_id"] = id
+                tmp["model_id"] = ids
                 diffEq_dict.append(tmp)
 
+
+        print("Let's see")
+        print(solEq_dict)
+        print(diffEq_dict)
         res = []
-        # calculation start
 
-        #for i in model_id:
-        #    if i in solEq_id:
-        #        res.append(self._calcSolEq(timeValues, i))
-        #    elif i in diffEq_id:
-        #        res.append(self._calcDiffEq(timeValues, i, var_list))
-
-        print("??????????????????")
 
         for elem in solEq_dict:
-            elem["data"] = self._calcSolEq(timeValues, elem["model_id"], elem["interval"])
+            elem["data"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
+
+        # TODO: need to add diffEq part..... down here!
+
+
+        for elem in diffEq_dict:
+            elem["data"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
 
         for i in range(len(model_id)):
             for elem in solEq_dict:
-                if elem["interval"] == i:
+                if elem["interval"] == i and 'data' in elem.keys():
                     res.append(elem["data"])
             for elem in diffEq_dict:
-                if elem["interval"] == i:
+                if elem["interval"] == i and 'data' in elem.keys():
                     res.append(elem["data"])
 
         return res
@@ -320,13 +361,7 @@ class Api:
 
     def visualize(self):
         try:
-            #var_list = self.getVarsId()
             print("visualize start")
-            tsp = self.getTauValues()
-
-            print("this is tau")
-            print(tsp)
-
             '''
                 if solution equation exists: 
                 checking it via sol_l's length,
@@ -334,15 +369,18 @@ class Api:
                 second, k is variable name of dic and { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
             '''
 
-            t = self.getNumpyTimeValues()
+            global_t = self.getNumpyGlobalTimeValues()
+            local_t = self.getNumpyLocalTimeValues()
 
-            print("this is list")
-            print(len(self.mode_module))
+
+
             outer2 = dict()
-            outer2['data'] = self.calcEq(t)#outer
-            print("checkpoint222")
+            outer2['data'] = self.calcEq(global_t, local_t)
+
 
             outer2['proplist'], outer2['prop'] = self.getProposition()
+
+
             import json
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
@@ -350,4 +388,3 @@ class Api:
 
         except Exception as ex:
             print('Nothing to draw!', str(ex))
-            

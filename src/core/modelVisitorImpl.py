@@ -71,14 +71,14 @@ class modelVisitorImpl(modelVisitor):
     '''
     Not yet
     '''
-    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict()):
-        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic))
+    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict(), init_dict=dict()):
+        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic, init_dict))
 
-    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):
+    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict(), init_dict=dict()):
         if not var_dict:
             return self.visit(ctx.expression())
         else:
-            return self.visitExpression(ctx.expression(), var_dict)
+            return self.visitExpression(ctx.expression(), var_dict, init_dict)
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext, var_dict=dict()):
         if ctx.VARIABLE():
@@ -204,46 +204,29 @@ class modelVisitorImpl(modelVisitor):
             return self.visit(ctx)
         # sol case
         elif init_dict:
-            print("init case")
             print(ctx.getText())
             if isinstance(ctx, modelParser.InitialValueContext):
-                print("initial")
                 return self.visitInitialValue(ctx, init_dict)
             elif isinstance(ctx, modelParser.ConstantExpContext):
-                print("const")
                 return self.visitConstantExp(ctx, var_dict)
-
             # TODO: update this first.
             elif isinstance(ctx, modelParser.BinaryExpContext):
-                print("binary solcase")
-                print(ctx.getText())
-                print(init_dict)
-                print("==============")
                 return self.visitBinaryExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
-                print("parent")
-                return self.visitParenthesisExp(ctx, var_dict)
+                return self.visitParenthesisExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
-                print("unary")
-                return self.visitUnaryExp(ctx, var_dict)
+                return self.visitUnaryExp(ctx, var_dict, init_dict)
         # sol or diff case
         else:
-            print("diff case")
-            print(ctx.getText())
             if isinstance(ctx, modelParser.InitialValueContext):
-                print("initial")
                 return self.visitInitialValue(ctx, init_dict)
             elif isinstance(ctx, modelParser.ConstantExpContext):
-                print("const")
                 return self.visitConstantExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.BinaryExpContext):
-                print("binary")
                 return self.visitBinaryExp(ctx, var_dict, init_dict)
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
-                print("parent")
                 return self.visitParenthesisExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
-                print("unary")
                 return self.visitUnaryExp(ctx, var_dict)
 
 
