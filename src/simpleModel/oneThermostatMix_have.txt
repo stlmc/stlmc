@@ -15,19 +15,20 @@ bool a;
     mode:
         a == true;
     inv:
-        x1 > 19;
+        x1 < 0;
     flow:
-       d/dt[x1] = -5 ;
+       d/dt[x1] = -5;
     jump:
         (x1 < 20) ==>
           (and (not a') (x1' = x1));
 }
 init:
-(and (not(a)) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1)); 
+(and (not (a)) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1));
 
 propositions:
-reachability = x1 < 27 ;
+reachability = x1 < 23 ;
+reach2 = x1 > 23
 
 goal:
-([] [0.0, 40.0] (~reachability)) ;
+([] [0.0, 40.0] (reachability -> reach2)) ;
 
