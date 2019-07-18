@@ -362,6 +362,7 @@ class Api:
     def visualize(self):
         try:
             print("visualize start")
+            print(self.getModelIdList())
             '''
                 if solution equation exists: 
                 checking it via sol_l's length,
