@@ -8,6 +8,8 @@ import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
 import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
+import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
+import "react-tabs/style/react-tabs.css";
 
 /*
  * Props and State
@@ -186,7 +188,7 @@ class LinePlot extends React.Component<Props, State> {
         this.renderer.resize(this.json.propNames.length);
         //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
-        for (let e=0;  e<this.state.selectedProps.length; e++) {
+        for (let e = 0; e < this.state.selectedProps.length; e++) {
             this.propRenderers[e].reload(this.json.isEmpty(), this.state.selectedProps[e], this.state.isRedraw);
         }
     }
@@ -237,7 +239,7 @@ class LinePlot extends React.Component<Props, State> {
         this.json.string = require("../../DataDir/" + (value2 as { value: string; label: string; })["value"]);
         this.renderer.setdata(this.json);
         this.propRenderers = [];
-        for (let e=0;  e<this.json.propNames.length; e++){
+        for (let e = 0; e < this.json.propNames.length; e++) {
             let pr = new PropositionRenderer(
                 new size(
                     this.width,
@@ -317,7 +319,7 @@ class LinePlot extends React.Component<Props, State> {
         let selected = this.state.selectedVariables.map((v) => {
             return ({value: v, label: v})
         });
-        let props = [{value:"All", label:"All"}].concat(this.state.allProps.map(
+        let props = [{value: "All", label: "All"}].concat(this.state.allProps.map(
             (v) => {
                 //this.json.proposition_names[v]
                 return ({
@@ -343,52 +345,77 @@ class LinePlot extends React.Component<Props, State> {
                     </div>
                     <div className="col-md-1"/>
                 </div>
-                <div className="row">
-                    <div className="col-md-1"/>
-                    <div className="col-md-10">
-                        <label>Variables</label>
-                        <Select className="select_theme" options={options}
-                                onChange={this.onVariablesChange}
-                                value={selected}
-                                isMulti={true} isSearchable={true}
-                                closeMenuOnSelect={false}>
-                        </Select>
-                    </div>
-                    <div className="col-md-1"/>
-                </div>
-                <div className="row line_plot_container">
-                    <div className="col-md-1"/>
-                    <div className="col-md-10">
-                        <label>Propositions</label>
-                        <Select isSearchable={true} options={props}
-                                onChange={this.onPropSelect}
-                                value={selectedProps}
-                                isMulti={true}
-                                closeMenuOnSelect={false}/>
-                    </div>
-                    <div className="col-md-1"/>
-                </div>
+
                 {!this.json.isEmpty() ?
                     (
                         <div>
-                            <div className="row">
-                                <div className="col-md-1"/>
-                                <div className="col-md-4">
-                                    <div className="form-check">
-                                        <label>Enabled Popups &nbsp;
-                                            <input className="form-check-input" type="checkbox"
-                                                   checked={this.state.popup.isEnabled} onClick={this.onPopupClick}
-                                                   onChange={this.onPopupChange}/>
-                                        </label>
-                                    </div>
+                            <div className="row basic_box">
+                                <div className="col-md-12">
+                                    <Tabs>
+                                        <TabList>
+                                            <Tab>Title 1</Tab>
+                                            <Tab>Title 2</Tab>
+                                        </TabList>
+
+                                        <TabPanel forceRender={true}>
+
+                                            <div className="row">
+                                                <div className="col-md-1"/>
+                                                <div className="col-md-10">
+                                                    <label>Variables</label>
+                                                    <Select className="select_theme" options={options}
+                                                            onChange={this.onVariablesChange}
+                                                            value={selected}
+                                                            isMulti={true} isSearchable={true}
+                                                            closeMenuOnSelect={false}>
+                                                    </Select>
+                                                </div>
+                                                <div className="col-md-1"/>
+                                            </div>
+
+                                            <div className="row line_plot_container">
+                                                <div className="col-md-1"/>
+                                                <div className="col-md-10">
+                                                    <label>Propositions</label>
+                                                    <Select isSearchable={true} options={props}
+                                                            onChange={this.onPropSelect}
+                                                            value={selectedProps}
+                                                            isMulti={true}
+                                                            closeMenuOnSelect={false}/>
+                                                </div>
+                                                <div className="col-md-1"/>
+                                            </div>
+
+                                            <div className="row basic_box">
+                                                <div className="col-md-1"/>
+                                                <div className="col-md-7"/>
+                                                <div className="col-md-4">
+                                                    <div className="form-check text-right">
+                                                        <label>Enabled Popups &nbsp;
+                                                            <input className="form-check-input" type="checkbox"
+                                                                   checked={this.state.popup.isEnabled} onClick={this.onPopupClick}
+                                                                   onChange={this.onPopupChange}/>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="row">
+                                                <div className="svg_div" id="graph"/>
+                                            </div>
+
+
+
+                                        </TabPanel>
+                                        <TabPanel>
+                                            <h2>Any content 2</h2>
+                                        </TabPanel>
+                                    </Tabs>
+
+
                                 </div>
-                                <div className="col-md-7"/>
                             </div>
 
-                            <div className="row">
-                            <div id="graph" className="svg_div"/>
-                            <div id="proposition" className="prop_div"/>
-                            </div>
 
                         </div>
                     )
