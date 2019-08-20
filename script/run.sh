@@ -51,7 +51,7 @@ runModel () {
             echo "twoThermostatPoly.txt not found!"
         fi
     else
-        if [ -f $TEST_DIR/"$1" ]
+        if [ -f $TEST_DIR/$1".txt" ]
         then
             python3 $PY_DIR/stlMC_main.py $TEST_DIR/$1".txt"
         else

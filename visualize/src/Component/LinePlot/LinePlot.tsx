@@ -172,6 +172,10 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     componentDidMount() {
+
+        console.log("workspace");
+        console.log(require('../../DataDir/.workspace_info.json'));
+
         // must invoke setdata() before draw()
         this.renderer.setdata(this.json);
         //this.propRenderer.setdata(this.json);
