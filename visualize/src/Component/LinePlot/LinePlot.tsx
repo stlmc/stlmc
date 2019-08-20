@@ -11,6 +11,15 @@ import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
 
+
+//import {ipcRenderer} from 'electron';
+// Tell main process to show the menu when demo button is clicked
+/*
+const contextMenuBtn = document.getElementById('context-menu');
+
+contextMenuBtn!.addEventListener('click', () => {
+    ipcRenderer.send('show-context-menu');
+});*/
 /*
  * Props and State
  */
@@ -332,7 +341,7 @@ class LinePlot extends React.Component<Props, State> {
         });
         // TODO: Update precision of graph after update.
         return (
-            <div className={lineplotStyle.main_theme}>
+            <div>
                 <div className="row">
                     <div className="col-md-1"/>
                     <div className="col-md-10">

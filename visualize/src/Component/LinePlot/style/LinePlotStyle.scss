@@ -1,3 +1,5 @@
+@import 'variable.module.scss';
+
 .line_plot_div{
   margin-top: 20px;
   margin-bottom: 20px;
@@ -10,6 +12,9 @@
 }
 
 .svg_div{
+  margin-left: auto;
+  margin-right: auto;
+  width: $width;
 }
 
 .prop_div {
