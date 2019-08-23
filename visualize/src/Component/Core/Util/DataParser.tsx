@@ -258,6 +258,8 @@ class Json {
                         for (let v of value2) {
                             if (counter != intv_len - 1) {
                                 tmp.push(v, [intv[counter], intv[counter + 1]]);
+                            } else {
+                                tmp.push(v, [intv[intv_len - 1], intv[intv_len]]);
                             }
                             counter++;
                         }
