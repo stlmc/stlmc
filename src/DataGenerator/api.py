@@ -77,8 +77,9 @@ class Api:
                     final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                     subResult.append((initial_value, final_value))
 
-#                final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
-#                final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
+                if self.model[final_var] is not None:
+                    final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
         return result
