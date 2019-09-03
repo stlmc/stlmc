@@ -715,8 +715,7 @@ class StlMC:
             if result == z3.sat:
                 printResult("False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                             str(totalTime))
-                return (
-                False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
+                return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
             if result == z3.unknown:
                 isUnknown = True
 
@@ -726,10 +725,25 @@ class StlMC:
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
 
-    def reach(self, bound, goal):
+
+
+
+
+    def reach(self, bound, timeBound, goal):
+        self.bound = bound
+        self.strStlFormula = str(goal)
         consts = []
-        combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))
+        combine = self.consts.combineDict(self.consts.makeSubMode(0), self.consts.makeSubVars(0, '0'))
+        consts.append(self.consts.makeVarRangeConsts(bound))
         consts.append(self.init.getExpression(self.subvars).substitution(combine))
         consts.append(self.consts.flowConstraints(bound))
+        consts.append(self.consts.jumpConstraints(bound))
+        consts.append(self.consts.goalConstraints(bound, goal))
+      
+
+        consts = consts + self.consts.z3TimeBoundConsts(consts, timeBound)
+
         #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
-        return checkSat(consts)
+        (result, cSize, self.model) = checkSat(consts)
+        print(result)
+        return result

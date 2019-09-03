@@ -2,7 +2,6 @@ import z3
 import core.encoding as ENC
 from .node import *
 from .z3Handler import *
-#from .z3Handler import checkSat
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -68,7 +67,8 @@ class z3Consts:
                 steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
             '''
-            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
+            if (len(subresult) > 0):
+                jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []
         for k in range(bound+1):
@@ -79,9 +79,12 @@ class z3Consts:
 
             const = [i.substitution(combineSub) for i in jumpConsts]
             combineJump = [i.nextSub(nextSub) for i in const]
-            result.append(Or(*combineJump))
+            if len(combineJump) > 0 :
+                result.append(Or(*combineJump))
 
-        return And(*result)
+        if len(result) > 0:
+            return And(*result)
+        return BoolVal(True)
 
     def flowConstraints(self, bound):
         result= list()
@@ -98,18 +101,20 @@ class z3Consts:
                     else:
                         raise ("Flow id is not declared")
                 modeConsts = list()
-#                for otherModeID in range(0, i):
-#                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
-#                for otherModeID in range(i+1, len(self.modeModule)):
-#                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                for otherModeID in range(0, i):
+                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                for otherModeID in range(i+1, len(self.modeModule)):
+                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
 
-                modeConsts.append(And(Real('currentMode_'+str(k)) >= RealVal(i), Real('currentMode_'+str(k)) <= RealVal(i)))
+#                modeConsts.append(And(Real('currentMode_'+str(k)) >= RealVal(i), Real('currentMode_'+str(k)) <= RealVal(i)))
 
-#                modeConsts.append(Int('currentMode_'+str(k)) == IntVal(i))
-#                modeConsts.append(Int('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
-#                modeConsts.append(Int('currentMode_'+str(k)) >= IntVal(0))
+                modeConsts.append(Int('currentMode_'+str(k)) == IntVal(i))
+                modeConsts.append(Int('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
+                modeConsts.append(Int('currentMode_'+str(k)) >= IntVal(0))
                 modeConsts.append(curMode.substitution(self.makeSubMode(k)))
+
                 modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
+
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
@@ -131,6 +136,10 @@ class z3Consts:
         for i in range(len(self.prop)):
             result[self.prop[i].getId()] = self.prop[i].getExpression(self.subvars)
         return result
+
+    def goalConstraints(self, bound, goal):
+        combine = self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))
+        return goal.substitution(combine)
 
     def propConstraints(self, propSet, bound):
         result = list()

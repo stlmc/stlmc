@@ -9,9 +9,6 @@ import multiprocessing
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator):
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
-
-    # variable points bound, timeBound, goal
-#    stlModel.reach(k, 60, Real('x2') < RealVal(8)) 
     dataGenerator.data = stlModel.data
     dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
     dataGenerator.visualize()
@@ -39,7 +36,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(3, 5, 5):
+        for k in range(3, 4, 10):
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
