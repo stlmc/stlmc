@@ -2,14 +2,17 @@ import React from 'react';
 import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import './style/LinePlotStyle.scss';
+import '../../Style/scss/main.scss';
 import {margin, size} from '../Core/Util/Util';
 import {Renderer} from '../Core/Renderer/MainRenderer';
+import {ThreeRenderer} from '../Core/Renderer/ThreeJSRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
 import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
+import * as child from 'child_process';
 
 
 //import {ipcRenderer} from 'electron';
@@ -90,6 +93,8 @@ class LinePlot extends React.Component<Props, State> {
         "#graph"
     );
 
+    private threeRenderer = new ThreeRenderer();
+
     private propRenderers: PropositionRenderer[] = [];
 
     private propRenderer: PropositionRenderer = new PropositionRenderer(
@@ -169,10 +174,12 @@ class LinePlot extends React.Component<Props, State> {
         this.onPropSelect = this.onPropSelect.bind(this);
         this.onPropListSelect = this.onPropListSelect.bind(this);
         this.onVariablesChange = this.onVariablesChange.bind(this);
+        this.onResetButtonClick = this.onResetButtonClick.bind(this);
     }
 
     componentDidMount() {
 
+        this.threeRenderer.setAndStart(document.getElementById('#threeCanvas'));
         console.log("workspace");
         console.log(require('../../DataDir/.workspace_info.json'));
 
@@ -325,6 +332,29 @@ class LinePlot extends React.Component<Props, State> {
         }
     }
 
+    // https://stackoverflow.com/questions/23450534/how-to-call-a-python-function-from-node-js
+    onResetButtonClick(){
+        console.log("reset called");
+
+
+        // Parameters passed in spawn -
+        // 1. type_of_script
+        // 2. list containing Path of the script
+        //    and arguments for the script
+
+        // E.g : http://localhost:3000/name?firstname=Mike&lastname=Will
+        // so, first name = Mike and last name = Will
+        //let process = spawn('python3',["../../../py/workspace.py"] );
+        let process = child.spawn('ls');
+        // Takes stdout data from script which executed
+        // with arguments and send this data to res object
+        process.stdout.on('data', (data: { toString: () => void; }) => {
+            console.log(data.toString());
+        } )
+        this.workspace_info.load(require('../../DataDir/.workspace_info.json'));
+
+    }
+
     render() {
         let options = this.state.allVariables.map((v) => {
             return ({value: v, label: v})
@@ -356,7 +386,9 @@ class LinePlot extends React.Component<Props, State> {
                             }
                         )} onChange={this.onPropListSelect}/>
                     </div>
-                    <div className="col-md-1"/>
+                    <div className="col-md-1">
+                        <button onClick={this.onResetButtonClick}>reset</button>
+                    </div>
                 </div>
 
                 {!this.json.isEmpty() ?
@@ -414,7 +446,9 @@ class LinePlot extends React.Component<Props, State> {
                                             </div>
 
                                             <div className="row">
-                                                <div className="svg_div" id="graph"/>
+                                                <div className="svg_div" id="graph">
+                                                    <span></span>
+                                                </div>
                                             </div>
 
 
@@ -422,6 +456,7 @@ class LinePlot extends React.Component<Props, State> {
                                         </TabPanel>
                                         <TabPanel>
                                             <h2>Any content 2</h2>
+                                            <div id="threeCanvas" />
                                         </TabPanel>
                                     </Tabs>
 

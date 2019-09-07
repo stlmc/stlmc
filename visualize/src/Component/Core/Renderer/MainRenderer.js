@@ -70,6 +70,19 @@ class Renderer {
         this.loadDataset();
         // set main canvas
         this.canvas = d3.select(this._tag).append("svg").attr("id", "main_svg").attr("width", this._size.width).attr("height", this._size.height);
+
+        let fps = d3.select("#graph span");
+
+        let t0 = Date.now(), t1;
+
+        d3.timer( function() {
+
+            t1 = Date.now();
+            fps.text( Math.round(1000 / (t1-t0)) + " fps");
+            t0 = t1;
+
+        });
+
         // set data canvas
         this.setDataCanvas();
     }
@@ -179,13 +192,19 @@ class Renderer {
                     .curve(d3.curveMonotoneX);
 
                 // Update lines positions.
+                // Update position first and then rendering it
                 this.lineGraph.selectAll(".lines")
-                    .attr("d", (d) => {
+                    .each((d) => {
                         let res = "";
                         for (let e of d.value) {
                             res += this.lineGenerator(e)
                         }
-                        return res
+                        d.newX = res;
+                    })
+
+                this.lineGraph.selectAll(".lines")
+                    .attr("d", (d) => {
+                        return d.newX;
                     });
 
 

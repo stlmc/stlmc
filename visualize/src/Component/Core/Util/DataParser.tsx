@@ -2,104 +2,106 @@
  * Basic wrapper class for *visualize* **project**.
  * This class uses MathModel's objects and this class is extremely specific
  * to certain project. Do not reuse this class. This is just wrapper class!
- *  
+ *
  * Written by Geunyeol Ryu
  * @ 2019.06.22
  */
 
-  /**
-  * Packages.
-  */
-import { Intervals, Interval, Point } from "./MathModel";
+/**
+ * Packages.
+ */
+import {Intervals, Interval, Point} from "./MathModel";
 
 /**
  * This is prop class
  */
-class PropValue{
+class PropValue {
 
     /**
-     * 
+     *
      * @param _value the actual value of proposition, true or false.
      * @param _extent the extent of proposition value.
      */
     constructor(
-        private _value:string="",
-        private _extent:[number, number]
-        ){}
+        private _value: string = "",
+        private _extent: [number, number]
+    ) {
+    }
 
-    get value():string{
+    get value(): string {
         return this._value;
     }
 
-    set value(value: string){
+    set value(value: string) {
         this._value = value;
     }
 
-    get extent():[number, number]{
+    get extent(): [number, number] {
         return this._extent;
     }
 }
 
-class Prop{
-    private _prop_value:PropValue[] = []
+class Prop {
+    private _prop_value: PropValue[] = []
 
     /**
-     * 
+     *
      * @param _name name of proposition. like "x>1".
      */
     constructor(
-        private _name:string="",
-    ){}
+        private _name: string = "",
+    ) {
+    }
 
-    get name():string{
+    get name(): string {
         return this._name;
     }
 
-    set name(name:string){
+    set name(name: string) {
         this._name = name;
     }
 
-    push(value:string, extent:[number, number]){
+    push(value: string, extent: [number, number]) {
         this._prop_value.push(new PropValue(value, extent))
     }
 
-    get elems(){
+    get elems() {
         return this._prop_value;
     }
 
-    includes(num:number):(string | undefined) {
-        for(let el of this._prop_value){
-            if(el.extent.includes(num)){
+    includes(num: number): (string | undefined) {
+        for (let el of this._prop_value) {
+            if (el.extent.includes(num)) {
                 return el.value;
             }
         }
         return undefined;
     }
 
-    removeAll(){
+    removeAll() {
         this._prop_value = [];
     }
 }
 
-class Props{
+class Props {
     private _props: Prop[] = []
 
-    push(prop:Prop){
+    push(prop: Prop) {
         this._props.push(prop);
     }
 
-    removeAll(){
-        this._props=[];
+    removeAll() {
+        this._props = [];
     }
 
-    get elems(){
+    get elems() {
         return this._props;
     }
 
-    get names(): string[]{
+    get names(): string[] {
         var tmp: string[] = [];
-        for(let el of this._props){
-            if(!tmp.includes(el.name)){
+        for (let el of this._props) {
+            if (!tmp.includes(el.name)) {
                 tmp.push(el.name);
             }
         }
@@ -107,7 +109,7 @@ class Props{
     }
 }
 
-class DataList{
+class DataList {
     // xs list only
     private _xs: number[] = [];
 
@@ -117,25 +119,25 @@ class DataList{
     constructor(
         private _name: string,
         private _value: [number, number][][]
-    ){
+    ) {
         this.flat();
     }
 
-    get name(){
+    get name() {
         return this._name;
     }
 
-    get value(){
+    get value() {
         return this._value;
     }
 
-    flat(){
-        for (let el of this._value){
-            for(let elem of el){
-                if(!this._xs.includes(elem[0])){
+    flat() {
+        for (let el of this._value) {
+            for (let elem of el) {
+                if (!this._xs.includes(elem[0])) {
                     this._xs.push(elem[0]);
                 }
-                if(!this._ys.includes(elem[1])){
+                if (!this._ys.includes(elem[1])) {
                     this._ys.push(elem[1]);
                 }
             }
@@ -145,19 +147,19 @@ class DataList{
         console.log(this._ys)
     }
 
-    get xs(): number[]{
+    get xs(): number[] {
         return this._xs;
     }
 
-    get ys(): number[]{
+    get ys(): number[] {
         return this._ys;
     }
 }
 
- /**
-  * Json:
-  * * Wrapper class for DataGenerator project
-  */
+/**
+ * Json:
+ * * Wrapper class for DataGenerator project
+ */
 class Json {
 
     /**
@@ -166,30 +168,31 @@ class Json {
     private _intervals: Intervals = new Intervals("data");
     private _isEmpty: Boolean = true;
     // TODO: This will be move to Prop class later.
-    private _proposition_names: { [prop: string] :string; } = {};
+    private _proposition_names: { [prop: string]: string; } = {};
 
     // Array of propositions. ["x>1", "x<0", ...]
-    public _props:Props = new Props();
+    public _props: Props = new Props();
+
     /**
-     * 
+     *
      * @param _jsonString String parsing by internal json parser to string.
      */
     constructor(
-        private _jsonString:string = ""
-    ){
+        private _jsonString: string = ""
+    ) {
         //...
     }
 
-    get propNames(): string[]{
+    get propNames(): string[] {
         return this._props.names;
     }
 
-    get variables(){
+    get variables() {
         return this._intervals.names;
     }
 
-    get data(){
-        if(this._intervals.isEmpty()){
+    get data() {
+        if (this._intervals.isEmpty()) {
             this.parse();
             return this._intervals;
         }
@@ -199,18 +202,18 @@ class Json {
     /**
      * @params jsonString Simple string that looks like Json file.
      */
-    set string(jsonString:string){
-        if(jsonString != ""){
+    set string(jsonString: string) {
+        if (jsonString != "") {
             this._jsonString = jsonString;
             this.parse();
         }
     }
 
-    isEmpty():Boolean {
+    isEmpty(): Boolean {
         return this._isEmpty;
     }
 
-    get proposition_names(){
+    get proposition_names() {
         return this._proposition_names;
     }
 
@@ -218,7 +221,7 @@ class Json {
      * Parsing interanl jsonString to make object.
      */
     parse = () => {
-        if(this._jsonString!="") {
+        if (this._jsonString != "") {
             console.log("parsing!");
             this._intervals.removeAll();
             this._props.removeAll();
@@ -270,8 +273,7 @@ class Json {
             if (this._intervals.isEmpty()) {
                 this._isEmpty = true;
             }
-        }
-        else{
+        } else {
             this._isEmpty = true;
         }
     };
@@ -280,7 +282,7 @@ class Json {
      * This will find every intervals that have id which are the same as searching parameter.
      * @params id Interval number.
      */
-    dataById = (id:number):Interval[] => {
+    dataById = (id: number): Interval[] => {
         return this._intervals.intervalById(id);
     }
 
@@ -288,7 +290,7 @@ class Json {
      * Usually, this will be variables name.
      * @params name Interval name.
      */
-    dataByName = (name:string):Interval[] => {
+    dataByName = (name: string): Interval[] => {
         return this._intervals.intervalByName(name);
     }
 
@@ -296,11 +298,11 @@ class Json {
      * Usually, this will be variables name.
      * @params name Interval name.
      */
-    dataByNameList(name:string):[number, number][][]{
+    dataByNameList(name: string): [number, number][][] {
         let tmp: [number, number][][] = [];
-        let interv:Interval[] = this._intervals.intervalByName(name);
-        for(let elem of interv){
-            if(name==elem.name){
+        let interv: Interval[] = this._intervals.intervalByName(name);
+        for (let elem of interv) {
+            if (name == elem.name) {
                 tmp.push(elem.list);
             }
         }
@@ -310,9 +312,9 @@ class Json {
     /**
      * this will replace dataList() eventually.
      */
-    getDataList(): DataList[]{
+    getDataList(): DataList[] {
         var tmp: DataList[] = [];
-        for(let e of this._intervals.names){
+        for (let e of this._intervals.names) {
             tmp.push(new DataList(e, this.dataByNameList(e)))
         }
         return tmp;
@@ -321,28 +323,28 @@ class Json {
     /**
      * this will replace dataList() eventually.
      */
-    getDataListMinor(name:string[]): DataList[]{
+    getDataListMinor(name: string[]): DataList[] {
         var tmp: DataList[] = [];
-        for(let e of this._intervals.names){
-            if(name.includes(e)){
+        for (let e of this._intervals.names) {
+            if (name.includes(e)) {
                 tmp.push(new DataList(e, this.dataByNameList(e)))
             }
         }
         return tmp;
     }
 
-    extentListByName(name:string): (DataList | undefined){
+    extentListByName(name: string): (DataList | undefined) {
         let exList = this.extentList();
         console.log(exList);
-        for(let el of exList){
-            if(el.name == name){
+        for (let el of exList) {
+            if (el.name == name) {
                 return el
             }
         }
         return undefined;
     }
 
-    extentList():DataList[]{
+    extentList(): DataList[] {
         /*
         console.log(this._props.elems)
         var tmp:[number, number][][] = [];
@@ -374,20 +376,19 @@ class Json {
         /**
          * Props : list of prop.
          */
-        //var tmp:[number, number][] = [];
+            //var tmp:[number, number][] = [];
         let tmpData: DataList[] = [];
-        let tmp:[number, number][][] = [];
-        for(let el in this._props.elems){
+        let tmp: [number, number][][] = [];
+        for (let el in this._props.elems) {
             tmp = [];
-            for(let propvals of this._props.elems[el].elems){
-                let tmp2:[number, number][] = [];
-                if(propvals.value == "True"){
+            for (let propvals of this._props.elems[el].elems) {
+                let tmp2: [number, number][] = [];
+                if (propvals.value == "True") {
                     tmp2.push([propvals.extent[0], 2]);
                     tmp2.push([propvals.extent[1], 2]);
-                }
-                else{
+                } else {
                     tmp2.push([propvals.extent[0], 1]);
-                    tmp2.push([propvals.extent[1],1]);
+                    tmp2.push([propvals.extent[1], 1]);
                 }
                 tmp.push(tmp2);
             }
@@ -398,26 +399,23 @@ class Json {
         return tmpData;
     }
 
-    intervalList(){
+    intervalList() {
         var tmp: number[] = [];
         // assert that parse being called before this function.
         //this.parse();
-        for(let e of this._intervals.names){
-            let interv:Interval[] = this._intervals.intervalByName(e);
-            for(let el of interv){
+        for (let e of this._intervals.names) {
+            let interv: Interval[] = this._intervals.intervalByName(e);
+            for (let el of interv) {
                 var min = el.xMin;
                 var max = el.xMax;
-                if (tmp.includes(max)){
+                if (tmp.includes(max)) {
 
-                }
-                else if (tmp.includes(min)){
+                } else if (tmp.includes(min)) {
 
-                }
-                else{
-                    if(min==max){
+                } else {
+                    if (min == max) {
                         tmp.push(min);
-                    }
-                    else{
+                    } else {
                         tmp.push(min);
                         tmp.push(max);
                     }
@@ -425,6 +423,17 @@ class Json {
             }
         }
         return tmp;
+    }
+
+    /**
+     * Reset every data structure.
+     */
+    reset() {
+        this._intervals.removeAll();
+        this._isEmpty = true;
+        this._proposition_names = {};
+        this._props.removeAll();
+        this._jsonString = "";
     }
 }
 
@@ -435,31 +444,47 @@ class Json {
 class WorkspaceJson {
 
     private _file_list: string[] = [];
+
     /**
      *
      * @param _jsonString String parsing by internal json parser to string.
      */
     constructor(
-        private _jsonString:string = ""
-    ){
+        private _jsonString: string = ""
+    ) {
         // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
         // need to take both key and value.
-        for(let [key1, value1] of Object.entries(this._jsonString)){
-            if(key1=="file_list"){
-                for(let i=0; i<value1.length;i++){
+        for (let [key1, value1] of Object.entries(this._jsonString)) {
+            if (key1 == "file_list") {
+                for (let i = 0; i < value1.length; i++) {
                     let obj = value1[i];
                     this._file_list.push(obj);
                 }
-            }
-            else{
-               console.log("Workspace error!")
+            } else {
+                console.log("Workspace error!")
             }
         }
     };
 
-    get file_list(){
+    load(jsonString: string = ""){
+        this._file_list = [];
+        // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+        // need to take both key and value.
+        for (let [key1, value1] of Object.entries(this._jsonString)) {
+            if (key1 == "file_list") {
+                for (let i = 0; i < value1.length; i++) {
+                    let obj = value1[i];
+                    this._file_list.push(obj);
+                }
+            } else {
+                console.log("Workspace error!")
+            }
+        }
+    }
+
+    get file_list() {
         return this._file_list;
     }
 }
 
-export { Json, WorkspaceJson };
+export {Json, WorkspaceJson};
