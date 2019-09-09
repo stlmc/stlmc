@@ -666,13 +666,15 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
+    def modelCheck(self, stlFormula, bound, timeBound, iterative=True, steadyJump = False):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
         negFormula = NotFormula(stlFormula)  # negate the formula
+
+        print("Scheduleing " + str(stlFormula) + " bound: " + str(bound))
 
         for i in range(0 if iterative else bound, bound + 1):
 
@@ -682,16 +684,29 @@ class StlMC:
 
             # partition constraint
             (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+            print("partition")
+            print(partition)
+            print("sepMap")
+            print(sepMap)
+            print("partitionConsts")
+            print(partitionConsts)
 
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
-
             # FOL translation
+            print("full separation result formula")
+            print(str(fs[0]))
+            print("full separtion map")
+            print(fs[1])
             baseV = ENC.baseEncoding(partition, baseP)
+            print("baseV")
+            print(baseV)
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
+            print("formula const")
+            print(formulaConst)
             # constraints from the model
-            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
+            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst], steadyJump)
 
             '''
             for i in range(len(modelConsts)):
@@ -729,7 +744,7 @@ class StlMC:
 
 
 
-    def reach(self, bound, timeBound, goal):
+    def reach(self, bound, timeBound, goal, steadyJump = False):
         self.bound = bound
         self.strStlFormula = str(goal)
         consts = []
@@ -737,7 +752,7 @@ class StlMC:
         consts.append(self.consts.makeVarRangeConsts(bound))
         consts.append(self.init.getExpression(self.subvars).substitution(combine))
         consts.append(self.consts.flowConstraints(bound))
-        consts.append(self.consts.jumpConstraints(bound))
+        consts.append(self.consts.jumpConstraints(bound, steadyJump))
         consts.append(self.consts.goalConstraints(bound, goal))
       
 

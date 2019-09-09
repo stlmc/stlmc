@@ -13,10 +13,10 @@ def checkSat(consts, logic="None"):
     else:
         solver = z3.Solver()
     
-    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-    solver.add(target_z3_simplify)
+#    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+#    solver.add(target_z3_simplify)
 
-#    solver.add(z3Consts)
+    solver.add(z3Consts)
 
     solver.set("timeout", 9000000)  #timeout : 150 min
     with open("thermoLinear.smt2", 'w') as fle:
@@ -121,12 +121,22 @@ def _(const):
 @z3Obj.register(And)
 def _(const):
     z3args = [z3Obj(c) for c in const.children]
-    return z3.And(z3args)
+    if len(z3args) < 1:
+        return True
+    elif len(z3args) < 2:
+        return z3args[0]
+    else:
+        return z3.And(z3args)
 
 @z3Obj.register(Or)
 def _(const):
     z3args = [z3Obj(c) for c in const.children]
-    return z3.Or(z3args)
+    if len(z3args) < 1:
+        return True
+    elif len(z3args) < 2:
+        return z3args[0]
+    else:
+        return z3.Or(z3args)
 
 @z3Obj.register(Implies)
 def _(const):

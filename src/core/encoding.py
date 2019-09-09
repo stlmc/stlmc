@@ -2,7 +2,7 @@ from .formula import *
 from .interval import *
 from functools import singledispatch
 
-
+# making proposition id for each interval ex) [0, tau_0) = p_0, [tau_0, tau_1) = p_1 ...
 def baseEncoding(partition:dict, baseCase):
     base = {}
     for f in partition.keys():
@@ -17,6 +17,12 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     genPr = genId(0, 'chi')
     fMap  = {}
     vf    = _value(f, sub, j, base, genPr, fMap)
+    print("valuation")
+
+    print(type(f))
+    print(sub)
+    print(fMap)
+    print(vf)
     return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
 
 
@@ -36,6 +42,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 
 @_value.register(NotFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
+    print(type(f.child))
     return Not(_value(f.child,sub,j,base,genPr,fMap))
 
 @_value.register(Multiary)
@@ -54,6 +61,8 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
 
 @_value.register(GloballyFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap):
+    print("global formula")
+    print(str(Implies(intervalConst(j,f.gtime,f.ltime), _value(f.child,sub,f.gtime,base,genPr,fMap))))
     return Implies(intervalConst(j,f.gtime,f.ltime), _value(f.child,sub,f.gtime,base,genPr,fMap))
 
 @_value.register(UntilFormula)

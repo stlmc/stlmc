@@ -1,5 +1,5 @@
 bool a;
-[0, 100] x;
+[0, 500] x;
 {
     mode:
         a == false;
@@ -14,7 +14,8 @@ init:
 (and (not(a)) (x <= 0.1) (x >= 0)); 
 
 propositions:
-
+xl2 = x < 2 ;
+xg3 = x > 3;
 goal:
-([] [0.0, 40.0] (x < 2)) ;
+([] [0.0, 40.0] xl2) ;
 
