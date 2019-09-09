@@ -666,7 +666,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, stlFormula, bound, timeBound, iterative=True, steadyJump = False):
+    def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -706,7 +706,7 @@ class StlMC:
             print("formula const")
             print(formulaConst)
             # constraints from the model
-            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst], steadyJump)
+            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
             '''
             for i in range(len(modelConsts)):
@@ -744,7 +744,7 @@ class StlMC:
 
 
 
-    def reach(self, bound, timeBound, goal, steadyJump = False):
+    def reach(self, bound, timeBound, goal):
         self.bound = bound
         self.strStlFormula = str(goal)
         consts = []
@@ -752,7 +752,7 @@ class StlMC:
         consts.append(self.consts.makeVarRangeConsts(bound))
         consts.append(self.init.getExpression(self.subvars).substitution(combine))
         consts.append(self.consts.flowConstraints(bound))
-        consts.append(self.consts.jumpConstraints(bound, steadyJump))
+        consts.append(self.consts.jumpConstraints(bound))
         consts.append(self.consts.goalConstraints(bound, goal))
       
 

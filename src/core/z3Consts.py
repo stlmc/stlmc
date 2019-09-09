@@ -39,9 +39,9 @@ class z3Consts:
     def makeVarRangeConsts(self, bound):
         result = list()
         for k in range(bound+1):
-            combine = self.combineDict(self.makeSubVars(k, '0'), self.makeSubVars(k, 't'))
             for i in range(len(self.contVar)):
-                result.append(self.contVar[i].getConstraint().substitution(combine))
+                result.append(self.contVar[i].getConstraint().substitution(self.makeSubVars(k, '0')))
+                result.append(self.contVar[i].getConstraint().substitution(self.makeSubVars(k, 't')))
         return And(*result)
 
     def combineDict(self, dict1, dict2):
@@ -50,7 +50,7 @@ class z3Consts:
             result[i] = dict2[i]
         return result
 
-    def jumpConstraints(self, bound, steady):
+    def jumpConstraints(self, bound):
         jumpConsts = list()
         for i in range(len(self.modeModule)):
             subresult = list()
@@ -58,16 +58,15 @@ class z3Consts:
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
              
             # add steady state jump constraints 
-            if steady:
-                steadyStateConsts = list()
-                op = {'bool' : Bool, 'int' : Int, 'real' : Real}
-                for k in range(len(self.modeVar)):
-                    mode = op[self.modeVar[k].type](self.modeVar[k].id)
-                    steadyStateConsts.append(NextVar(mode) == mode)
-                for k in range(len(self.contVar)):
-                    var = op[self.contVar[k].type](self.contVar[k].id)
-                    steadyStateConsts.append(NextVar(var) == var)
-                subresult.append(And(*steadyStateConsts))
+            steadyStateConsts = list()
+            op = {'bool' : Bool, 'int' : Int, 'real' : Real}
+            for k in range(len(self.modeVar)):
+                mode = op[self.modeVar[k].type](self.modeVar[k].id)
+                steadyStateConsts.append(NextVar(mode) == mode)
+            for k in range(len(self.contVar)):
+                var = op[self.contVar[k].type](self.contVar[k].id)
+                steadyStateConsts.append(NextVar(var) == var)
+            subresult.append(And(*steadyStateConsts))
 
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
@@ -172,6 +171,7 @@ class z3Consts:
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
                         const.append(Implies(And(i, curMode).substitution(combine), Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
                         const.append(Implies(And(Not(i), curMode).substitution(combine), Forall(time, Not(self.makePropDict()[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+                    const.append(self.makeSubProps(k)[str(i)] == Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
             result.append(And(*const))
         return And(*result)
 
@@ -198,7 +198,7 @@ class z3Consts:
         return result
 
     # Make constraints of the model
-    def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula, steadyJump):
+    def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula):
         result = list()
         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))
         # make range constraints
@@ -208,7 +208,7 @@ class z3Consts:
         # make flow constraints
         result.append(self.flowConstraints(bound))
         # make jump constraints
-        result.append(self.jumpConstraints(bound, steadyJump))
+        result.append(self.jumpConstraints(bound))
 
         ts = [Real("tau_%s"%i) for i in range(0, bound+1)]
 
