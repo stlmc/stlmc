@@ -1,4 +1,5 @@
 import enum
+import core.formula as FORM
 
 
 @enum.unique
@@ -381,8 +382,9 @@ class Neg(UnaryArithmetic):
 class Logical(nonLeaf):
     def __init__(self, op, args: list):
         for a in args:
-            if not (a.getType() == Type.Bool):
-                raise TypeError()
+            if not isinstance(a, FORM.Formula):
+                if not (a.getType() == Type.Bool):
+                    raise TypeError()
         super().__init__(op, Type.Bool, args)
 
 

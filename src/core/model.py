@@ -688,8 +688,6 @@ class StlMC:
             print(partition)
             print("sepMap")
             print(sepMap)
-            print("partitionConsts")
-            print(partitionConsts)
 
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
@@ -701,10 +699,8 @@ class StlMC:
             baseV = ENC.baseEncoding(partition, baseP)
             print("baseV")
             print(baseV)
-            formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
+            (formulaConst, matchID) = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
-            print("formula const")
-            print(formulaConst)
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
