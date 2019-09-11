@@ -155,6 +155,7 @@ class z3Consts:
             for prop in self.propInformula(goal):
                 time = Real('time' + str(k))
                 const.append(self.makeSubProps(k)[str(prop)] == Forall(time, self.makePropDict()[prop], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
+                const.append(Not(self.makeSubProps(k)[str(prop)]) == Forall(time, Not(self.makePropDict()[prop]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) 
             result.append(And(*const))
         return Or(*result)
 
