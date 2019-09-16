@@ -21,22 +21,6 @@ def subfMap(formula, fMap):
     else:
         subfMap(formula.children, fMap)
 
-def makeSubformulaID(sub:dict, fMap:dict):
-    genPr = genId(0, 'subformula')
-    #{subformula constraint id : formula} ex) {Bool(subformula0) : [] f}
-    matchID = {}
-    constraints = []
-
-    for subKey in sub.keys():
-        curSub = Bool(next(genPr))
-        print("before Substitution")
-        print(subKey)
-        print("after substitution")
-        print(_substitution(subKey,fMap))
-        matchID[_substitution(subKey,fMap)] = curSub
-        constraints.append(curSub == sub[subKey])
-    return (matchID, constraints)
-
 def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     genPr = genId(0, 'chi')
     fMap  = {}
@@ -53,10 +37,7 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
         print(subFormula[pid])
         print("")
     
-    (matchID, consts) = makeSubformulaID(subFormula, sub)
-    for idmatch in matchID.keys():
-        print(str(idmatch) + " "  + str(matchID[idmatch]))
-    return (And(vf, *[pf[0] == pf[1] for pf in fMap.values()], *consts), matchID)
+    return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
 
 @singledispatch
 def _value(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
