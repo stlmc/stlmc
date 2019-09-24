@@ -5,7 +5,6 @@ import './style/LinePlotStyle.scss';
 import '../../Style/scss/main.scss';
 import {margin, size} from '../Core/Util/Util';
 import {Renderer} from '../Core/Renderer/MainRenderer';
-import {ThreeRenderer} from '../Core/Renderer/ThreeJSRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
 import {Json, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
@@ -93,7 +92,6 @@ class LinePlot extends React.Component<Props, State> {
         "#graph"
     );
 
-    private threeRenderer = new ThreeRenderer();
 
     private propRenderers: PropositionRenderer[] = [];
 
@@ -179,7 +177,6 @@ class LinePlot extends React.Component<Props, State> {
 
     componentDidMount() {
 
-        this.threeRenderer.setAndStart(document.getElementById('#threeCanvas'));
         console.log("workspace");
         console.log(require('../../DataDir/.workspace_info.json'));
 
@@ -396,70 +393,52 @@ class LinePlot extends React.Component<Props, State> {
                         <div>
                             <div className="row basic_box">
                                 <div className="col-md-12">
-                                    <Tabs>
-                                        <TabList>
-                                            <Tab>Title 1</Tab>
-                                            <Tab>Title 2</Tab>
-                                        </TabList>
+                                    <div className="row">
+                                        <div className="col-md-1"/>
+                                        <div className="col-md-10">
+                                            <label>Variables</label>
+                                            <Select className="select_theme" options={options}
+                                                    onChange={this.onVariablesChange}
+                                                    value={selected}
+                                                    isMulti={true} isSearchable={true}
+                                                    closeMenuOnSelect={false}>
+                                            </Select>
+                                        </div>
+                                        <div className="col-md-1"/>
+                                    </div>
 
-                                        <TabPanel forceRender={true}>
+                                    <div className="row line_plot_container">
+                                        <div className="col-md-1"/>
+                                        <div className="col-md-10">
+                                            <label>Propositions</label>
+                                            <Select isSearchable={true} options={props}
+                                                    onChange={this.onPropSelect}
+                                                    value={selectedProps}
+                                                    isMulti={true}
+                                                    closeMenuOnSelect={false}/>
+                                        </div>
+                                        <div className="col-md-1"/>
+                                    </div>
 
-                                            <div className="row">
-                                                <div className="col-md-1"/>
-                                                <div className="col-md-10">
-                                                    <label>Variables</label>
-                                                    <Select className="select_theme" options={options}
-                                                            onChange={this.onVariablesChange}
-                                                            value={selected}
-                                                            isMulti={true} isSearchable={true}
-                                                            closeMenuOnSelect={false}>
-                                                    </Select>
-                                                </div>
-                                                <div className="col-md-1"/>
+                                    <div className="row basic_box">
+                                        <div className="col-md-1"/>
+                                        <div className="col-md-7"/>
+                                        <div className="col-md-4">
+                                            <div className="form-check text-right">
+                                                <label>Enabled Popups &nbsp;
+                                                    <input className="form-check-input" type="checkbox"
+                                                           checked={this.state.popup.isEnabled} onClick={this.onPopupClick}
+                                                           onChange={this.onPopupChange}/>
+                                                </label>
                                             </div>
+                                        </div>
+                                    </div>
 
-                                            <div className="row line_plot_container">
-                                                <div className="col-md-1"/>
-                                                <div className="col-md-10">
-                                                    <label>Propositions</label>
-                                                    <Select isSearchable={true} options={props}
-                                                            onChange={this.onPropSelect}
-                                                            value={selectedProps}
-                                                            isMulti={true}
-                                                            closeMenuOnSelect={false}/>
-                                                </div>
-                                                <div className="col-md-1"/>
-                                            </div>
-
-                                            <div className="row basic_box">
-                                                <div className="col-md-1"/>
-                                                <div className="col-md-7"/>
-                                                <div className="col-md-4">
-                                                    <div className="form-check text-right">
-                                                        <label>Enabled Popups &nbsp;
-                                                            <input className="form-check-input" type="checkbox"
-                                                                   checked={this.state.popup.isEnabled} onClick={this.onPopupClick}
-                                                                   onChange={this.onPopupChange}/>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="row">
-                                                <div className="svg_div" id="graph">
-                                                    <span></span>
-                                                </div>
-                                            </div>
-
-
-
-                                        </TabPanel>
-                                        <TabPanel>
-                                            <h2>Any content 2</h2>
-                                            <div id="threeCanvas" />
-                                        </TabPanel>
-                                    </Tabs>
-
+                                    <div className="row">
+                                        <div className="svg_div" id="graph">
+                                            <span></span>
+                                        </div>
+                                    </div>
 
                                 </div>
                             </div>

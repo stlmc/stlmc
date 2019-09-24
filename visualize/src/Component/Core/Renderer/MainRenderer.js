@@ -622,7 +622,6 @@ class Renderer {
         // https://bl.ocks.org/pstuffa/d5934843ee3a7d2cc8406de64e6e4ea5
         // https://github.com/d3/d3-scale-chromatic/blob/master/README.md
         this.drawDataCanvas();
-        //this.drawPropCanvas();
     }
 
 
