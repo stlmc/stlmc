@@ -1,7 +1,7 @@
 import core.partition as PART
 import core.separation as SEP
 import time
-
+from .z3Handler import *
 from .formula import *
 from .z3Consts import *
 
@@ -684,21 +684,26 @@ class StlMC:
 
             # partition constraint
             (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+            '''
             print("partition")
             print(partition)
             print("sepMap")
             print(sepMap)
-
+            '''
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
             # FOL translation
+            '''
             print("full separation result formula")
             print(str(fs[0]))
             print("full separtion map")
             print(fs[1])
+            '''
             baseV = ENC.baseEncoding(partition, baseP)
+            '''
             print("baseV")
             print(baseV)
+            '''
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
             # constraints from the model

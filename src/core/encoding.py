@@ -26,6 +26,7 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     fMap  = {}
     subFormula = {}
     vf    = _value(f, sub, j, base, genPr, fMap, subFormula)
+    '''
     print("vf")
     print(vf)
     print("valuation fMap")
@@ -36,7 +37,7 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
         print(str(pid))
         print(subFormula[pid])
         print("")
-    
+    '''
     return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
 
 @singledispatch

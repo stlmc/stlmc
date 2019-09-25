@@ -61,8 +61,8 @@ class Leaf(Node):
 
 
 class ArithRef(Leaf):
-    pass
-
+    def getType(self):
+        return type.Real
 
 class Constant(Leaf):
     def __init__(self, constType, value):
@@ -93,6 +93,9 @@ class Constant(Leaf):
     def getExpression(self, subDict):
         op = {Type.Bool: Bool, Type.Int: Int, Type.Real: Real}
         return op[self.type](str(self.__value))
+
+    def getType(self):
+        return self.type
 
 
 class BoolVal(Constant):
@@ -139,6 +142,7 @@ class IntVal(Constant, ArithRef):
 class Variable(Leaf):
     def __init__(self, varType, varId):
         super().__init__(varType)
+        self.type = varType
         self.id = varId
 
     def __hash__(self):
@@ -160,6 +164,8 @@ class Variable(Leaf):
     def getVars(self):
         return {self}
 
+    def getType(self):
+        return self.type
 
 class NextVar(Variable):
     def __init__(self, var):

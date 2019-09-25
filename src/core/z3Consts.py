@@ -1,7 +1,7 @@
 import z3
 import core.encoding as ENC
 from .node import *
-from .z3Handler import *
+from .differentiation import *
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -92,6 +92,11 @@ class z3Consts:
                 flowModule = dict()
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
+                '''
+                print("current Flow")
+                print(curFlow[0].getFlow(self.subvars))
+                print(diff(curFlow[0].getFlow(self.subvars)))
+                '''
                 for j in range(len(curFlow)):
                     if curFlow[j].getVarId() in self.subvars.keys():
                         flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.subvars)
@@ -110,7 +115,6 @@ class z3Consts:
                 modeConsts.append(Int('currentMode_'+str(k)) >= IntVal(0))
 
                 modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
-
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
