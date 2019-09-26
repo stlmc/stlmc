@@ -21,4 +21,4 @@ node_modules/
 .idea/
 
 # unignored data
-./visualize/golang/data/
+!visualize/golang/data/
