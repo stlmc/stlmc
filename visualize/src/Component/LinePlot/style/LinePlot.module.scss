@@ -1,0 +1,12 @@
+@import 'variable.module.scss';
+
+.main_theme{
+    margin-left: auto;
+    margin-right: auto;
+    // this must be same as LinePlot's original width
+    width: $width;
+}
+
+.select_theme{
+    width: 100px;
+}
