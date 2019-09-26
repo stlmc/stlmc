@@ -22,8 +22,6 @@ class Renderer {
         this.effective_controller_height_difference = 100;
         this.effective_controller_height = 50;
 
-        console.log("hey!");
-
         this._size = _size;
         this._margin_viewer = _margin_viewer;
         this._margin_controller = _margin_controller;
