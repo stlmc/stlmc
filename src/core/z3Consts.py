@@ -1,7 +1,7 @@
-import z3
 import core.encoding as ENC
 from .node import *
 from .differentiation import *
+from .z3Handler import *
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -173,8 +173,26 @@ class z3Consts:
             else:
                 raise ("Flow id is not declared")
 
-        print(type(curFlowType))
-        print(flowModule)
+
+        if curFlowType == 'diff':
+            for contVar in flowModule.keys():
+                flowModule[contVar] = flowModule[contVar] * Real('time')
+
+        subContVar = dict()
+        for contVar in flowModule.keys():
+            subContVar[str(contVar.id)] = flowModule[contVar]
+            print(type(flowModule[contVar]))
+
+        substitutionExp = handlingExp.substitution(subContVar)
+        print("proposition differentiation")
+        print(substitutionExp)
+        diffExp = diff(substitutionExp)
+        print(diffExp)
+        print(z3.simplify(z3Obj(diffExp)))
+        #const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == 0, self.propForall(Gt(diffExp,0), start, end, bound, curFlow)))
+        #const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == 0, self.propForall(Lt(diffExp, 0), start, end, bound, curFlow)))
+
+
         print("proposition Forall")
 
         for i in range(len(self.modeModule)):
