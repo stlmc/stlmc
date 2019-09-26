@@ -92,11 +92,6 @@ class z3Consts:
                 flowModule = dict()
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
-                '''
-                print("current Flow")
-                print(curFlow[0].getFlow(self.subvars))
-                print(diff(curFlow[0].getFlow(self.subvars)))
-                '''
                 for j in range(len(curFlow)):
                     if curFlow[j].getVarId() in self.subvars.keys():
                         flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.subvars)
@@ -163,17 +158,47 @@ class z3Consts:
             result.append(And(*const))
         return Or(*result)
 
+    def propForall(self, exp, start, end, bound, curFlow):
+        const = list()
+        combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
+        handlingExp = exp.left() - exp.right()
+        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
+        curFlowExp = curFlow.getExpression(self.subvars)
+        curFlowType = curFlow.getFlowType()
+        flowModule = dict()
+        for j in range(len(curFlowExp)):
+            if curFlowExp[j].getVarId() in self.subvars.keys():
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.subvars)
+            else:
+                raise ("Flow id is not declared")
+
+        print(type(curFlowType))
+        print(flowModule)
+        print("proposition Forall")
+
+        for i in range(len(self.modeModule)):
+            flowModule = dict()
+            curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+            curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
+
+        return BoolVal(True)
+
+
     def propConstraints(self, propSet, bound):
         result = list()
         for k in range(bound+1):
             time = Real('time' + str(k))
+            start = Real('tau_'+ str(k))
+            end = Real('tau_' + str(k))
             const = list()
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
             for i in self.makePropDict().keys():
                 if str(i) in propSet:
                     for m in range(len(self.modeModule)):
-                        flowModule = dict()
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
+                        curFlow = self.modeModule[m].getFlow()
+                        const.append(Implies(And(i, curMode).substitution(combine), self.propForall(self.makePropDict()[i], start, end, k, curFlow)))
                         const.append(Implies(And(i, curMode).substitution(combine), Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
                         const.append(Implies(And(Not(i), curMode).substitution(combine), Forall(time, Not(self.makePropDict()[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
                     const.append(self.makeSubProps(k)[str(i)] == Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
