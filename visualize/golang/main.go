@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"golang/data"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -151,6 +152,7 @@ func test(w http.ResponseWriter, r *http.Request){
 
 
 func main() {
+	data.Write("eee")
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
 	router.HandleFunc("/update", updateWorkspace)
