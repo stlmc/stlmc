@@ -159,6 +159,13 @@ class z3Consts:
         return Or(*result)
 
     def propForall(self, exp, start, end, bound, curFlow):
+        print("proposition forall")
+        print(exp)
+        if isinstance(exp, Lt) or isinstance(exp, Le):
+            exp = Not(exp).reduce()
+        print(type(exp))
+        if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
+            return exp 
         const = list()
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
         handlingExp = exp.left() - exp.right()
@@ -181,26 +188,19 @@ class z3Consts:
         subContVar = dict()
         for contVar in flowModule.keys():
             subContVar[str(contVar.id)] = flowModule[contVar]
-            print(type(flowModule[contVar]))
 
         substitutionExp = handlingExp.substitution(subContVar)
-        print("proposition differentiation")
-        print(substitutionExp)
         diffExp = diff(substitutionExp)
-        print(diffExp)
-        print(z3.simplify(z3Obj(diffExp)))
-        #const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == 0, self.propForall(Gt(diffExp,0), start, end, bound, curFlow)))
-        #const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == 0, self.propForall(Lt(diffExp, 0), start, end, bound, curFlow)))
+        if isinstance(exp, Gt):
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == RealVal(0), self.propForall(Gt(diffExp,RealVal(0)), start, end, bound, curFlow)))
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == RealVal(0), self.propForall(Lt(diffExp, RealVal(0)), start, end, bound, curFlow)))
+        elif isinstance(exp,Ge):
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == RealVal(0), self.propForall(Ge(diffExp,RealVal(0)), start, end, bound, curFlow)))
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == RealVal(0), self.propForall(Le(diffExp, RealVal(0)), start, end, bound, curFlow)))
+        else:
+            raise ("proposition constraint case mismatched")
 
-
-        print("proposition Forall")
-
-        for i in range(len(self.modeModule)):
-            flowModule = dict()
-            curMode = self.modeModule[i].getMode().getExpression(self.subvars)
-            curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
-
-        return BoolVal(True)
+        return And(*const)
 
 
     def propConstraints(self, propSet, bound):
@@ -217,9 +217,7 @@ class z3Consts:
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
                         curFlow = self.modeModule[m].getFlow()
                         const.append(Implies(And(i, curMode).substitution(combine), self.propForall(self.makePropDict()[i], start, end, k, curFlow)))
-                        const.append(Implies(And(i, curMode).substitution(combine), Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
-                        const.append(Implies(And(Not(i), curMode).substitution(combine), Forall(time, Not(self.makePropDict()[i]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
-                    const.append(self.makeSubProps(k)[str(i)] == Forall(time, self.makePropDict()[i], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
+                        const.append(Implies(And(i, curMode).substitution(combine), self.propForall(Not(self.makePropDict()[i]).reduce(), start, end, k, curFlow)))
             result.append(And(*const))
         return And(*result)
 

@@ -454,6 +454,16 @@ class Not(Logical, _UnaryOp):
     def nextSub(self, subDict):
         return Not(self.child().nextSub(subDict))
 
+    def reduce(self):
+        if isinstance(self.child(), Lt):
+            return Ge(self.child().left(), self.child().right())
+        if isinstance(self.child(), Gt):
+            return Le(self.child().left(), self.child().right())
+        if isinstance(self.child(), Le):
+            return Gt(self.child().left(), self.child().right())
+        if isinstance(self.childe(), Ge):
+            return Lt(self.child().left(), self.child().right())
+        return self
 
 class Integral(Node):
     def __init__(self, endList, startList, time, ode, flowType):
