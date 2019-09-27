@@ -88,22 +88,34 @@ type FullGraph struct {
 	MinPoint []Point
 }
 
-// maxPoint is calculate maximum point of full graph.
-func (fg *FullGraph) maxPoint(){
-	max := Point(0, 0)
-	for i, e := range maxPoint{
-		if e > max {
+// GetMaxPoint is calculate maximum point of full graph.
+func (fg *FullGraph) GetMaxPoint() (Point, bool){
+	var max Point
+	if len(fg.MaxPoint) == 0 {
+		return Point{0, 0}, false
+	}
+	max = fg.MaxPoint[0]
+	for _, e := range fg.MaxPoint{
+		if e.x > max.x {
 			max = e
 		}
 	}
+	return max, true
 }
 
-// minPoint is calculate minimum point of full graph.
-func (fg *FullGraph) minPoint(){
-	min := Point(0, 0)
-	for i, e := range minPoint{
-		if e < min {
+// GetMinPoint is calculate minimum point of full graph.
+// if it returns true then there exists min point in the
+// full graph, otherwise false.
+func (fg *FullGraph) GetMinPoint() (Point, bool){
+	var min Point
+	if len(fg.MinPoint) == 0 {
+		return Point{0, 0}, false
+	}
+	min = fg.MinPoint[0]
+	for _, e := range fg.MinPoint{
+		if e.x < min.x {
 			min = e
 		}
 	}
+	return min, true
 }
