@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"golang/data"
+	"golang/util"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -152,7 +152,7 @@ func test(w http.ResponseWriter, r *http.Request){
 
 
 func main() {
-	data.Write("eee")
+	util.Read(DirName+"oneThermostatMix_([]_[0.0,40.0]^[0.0,inf) (~ reachability))_3.json")
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
 	router.HandleFunc("/update", updateWorkspace)

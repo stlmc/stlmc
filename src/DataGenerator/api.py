@@ -255,7 +255,8 @@ class Api:
                 tmp.append(global_newT[i])
                 tmp += self.mode_module[model_id].getFlow().exp2exp()
                 tmp_res.append(tmp)
-            interval_dict[k] = tmp_res
+            interval_dict["name"] = k
+            interval_dict["points"] = tmp_res
 
         return interval_dict
 
@@ -289,7 +290,8 @@ class Api:
                 pair.append(global_newT[i])
                 pair.append(e[el])
                 tmp_res.append(pair)
-            interval_dict[var_list[index][el]] = tmp_res
+            interval_dict["name"] = var_list[index][el]
+            interval_dict["points"] = tmp_res
 
         print("calcDIffEq")
         print(interval_dict)
@@ -322,6 +324,7 @@ class Api:
         print("Let's see")
         print(solEq_dict)
         print(diffEq_dict)
+
         res = []
 
 
@@ -383,6 +386,7 @@ class Api:
 
 
             import json
+            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()

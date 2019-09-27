@@ -113,15 +113,43 @@ JSON format, for example:
 			},
 			...
 		],
+		"Mode": [
+			{
+				"Name": "s0",
+				"Actual": "x2-x1 < 10",
+				"Data": ["True", ...,"False"]
+			},
+			{
+				"Name": "disl10",
+				"Actual": "x2-x1 < 10",
+				"Data": ["True", ...,"False"]
+			},
+			{
+				"Name": "disl10",
+				"Actual": "x2-x1 < 10",
+				"Data": ["True", ...,"False"]
+			},
+			...
+		],
+
 	}
 
 
 */
 package data
 
+// IJsonPoint is same as util.JsonPoint
+// this one is needed, since golang does't
+// allow "Import cycle" issue.
+type IJsonPoint = [2]int
+
 type Point struct {
-	X int	`json:"x"`
-	Y int	`json:"y"`
+	X int
+	Y int
+}
+
+func (p *Point) JsonPoint() *IJsonPoint {
+	return &IJsonPoint{p.X, p.Y}
 }
 
 type SubGraph struct {
@@ -167,7 +195,9 @@ type FullGraph struct {
 	// Name is a FullGraph variable name
 	Name string
 
-	// Size is a number of subgraphs
+	// Size is a number of subgraphs,
+	// this size is same as number of
+	// intervals.
 	Size int
 
 	// SubGraph is actual data
@@ -188,7 +218,6 @@ type FullGraph struct {
 	// MinWithY is FullGraph's minimum
 	// point with respect to Y axis
 	MinWithY *Point
-
 }
 
 func (sg *SubGraph) getSubPoint() {
@@ -284,5 +313,28 @@ func (fg *FullGraph) getSubPoint(){
 			fg.MinWithY = e.minWithY
 		}
 	}
+}
 
+// CompositeGraph contains a list of FullGraphs,
+// a list of Propositions, a list of
+// Modes. This is actually one big composition
+// graph that we want to visualize.
+//
+// CompositeGraph is a big composition of gathered graphs
+// with similar scaled graphs with respect to y axis.
+// It means if you have 2 FullGraphs and graph 1's
+// range is between [100, 500] and graph 2's range
+// is between [0.1, 1] then, you will have 2 CompositeGraph.
+// However if both graphs have similar y ranges then,
+// you will have only 1 CompositeGraph.
+type CompositeGraph = []FullGraph
+
+
+// UnitGraph is basically a most biggest graph.
+// This graph contains multiple CompositeGraph
+// as well as multiple Propositions and Modes.
+type UnitGraph struct {
+	Graph []CompositeGraph
+	Props []Proposition
+	Modes []Mode
 }

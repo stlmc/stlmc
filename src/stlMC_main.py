@@ -40,8 +40,9 @@ def main(argv):
             formula = stlMC.getStlFormsList()[i]
             print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
-            p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))
-            p.start()
+            module(title, stlMC, formula, k, timeBound, dataGenerator)
+            #p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))
+            #p.start()
             '''
             print(visualize.getVarsId())
             print(visualize.getModesId())
