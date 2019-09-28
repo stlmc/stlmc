@@ -81,56 +81,36 @@ This package also have methods for read and write mentioned objects into JSON fo
 be used in front-end (nodejs).
 
 JSON format, for example:
-	{
-		FullGraph: [
-			// FullGraph
+	"UnitGraph": {
+
+		"Interval": [
 			{
 				"Name" : "x",
-				"SubGraph": [
-					{ "Data": [[x_0, y_0], ...,[x_n, y_n]] },
-					{ "Data": [[x_0, y_0], ...,[x_n, y_n]] },
-					{ "Data": [[x_0, y_0], ...,[x_n, y_n]] },
-					{ "Data": [[x_0, y_0], ...,[x_n, y_n]] },
-					...
+				"Points": [
+					{"x": x_0, "y": y_0},
+					...,
+					{"x": x_n, "y": y_n}
 				],
 			},
 		],
+
 		"Proposition": [
 			{
-				"Name": "disl10",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
+				"Name": "disl10"
+				"Actual": "x2-x1 < 10"
+				"Data": ["True", "False"]
 			},
 			{
-				"Name": "disl10",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
+				"Name": "s0"
+				"Actual": "x2 > 10"
+				"Data": ["True", "False"]
 			},
-			{
-				"Name": "disl10",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
-			},
-			...
 		],
-		"Mode": [
-			{
-				"Name": "s0",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
-			},
-			{
-				"Name": "disl10",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
-			},
-			{
-				"Name": "disl10",
-				"Actual": "x2-x1 < 10",
-				"Data": ["True", ...,"False"]
-			},
-			...
-		],
+
+		"Mode": {
+			"Name": ["(false, true)", "(true, true)", "(true, false)", "(false, false)"]
+			"Data": [0, 1, 2, 3]
+		},
 
 	}
 

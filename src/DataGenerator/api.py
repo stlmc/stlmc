@@ -210,8 +210,7 @@ class Api:
 
 
     def getProposition(self):
-       result = {}
-       idPropExp = {}
+       result = []
        if self.model is not None:
            for i in range(len(self.props)):
                subResult = []
@@ -224,9 +223,15 @@ class Api:
                            subResult.append(str(self.model[k]))
                            declares.remove(k)
                if idCheck and (len(subResult) > 0):
-                   result[str(self.props[i].getId())] = subResult
-                   idPropExp[str(self.props[i].getId())] = str(self.props[i].getExpStr())
-       return idPropExp, result
+                   # result is for { "prop": [values...] }
+                   # value is in form of { "Name": "disl10", "Actual": "x2-x1 < 10", "Data": ["True", "False"] }
+                   # value
+                   resultVal = dict()
+                   resultVal["name"] = str(self.props[i].getId())
+                   resultVal["actual"] = str(self.props[i].getExpStr())
+                   resultVal["data"] = subResult
+                   result.append(resultVal)
+       return result
 
 
 
@@ -245,7 +250,6 @@ class Api:
         for k in sol_l:
             tmp_res = []
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
-            # test_res2 = []
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
@@ -330,8 +334,10 @@ class Api:
                 diffEq_dict.append(tmp)
 
 
-        print("Let's see")
+        print("Sol eq dict")
         print(solEq_dict)
+
+        print("Diff eq dict")
         print(diffEq_dict)
 
         res = []
@@ -388,10 +394,10 @@ class Api:
 
 
             outer2 = dict()
-            outer2['data'] = self.calcEq(global_t, local_t)
+            outer2['interval'] = self.calcEq(global_t, local_t)
 
 
-            outer2['proplist'], outer2['prop'] = self.getProposition()
+            outer2['prop'] = self.getProposition()
 
 
             import json
