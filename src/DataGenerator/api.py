@@ -258,6 +258,7 @@ class Api:
                 tmp = dict()
                 tmp["x"] = global_newT[i]
                 tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()
+                tmp_res.append(tmp)
             interval_dict["name"] = k
             interval_dict["points"] = tmp_res
 
