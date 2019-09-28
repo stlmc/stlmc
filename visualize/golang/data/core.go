@@ -81,11 +81,11 @@ This package also have methods for read and write mentioned objects into JSON fo
 be used in front-end (nodejs).
 
 JSON format, for example:
-	"UnitGraph": {
-
+	{
 		"Interval": [
 			{
 				"Name" : "x",
+				"intIndex": "0",
 				"Points": [
 					{"x": x_0, "y": y_0},
 					...,
@@ -124,18 +124,51 @@ package data
 type IJsonPoint = [2]int
 
 type Point struct {
-	X int
-	Y int
+	X float64	`json:"x"`
+	Y float64	`json:"y"`
 }
 
-func (p *Point) JsonPoint() *IJsonPoint {
-	return &IJsonPoint{p.X, p.Y}
-}
-
-type SubGraph struct {
+// SubGraphData is needed for json parsing.
+// If you design SubGraph directly has SubGraphData,
+// you might have <nil> for maxWithX, ..., maxWithY.
+// In order to avoid such situation you need to
+// use SubGraphData for parsing actual json data and
+// wrapping data structure SubGraph for calculation.
+//
+// For example,
+//	{
+//		"name": "x",
+//		"points: [
+//			{"x": 0.0, "y": 2.1},
+//			{"x": 1.1, "y": 10.0},
+//			...
+//			{"x": 10.1, "y": 12.1}
+//		]
+//	}
+// The example represents variable x with its points
+// at some interval. There might be many variables at
+// the same interval. That is why we need another
+// wrapping data structure.
+type SubGraph4Json struct {
+	Name string		`json:"name"`
 	// Data is representing actual points.
-	Data []Point					`json:"Data"`
+	Data []Point	`json:"points"`
+}
 
+func (sg4j *SubGraph4Json) ToSubGraph() SubGraph{
+	var sg SubGraph
+	sg.Elem = sg4j
+	sg.Init()
+	return sg
+}
+
+// SubGraph is data structure that is saved in memory
+// while you run stlMC visualize tool. This data structure
+// is useful for calculating maximum and minimum values within
+// intervals and etc.
+type SubGraph struct {
+	// Elem is getting from json file
+	Elem *SubGraph4Json
 	// MaxWithX is maximum point with
 	// respect to x axis
 	maxWithX *Point
@@ -153,16 +186,51 @@ type SubGraph struct {
 	minWithY *Point
 }
 
+// Proposition is representing proposition for
+// visualize tool.
+//
+// For example,
+//	{
+//		"name": "reachability",
+//		"actual: "x1 < 27",
+//		"data": ["True", "False", "True", "False"]
+//	}
 type Proposition struct {
+	Name string		`json:"name"`
+	Actual string	`json:"actual"`
+	Data []string	`json:"data"`
+}
+
+// TODO: Fill this part
+type Mode struct {
 	Name string
 	Actual string
 	Data []string
 }
 
-type Mode struct {
-	Name string
-	Actual string
-	Data []string
+// FullGraphData is used for parsing a json file.
+// This data structure exist only 1 for 1 json file.
+//
+// For example,
+//	{
+//		"interval": [see_above_case]
+//		"prop":	[see_above_case]
+//		"mode": [see_above_case]
+//	}
+type FullGraph4Json struct {
+	Interval []SubGraph4Json `json:"interval"`
+	Prop []Proposition `json:"prop"`
+}
+
+// ToFullGraph returns FullGraph from FullGraph4Json
+func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
+	var fg FullGraph
+	for _, e := range fg4j.Interval {
+		fg.Sub = append(fg.Sub, e.ToSubGraph())
+	}
+	fg.Size = len(fg.Sub)
+	fg.Init()
+	return fg
 }
 
 // FullGraph represents full size graph which has
@@ -172,15 +240,12 @@ type Mode struct {
 // or setter for each member variables.
 type FullGraph struct {
 
-	// Name is a FullGraph variable name
-	Name string
-
 	// Size is a number of subgraphs,
 	// this size is same as number of
 	// intervals.
 	Size int
 
-	// SubGraph is actual data
+	// Sub is actual data
 	Sub []SubGraph
 
 	// MaxWithX is FullGraph's maximum
@@ -200,63 +265,7 @@ type FullGraph struct {
 	MinWithY *Point
 }
 
-func (sg *SubGraph) getSubPoint() {
-
-	if len(sg.Data) == 0 {
-		return
-	}
-
-	sg.maxWithX = &sg.Data[0]
-	sg.minWithX = &sg.Data[0]
-	sg.maxWithY = &sg.Data[0]
-	sg.minWithY = &sg.Data[0]
-
-	for _, e := range sg.Data {
-
-		// calculate maximum point and minimum in list
-		// with respect to x
-		if e.X > sg.maxWithX.X {
-			sg.maxWithX = &e
-		}
-
-		if e.X < sg.minWithX.X {
-			sg.minWithX = &e
-		}
-
-
-		// calculate maximum point and minimum in list
-		// with respect to x
-		if e.Y > sg.maxWithY.Y {
-			sg.maxWithY = &e
-		}
-
-		if e.Y < sg.minWithY.Y {
-			sg.minWithY = &e
-		}
-	}
-}
-
-func (sg *SubGraph) New(){
-	sg.maxWithX = nil
-	sg.minWithX = nil
-	sg.maxWithY = nil
-	sg.minWithY = nil
-	sg.getSubPoint()
-}
-
-func (fg *FullGraph) New(){
-
-	// generate subgraph
-
-	fg.MaxWithX = nil
-	fg.MinWithX = nil
-	fg.MaxWithY = nil
-	fg.MinWithY = nil
-	fg.getSubPoint()
-}
-
-
-// getMax is calculate maximum point of full graph.
+// getSubPoint is calculate maximum point of full graph.
 // if ax is X it returns maximum point with respect to
 // x axis otherwise will return y point. This function
 // will called once (when the object is created).
@@ -293,6 +302,61 @@ func (fg *FullGraph) getSubPoint(){
 			fg.MinWithY = e.minWithY
 		}
 	}
+}
+
+func (fg *FullGraph) Init(){
+	fg.MaxWithX = nil
+	fg.MinWithX = nil
+	fg.MaxWithY = nil
+	fg.MinWithY = nil
+	fg.getSubPoint()
+}
+
+// getSubPoint is calculating minimum and maximum value
+// that we cared and called when initializing SubGraph.
+// This function is called only internally.
+func (sg *SubGraph) getSubPoint() {
+
+	if len(sg.Elem.Data) == 0 {
+		return
+	}
+
+	sg.maxWithX = &sg.Elem.Data[0]
+	sg.minWithX = &sg.Elem.Data[0]
+	sg.maxWithY = &sg.Elem.Data[0]
+	sg.minWithY = &sg.Elem.Data[0]
+
+	for _, e := range sg.Elem.Data {
+
+		// calculate maximum point and minimum in list
+		// with respect to x
+		if e.X > sg.maxWithX.X {
+			sg.maxWithX = &e
+		}
+
+		if e.X < sg.minWithX.X {
+			sg.minWithX = &e
+		}
+
+
+		// calculate maximum point and minimum in list
+		// with respect to x
+		if e.Y > sg.maxWithY.Y {
+			sg.maxWithY = &e
+		}
+
+		if e.Y < sg.minWithY.Y {
+			sg.minWithY = &e
+		}
+	}
+}
+
+func (sg *SubGraph) Init(){
+	sg.maxWithX = nil
+	sg.minWithX = nil
+	sg.maxWithY = nil
+	sg.minWithY = nil
+	sg.getSubPoint()
 }
 
 // CompositeGraph contains a list of FullGraphs,

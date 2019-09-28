@@ -266,6 +266,7 @@ class Api:
                 tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
                 tmp_res.append(tmp)
             interval_dict["name"] = k
+            interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
 
         return interval_dict
@@ -304,6 +305,7 @@ class Api:
                 pair["y"] = e[el]
                 tmp_res.append(pair)
             interval_dict["name"] = var_list[index][el]
+            interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
 
         print("calcDIffEq")

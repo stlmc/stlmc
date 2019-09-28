@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"golang/data"
 	"io/ioutil"
 	"log"
 )
@@ -13,25 +14,6 @@ import (
 // necessary for front-end library, d3.js.
 type JsonPoint = [2]float64
 
-type JsonSubGraph struct {
-	Name string 	`json:"name"`
-	// Data is representing actual points.
-	Points []JsonPoint	`json:"points"`
-}
-
-type Propl struct {
-	N string `json:"reachability"`
-}
-
-type Propg struct {
-	N []string `json:"reachability"`
-}
-
-type Gee struct {
-	Subb []JsonSubGraph `json:"data"`
-	Prr	Propl				`json:"proplist"`
-	pr2 Propg `json:"prop"`
-}
 
 // Read generates UnitGraph and its elements.
 func Read(filename string) {
@@ -40,15 +22,16 @@ func Read(filename string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var result Gee
+	var result data.FullGraph4Json
 	uerr := json.Unmarshal(b, &result)
 
 	if uerr != nil {
 		log.Fatal(uerr)
 	}
 
-	fmt.Println(result)
-	fmt.Println(result.Subb[0].Points[1][0])
+	//fmt.Println(result)
+	fmt.Println(result.ToFullGraph().MinWithY.X)
+	//fmt.Println(result.Subb[0].Points[1].X)
 
 }
 
