@@ -4,7 +4,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"golang/util"
 	"io/ioutil"
 	"log"
@@ -12,7 +11,7 @@ import (
 	"strings"
 )
 
-const DirName = "../../src/DataDir/"
+const DirName = "../src/DataDir/"
 
 // https://stackoverflow.com/questions/26327391/json-marshalstruct-returns
 
@@ -153,9 +152,9 @@ func test(w http.ResponseWriter, r *http.Request){
 
 func main() {
 	util.Read(DirName+"oneThermostatMix_([]_[0.0,40.0]^[0.0,inf) (~ reachability))_3.json")
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", homeLink)
-	router.HandleFunc("/update", updateWorkspace)
-	router.HandleFunc("/test", test)
-	log.Fatal(http.ListenAndServe(":3001", router))
+	//router := mux.NewRouter().StrictSlash(true)
+	//router.HandleFunc("/", homeLink)
+	//router.HandleFunc("/update", updateWorkspace)
+	//router.HandleFunc("/test", test)
+	//log.Fatal(http.ListenAndServe(":3001", router))
 }

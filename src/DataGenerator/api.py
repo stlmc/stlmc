@@ -251,10 +251,13 @@ class Api:
             # modify this to use given initial value and time pairs
             for i in range(len(local_newT)):
                 self.mode_module[model_id].getFlow().time_dict["time"] = local_newT[i]
-                tmp = list()
-                tmp.append(global_newT[i])
-                tmp += self.mode_module[model_id].getFlow().exp2exp()
-                tmp_res.append(tmp)
+#                 tmp = list()
+#                 tmp.append(global_newT[i])
+#                 tmp += self.mode_module[model_id].getFlow().exp2exp()
+#                 tmp_res.append(tmp)
+                tmp = dict()
+                tmp["x"] = global_newT[i]
+                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()
             interval_dict["name"] = k
             interval_dict["points"] = tmp_res
 
