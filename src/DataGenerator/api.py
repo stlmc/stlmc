@@ -251,13 +251,15 @@ class Api:
             # modify this to use given initial value and time pairs
             for i in range(len(local_newT)):
                 self.mode_module[model_id].getFlow().time_dict["time"] = local_newT[i]
-#                 tmp = list()
-#                 tmp.append(global_newT[i])
-#                 tmp += self.mode_module[model_id].getFlow().exp2exp()
-#                 tmp_res.append(tmp)
+                # this line makes point pair. For example, below lines will makes
+                # pair { "x": 0.0, "y": 20.0 }. "global_newT[i]" is correspond to x value and
+                # "self.mode_module[model_id].getFlow().exp2exp()" is correspond to y value
+                # but for some reason "self.mode_module[model_id].getFlow().exp2exp()" itself
+                # contains [value]. So we need to remove list before putting it inside tmp dictionary.
+                # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[0]" instead.
                 tmp = dict()
                 tmp["x"] = global_newT[i]
-                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()
+                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
                 tmp_res.append(tmp)
             interval_dict["name"] = k
             interval_dict["points"] = tmp_res
@@ -290,9 +292,12 @@ class Api:
         for el in range(len(var_list[index])):
             tmp_res = []
             for i, e in enumerate(res):
-                pair = list()
-                pair.append(global_newT[i])
-                pair.append(e[el])
+                # this line makes point pair. For example, below lines will makes
+                # pair { "x": 0.0, "y": 20.0 }. "global_newT[i]" is correspond to x value and
+                # "e[el]" is correspond to y value in this case.
+                pair = dict()
+                pair["x"] = global_newT[i]
+                pair["y"] = e[el]
                 tmp_res.append(pair)
             interval_dict["name"] = var_list[index][el]
             interval_dict["points"] = tmp_res
