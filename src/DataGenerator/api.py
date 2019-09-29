@@ -396,10 +396,10 @@ class Api:
 
 
             outer2 = dict()
+            outer2['variable'] = self.getVarsId
             outer2['interval'] = self.calcEq(global_t, local_t)
-
-
             outer2['prop'] = self.getProposition()
+
 
 
             import json

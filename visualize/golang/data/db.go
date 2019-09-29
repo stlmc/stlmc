@@ -7,12 +7,12 @@ package data
 //
 // see: https://www.callicoder.com/golang-maps/
 type Storage struct {
-	container map[int]*UnitGraph
+	container map[int]*FullGraph
 }
 
-func (st *Storage) Add(key int, value *UnitGraph) {
+func (st *Storage) Add(key int, value *FullGraph) {
 	if st.container == nil {
-		st.container = make(map[int]*UnitGraph)
+		st.container = make(map[int]*FullGraph)
 	}
 	st.container[key] = value
 }
@@ -22,4 +22,12 @@ func (st *Storage) Add(key int, value *UnitGraph) {
 // doesn’t exist in the map.
 func (st *Storage) Delete(key int){
 	delete(st.container, key)
+}
+
+func (st *Storage) Get(key int) *FullGraph{
+	value, ok := st.container[key]
+	if ok {
+		return value
+	}
+	return nil
 }

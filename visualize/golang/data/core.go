@@ -82,6 +82,8 @@ be used in front-end (nodejs).
 
 JSON format, for example:
 	{
+		"Variable": ["x", "y", "z"],
+
 		"Interval": [
 			{
 				"Name" : "x",
@@ -138,6 +140,7 @@ type Point struct {
 // For example,
 //	{
 //		"name": "x",
+//		"intIndex": 0,
 //		"points: [
 //			{"x": 0.0, "y": 2.1},
 //			{"x": 1.1, "y": 10.0},
@@ -149,8 +152,10 @@ type Point struct {
 // at some interval. There might be many variables at
 // the same interval. That is why we need another
 // wrapping data structure.
+// See: SubGraph.
 type SubGraph4Json struct {
 	Name string		`json:"name"`
+	Index int		`json:"intIndex"`
 	// Data is representing actual points.
 	Data []Point	`json:"points"`
 }
@@ -162,10 +167,11 @@ func (sg4j *SubGraph4Json) ToSubGraph() SubGraph{
 	return sg
 }
 
-// SubGraph is data structure that is saved in memory
-// while you run stlMC visualize tool. This data structure
-// is useful for calculating maximum and minimum values within
-// intervals and etc.
+// SubGraph represents one fragment that is divided by
+// intervals. SubGraph is wrapping SubGraph4Json. So this
+// one is used for calculating complicated jobs such as
+// getting maximum or minimum point within interval.
+// See: SubGraph4Json.
 type SubGraph struct {
 	// Elem is getting from json file
 	Elem *SubGraph4Json
@@ -225,8 +231,8 @@ type FullGraph4Json struct {
 // ToFullGraph returns FullGraph from FullGraph4Json
 func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 	var fg FullGraph
-	for _, e := range fg4j.Interval {
-		fg.Sub = append(fg.Sub, e.ToSubGraph())
+	for i, _ := range fg4j.Interval {
+		fg.Sub = append(fg.Sub, fg4j.Interval[i].ToSubGraph())
 	}
 	fg.Size = len(fg.Sub)
 	fg.Init()

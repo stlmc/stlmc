@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
 	"golang/data"
 	"io/ioutil"
 	"log"
@@ -29,9 +28,9 @@ func Read(filename string) {
 		log.Fatal(uerr)
 	}
 
-	//fmt.Println(result)
-	fmt.Println(result.ToFullGraph().MinWithY.X)
-	//fmt.Println(result.Subb[0].Points[1].X)
+	fg := result.ToFullGraph()
+	var db data.Storage
+	db.Add(0, &fg)
 
 }
 
