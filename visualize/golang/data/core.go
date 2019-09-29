@@ -209,9 +209,8 @@ type Proposition struct {
 
 // TODO: Fill this part
 type Mode struct {
-	Name string
-	Actual string
-	Data []string
+	Name []string	`json:"name"`
+	Data []int		`json:"data"`
 }
 
 // FullGraphData is used for parsing a json file.
@@ -224,8 +223,9 @@ type Mode struct {
 //		"mode": [see_above_case]
 //	}
 type FullGraph4Json struct {
-	Interval []SubGraph4Json `json:"interval"`
-	Prop []Proposition `json:"prop"`
+	Interval []SubGraph4Json 	`json:"interval"`
+	Prop []Proposition 			`json:"prop"`
+	Mode Mode					`json:"mode"`
 }
 
 // ToFullGraph returns FullGraph from FullGraph4Json
@@ -235,6 +235,8 @@ func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 		fg.Sub = append(fg.Sub, fg4j.Interval[i].ToSubGraph())
 	}
 	fg.Size = len(fg.Sub)
+	fg.Prop = fg4j.Prop
+	fg.Mode = fg4j.Mode
 	fg.Init()
 	return fg
 }
@@ -253,6 +255,12 @@ type FullGraph struct {
 
 	// Sub is actual data
 	Sub []SubGraph
+
+	// Prop is holding proposition
+	Prop []Proposition
+
+	// Mode get Mode type data
+	Mode Mode
 
 	// MaxWithX is FullGraph's maximum
 	// point with respect to X axis

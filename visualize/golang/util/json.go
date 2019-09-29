@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"golang/data"
 	"io/ioutil"
 	"log"
@@ -31,6 +32,9 @@ func Read(filename string) {
 	fg := result.ToFullGraph()
 	var db data.Storage
 	db.Add(0, &fg)
+
+	fmt.Println(db.Get(0).Prop[0].Name)
+
 
 }
 

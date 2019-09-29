@@ -60,7 +60,15 @@ class Api:
         result = []
         for i in range(len(self.modeVar)):
             result.append(str(self.modeVar[i].id))
-        return result 
+        return result
+
+    # return mode declaraion to string
+    def getModeDeclWithModelID(self):
+        idList = self.getModelIdList()
+        result = []
+        for i in range(len(idList)):
+            result.append(str(self.mode_module[idList[i]].getMode().props))
+        return result, idList
 
 
     # return (initial, final) pairs for each continuous variable until k bound
@@ -396,10 +404,16 @@ class Api:
 
 
             outer2 = dict()
-            outer2['variable'] = self.getVarsId
+            mode_dict = dict()
+            mode_dict['name'], mode_dict['data'] = self.getModeDeclWithModelID()
+
+
+            outer2['variable'] = self.getVarsId()
             outer2['interval'] = self.calcEq(global_t, local_t)
             outer2['prop'] = self.getProposition()
-
+            outer2['mode'] = mode_dict
+            #outer2['mode'] = self.getModesId()
+            #outer2['mode_t'] = self.getModeDecl()
 
 
             import json
