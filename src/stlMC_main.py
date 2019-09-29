@@ -8,11 +8,11 @@ import io, os, sys
 import multiprocessing
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator):
-#    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
 
     # variable points bound, timeBound, goal
 #    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
-    stlModel.reach(k, 60, Bool('xl2'))
+#    stlModel.reach(k, 60, Bool('xl2'))
 #    '''
     dataGenerator.data = stlModel.data
     dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
@@ -41,7 +41,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(5, 6, 5):
+        for k in range(1, 4, 5):
             formula = stlMC.getStlFormsList()[i]
             timeBound = 60
             p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))

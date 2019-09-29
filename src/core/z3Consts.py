@@ -161,8 +161,10 @@ class z3Consts:
     def propForall(self, exp, start, end, bound, curFlow):
         print("proposition forall")
         print(exp)
-        if isinstance(exp, Lt) or isinstance(exp, Le):
-            exp = Not(exp).reduce()
+        if isinstance(exp, Lt):
+            exp = Gt((exp.right() - exp.left()), RealVal(0))
+        if isinstance(exp, Le):
+            exp = Ge((exp.right() - exp.left()), RealVal(0))
         print(type(exp))
         if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
             return exp 
@@ -174,6 +176,7 @@ class z3Consts:
         curFlowExp = curFlow.getExpression(self.subvars)
         curFlowType = curFlow.getFlowType()
         flowModule = dict()
+    
         for j in range(len(curFlowExp)):
             if curFlowExp[j].getVarId() in self.subvars.keys():
                 flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.subvars)
@@ -189,8 +192,16 @@ class z3Consts:
         for contVar in flowModule.keys():
             subContVar[str(contVar.id)] = flowModule[contVar]
 
+        print("handling  expression")
+        print(handlingExp)
         substitutionExp = handlingExp.substitution(subContVar)
         diffExp = diff(substitutionExp)
+        print(substituionExp)
+        print(diffExp)
+
+        #monotone increase or decrease
+        const.append(Or(Ge(diffExp,RealVal(0)), Le(diffExp,RealVal(0))))
+
         if isinstance(exp, Gt):
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == RealVal(0), self.propForall(Gt(diffExp,RealVal(0)), start, end, bound, curFlow)))
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == RealVal(0), self.propForall(Lt(diffExp, RealVal(0)), start, end, bound, curFlow)))
