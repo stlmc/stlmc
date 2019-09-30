@@ -1,11 +1,11 @@
 bool a;
 [-20, 100] x1;
-bool b;
+int b;
 [-20, 100] x2;
 {
     mode:
         a == false;
-        b == false ;
+        b == 1 ;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -26,7 +26,7 @@ bool b;
 {
     mode:
         a == false;
-        b == true;
+        b == 2;
     inv:
         x1 > 0;
         (x2 < 50);
@@ -47,7 +47,7 @@ bool b;
 {
     mode:
         a == true;
-        b == false;
+        b == 3;
     inv:
         x1 < 50;
         (x2 > 0);
@@ -68,7 +68,7 @@ bool b;
 {
     mode:
         a == true;
-        b == true;
+        b == 4;
     inv:
         x1 < 50;
         (x2 < 50);
