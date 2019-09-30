@@ -268,8 +268,6 @@ class modelVisitorImpl(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        if len(element) == 1:
-            return element[0]
         return MultyCond("and", element)
 
     '''
