@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"golang/util"
+	"golang/data"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -151,7 +151,10 @@ func test(w http.ResponseWriter, r *http.Request){
 
 
 func main() {
-	util.Read(DirName+"oneThermostatMix_([]_[0.0,40.0]^[0.0,inf) (~ reachability))_3.json")
+
+	data.Json2FullGraph(DirName+"oneThermostatMix_([]_[0.0,40.0]^[0.0,inf) (~ reachability))_3.json")
+	fmt.Println(data.Counter)
+	data.SendFullGraph2Json()
 	//router := mux.NewRouter().StrictSlash(true)
 	//router.HandleFunc("/", homeLink)
 	//router.HandleFunc("/update", updateWorkspace)

@@ -115,10 +115,13 @@ JSON format, for example:
 		},
 
 	}
-
-
 */
 package data
+
+import (
+	"fmt"
+	"math"
+)
 
 // IJsonPoint is same as util.JsonPoint
 // this one is needed, since golang does't
@@ -192,6 +195,53 @@ type SubGraph struct {
 	minWithY *Point
 }
 
+// getSubPoint is calculating minimum and maximum value
+// that we cared and called when initializing SubGraph.
+// This function is called only internally.
+func (sg *SubGraph) getSubPoint() {
+
+	if len(sg.Elem.Data) == 0 {
+		return
+	}
+
+	sg.maxWithX = &sg.Elem.Data[0]
+	sg.minWithX = &sg.Elem.Data[0]
+	sg.maxWithY = &sg.Elem.Data[0]
+	sg.minWithY = &sg.Elem.Data[0]
+
+	for _, e := range sg.Elem.Data {
+
+		// calculate maximum point and minimum in list
+		// with respect to x
+		if e.X > sg.maxWithX.X {
+			sg.maxWithX = &e
+		}
+
+		if e.X < sg.minWithX.X {
+			sg.minWithX = &e
+		}
+
+
+		// calculate maximum point and minimum in list
+		// with respect to x
+		if e.Y > sg.maxWithY.Y {
+			sg.maxWithY = &e
+		}
+
+		if e.Y < sg.minWithY.Y {
+			sg.minWithY = &e
+		}
+	}
+}
+
+func (sg *SubGraph) Init(){
+	sg.maxWithX = nil
+	sg.minWithX = nil
+	sg.maxWithY = nil
+	sg.minWithY = nil
+	sg.getSubPoint()
+}
+
 // Proposition is representing proposition for
 // visualize tool.
 //
@@ -223,6 +273,7 @@ type Mode struct {
 //		"mode": [see_above_case]
 //	}
 type FullGraph4Json struct {
+	Var	[]string				`json:"variable"`
 	Interval []SubGraph4Json 	`json:"interval"`
 	Prop []Proposition 			`json:"prop"`
 	Mode Mode					`json:"mode"`
@@ -237,6 +288,7 @@ func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 	fg.Size = len(fg.Sub)
 	fg.Prop = fg4j.Prop
 	fg.Mode = fg4j.Mode
+	fg.Var = fg4j.Var
 	fg.Init()
 	return fg
 }
@@ -247,6 +299,9 @@ func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 // getter since FullGraph is struct which is public
 // or setter for each member variables.
 type FullGraph struct {
+
+	// Var is holding a list of variables.
+	Var []string
 
 	// Size is a number of subgraphs,
 	// this size is same as number of
@@ -326,73 +381,194 @@ func (fg *FullGraph) Init(){
 	fg.getSubPoint()
 }
 
-// getSubPoint is calculating minimum and maximum value
-// that we cared and called when initializing SubGraph.
-// This function is called only internally.
-func (sg *SubGraph) getSubPoint() {
+// Similar returns similar graphs with respect to y ranges.
+// This is used for determine similar scale graph.
+func (fg *FullGraph) SameGraph() []CompositeGraph {
 
-	if len(sg.Elem.Data) == 0 {
+	// Gathering same graph first
+	var same []CompositeGraph
+
+	// iterate with variable names
+	for _, e := range fg.Var {
+		var tmp CompositeGraph
+		// iterate through whole list of subgraphs
+		for _, el := range fg.Sub {
+			// if find one that matches name
+			if el.Elem.Name == e {
+				tmp.Add(el)
+			}
+		}
+		tmp.Init()
+		same = append(same, tmp)
+	}
+	return same
+}
+
+// Similar returns similar graphs with respect to y ranges.
+// This is used for determine similar scale graph.
+func (fg *FullGraph) Similar() []CompositeGraph {
+
+	// Gathering same graph first
+	var same []CompositeGraph
+	var fs []float64
+
+	// iterate with variable names
+	// such as ["x", "y", "z"]. e is one of "x" or
+	// "y" or "z".
+	for _, e := range fg.Var {
+		var tmp CompositeGraph
+		// iterate through whole list of subgraphs.
+		for _, el := range fg.Sub {
+			// if find one that matches name
+			if el.Elem.Name == e {
+				tmp.Add(el)
+			}
+		}
+		tmp.Init()
+		fmt.Println("inside")
+		fmt.Println(tmp.Sub[0].Elem)
+		fs = append(fs, tmp.FootStep)
+		same = append(same, tmp)
+	}
+
+	// exclude index list. i.e already found similar one
+	// and gathered with similar ones.
+	var exclude [][]int
+
+	// find similar ones
+	for i, _ := range fs {
+		// if index is not in exclude list
+		if !IsInListOfList(exclude, i) {
+			var tmp []int
+			for j := i + 1; j < len(fs); j++ {
+				// if two deltas abs value is less than 10
+				// we determined that it has similar scale
+				if math.Abs(fs[i] - fs[j]) < 10 {
+					tmp = append(tmp, j)
+				}
+			}
+			exclude = append(exclude, tmp)
+		}
+	}
+
+	var similar []CompositeGraph
+	for _, e := range exclude {
+		var empty CompositeGraph
+		for _, el := range e {
+			empty.Concat(same[el])
+		}
+		similar = append(similar, empty)
+	}
+
+	return similar
+
+}
+
+// CompositeGraph contains a list of SubGraph that have same logically
+// meaning that we want for them to have. This data structure holds
+// several fragments of lines that have the same meaning. CompositeGraph
+// can be used to make a gathered graphs with same meaning.
+//
+// For example,
+// 		1) Fragment of lines with same variable name. i.e. same graph.
+// 		2) Fragment of lines with same variable name and similar scale.
+// 			It means if you have 2 graphs with graph 1's range is between
+// 			[100, 500] and graph 2's range is between [0.1, 1]. Then, you will
+// 			have 2 CompositeGraph. However if both graphs have similar y ranges
+// 			then, you will have only 1 CompositeGraph.
+type CompositeGraph struct {
+	Sub []SubGraph
+
+	// MaxWithX is FullGraph's maximum
+	// point with respect to X axis
+	MaxWithX *Point
+
+	// MinWithX is FullGraph's minimum
+	// point with respect to X axis
+	MinWithX *Point
+
+	// MaxWithY is FullGraph's maximum
+	// point with respect to Y axis
+	MaxWithY *Point
+
+	// MinWithY is FullGraph's minimum
+	// point with respect to Y axis
+	MinWithY *Point
+
+	// PointCounter counts number of points
+	PointCounter int
+	DeltaY float64
+
+	// FootStep is calculating scale factor.
+	FootStep float64
+}
+
+
+func (cg *CompositeGraph) Concat(cg2 CompositeGraph) {
+	for _, e := range cg2.Sub {
+		cg.Sub = append(cg.Sub, e)
+	}
+	cg.Init()
+}
+
+
+func (cg *CompositeGraph) Add(sub SubGraph) {
+	cg.Sub = append(cg.Sub, sub)
+}
+
+// getSubPoint is calculate maximum point of full graph.
+// if ax is X it returns maximum point with respect to
+// x axis otherwise will return y point. This function
+// will called once (when the object is created).
+func (cg *CompositeGraph) getSubPoint(){
+	if len(cg.Sub) == 0 {
 		return
 	}
 
-	sg.maxWithX = &sg.Elem.Data[0]
-	sg.minWithX = &sg.Elem.Data[0]
-	sg.maxWithY = &sg.Elem.Data[0]
-	sg.minWithY = &sg.Elem.Data[0]
+	cg.MaxWithX = cg.Sub[0].maxWithX
+	cg.MinWithX = cg.Sub[0].minWithX
+	cg.MaxWithY = cg.Sub[0].maxWithY
+	cg.MinWithY = cg.Sub[0].minWithY
 
-	for _, e := range sg.Elem.Data {
 
-		// calculate maximum point and minimum in list
+	for _, e := range cg.Sub{
+
+		// calculate maximum point and minimum in point list
 		// with respect to x
-		if e.X > sg.maxWithX.X {
-			sg.maxWithX = &e
+		if e.maxWithX.X > cg.MaxWithX.X {
+			cg.MaxWithX = e.maxWithX
 		}
 
-		if e.X < sg.minWithX.X {
-			sg.minWithX = &e
+		if e.minWithX.X < cg.MinWithX.X {
+			cg.MinWithX = e.minWithX
 		}
 
-
-		// calculate maximum point and minimum in list
-		// with respect to x
-		if e.Y > sg.maxWithY.Y {
-			sg.maxWithY = &e
+		// calculate maximum point and minimum in point list
+		// with respect to y
+		if e.maxWithY.Y > cg.MaxWithY.Y {
+			cg.MaxWithY = e.maxWithY
 		}
 
-		if e.Y < sg.minWithY.Y {
-			sg.minWithY = &e
+		if e.minWithY.Y < cg.MinWithY.Y {
+			cg.MinWithY = e.minWithY
 		}
+
+		cg.PointCounter += len(e.Elem.Data)
 	}
+
+	cg.DeltaY = cg.MaxWithY.Y - cg.MinWithY.Y
+	cg.FootStep = cg.DeltaY / float64(cg.PointCounter)
+
 }
 
-func (sg *SubGraph) Init(){
-	sg.maxWithX = nil
-	sg.minWithX = nil
-	sg.maxWithY = nil
-	sg.minWithY = nil
-	sg.getSubPoint()
+func (cg *CompositeGraph) Init(){
+	cg.MaxWithX = nil
+	cg.MinWithX = nil
+	cg.MaxWithY = nil
+	cg.MinWithY = nil
+	cg.DeltaY = 0.0
+	cg.PointCounter = 0
+	cg.FootStep = 0.0
+	cg.getSubPoint()
 }
 
-// CompositeGraph contains a list of FullGraphs,
-// a list of Propositions, a list of
-// Modes. This is actually one big composition
-// graph that we want to visualize.
-//
-// CompositeGraph is a big composition of gathered graphs
-// with similar scaled graphs with respect to y axis.
-// It means if you have 2 FullGraphs and graph 1's
-// range is between [100, 500] and graph 2's range
-// is between [0.1, 1] then, you will have 2 CompositeGraph.
-// However if both graphs have similar y ranges then,
-// you will have only 1 CompositeGraph.
-type CompositeGraph = []FullGraph
-
-
-// UnitGraph is basically a most biggest graph.
-// This graph contains multiple CompositeGraph
-// as well as multiple Propositions and Modes.
-type UnitGraph struct {
-	Graph []CompositeGraph
-	Props []Proposition
-	Modes []Mode
-}

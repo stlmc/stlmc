@@ -1,9 +1,8 @@
-package util
+package data
 
 import (
 	"encoding/json"
 	"fmt"
-	"golang/data"
 	"io/ioutil"
 	"log"
 )
@@ -15,27 +14,46 @@ import (
 type JsonPoint = [2]float64
 
 
-// Read generates UnitGraph and its elements.
-func Read(filename string) {
-	b, err := ioutil.ReadFile(filename)
 
-	if err != nil {
-		log.Fatal(err)
+// VGraph is data structure for sending graph data usign JSON format.
+// This graph may contain multiple CompositeGraph
+// as well as multiple Propositions and Mode.
+type VGraph struct {
+	Graph []CompositeGraph
+	Props []Proposition
+	Mode []Mode
+}
+
+// Json2FullGraph generates FullGraph and its elements.
+func Json2FullGraph(filename string) *FullGraph{
+	b, readErr := ioutil.ReadFile(filename)
+
+	if readErr != nil {
+		log.Println(readErr)
+		return nil
 	}
-	var result data.FullGraph4Json
-	uerr := json.Unmarshal(b, &result)
+	var result FullGraph4Json
+	unmarshalErr := json.Unmarshal(b, &result)
 
-	if uerr != nil {
-		log.Fatal(uerr)
+	if unmarshalErr != nil {
+		log.Println(unmarshalErr)
+		return nil
 	}
 
 	fg := result.ToFullGraph()
-	var db data.Storage
-	db.Add(0, &fg)
+	Db.Add(Counter, &fg)
+	Counter++
 
-	fmt.Println(db.Get(0).Prop[0].Name)
+	return &fg
+}
 
-
+// SendFullGraph2Json generates data that fits d3.js.
+func SendFullGraph2Json(){
+	fg := Db.Get(0)
+	s := fg.Similar()
+	fmt.Println("Composite Graph")
+	fmt.Println(len(s))
+	fmt.Println(s[0].Sub)
 }
 
 func Write (filename string) {
