@@ -1,0 +1,36 @@
+// lineplot's width
+$width: 820px;
+$height: 600px;
+$width_viewer: 420px;
+$height_viewer: 300px;
+$width_controller: 420px;
+$height_controller: 100px;
+
+$margin_viewer_top: 20px;
+$margin_viewer_right: 30px;
+$margin_viewer_bottom: 50px;
+$margin_viewer_left: 30px;
+
+$margin_controller_top: 20px;
+$margin_controller_right: 20px;
+$margin_controller_bottom: 10px;
+$margin_controller_left: 20px;
+
+:export {
+    width: $width;
+    height: $height;
+    width_viewer: $width_viewer;
+    height_viewer: $height_viewer;
+    width_controller: $width_controller;
+    height_controller: $height_controller;
+
+    margin_viewer_top: $margin_viewer_top;
+    margin_viewer_right: $margin_viewer_right;
+    margin_viewer_bottom: $margin_viewer_bottom;
+    margin_viewer_left: $margin_viewer_left;
+
+    margin_controller_top: $margin_controller_top;
+    margin_controller_right: $margin_controller_right;
+    margin_controller_bottom: $margin_controller_bottom;
+    margin_controller_left: $margin_controller_left;
+}

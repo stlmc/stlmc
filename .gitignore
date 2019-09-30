@@ -1,6 +1,24 @@
+*.interp
+*.tokens
+*Parser.py
+*Lexer.py
 *.pyc
 *.swp
+src/run.sh
 .DS_Store
 __pycache__
 data/
 *.smt2
+
+# Virtual Env for python
+venv/
+
+# NPM dependencies
+package-lock.json
+node_modules/
+
+# WebStorm config file
+.idea/
+
+# unignored data
+!visualize/golang/data/

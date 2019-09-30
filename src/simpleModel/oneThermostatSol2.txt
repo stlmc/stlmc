@@ -1,0 +1,37 @@
+bool a;
+[-20, 100] x1;
+{
+    mode:
+        a == false;
+    inv:
+        x1 < 50;
+    flow:
+        x1(t) = -0.04 * t * (t + 5) + x1(0) + 0.5;
+    jump:
+        (x1 > 26) ==>
+          (and (not a') (x1' = x1));
+        (x1 <= 24) ==>
+          (and (a') (x1' = x1));
+}
+{
+    mode:
+        a == true;
+    inv:
+        x1 > 0;
+    flow:
+        x1(t) = -0.04 * t + x1(0) + 5;
+    jump:
+        (x1 > 26) ==>
+          (and (not a') (x1' = x1));
+        (x1 <= 24) ==>
+          (and (a') (x1' = x1));
+}
+init:
+(and (not(a)) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1)); 
+
+propositions:
+reachability = x1 < 27 ;
+
+goal:
+([] [0.0, 40.0] (~reachability)) ;
+
