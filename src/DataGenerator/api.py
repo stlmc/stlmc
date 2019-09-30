@@ -56,18 +56,32 @@ class Api:
         return result
 
     # return mode variables id
-    def getModesId(self):
-        result = []
+    def getModesIdDict(self):
+        result = {}
         for i in range(len(self.modeVar)):
-            result.append(str(self.modeVar[i].id))
+            result[str(self.modeVar[i].id)] = list()
         return result
 
     # return mode declaraion to string
     def getModeDeclWithModelID(self):
         idList = self.getModelIdList()
+        modeIdDict = self. getModesIdDict()
         result = []
         for i in range(len(idList)):
-            result.append(str(self.mode_module[idList[i]].getMode().props))
+            conditions = self.mode_module[idList[i]].getMode().props
+            for j in range(len(conditions)):
+                if conditions[j].left in modeIdDict.keys():
+                    if modeIdDict[conditions[j].left] is None:
+                        modeIdDict[conditions[j].left] = [str(conditions[j].right)]
+                    else:
+                        modeIdDict[conditions[j].left].extend([str(conditions[j].right)])
+
+        result = list()
+        for key in modeIdDict.keys():
+            dictElement = dict()
+            dictElement['name'] = key
+            dictElement['data'] = modeIdDict[key]
+            result.append(dictElement)
         return result, idList
 
 
@@ -350,7 +364,7 @@ class Api:
 
         print("Diff eq dict")
         print(diffEq_dict)
-
+#
         res = []
 
 
