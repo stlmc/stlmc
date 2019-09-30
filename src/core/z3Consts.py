@@ -196,7 +196,7 @@ class z3Consts:
         print(handlingExp)
         substitutionExp = handlingExp.substitution(subContVar)
         diffExp = diff(substitutionExp)
-        print(substituionExp)
+        print(substitutionExp)
         print(diffExp)
 
         #monotone increase or decrease
@@ -228,7 +228,8 @@ class z3Consts:
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
                         curFlow = self.modeModule[m].getFlow()
                         const.append(Implies(And(i, curMode).substitution(combine), self.propForall(self.makePropDict()[i], start, end, k, curFlow)))
-                        const.append(Implies(And(i, curMode).substitution(combine), self.propForall(Not(self.makePropDict()[i]).reduce(), start, end, k, curFlow)))
+                        const.append(Implies(And(Not(i), curMode).substitution(combine), self.propForall(Not(self.makePropDict()[i]).reduce(), start, end, k, curFlow)))
+                    #const.append(self.makeSubProps(k)[str(i)] == self.propForall(self.makePropDict()[i], start, end, k, curFlow))
             result.append(And(*const))
         return And(*result)
 

@@ -41,7 +41,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(1, 4, 5):
+        for k in range(8, 10, 5):
             formula = stlMC.getStlFormsList()[i]
             timeBound = 60
             p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))
