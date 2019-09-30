@@ -1,4 +1,5 @@
 import enum
+import core.formula as FORM
 
 
 @enum.unique
@@ -60,8 +61,8 @@ class Leaf(Node):
 
 
 class ArithRef(Leaf):
-    pass
-
+    def getType(self):
+        return type.Real
 
 class Constant(Leaf):
     def __init__(self, constType, value):
@@ -92,6 +93,9 @@ class Constant(Leaf):
     def getExpression(self, subDict):
         op = {Type.Bool: Bool, Type.Int: Int, Type.Real: Real}
         return op[self.type](str(self.__value))
+
+    def getType(self):
+        return self.type
 
 
 class BoolVal(Constant):
@@ -138,6 +142,7 @@ class IntVal(Constant, ArithRef):
 class Variable(Leaf):
     def __init__(self, varType, varId):
         super().__init__(varType)
+        self.type = varType
         self.id = varId
 
     def __hash__(self):
@@ -149,6 +154,8 @@ class Variable(Leaf):
     def substitution(self, subDict):
         op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
         if self.id in subDict.keys():
+            if isinstance(subDict[self.id], BinaryArithmetic):
+                return subDict[self.id]
             return op[self.getType()](subDict[self.id])
         else:
             return self
@@ -159,6 +166,8 @@ class Variable(Leaf):
     def getVars(self):
         return {self}
 
+    def getType(self):
+        return self.type
 
 class NextVar(Variable):
     def __init__(self, var):
@@ -381,8 +390,9 @@ class Neg(UnaryArithmetic):
 class Logical(nonLeaf):
     def __init__(self, op, args: list):
         for a in args:
-            if not (a.getType() == Type.Bool):
-                raise TypeError()
+            if not isinstance(a, FORM.Formula):
+                if not (a.getType() == Type.Bool):
+                    raise TypeError()
         super().__init__(op, Type.Bool, args)
 
 
@@ -444,6 +454,16 @@ class Not(Logical, _UnaryOp):
     def nextSub(self, subDict):
         return Not(self.child().nextSub(subDict))
 
+    def reduce(self):
+        if isinstance(self.child(), Lt):
+            return Ge(self.child().left(), self.child().right())
+        if isinstance(self.child(), Gt):
+            return Le(self.child().left(), self.child().right())
+        if isinstance(self.child(), Le):
+            return Gt(self.child().left(), self.child().right())
+        if isinstance(self.childe(), Ge):
+            return Lt(self.child().left(), self.child().right())
+        return self
 
 class Integral(Node):
     def __init__(self, endList, startList, time, ode, flowType):

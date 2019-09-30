@@ -86,9 +86,9 @@ class Api:
                     subResult.append((initial_value, final_value))
 
                 final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
-                final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                if self.model[final_var] is not None:
+                    final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
-                 
                 result[str(self.contVar[i].id)] = subResult
         return result
 
@@ -284,6 +284,7 @@ class Api:
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
         c_val = self.getContValues()
+
         var_list = self.intervalsVariables()
 
 
@@ -370,7 +371,6 @@ class Api:
             for elem in diffEq_dict:
                 if elem["interval"] == i and 'data' in elem.keys():
                     res.append(elem["data"])
-
         return res
 
     # get intervals variable list
@@ -399,6 +399,8 @@ class Api:
             '''
 
             global_t = self.getNumpyGlobalTimeValues()
+
+
             local_t = self.getNumpyLocalTimeValues()
 
 
@@ -407,6 +409,7 @@ class Api:
             mode_dict = dict()
             mode_dict['name'], mode_dict['data'] = self.getModeDeclWithModelID()
 
+            outer2['data'] = self.calcEq(global_t, local_t)
 
             outer2['variable'] = self.getVarsId()
             outer2['interval'] = self.calcEq(global_t, local_t)

@@ -136,7 +136,7 @@ mode_decl : MODE COLON (condition SEMICOLON)+ ;
 inv_decl  : INVT COLON (condition SEMICOLON)* ;
 flow_decl : FLOW COLON (diff_eq+ | sol_eq+) ;
 jump_redecl_module : condition JUMP_ARROW jump_redecl SEMICOLON ;
-jump_decl : JUMP COLON (jump_redecl_module)+ ;
+jump_decl : JUMP COLON (jump_redecl_module)* ;
  
 init_decl : INIT COLON condition SEMICOLON ;
 

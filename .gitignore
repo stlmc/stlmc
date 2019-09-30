@@ -7,8 +7,8 @@
 src/run.sh
 .DS_Store
 __pycache__
+*.json
 data/
-*.smt2
 
 # Virtual Env for python
 venv/

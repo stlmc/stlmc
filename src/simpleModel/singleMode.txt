@@ -1,0 +1,21 @@
+bool a;
+[0, 500] x;
+{
+    mode:
+        a == false;
+    inv:
+        x > 0;
+    flow:
+        d/dt[x] = 3 ;
+    jump:
+}
+
+init:
+(and (not(a)) (x <= 0.1) (x >= 0)); 
+
+propositions:
+xl10 = x < 10 ;
+xg3 = x > 3;
+goal:
+([] [0.0, 40.0] xl10);
+

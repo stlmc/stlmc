@@ -1,7 +1,8 @@
 from .base import *
 
 class Formula:
-    pass
+    def getType(self):
+        return Type.Bool
 
 
 class NotFormula(Unary, Formula):

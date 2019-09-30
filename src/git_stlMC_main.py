@@ -9,15 +9,10 @@ import multiprocessing
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator):
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
-
-    # variable points bound, timeBound, goal
-#    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
-#    stlModel.reach(k, 60, Bool('xl2'))
-#    '''
     dataGenerator.data = stlModel.data
     dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
     dataGenerator.visualize()
-#    '''
+
 
 def main(argv):
     input = FileStream(argv[1])
@@ -41,11 +36,21 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(8, 10, 5):
+        for k in range(3, 4, 10):
             formula = stlMC.getStlFormsList()[i]
+            print("Scheduleing " + str(formula) + " bound: " + str(k))
             timeBound = 60
             p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator))
             p.start()
+            '''
+            print(visualize.getVarsId())
+            print(visualize.getModesId())
+            #print(visualize.getContValues())
+            print(visualize.getTauValues())
+            print(visualize.getODE())
+            print(visualize.getProposition())
+            visualize.visualize()
+            '''
 
 if __name__ == '__main__':
     main(sys.argv)
