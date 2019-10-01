@@ -23,6 +23,7 @@ FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_LOG | OP_SQRT) ;
 PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
+POWER    : '**' ;
 DIVIDE   : '/' ;
 
 MODE : 'mode' ;
@@ -98,6 +99,7 @@ expression  :
             | TIME      # constantExp
             | VARIABLE  # constantExp
             | INITIALVAL # initialValue
+	    | expression op=POWER expression #binaryExp
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp

@@ -8,7 +8,7 @@ bool a;
     flow:
         x1(t) = -0.04 * t * t + x1(0);
     jump:
-        (x1 > 26) ==>
+        ((x1 > 26) and (x1 > 28)) ==>
           ((not a') and (x1' = x1));
         (x1 <= 24) ==>
           (and (a') (x1' = x1));
@@ -19,7 +19,7 @@ bool a;
     inv:
         x1 < 50;
     flow:
-        x1(t) = 0.04 * t * t + t + x1(0);
+        x1(t) = 0.04 * t ** 2 + t + x1(0);
     jump:
         (x1 > 26) ==>
           (and (not a') (x1' = x1));
@@ -30,8 +30,8 @@ init:
 (and (not(a)) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1)); 
 
 propositions:
-reachability = x1 < 27 ;
+reachability = (x1 < 27 or x1 > 29);
 
 goal:
-([] [0.0, 40.0] (~reachability)) ;
+([] [0.0, 40.0] (~reachability and (x1 < 25))) ;
 

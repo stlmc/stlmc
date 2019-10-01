@@ -230,6 +230,8 @@ class BinaryExp:
             return left * right
         elif self.op == '/':
             return left / right
+        elif self.op == '**':
+            return left ** right
         else:
             raise "Not yet in Binary Expression"
 
