@@ -99,15 +99,15 @@ class z3Consts:
                         raise ("Flow id is not declared")
                 modeConsts = list()
                 for otherModeID in range(0, i):
-                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                    modeConsts.append(Not(Real('currentMode_'+str(k)) == IntVal(otherModeID)))
                 for otherModeID in range(i+1, len(self.modeModule)):
-                    modeConsts.append(Not(Int('currentMode_'+str(k)) == IntVal(otherModeID)))
+                    modeConsts.append(Not(Real('currentMode_'+str(k)) == IntVal(otherModeID)))
 
 #                modeConsts.append(And(Real('currentMode_'+str(k)) >= RealVal(i), Real('currentMode_'+str(k)) <= RealVal(i)))
 
-                modeConsts.append(Int('currentMode_'+str(k)) == IntVal(i))
-                modeConsts.append(Int('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
-                modeConsts.append(Int('currentMode_'+str(k)) >= IntVal(0))
+                modeConsts.append(Real('currentMode_'+str(k)) == IntVal(i))
+                modeConsts.append(Real('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
+                modeConsts.append(Real('currentMode_'+str(k)) >= IntVal(0))
 
                 modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
                 flowConsts.append(And(*modeConsts))
