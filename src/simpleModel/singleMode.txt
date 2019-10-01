@@ -1,3 +1,4 @@
+#handlig comment line
 bool a;
 [0, 500] x;
 {
@@ -9,6 +10,11 @@ bool a;
         d/dt[x] = 3 ;
     jump:
 }
+
+'''
+whatever
+something 
+'''
 
 init:
 (and (not(a)) (x <= 0.1) (x >= 0)); 

@@ -76,8 +76,12 @@ INITIALVAL : VARIABLE '(0)' ;
 
 NEXT_VAR   : VARIABLE '\'' ;
 
-WS      : (' ' | '\t' | '\n')+ -> skip ;
+WS      : ((' ' | '\t' | '\n')+ | COMMENT)-> skip ;
 
+fragment COMMENT : 
+                   '#' ~( '\r' | '\n' )* 
+		   | '\'\'\'' .*? '\'\'\''
+		   ;
 
 /*
  * Parser Rules

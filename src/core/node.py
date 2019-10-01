@@ -262,7 +262,9 @@ class RealFunction(nonLeaf):
 
 class Relational(nonLeaf, _BinaryOp):
     def __init__(self, op, left, right):
-        if (left.getType() == Type.Bool or right.getType() == Type.Bool):
+        lType = left.getType()
+        rType = right.getType()
+        if not ((lType == Type.Real or lType == Type.Int) and (rType == Type.Real or rType == Type.Int)):
             raise TypeError()
         super().__init__(op, Type.Bool, [left, right])
 

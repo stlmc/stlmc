@@ -23,8 +23,8 @@ class Api:
     @stackID.setter
     def stackID(self, stackID):
         self._stackID = stackID + "_" + self.stl + "_" + str(self.bound)
-        print("ID")
-        print(self._stackID)
+        #print("ID")
+        #print(self._stackID)
 
     @property
     def data(self):
@@ -137,9 +137,9 @@ class Api:
                 sum += result[t_el]
             if t_el == 0:
                 t.append(np.linspace(0, sum))
-                print("0 ~ " + str(sum))
+                #print("0 ~ " + str(sum))
             else:
-                print(str(sum_pre) + " ~ " + str(sum))
+                #print(str(sum_pre) + " ~ " + str(sum))
                 t.append(np.linspace(sum_pre, sum))
         return t
 
@@ -193,7 +193,7 @@ class Api:
             for j in range(self.bound+2):
                 subResult.append(c_val[i][j][0])
             initial_val[i] = subResult
-        print(initial_val)
+        #print(initial_val)
         solutionBound = dict()
 
         #return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
@@ -222,8 +222,8 @@ class Api:
                         solutionList.append(subResult)
                         break
             solutionBound[i] = solutionList
-        print("After replacement")
-        print(solutionBound)
+        #print("After replacement")
+        #print(solutionBound)
         # solutionBound : Dict of variables and value of SolEq type object list
         # "x1": [sol_eq1, sol_eq2, ...]
         return solutionBound
@@ -331,8 +331,8 @@ class Api:
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
 
-        print("calcDIffEq")
-        print(interval_dict)
+        #print("calcDIffEq")
+        #print(interval_dict)
         return interval_dict
 
     def calcEq(self, global_timeValues, local_timeValues):
@@ -359,11 +359,11 @@ class Api:
                 diffEq_dict.append(tmp)
 
 
-        print("Sol eq dict")
-        print(solEq_dict)
+        #print("Sol eq dict")
+        #print(solEq_dict)
 
-        print("Diff eq dict")
-        print(diffEq_dict)
+        #print("Diff eq dict")
+        #print(diffEq_dict)
 #
         res = []
 
@@ -403,8 +403,8 @@ class Api:
 
     def visualize(self):
         try:
-            print("visualize start")
-            print(self.getModelIdList())
+            #print("visualize start")
+            #print(self.getModelIdList())
             '''
                 if solution equation exists: 
                 checking it via sol_l's length,
@@ -434,7 +434,7 @@ class Api:
 
 
             import json
-            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
+            #print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
