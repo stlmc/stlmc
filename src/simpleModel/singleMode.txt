@@ -1,6 +1,6 @@
 #handlig comment line
-bool a;
-[0, 500] x;
+Bool a;
+[3] x;
 {
     mode:
         a == false;

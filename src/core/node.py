@@ -463,7 +463,7 @@ class Not(Logical, _UnaryOp):
             return Le(self.child().left(), self.child().right())
         if isinstance(self.child(), Le):
             return Gt(self.child().left(), self.child().right())
-        if isinstance(self.childe(), Ge):
+        if isinstance(self.child(), Ge):
             return Lt(self.child().left(), self.child().right())
         return self
 

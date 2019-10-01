@@ -159,6 +159,9 @@ class z3Consts:
         return Or(*result)
 
     def propForall(self, exp, bound, curFlow):
+        if exp.getType() == Type.Bool:
+            return exp
+
         if isinstance(exp, Lt):
             exp = Gt((exp.right() - exp.left()), RealVal(0))
         if isinstance(exp, Le):
