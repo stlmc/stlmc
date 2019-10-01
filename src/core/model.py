@@ -303,7 +303,7 @@ class CompCond:
 
 class Multy:
     def __init__(self, op, props):
-        self.op = op
+        self.op = op.lower()
         self.props = props
 
     def __repr__(self):

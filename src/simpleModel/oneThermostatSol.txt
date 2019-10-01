@@ -9,7 +9,7 @@ bool a;
         x1(t) = -0.04 * t * t + x1(0);
     jump:
         (x1 > 26) ==>
-          (and (not a') (x1' = x1));
+          ((not a') and (x1' = x1));
         (x1 <= 24) ==>
           (and (a') (x1' = x1));
 }
