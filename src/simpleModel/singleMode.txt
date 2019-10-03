@@ -1,13 +1,13 @@
 #handlig comment line
 Bool a;
-[3] x;
+[0, 100] x;
 {
     mode:
         a == false;
     inv:
         x > 0;
     flow:
-        d/dt[x] = 3 ;
+        d/dt[x] = tan(x) ;
     jump:
 }
 
