@@ -66,7 +66,7 @@ class Variable:
 
 class Mode(Variable):
     def __init__(self, varType, varId):
-        super().__init__(varType, varId)
+        super().__init__(varType.lower(), varId)
 
 
 class InitVal(Variable):
@@ -230,6 +230,8 @@ class BinaryExp:
             return left * right
         elif self.op == '/':
             return left / right
+        elif self.op == '**':
+            return left ** right
         else:
             raise "Not yet in Binary Expression"
 
@@ -303,7 +305,7 @@ class CompCond:
 
 class Multy:
     def __init__(self, op, props):
-        self.op = op
+        self.op = op.lower()
         self.props = props
 
     def __repr__(self):
@@ -387,7 +389,7 @@ class UnaryJump(Unary):
             prop = self.prop
         else:
             prop = self.prop.getExpression(varDict)
-        return {'not': Not}[self.op](prop)
+        return {'not': Not, 'Not': Not, '~': Not}[self.op](prop)
 
 
 class DiffEq:

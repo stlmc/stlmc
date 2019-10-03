@@ -23,6 +23,7 @@ FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_LOG | OP_SQRT) ;
 PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
+POWER    : '**' ;
 DIVIDE   : '/' ;
 
 MODE : 'mode' ;
@@ -76,8 +77,12 @@ INITIALVAL : VARIABLE '(0)' ;
 
 NEXT_VAR   : VARIABLE '\'' ;
 
-WS      : (' ' | '\t' | '\n')+ -> skip ;
+WS      : ((' ' | '\t' | '\n')+ | COMMENT)-> skip ;
 
+fragment COMMENT : 
+                   '#' ~( '\r' | '\n' )* 
+		   | '\'\'\'' .*? '\'\'\''
+		   ;
 
 /*
  * Parser Rules
@@ -94,6 +99,7 @@ expression  :
             | TIME      # constantExp
             | VARIABLE  # constantExp
             | INITIALVAL # initialValue
+	    | expression op=POWER expression #binaryExp
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
             | op=FUNC_OP expression  # unaryExp

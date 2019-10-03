@@ -153,7 +153,9 @@ class modelVisitorImpl(modelVisitor):
         return MultyJump(ctx.op.text, prop)
 
     def visitBinaryJump(self, ctx:modelParser.BinaryJumpContext):
-        return BinaryJump(ctx.op.text, ctx.jump_redecl()[0], ctx.jump_redecl()[1])
+        left = self.visit(ctx.jump_redecl()[0])
+        right = self.visit(ctx.jump_redecl()[1])
+        return BinaryJump(ctx.op.text, left, right)
 
     def visitUnaryJump(self, ctx:modelParser.UnaryJumpContext):
         return UnaryJump(ctx.op.text, self.visit(ctx.jump_redecl()))
