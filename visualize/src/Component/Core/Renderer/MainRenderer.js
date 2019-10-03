@@ -413,6 +413,8 @@ class Renderer {
         // get original data's x's extent since it is same as proposition's.
         let xrange = this.json.data.xRange();
 
+        console.log(xrange);
+
         // set scale function for x
         this.ScaleX =
             d3.scaleLinear()

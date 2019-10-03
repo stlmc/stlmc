@@ -109,24 +109,20 @@ JSON format, for example:
 			},
 		],
 
-		"Mode": {
-			"Name": ["(false, true)", "(true, true)", "(true, false)", "(false, false)"]
-			"Data": [0, 1, 2, 3]
-		},
+		"Mode": [
+			{
+				"Name": ["(false, true)", "(true, true)", "(true, false)", "(false, false)"]
+				"Data": [0, 1, 2, 3]
+			},
+		]
 
 	}
 */
 package data
 
 import (
-	"fmt"
 	"math"
 )
-
-// IJsonPoint is same as util.JsonPoint
-// this one is needed, since golang does't
-// allow "Import cycle" issue.
-type IJsonPoint = [2]int
 
 type Point struct {
 	X float64	`json:"x"`
@@ -178,21 +174,25 @@ func (sg4j *SubGraph4Json) ToSubGraph() SubGraph{
 type SubGraph struct {
 	// Elem is getting from json file
 	Elem *SubGraph4Json
-	// MaxWithX is maximum point with
+	// maxWithX is maximum point with
 	// respect to x axis
 	maxWithX *Point
 
-	// MinWithX is minimum point with
+	// minWithX is minimum point with
 	// respect to x axis
 	minWithX *Point
 
-	// MaxWithY is maximum point with
+	// maxWithY is maximum point with
 	// respect to y axis
 	maxWithY *Point
 
-	// MinWithY is minimum point with
+	// minWithY is minimum point with
 	// respect to y axis
 	minWithY *Point
+}
+
+func (sg *SubGraph) ToSubGraph4Json() SubGraph4Json{
+	return *sg.Elem
 }
 
 // getSubPoint is calculating minimum and maximum value
@@ -259,8 +259,8 @@ type Proposition struct {
 
 // TODO: Fill this part
 type Mode struct {
-	Name []string	`json:"name"`
-	Data []int		`json:"data"`
+	Name string		`json:"name"`
+	Data []string	`json:"data"`
 }
 
 // FullGraphData is used for parsing a json file.
@@ -268,6 +268,7 @@ type Mode struct {
 //
 // For example,
 //	{
+//		"variable": [see_above_case]
 //		"interval": [see_above_case]
 //		"prop":	[see_above_case]
 //		"mode": [see_above_case]
@@ -276,7 +277,7 @@ type FullGraph4Json struct {
 	Var	[]string				`json:"variable"`
 	Interval []SubGraph4Json 	`json:"interval"`
 	Prop []Proposition 			`json:"prop"`
-	Mode Mode					`json:"mode"`
+	Mode []Mode					`json:"mode"`
 }
 
 // ToFullGraph returns FullGraph from FullGraph4Json
@@ -290,6 +291,7 @@ func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 	fg.Mode = fg4j.Mode
 	fg.Var = fg4j.Var
 	fg.Init()
+
 	return fg
 }
 
@@ -315,7 +317,7 @@ type FullGraph struct {
 	Prop []Proposition
 
 	// Mode get Mode type data
-	Mode Mode
+	Mode []Mode
 
 	// MaxWithX is FullGraph's maximum
 	// point with respect to X axis
@@ -332,6 +334,19 @@ type FullGraph struct {
 	// MinWithY is FullGraph's minimum
 	// point with respect to Y axis
 	MinWithY *Point
+}
+
+func (fg *FullGraph) ToFullGraph4Json() FullGraph4Json{
+	var fg4j FullGraph4Json
+	fg4j.Var = fg.Var
+	fg4j.Prop = fg.Prop
+	fg4j.Mode = fg.Mode
+	var sub []SubGraph4Json
+	for i, _ := range fg.Sub {
+		sub = append(sub, fg.Sub[i].ToSubGraph4Json())
+	}
+	fg4j.Interval = sub
+	return fg4j
 }
 
 // getSubPoint is calculate maximum point of full graph.
@@ -385,10 +400,15 @@ func (fg *FullGraph) Init(){
 // This is used for determine similar scale graph.
 func (fg *FullGraph) SameGraph() []CompositeGraph {
 
-	// Gathering same graph first
+	// Gathering same graph together in the array.
+	// find same graph according to its name
+	// for example, if your "interval" has [{"name": "x" ... },
+	// {"name": "y" ...} then, you can find 2 CompositeGraph.
 	var same []CompositeGraph
 
 	// iterate with variable names
+	// such as ["x", "y", "z"]. e is one of "x" or
+	// "y" or "z".
 	for _, e := range fg.Var {
 		var tmp CompositeGraph
 		// iterate through whole list of subgraphs
@@ -409,62 +429,37 @@ func (fg *FullGraph) SameGraph() []CompositeGraph {
 func (fg *FullGraph) Similar() []CompositeGraph {
 
 	// Gathering same graph first
-	var same []CompositeGraph
-	var fs []float64
+	same := fg.SameGraph()
+	var savedIndex = make([]int, 0)
 
-	// iterate with variable names
-	// such as ["x", "y", "z"]. e is one of "x" or
-	// "y" or "z".
-	for _, e := range fg.Var {
-		var tmp CompositeGraph
+	// iterate through CompositeGraph array i.e. CompositeGraph1,
+	// CompositeGraph2, ...
+	for i, _ := range same {
 		// iterate through whole list of subgraphs.
-		for _, el := range fg.Sub {
-			// if find one that matches name
-			if el.Elem.Name == e {
-				tmp.Add(el)
-			}
-		}
-		tmp.Init()
-		fmt.Println("inside")
-		fmt.Println(tmp.Sub[0].Elem)
-		fs = append(fs, tmp.FootStep)
-		same = append(same, tmp)
-	}
+		// if not in the savedIndex.
+		if !IsInList(savedIndex, i) {
+			for j, _ := range same {
+				if !IsInList(savedIndex, j) {
+					// compare CompositeGraph pairwise way.
+					// if two graphs maximum y value's difference is less than 1
+					// and minimum y value's difference is less than 1 then, we
+					// determine that it is same.
+					if math.Abs(same[i].MaxWithY.Y-same[j].MaxWithY.Y) < 10 && i != j {
+						if math.Abs(same[i].MinWithY.Y-same[j].MinWithY.Y) < 10 {
+							// same case
+							same[i].Concat(same[j])
+							savedIndex = append(savedIndex, j)
 
-	// exclude index list. i.e already found similar one
-	// and gathered with similar ones.
-	var exclude [][]int
-
-	// find similar ones
-	for i, _ := range fs {
-		// if index is not in exclude list
-		if !IsInListOfList(exclude, i) {
-			var tmp []int
-			for j := i + 1; j < len(fs); j++ {
-				// if two deltas abs value is less than 10
-				// we determined that it has similar scale
-				if math.Abs(fs[i] - fs[j]) < 10 {
-					tmp = append(tmp, j)
+						}
+					}
 				}
 			}
-			exclude = append(exclude, tmp)
 		}
 	}
-
-	var similar []CompositeGraph
-	for _, e := range exclude {
-		var empty CompositeGraph
-		for _, el := range e {
-			empty.Concat(same[el])
-		}
-		similar = append(similar, empty)
-	}
-
-	return similar
-
+	return same
 }
 
-// CompositeGraph contains a list of SubGraph that have same logically
+// CompositeGraph contains a list of SubGraph that have same logical
 // meaning that we want for them to have. This data structure holds
 // several fragments of lines that have the same meaning. CompositeGraph
 // can be used to make a gathered graphs with same meaning.
@@ -508,6 +503,8 @@ func (cg *CompositeGraph) Concat(cg2 CompositeGraph) {
 	for _, e := range cg2.Sub {
 		cg.Sub = append(cg.Sub, e)
 	}
+
+	// recalculate
 	cg.Init()
 }
 

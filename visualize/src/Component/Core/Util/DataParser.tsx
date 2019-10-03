@@ -220,7 +220,7 @@ class Json {
     /**
      * Parsing interanl jsonString to make object.
      */
-    parse = () => {
+    parse2 = () => {
         if (this._jsonString != "") {
             console.log("parsing!");
             this._intervals.removeAll();
@@ -277,6 +277,57 @@ class Json {
             this._isEmpty = true;
         }
     };
+
+
+    /**
+     * Parsing interanl jsonString to make object.
+     */
+    parse = () => {
+        if (this._jsonString != "") {
+            console.log("parsing2!");
+            this._intervals.removeAll();
+            //this._props.removeAll();
+            this._isEmpty = false;
+            // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+            // need to take both key and value.
+            console.log(this._jsonString);
+            for (let [key, value] of Object.entries(this._jsonString)) {
+                if (key == "interval") {
+                    for (let i = 0; i < value.length; i++) {
+                        let [name, index, points] = Object.values(value[i]);
+                        let tmp_interval: Interval = new Interval(name, parseInt(index));
+                        for (let pv of points) {
+                            let [x, y] = Object.values(pv);
+                            tmp_interval.push(new Point(parseFloat(x), parseFloat(y), name));
+                        }
+                        this._intervals.push(tmp_interval);
+                        /*for (let [key, value] of Object.entries(obj)) {
+                            let tmp_interval: Interval = new Interval(key, i);
+                            for (let v of Object.values(value)) {
+                                tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
+                            }
+                            this._intervals.push(tmp_interval);
+                        }*/
+                    }
+                } else if (key == "proplist") {
+                    //console.log("Prol"+Object.entries(value1));
+
+                   /* for (let [key, value] of Object.entries(value)) {
+                        console.log("Proplist: " + value);
+                        this._proposition_names[key] = value;
+                    }*/
+                }
+                // for the
+                else {
+
+                }
+            }
+        } else {
+            this._isEmpty = true;
+        }
+    };
+
+
 
     /**
      * This will find every intervals that have id which are the same as searching parameter.
@@ -443,7 +494,9 @@ class Json {
  */
 class WorkspaceJson {
 
+    // _file_list will be deprecated
     private _file_list: string[] = [];
+    private _file_list_map: Map<number, string> = new Map<number, string>();
 
     /**
      *
@@ -482,7 +535,23 @@ class WorkspaceJson {
         }
     }
 
+    add(uid: number, title:string){
+        this._file_list_map.set(uid, title);
+    }
+
+    clear(){
+        this._file_list_map.clear();
+    }
+
     get file_list() {
+        return this._file_list;
+    }
+
+    get flist() {
+        this._file_list = [];
+        this._file_list_map.forEach((v: string, _:number)=>{
+            this._file_list.push(v);
+        })
         return this._file_list;
     }
 }

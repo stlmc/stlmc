@@ -11,17 +11,9 @@ import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
-import * as child from 'child_process';
+import Axios, {AxiosInstance} from "axios";
 
 
-//import {ipcRenderer} from 'electron';
-// Tell main process to show the menu when demo button is clicked
-/*
-const contextMenuBtn = document.getElementById('context-menu');
-
-contextMenuBtn!.addEventListener('click', () => {
-    ipcRenderer.send('show-context-menu');
-});*/
 /*
  * Props and State
  */
@@ -32,12 +24,17 @@ interface Popup {
     isEnabled: boolean;
 }
 
+interface WorkspaceData {
+    title: string;
+    uid: number;
+}
+
 interface State {
     popup: Popup;
     selectedVariables: string[];
     allVariables: string[];
     isRedraw: boolean;
-
+    model: WorkspaceData[];
     selectedProps: string[];
     allProps: string[];
 }
@@ -94,6 +91,7 @@ class LinePlot extends React.Component<Props, State> {
 
 
     private propRenderers: PropositionRenderer[] = [];
+    private instance: AxiosInstance;
 
     private propRenderer: PropositionRenderer = new PropositionRenderer(
         new size(
@@ -161,25 +159,32 @@ class LinePlot extends React.Component<Props, State> {
         allVariables: [],
         isRedraw: false,
 
+        model: [],
         selectedProps: [],
         allProps: [],
     };
 
     constructor(props: Props) {
         super(props);
+
+        // Set config defaults when creating the instance
+
         this.onPopupChange = this.onPopupChange.bind(this);
         this.onPopupClick = this.onPopupClick.bind(this);
         this.onPropSelect = this.onPropSelect.bind(this);
-        this.onPropListSelect = this.onPropListSelect.bind(this);
+        this.onModelListSelect = this.onModelListSelect.bind(this);
         this.onVariablesChange = this.onVariablesChange.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
+        this.instance = Axios.create({baseURL: 'http://localhost:3001'});
+
     }
 
-    componentDidMount() {
+    async componentDidMount() {
 
-        console.log("workspace");
-        console.log(require('../../DataDir/.workspace_info.json'));
+        console.log("ComponentDidMount");
 
+        // get file_list
+        let response = await this.instance.get(`/file_list`);
         // must invoke setdata() before draw()
         this.renderer.setdata(this.json);
         //this.propRenderer.setdata(this.json);
@@ -189,9 +194,22 @@ class LinePlot extends React.Component<Props, State> {
             allVariables: this.json.variables,
             isRedraw: false,
 
+            model:
+                response.data.file_list.map((v:string) => {
+                    let [title, uid] = Object.values(v);
+                    let workspace: WorkspaceData = {
+                        title: title,
+                        uid: parseInt(uid),
+                    };
+                    return workspace;
+                }),
+
+
+
             selectedProps: this.json.propNames,
             allProps: this.json.propNames,
         })
+
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
@@ -205,9 +223,9 @@ class LinePlot extends React.Component<Props, State> {
         this.renderer.resize(this.json.propNames.length);
         //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
-        for (let e = 0; e < this.state.selectedProps.length; e++) {
+        /*for (let e = 0; e < this.state.selectedProps.length; e++) {
             this.propRenderers[e].reload(this.json.isEmpty(), this.state.selectedProps[e], this.state.isRedraw);
-        }
+        }*/
     }
 
     onPopupChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -251,53 +269,71 @@ class LinePlot extends React.Component<Props, State> {
         }
     }
 
-    onPropListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
+    async onModelListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
 
-        this.json.string = require("../../DataDir/" + (value2 as { value: string; label: string; })["value"]);
-        this.renderer.setdata(this.json);
-        this.propRenderers = [];
-        for (let e = 0; e < this.json.propNames.length; e++) {
-            let pr = new PropositionRenderer(
-                new size(
-                    this.width,
-                    this.height,
-                    this.width_viewer,
-                    this.height_viewer,
-                    this.width_controller,
-                    this.height_controller
-                ),
-                new margin(
-                    this.margin_viewer_top,
-                    this.margin_viewer_right,
-                    this.margin_viewer_bottom,
-                    this.margin_viewer_left
-                ),
-                new margin(
-                    this.margin_controller_top,
-                    this.margin_controller_right,
-                    this.margin_controller_bottom,
-                    this.margin_controller_left
-                ),
-                // need to concat . before string of className for d3.js
-                // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-                "#graph",
-                e
-            );
-            pr.setdata(this.json);
-            this.propRenderers.push(pr);
+
+        let mapIterator = this.state.model.entries();
+        let titleVal =  (value2 as { value: string; label: string; })["value"];
+
+        console.log("onModelList... " + titleVal);
+
+        let ws = this.state.model.find((value, index) => value.title == titleVal);
+        console.log(ws);
+
+        // if id exists.
+        if (ws != undefined) {
+            let response = await this.instance.get("/file/" +ws.uid);
+            console.log(response.data);
+
+
+            //this.json.string = require("../../DataDir/" + titleVal);
+            this.json.string = response.data;
+            this.renderer.setdata(this.json);
+/*
+            this.propRenderers = [];
+            for (let e = 0; e < this.json.propNames.length; e++) {
+                let pr = new PropositionRenderer(
+                    new size(
+                        this.width,
+                        this.height,
+                        this.width_viewer,
+                        this.height_viewer,
+                        this.width_controller,
+                        this.height_controller
+                    ),
+                    new margin(
+                        this.margin_viewer_top,
+                        this.margin_viewer_right,
+                        this.margin_viewer_bottom,
+                        this.margin_viewer_left
+                    ),
+                    new margin(
+                        this.margin_controller_top,
+                        this.margin_controller_right,
+                        this.margin_controller_bottom,
+                        this.margin_controller_left
+                    ),
+                    // need to concat . before string of className for d3.js
+                    // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+                    "#graph",
+                    e
+                );
+                pr.setdata(this.json);
+                this.propRenderers.push(pr);
+            }
+*/
+            //this.propRenderer.setdata(this.json);
+            //this.propRenderer2.setdata(this.json);
+            // get reloaded new variables.
+            this.setState({
+                allVariables: this.json.variables,
+                selectedVariables: this.json.variables,
+                isRedraw: false,
+
+                allProps: this.json.propNames,
+                selectedProps: this.json.propNames,
+            });
         }
-
-        //this.propRenderer.setdata(this.json);
-        //this.propRenderer2.setdata(this.json);
-        // get reloaded new variables.
-        this.setState({
-            allVariables: this.json.variables,
-            selectedVariables: this.json.variables,
-            isRedraw: false,
-
-            allProps: this.json.propNames,
-            selectedProps: this.json.propNames,
-        });
     }
 
     // This will get multiple choices.
@@ -330,26 +366,21 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     // https://stackoverflow.com/questions/23450534/how-to-call-a-python-function-from-node-js
-    onResetButtonClick(){
+    async onResetButtonClick(){
         console.log("reset called");
-
-
-        // Parameters passed in spawn -
-        // 1. type_of_script
-        // 2. list containing Path of the script
-        //    and arguments for the script
-
-        // E.g : http://localhost:3000/name?firstname=Mike&lastname=Will
-        // so, first name = Mike and last name = Will
-        //let process = spawn('python3',["../../../py/workspace.py"] );
-        let process = child.spawn('ls');
-        // Takes stdout data from script which executed
-        // with arguments and send this data to res object
-        process.stdout.on('data', (data: { toString: () => void; }) => {
-            console.log(data.toString());
-        } )
-        this.workspace_info.load(require('../../DataDir/.workspace_info.json'));
-
+        let response = await this.instance.get(`/file_list`);
+        //console.log(v);
+        this.setState({
+            model:
+                response.data.file_list.map((v:string) => {
+                    let [title, uid] = Object.values(v);
+                    let workspace: WorkspaceData = {
+                        title: title,
+                        uid: parseInt(uid),
+                    };
+                    return workspace;
+                }),
+        })
     }
 
     render() {
@@ -370,6 +401,7 @@ class LinePlot extends React.Component<Props, State> {
         let selectedProps = this.state.selectedProps.map((v) => {
             return ({value: v, label: v})
         });
+
         // TODO: Update precision of graph after update.
         return (
             <div>
@@ -377,11 +409,11 @@ class LinePlot extends React.Component<Props, State> {
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Models</label>
-                        <Select isSearchable={true} options={this.workspace_info.file_list.map(
+                        <Select isSearchable={true} options={this.state.model.map(
                             (v) => {
-                                return ({value: v, label: v});
+                                return ({value: v.title, label: v.title});
                             }
-                        )} onChange={this.onPropListSelect}/>
+                        )} onChange={this.onModelListSelect}/>
                     </div>
                     <div className="col-md-1">
                         <button onClick={this.onResetButtonClick}>reset</button>

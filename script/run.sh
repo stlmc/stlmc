@@ -63,9 +63,9 @@ runModel () {
 
 
 case $1 in 
-	-rm | --auto-remove ) auto_remove; echo "remove finished"; break;;
-	-i | --auto-install ) install_env; antlr_setting; break;;
-	-ie | --install-env ) install_env; echo "install environment finished"; break;;
-	--run ) runModel "$2"; echo "run finished"; break;;
-	-antlr | --antlr-setting ) antlr_setting; echo "antlr setting finished"; break;;
+	-rm | --auto-remove ) auto_remove; echo "remove finished";;
+	-i | --auto-install ) install_env; antlr_setting;;
+	-ie | --install-env ) install_env; echo "install environment finished";;
+	--run ) runModel "$2"; echo "run finished";;
+	-antlr | --antlr-setting ) antlr_setting; echo "antlr setting finished";;
 esac

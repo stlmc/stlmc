@@ -364,7 +364,7 @@ class Api:
 
         print("Diff eq dict")
         print(diffEq_dict)
-#
+
         res = []
 
 
@@ -377,7 +377,8 @@ class Api:
         for elem in diffEq_dict:
             elem["data"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
-
+        print("letgo")
+        print(diffEq_dict)
         for i in range(len(model_id)):
             for elem in solEq_dict:
                 if elem["interval"] == i and 'data' in elem.keys():
@@ -413,22 +414,20 @@ class Api:
             '''
 
             global_t = self.getNumpyGlobalTimeValues()
-
-
             local_t = self.getNumpyLocalTimeValues()
 
 
 
             outer2 = dict()
-            mode_dict = dict()
-            mode_dict['name'], mode_dict['data'] = self.getModeDeclWithModelID()
 
-            outer2['data'] = self.calcEq(global_t, local_t)
+            gmid, _ = self.getModeDeclWithModelID()
+
+            #outer2['data'] = self.calcEq(global_t, local_t)
 
             outer2['variable'] = self.getVarsId()
             outer2['interval'] = self.calcEq(global_t, local_t)
             outer2['prop'] = self.getProposition()
-            outer2['mode'] = mode_dict
+            outer2['mode'] = gmid
             #outer2['mode'] = self.getModesId()
             #outer2['mode_t'] = self.getModeDecl()
 
