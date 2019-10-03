@@ -301,17 +301,18 @@ class Json {
                             tmp_interval.push(new Point(parseFloat(x), parseFloat(y), name));
                         }
                         this._intervals.push(tmp_interval);
-                        /*for (let [key, value] of Object.entries(obj)) {
-                            let tmp_interval: Interval = new Interval(key, i);
-                            for (let v of Object.values(value)) {
-                                tmp_interval.push(new Point(parseFloat(v[0]), parseFloat(v[1]), key));
-                            }
-                            this._intervals.push(tmp_interval);
-                        }*/
                     }
-                } else if (key == "proplist") {
+                } else if (key == "prop") {
                     //console.log("Prol"+Object.entries(value1));
-
+                    for (let i = 0; i < value.length; i++) {
+                        let [name, actual, data] = Object.values(value[i]);
+                        let tmp_interval: Interval = new Interval(name, parseInt(index));
+                        for (let pv of points) {
+                            let [x, y] = Object.values(pv);
+                            tmp_interval.push(new Point(parseFloat(x), parseFloat(y), name));
+                        }
+                        this._intervals.push(tmp_interval);
+                    }
                    /* for (let [key, value] of Object.entries(value)) {
                         console.log("Proplist: " + value);
                         this._proposition_names[key] = value;
