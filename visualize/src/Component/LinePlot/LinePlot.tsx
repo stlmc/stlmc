@@ -12,7 +12,7 @@ import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
 import Axios, {AxiosInstance} from "axios";
-import { Button, Form } from 'react-bootstrap';
+import { Button, Form, Toast } from 'react-bootstrap';
 
 
 
@@ -31,6 +31,11 @@ interface WorkspaceData {
     uid: number;
 }
 
+interface ServerError {
+    message: string;
+    error: boolean;
+}
+
 
 
 interface State {
@@ -45,6 +50,8 @@ interface State {
     allProps: string[];
     toggle: Map<number, boolean>;
     isToggleChanged: boolean;
+
+    serverError: ServerError;
 }
 
 /*
@@ -174,6 +181,10 @@ class LinePlot extends React.Component<Props, State> {
         toggle: new Map<number, boolean>(),
         isToggleChanged: false,
         xlist: [],
+        serverError: {
+            message: "",
+            error: false,
+        }
     };
 
     constructor(props: Props) {
@@ -191,6 +202,7 @@ class LinePlot extends React.Component<Props, State> {
         this.toggler = this.toggler.bind(this);
         this.Item = this.Item.bind(this);
         this.ItemList = this.ItemList.bind(this);
+        this.ErrorToast = this.ErrorToast.bind(this);
     }
 
     async componentDidMount() {
@@ -198,32 +210,41 @@ class LinePlot extends React.Component<Props, State> {
         console.log("ComponentDidMount");
 
         // get file_list
-        let response = await this.instance.get(`/file_list`);
+        await this.instance.get(`/file_list`)
+            .catch((error)=>{
+                console.log(error);
+                this.setState({
+                    serverError: {
+                        error: true,
+                        message: error,
+                    }
+                })
+            }).then((response)=>{
+                if (response){
+                    this.setState({
+                        selectedVariables: this.json.variables,
+                        allVariables: this.json.variables,
+                        isRedraw: false,
+
+                        model:
+                            response.data.file_list.map((v:string) => {
+                                let [title, uid] = Object.values(v);
+                                let workspace: WorkspaceData = {
+                                    title: title,
+                                    uid: parseInt(uid),
+                                };
+                                return workspace;
+                            }),
+                        selectedProps: this.json.propNames,
+                        allProps: this.json.propNames,
+                    })
+                }
+            })
         // must invoke setdata() before draw()
         //this.renderer.setdata(this.json);
 
         //this.propRenderer.setdata(this.json);
         //this.propRenderer2.setdata(this.json);
-        this.setState({
-            selectedVariables: this.json.variables,
-            allVariables: this.json.variables,
-            isRedraw: false,
-
-            model:
-                response.data.file_list.map((v:string) => {
-                    let [title, uid] = Object.values(v);
-                    let workspace: WorkspaceData = {
-                        title: title,
-                        uid: parseInt(uid),
-                    };
-                    return workspace;
-                }),
-
-
-
-            selectedProps: this.json.propNames,
-            allProps: this.json.propNames,
-        })
 
 
 
@@ -240,7 +261,14 @@ class LinePlot extends React.Component<Props, State> {
         this.renderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         this.renderer.resize(this.json.propNames.length);
         */
-
+        if (this.state.serverError.error){
+            this.setState({
+                serverError: {
+                    error: false,
+                    message: "",
+                }
+            });
+        }
 
         console.log("come on " + this.renderers.length)
 
@@ -527,6 +555,37 @@ class LinePlot extends React.Component<Props, State> {
         )
 
     }
+
+    ErrorToast(){
+
+        return (
+            <div
+                aria-live="polite"
+                aria-atomic="true"
+                style={{
+                    position: 'relative',
+                    minHeight: '200px',
+                }}
+            >
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                    }}
+                >
+                    {this.state.serverError.error ? <Toast>
+                        <Toast.Header>
+                            <img src="holder.js/20x20?text=%20" className="rounded mr-2" alt="" />
+                            <strong className="mr-auto">Bootstrap</strong>
+                            <small>just now</small>
+                        </Toast.Header>
+                        <Toast.Body>{this.state.serverError.message}</Toast.Body>
+                    </Toast> : ""}
+                </div>
+            </div>
+        )
+    }
     render() {
         let options = this.state.allVariables.map((v) => {
             return ({value: v, label: v})
@@ -550,6 +609,7 @@ class LinePlot extends React.Component<Props, State> {
         return (
             <div>
                 <div className="row">
+                    <this.ErrorToast/>
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Models</label>
