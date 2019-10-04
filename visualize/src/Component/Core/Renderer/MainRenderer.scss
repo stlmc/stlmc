@@ -23,14 +23,14 @@
 }
 
 // for renderer class
-#dataCanvasXaxisGrid {
+.XaxisGrid {
     line{
         stroke: rgb(214, 214, 214);
     }
     text { display: none; }
 }
 
-#dataCanvasYaxisGrid {
+.YaxisGrid {
     line{
         stroke: rgb(214, 214, 214);
     }

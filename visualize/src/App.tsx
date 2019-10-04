@@ -2,6 +2,7 @@ import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 import './Style/scss/main.scss';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import { Link } from 'react-router-dom';
 import { Switch, BrowserRouter as Router, Route } from 'react-router-dom';
 import LinePlot from './Component/LinePlot/LinePlot';

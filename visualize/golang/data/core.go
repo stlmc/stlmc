@@ -121,6 +121,7 @@ JSON format, for example:
 package data
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -209,27 +210,28 @@ func (sg *SubGraph) getSubPoint() {
 	sg.maxWithY = &sg.Elem.Data[0]
 	sg.minWithY = &sg.Elem.Data[0]
 
-	for _, e := range sg.Elem.Data {
+	for i, _ := range sg.Elem.Data {
 
 		// calculate maximum point and minimum in list
 		// with respect to x
-		if e.X > sg.maxWithX.X {
-			sg.maxWithX = &e
+		if sg.Elem.Data[i].X > sg.maxWithX.X {
+			sg.maxWithX = &sg.Elem.Data[i]
+
 		}
 
-		if e.X < sg.minWithX.X {
-			sg.minWithX = &e
+		if sg.Elem.Data[i].X < sg.minWithX.X {
+			sg.minWithX = &sg.Elem.Data[i]
 		}
 
 
 		// calculate maximum point and minimum in list
 		// with respect to x
-		if e.Y > sg.maxWithY.Y {
-			sg.maxWithY = &e
+		if sg.Elem.Data[i].Y > sg.maxWithY.Y {
+			sg.maxWithY = &sg.Elem.Data[i]
 		}
 
-		if e.Y < sg.minWithY.Y {
-			sg.minWithY = &e
+		if sg.Elem.Data[i].Y < sg.minWithY.Y {
+			sg.minWithY = &sg.Elem.Data[i]
 		}
 	}
 }
@@ -336,6 +338,17 @@ type FullGraph struct {
 	MinWithY *Point
 }
 
+func (fg *FullGraph) GetXData() []float64 {
+	var xList []float64
+	for _, e := range fg.Sub {
+		for _, e1 := range e.Elem.Data {
+			xList = append(xList, e1.X)
+		}
+	}
+	fmt.Println(xList)
+	return xList
+}
+
 func (fg *FullGraph) ToFullGraph4Json() FullGraph4Json{
 	var fg4j FullGraph4Json
 	fg4j.Var = fg.Var
@@ -419,6 +432,7 @@ func (fg *FullGraph) SameGraph() []CompositeGraph {
 			}
 		}
 		tmp.Init()
+
 		same = append(same, tmp)
 	}
 	return same
@@ -430,33 +444,114 @@ func (fg *FullGraph) Similar() []CompositeGraph {
 
 	// Gathering same graph first
 	same := fg.SameGraph()
-	var savedIndex = make([]int, 0)
+	var sameMap = make(map[int]CompositeGraph)
+	for i, e := range same {
+		sameMap[i] = e
+	}
 
 	// iterate through CompositeGraph array i.e. CompositeGraph1,
 	// CompositeGraph2, ...
-	for i, _ := range same {
-		// iterate through whole list of subgraphs.
-		// if not in the savedIndex.
-		if !IsInList(savedIndex, i) {
-			for j, _ := range same {
-				if !IsInList(savedIndex, j) {
-					// compare CompositeGraph pairwise way.
-					// if two graphs maximum y value's difference is less than 1
-					// and minimum y value's difference is less than 1 then, we
-					// determine that it is same.
-					if math.Abs(same[i].MaxWithY.Y-same[j].MaxWithY.Y) < 10 && i != j {
-						if math.Abs(same[i].MinWithY.Y-same[j].MinWithY.Y) < 10 {
-							// same case
-							same[i].Concat(same[j])
-							savedIndex = append(savedIndex, j)
-
-						}
-					}
+	for i, e := range sameMap {
+	// iterate through whole list of subgraphs.
+	// if not in the savedIndex.
+		for j, e1 := range sameMap {
+			// compare CompositeGraph pairwise way.
+			// if two graphs maximum y value's difference is less than 1
+			// and minimum y value's difference is less than 1 then, we
+			// determine that it is same.
+			if math.Abs(e.MaxWithY.Y-e1.MaxWithY.Y) < 10 && i != j {
+				if math.Abs(e.MinWithY.Y-e1.MinWithY.Y) < 10 {
+					// same case
+					e.Concat(e1)
+					delete(sameMap, i)
+					delete(sameMap, j)
+					sameMap[i] = e
 				}
 			}
 		}
 	}
-	return same
+
+	var res []CompositeGraph
+
+	for _, v := range sameMap {
+		res = append(res, v)
+	}
+
+	return res
+}
+
+func (fg *FullGraph) ToCompositeGraph4Json() CompositeGraph4Json{
+	var cg = fg.Similar()
+
+	var cg4j CompositeGraph4Json
+	cg4j.Var = fg.Var
+	cg4j.Mode = fg.Mode
+	cg4j.Prop = fg.Prop
+	cg4j.Xdata = fg.GetXData()
+	// iterate through each variable's fullgraph
+	for i, _ := range cg {
+		// this one contains all subgraphs of fullgraph
+		var sub []SubGraph4Json
+		var csg4j CompositeSubGraph4Json
+		for _, elem := range cg[i].Sub {
+			sub = append(sub, elem.ToSubGraph4Json())
+		}
+		csg4j.Graph = sub
+		csg4j.Index = i
+
+		csg4j.Range.MaxWithY = *cg[i].MaxWithY
+		csg4j.Range.MinWithY = *cg[i].MinWithY
+		csg4j.Range.MaxWithX = *cg[i].MaxWithX
+		csg4j.Range.MinWithX = *cg[i].MinWithX
+
+		csg4j.Range.MaxX = csg4j.Range.MaxWithX.X
+		csg4j.Range.MinX = csg4j.Range.MinWithX.X
+		csg4j.Range.MaxY = csg4j.Range.MaxWithY.Y
+		csg4j.Range.MinY = csg4j.Range.MinWithY.Y
+
+		cg4j.Interval = append(cg4j.Interval, csg4j)
+	}
+	return cg4j
+}
+
+
+type Range struct {
+
+	MaxX float64		`json:"max_x"`
+	MinX float64		`json:"min_x"`
+	MaxY float64		`json:"max_y"`
+	MinY float64		`json:"min_y"`
+
+	// MaxWithX is maximum point with
+	// respect to X axis
+	MaxWithX Point		`json:"max_with_x"`
+
+	// MinWithX is point with respect
+	// to X axis
+	MinWithX Point		`json:"min_with_x"`
+
+	// MaxWithY is point with respect
+	// to Y axis
+	MaxWithY Point		`json:"max_with_y"`
+
+	// MinWithY is point with respect
+	// to Y axis
+	MinWithY Point		`json:"min_with_y"`
+}
+
+
+type CompositeSubGraph4Json struct {
+	Index int					`json:"index"`
+	Graph []SubGraph4Json		`json:"graph"`
+	Range Range					`json:"range"`
+}
+
+type CompositeGraph4Json struct {
+	Var	[]string						`json:"variable"`
+	Interval []CompositeSubGraph4Json 	`json:"interval"`
+	Prop []Proposition 					`json:"prop"`
+	Mode []Mode							`json:"mode"`
+	Xdata []float64						`json:"xdata"`
 }
 
 // CompositeGraph contains a list of SubGraph that have same logical
@@ -503,7 +598,6 @@ func (cg *CompositeGraph) Concat(cg2 CompositeGraph) {
 	for _, e := range cg2.Sub {
 		cg.Sub = append(cg.Sub, e)
 	}
-
 	// recalculate
 	cg.Init()
 }

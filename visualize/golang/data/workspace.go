@@ -4,12 +4,11 @@ import (
 	"golang/logger"
 	"io/ioutil"
 	"log"
-	"strings"
 )
 
 
 var Workspace = workspace{
-	DirName: "../src/DataDir/",
+	DirName: "../src/DataDir",
 }
 
 
@@ -77,16 +76,15 @@ func (ws *workspace) getFileList(dirName string) {
 		if file.Name() != ".workspace_info.json" {
 			if file.IsDir() {
 				ws.isDir = true
-				ws.getFileList(dirName + file.Name())
+				ws.getFileList(dirName + "/" + file.Name())
 			} else {
 				if ws.isDir {
-					dirName = strings.Trim(dirName, ws.DirName)
 					logger.Logger.Debug("You have dir called [" + dirName + "]")
-					tmp := FileDesc {Name:dirName + "/" + file.Name(), Uid: ws.counter}
+					tmp := FileDesc {Name: dirName +"/"+ file.Name(), Uid: ws.counter}
 					ws.FileList = append(ws.FileList, tmp)
 					ws.counter ++
-					ws.isDir = false
 				} else {
+					ws.isDir = false
 					tmp := FileDesc {Name:file.Name(), Uid: ws.counter}
 					ws.counter ++
 					ws.FileList = append(ws.FileList, tmp)
@@ -116,11 +114,10 @@ func (ws *workspace) getFileListWithOutId(dirName string) {
 				ws.getFileListWithOutId(dirName + file.Name())
 			} else {
 				if ws.isDir {
-					dirName = strings.Trim(dirName, ws.DirName)
 					logger.Logger.Debug("You have dir called [" + dirName + "]")
 					ws.SimpleFileList = append(ws.SimpleFileList, dirName + "/" + file.Name())
-					ws.isDir = false
 				} else {
+					ws.isDir = false
 					ws.SimpleFileList = append(ws.SimpleFileList, file.Name())
 				}
 			}

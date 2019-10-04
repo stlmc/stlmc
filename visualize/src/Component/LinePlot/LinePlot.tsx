@@ -3,15 +3,17 @@ import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import './style/LinePlotStyle.scss';
 import '../../Style/scss/main.scss';
-import {margin, size} from '../Core/Util/Util';
+import {Intervals, margin, size} from '../Core/Util/Util';
 import {Renderer} from '../Core/Renderer/MainRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
-import {Json, WorkspaceJson} from '../Core/Util/DataParser';
+import {Json, NewJson, WorkspaceJson} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
 import Axios, {AxiosInstance} from "axios";
+import { Button, Form } from 'react-bootstrap';
+
 
 
 /*
@@ -29,14 +31,20 @@ interface WorkspaceData {
     uid: number;
 }
 
+
+
 interface State {
     popup: Popup;
     selectedVariables: string[];
     allVariables: string[];
     isRedraw: boolean;
     model: WorkspaceData[];
+    graphNum : number;
+    xlist: number[];
     selectedProps: string[];
     allProps: string[];
+    toggle: Map<number, boolean>;
+    isToggleChanged: boolean;
 }
 
 /*
@@ -90,6 +98,7 @@ class LinePlot extends React.Component<Props, State> {
     );
 
 
+    private renderers: Renderer[] = [];
     private propRenderers: PropositionRenderer[] = [];
     private instance: AxiosInstance;
 
@@ -148,7 +157,7 @@ class LinePlot extends React.Component<Props, State> {
 
 
     private json = new Json("");
-    private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
+    private njson = new NewJson();
 
     // this will get error if change './data/test.json' to this.props.jsonpath
     state: State = {
@@ -158,10 +167,13 @@ class LinePlot extends React.Component<Props, State> {
         selectedVariables: [],
         allVariables: [],
         isRedraw: false,
-
+        graphNum: 0,
         model: [],
         selectedProps: [],
         allProps: [],
+        toggle: new Map<number, boolean>(),
+        isToggleChanged: false,
+        xlist: [],
     };
 
     constructor(props: Props) {
@@ -176,7 +188,9 @@ class LinePlot extends React.Component<Props, State> {
         this.onVariablesChange = this.onVariablesChange.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
         this.instance = Axios.create({baseURL: 'http://localhost:3001'});
-
+        this.toggler = this.toggler.bind(this);
+        this.Item = this.Item.bind(this);
+        this.ItemList = this.ItemList.bind(this);
     }
 
     async componentDidMount() {
@@ -186,7 +200,8 @@ class LinePlot extends React.Component<Props, State> {
         // get file_list
         let response = await this.instance.get(`/file_list`);
         // must invoke setdata() before draw()
-        this.renderer.setdata(this.json);
+        //this.renderer.setdata(this.json);
+
         //this.propRenderer.setdata(this.json);
         //this.propRenderer2.setdata(this.json);
         this.setState({
@@ -210,17 +225,35 @@ class LinePlot extends React.Component<Props, State> {
             allProps: this.json.propNames,
         })
 
+
+
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
-        console.log("ComponentUpdate");
-        console.log(this.state.selectedVariables);
-        this.renderer.selectedVariables = this.state.selectedVariables;
+        console.log("componentDidUpdate");
+
+        /*this.renderer.selectedVariables = this.state.selectedVariables;
+        this.renderer.graphMap = this.state.graph;
 
         console.log(this.state.isRedraw);
         // redraw whole thing.
         this.renderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         this.renderer.resize(this.json.propNames.length);
+        */
+
+
+        console.log("come on " + this.renderers.length)
+
+        for (let e = 0; e < this.renderers.length; e++) {
+            console.log(e);
+            let intv: ([number, number][][] | undefined) = this.njson.GetGraph(e);
+            if (intv) {
+                this.renderers[e].loadGraph("", this.state.isRedraw, this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist);
+            }
+        }
+
+
+
         //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
         /*for (let e = 0; e < this.state.selectedProps.length; e++) {
@@ -287,8 +320,44 @@ class LinePlot extends React.Component<Props, State> {
 
 
             //this.json.string = require("../../DataDir/" + titleVal);
-            this.json.string = response.data;
-            this.renderer.setdata(this.json);
+            //this.json.string = response.data;
+            this.njson.string = response.data;
+            console.log(this.njson.variables);
+            let gs = this.njson.GetGraphSize();
+            console.log("GraphSize is "+ gs);
+            this.renderers = []
+            for (let e = 0; e < gs; e++) {
+                let red = new Renderer(
+                    new size(
+                        this.width,
+                        this.height,
+                        this.width_viewer,
+                        this.height_viewer,
+                        this.width_controller,
+                        this.height_controller
+                    ),
+                    new margin(
+                        this.margin_viewer_top,
+                        this.margin_viewer_right,
+                        this.margin_viewer_bottom,
+                        this.margin_viewer_left
+                    ),
+                    new margin(
+                        this.margin_controller_top,
+                        this.margin_controller_right,
+                        this.margin_controller_bottom,
+                        this.margin_controller_left
+                    ),
+                    // need to concat . before string of className for d3.js
+                    // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+                    e
+                );
+                red.graph = this.njson.GetGraph(e);
+                console.log(red.graph);
+                this.renderers.push(red);
+            }
+
+            //this.renderer.setdata(this.json);
 /*
             this.propRenderers = [];
             for (let e = 0; e < this.json.propNames.length; e++) {
@@ -325,16 +394,25 @@ class LinePlot extends React.Component<Props, State> {
             //this.propRenderer.setdata(this.json);
             //this.propRenderer2.setdata(this.json);
             // get reloaded new variables.
+            for (let i = 0; i < this.njson.GetGraphSize(); i++) {
+                this.state.toggle.set(i, true);
+            }
+
             this.setState({
                 allVariables: this.json.variables,
                 selectedVariables: this.json.variables,
                 isRedraw: false,
-
+                graphNum: this.njson.GetGraphSize(),
+                xlist: this.njson.xlist,
                 allProps: this.json.propNames,
                 selectedProps: this.json.propNames,
             });
         }
     }
+
+    // onff = () => {
+    //    this.setOpen(!this.open)
+    // }
 
     // This will get multiple choices.
     onVariablesChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
@@ -383,6 +461,72 @@ class LinePlot extends React.Component<Props, State> {
         })
     }
 
+    toggler(e: React.MouseEvent<HTMLInputElement, MouseEvent>) {
+        console.log("toggler");
+        let r = this.state.toggle.get(0);
+        console.log(r);
+        if (r == false){
+            this.setState({
+                toggle:
+                    this.state.toggle.set(0, true)
+            });
+
+        } else {
+            this.setState({
+                toggle:
+                    this.state.toggle.set(0, false)
+            });
+        }
+    }
+
+    Item(index: number){
+
+        return (
+            <Form.Row>
+                <Form.Check
+                    label={`Enabled it`}
+                    checked={this.state.toggle.get(index)}
+                    onClick={() => {
+                        let r = this.state.toggle.get(index);
+                        console.log(this.state.toggle);
+                        if (r == false) {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, true)
+                            });
+
+                        } else {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, false)
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div className="svg_div" id={"graph"+index} style={{display: this.state.toggle.get(index) ? 'block' : 'none' }}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+        )
+    }
+
+    ItemList(){
+        let res = [];
+        for(let i = 0; i < this.state.graphNum; i++){
+            res.push(this.Item(i));
+        }
+        return (
+            <Form>
+                {res}
+            </Form>
+        )
+
+    }
     render() {
         let options = this.state.allVariables.map((v) => {
             return ({value: v, label: v})
@@ -416,11 +560,11 @@ class LinePlot extends React.Component<Props, State> {
                         )} onChange={this.onModelListSelect}/>
                     </div>
                     <div className="col-md-1">
-                        <button onClick={this.onResetButtonClick}>reset</button>
+                        <Button variant="outline-dark" onClick={this.onResetButtonClick} id="non-outline">reset</Button>
                     </div>
                 </div>
 
-                {!this.json.isEmpty() ?
+                {this.json.isEmpty() ?
                     (
                         <div>
                             <div className="row basic_box">
@@ -466,11 +610,13 @@ class LinePlot extends React.Component<Props, State> {
                                         </div>
                                     </div>
 
-                                    <div className="row">
-                                        <div className="svg_div" id="graph">
-                                            <span></span>
-                                        </div>
-                                    </div>
+                                    <this.ItemList/>
+                                    {/*<div className="row">*/}
+                                    {/*    {}*/}
+                                    {/*    /!*<div className="svg_div" id="graph">*!/*/}
+                                    {/*    /!*    <span></span>*!/*/}
+                                    {/*    /!*</div>*!/*/}
+                                    {/*</div>*/}
 
                                 </div>
                             </div>

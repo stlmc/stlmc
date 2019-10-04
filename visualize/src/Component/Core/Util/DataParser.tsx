@@ -188,6 +188,7 @@ class Json {
     }
 
     get variables() {
+        //return this._var_list;
         return this._intervals.names;
     }
 
@@ -216,6 +217,7 @@ class Json {
     get proposition_names() {
         return this._proposition_names;
     }
+
 
     /**
      * Parsing interanl jsonString to make object.
@@ -285,7 +287,8 @@ class Json {
     parse = () => {
         if (this._jsonString != "") {
             console.log("parsing2!");
-            this._intervals.removeAll();
+            // clear all element in intervals list.
+
             //this._props.removeAll();
             this._isEmpty = false;
             // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
@@ -304,19 +307,19 @@ class Json {
                     }
                 } else if (key == "prop") {
                     //console.log("Prol"+Object.entries(value1));
-                    for (let i = 0; i < value.length; i++) {
-                        let [name, actual, data] = Object.values(value[i]);
-                        let tmp_interval: Interval = new Interval(name, parseInt(index));
-                        for (let pv of points) {
-                            let [x, y] = Object.values(pv);
-                            tmp_interval.push(new Point(parseFloat(x), parseFloat(y), name));
-                        }
-                        this._intervals.push(tmp_interval);
-                    }
-                   /* for (let [key, value] of Object.entries(value)) {
-                        console.log("Proplist: " + value);
-                        this._proposition_names[key] = value;
-                    }*/
+                    // for (let i = 0; i < value.length; i++) {
+                    //     let [name, actual, data] = Object.values(value[i]);
+                    //     let tmp_interval: Interval = new Interval(name, parseInt(index));
+                    //     for (let pv of points) {
+                    //         let [x, y] = Object.values(pv);
+                    //         tmp_interval.push(new Point(parseFloat(x), parseFloat(y), name));
+                    //     }
+                    //     this._intervals.push(tmp_interval);
+                    // }
+                    // for (let [key, value] of Object.entries(value)) {
+                    //     console.log("Proplist: " + value);
+                    //     this._proposition_names[key] = value;
+                    // }
                 }
                 // for the
                 else {
@@ -557,4 +560,114 @@ class WorkspaceJson {
     }
 }
 
-export {Json, WorkspaceJson};
+
+class NewJson {
+    /**
+     * Internally has intervals.
+     */
+    private _intervalsMap: Map<number, [number, number][][]> = new Map<number, [number, number][][]>();
+    private _xRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
+    private _yRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
+    private _isEmpty: Boolean = true;
+    private _var_list: string[] = [];
+    private _x_data_list: number[] = [];
+    // Array of propositions. ["x>1", "x<0", ...]
+    public _props: Props = new Props();
+
+    /**
+     *
+     * @param _jsonString String parsing by internal json parser to string.
+     */
+    constructor(
+        private _jsonString: string = ""
+    ) {
+        //...
+    }
+
+    xRange(index: number): ([number, number]|undefined) {
+        return this._xRangeMap.get(index);
+    }
+
+    yRange(index: number): ([number, number]|undefined) {
+        return this._yRangeMap.get(index);
+    }
+
+    get variables() {
+        return this._var_list;
+    }
+
+    get xlist() {
+        return this._x_data_list;
+    }
+
+    GetGraph(index: number) : ([number, number][][]|undefined){
+        return this._intervalsMap.get(index)
+    }
+
+    GetGraphSize(): number {
+        return this._intervalsMap.size;
+    }
+
+    get map(){
+        return this._intervalsMap
+    }
+
+
+    /**
+     * @params jsonString Simple string that looks like Json file.
+     */
+    set string(jsonString: string) {
+        if (jsonString != "") {
+            this._jsonString = jsonString;
+            this.parse();
+        }
+    }
+
+    isEmpty(): Boolean {
+        return this._isEmpty;
+    }
+
+    /**
+     * Parsing interanl jsonString to make object.
+     */
+    parse = () => {
+        if (this._jsonString != "") {
+            console.log("parsingNewjson!");
+            // clear all element in intervals list.
+            this._intervalsMap.clear();
+            this._props.removeAll();
+            this._isEmpty = false;
+            // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
+            // need to take both key and value.
+            console.log(this._jsonString);
+            let [variable, interval, prop, mode, xdata] = Object.values(this._jsonString);
+            this._var_list = Object.values(variable);
+            this._x_data_list = Object.values(xdata).map((s:string) => {return parseFloat(s)});
+            for (let i = 0; i < interval.length; i++) {
+                let intervals: [number, number][][] = [];
+                let [index, graph, range] = Object.values(interval[i]);
+                for (let [k, v] of Object.entries(graph)){
+                    let [name, intIndex, points] = Object.values(v);
+                    let tmp_interval: [number, number][] = [];
+                    for (let pv of points) {
+                        let [x, y] = Object.values(pv);
+                        tmp_interval.push([parseFloat(x), parseFloat(y)]);
+                    }
+                    intervals.push(tmp_interval)
+                }
+                let [maxX, minX, maxY, minY, m, m1, m2, m3] = Object.values(range);
+
+                this._xRangeMap.set(parseInt(index), [parseFloat(minX), parseFloat(maxX)]);
+                this._yRangeMap.set(parseInt(index), [parseFloat(minY), parseFloat(maxY)]);
+
+                this._intervalsMap.set(parseInt(index), intervals);
+            }
+            console.log(this._intervalsMap);
+            console.log(this._xRangeMap);
+            console.log(this._yRangeMap);
+        } else {
+            this._isEmpty = true;
+        }
+    };
+}
+export {Json, WorkspaceJson, NewJson};

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"golang/data"
@@ -58,6 +59,8 @@ func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type StlSever struct {
 	spaHandler spaHandler
 	router *mux.Router
+	server *http.Server
+	cancel context.CancelFunc
 }
 
 func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
@@ -108,28 +111,47 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 	val := data.Db.Get(id)
 
 	if val == nil {
-		val = data.Json2FullGraph(id, data.Workspace.DirName+res)
+		val = data.Json2FullGraph(id, res)
 	}
 
 	w.WriteHeader(http.StatusCreated)
 
 	// write back to requester
-	encodingErr := json.NewEncoder(w).Encode(val.ToFullGraph4Json())
+	encodingErr := json.NewEncoder(w).Encode(val.ToCompositeGraph4Json())
 
 	if encodingErr != nil {
 		log.Fatal(encodingErr)
 	}
 }
 
-func (ss *StlSever) Init() {
+
+func (ss *StlSever) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	_, _ = w.Write([]byte("Shutdown called"))
+	ss.cancel()
+}
+
+func (ss *StlSever) Init(cancel context.CancelFunc) {
 	ss.router = mux.NewRouter().StrictSlash(true)
 	ss.spaHandler = spaHandler{staticPath:"../build", indexPath:"index.html"}
 	ss.router.HandleFunc("/file_list", ss.handleFileList)
 	ss.router.HandleFunc("/file/{id:[0-9]+}", ss.handleData)
 	ss.router.HandleFunc("/simple_file_list", ss.handleSimpleFileList)
+	ss.router.HandleFunc("/shutdown", ss.handleShutdown)
 	ss.router.PathPrefix("/").Handler(&ss.spaHandler)
+	ss.server = &http.Server{
+		Addr:              "0.0.0.0:3001",
+		Handler:           ss.router,
+	}
+	ss.cancel = cancel
 }
 
 func (ss *StlSever) Start() {
-	log.Fatal(http.ListenAndServe(":3001", ss.router))
+	if err := ss.server.ListenAndServe(); err != nil {
+		log.Println(err)
+	}
+}
+
+func (ss *StlSever) Shutdown(ctx context.Context){
+	_ = ss.server.Shutdown(ctx)
+	log.Println("Shutting down server...")
 }

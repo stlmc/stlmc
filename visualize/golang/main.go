@@ -2,6 +2,7 @@ package main
 
 // TODO: DirName not exist exception...
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -90,18 +91,25 @@ func main() {
 	flag.Parse()
 
 	logger.Logger.IsDebug = *logFlag
-	// setting workspace directory
-
-
-
 	//data.Json2FullGraph(data.Workspace.DirName+"singleMode_(<>_[0.0,40.0]^[0.0,inf) (xl2 and ([]_[3.0,10.0]^[0.0,inf) (~ xl1))))_3.json")
 	//data.SendFullGraph2Json()
-	//router := mux.NewRouter().StrictSlash(true)
-	//router.HandleFunc("/", homeLink)
-	//router.HandleFunc("/update", updateWorkspace)
-	//router.HandleFunc("/test", test)
+
+	// https://medium.com/@int128/shutdown-http-server-by-endpoint-in-go-2a0e2d7f9b8c
+	// https://jaehue.github.io/post/how-to-use-golang-context/
+	// http://golang.site/go/article/22-Go-%EC%B1%84%EB%84%90
 
 	var ss http2.StlSever
-	ss.Init()
-	ss.Start()
+	//var wait time.Duration
+
+	//ctx, cancel := context.WithTimeout(context.Background(), wait)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+
+	ss.Init(cancel)
+	go ss.Start()
+	select{
+	case <-ctx.Done():
+		ss.Shutdown(ctx)
+	}
 }

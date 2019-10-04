@@ -264,12 +264,13 @@ class Api:
         sol_init_list = self.getSolEqInitialValue()
         sol_l = self.getSol()
 
-        interval_dict = dict()
+        interval_list = []
 
 
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
+            interval_dict = dict()
             tmp_res = []
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             global_newT = global_timeValues[index].tolist()
@@ -290,8 +291,9 @@ class Api:
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
+            interval_list.append(interval_dict)
 
-        return interval_dict
+        return interval_list
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
@@ -300,9 +302,8 @@ class Api:
         c_val = self.getContValues()
 
         var_list = self.intervalsVariables()
+        interval_list = []
 
-
-        interval_dict = dict()
 
         i_val = []
         for var in range(len(var_list[index])):
@@ -318,6 +319,7 @@ class Api:
         # split by variables
 
         for el in range(len(var_list[index])):
+            interval_dict = dict()
             tmp_res = []
             for i, e in enumerate(res):
                 # this line makes point pair. For example, below lines will makes
@@ -330,10 +332,11 @@ class Api:
             interval_dict["name"] = var_list[index][el]
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
+            interval_list.append(interval_dict)
 
-        #print("calcDIffEq")
-        #print(interval_dict)
-        return interval_dict
+#         print("calcDIffEq")
+#         print(interval_dict)
+        return interval_list
 
     def calcEq(self, global_timeValues, local_timeValues):
 
@@ -359,11 +362,11 @@ class Api:
                 diffEq_dict.append(tmp)
 
 
-        #print("Sol eq dict")
-        #print(solEq_dict)
-
-        #print("Diff eq dict")
-        #print(diffEq_dict)
+#         print("Sol eq dict")
+#         print(solEq_dict)
+#
+#         print("Diff eq dict")
+#         print(diffEq_dict)
 
         res = []
 
@@ -377,15 +380,13 @@ class Api:
         for elem in diffEq_dict:
             elem["data"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
-        print("letgo")
-        print(diffEq_dict)
         for i in range(len(model_id)):
             for elem in solEq_dict:
                 if elem["interval"] == i and 'data' in elem.keys():
-                    res.append(elem["data"])
+                    res += elem["data"]
             for elem in diffEq_dict:
                 if elem["interval"] == i and 'data' in elem.keys():
-                    res.append(elem["data"])
+                    res += elem["data"]
         return res
 
     # get intervals variable list
@@ -433,7 +434,7 @@ class Api:
 
 
             import json
-            #print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
+            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()

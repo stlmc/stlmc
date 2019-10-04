@@ -27,17 +27,8 @@ def main(argv):
     tree   = parser.stlMC()
     stlMC =  modelVisitorImpl().visit(tree)
     dataGenerator = Api()
-    path_dir="../visualize/src/DataDir/"
-    file_list = os.listdir(path_dir)
     workspace_info = dict()
     title = argv[1]
-
-    workspace_info["file_list"] = file_list
-
-    import json
-    f = open(("../visualize/src/DataDir/.workspace_info.json"), "w")
-    json.dump(workspace_info, f)
-    f.close()
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
