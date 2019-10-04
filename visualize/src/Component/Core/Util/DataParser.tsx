@@ -568,6 +568,7 @@ class NewJson {
     private _intervalsMap: Map<number, [number, number][][]> = new Map<number, [number, number][][]>();
     private _xRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _yRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
+    private _graph_size: number = 0;
     private _isEmpty: Boolean = true;
     private _var_list: string[] = [];
     private _x_data_list: number[] = [];
@@ -605,6 +606,10 @@ class NewJson {
     }
 
     GetGraphSize(): number {
+        return this._graph_size;
+    }
+
+    GetIntervalSize(): number {
         return this._intervalsMap.size;
     }
 
@@ -643,6 +648,7 @@ class NewJson {
             let [variable, interval, prop, mode, xdata] = Object.values(this._jsonString);
             this._var_list = Object.values(variable);
             this._x_data_list = Object.values(xdata).map((s:string) => {return parseFloat(s)});
+            this._graph_size = interval.length;
             for (let i = 0; i < interval.length; i++) {
                 let intervals: [number, number][][] = [];
                 let [index, graph, range] = Object.values(interval[i]);

@@ -346,9 +346,6 @@ class LinePlot extends React.Component<Props, State> {
             let response = await this.instance.get("/file/" +ws.uid);
             console.log(response.data);
 
-
-            //this.json.string = require("../../DataDir/" + titleVal);
-            //this.json.string = response.data;
             this.njson.string = response.data;
             console.log(this.njson.variables);
             let gs = this.njson.GetGraphSize();

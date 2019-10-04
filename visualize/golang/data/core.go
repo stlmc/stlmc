@@ -121,7 +121,6 @@ JSON format, for example:
 package data
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -345,7 +344,6 @@ func (fg *FullGraph) GetXData() []float64 {
 			xList = append(xList, e1.X)
 		}
 	}
-	fmt.Println(xList)
 	return xList
 }
 
@@ -552,6 +550,7 @@ type CompositeGraph4Json struct {
 	Prop []Proposition 					`json:"prop"`
 	Mode []Mode							`json:"mode"`
 	Xdata []float64						`json:"xdata"`
+
 }
 
 // CompositeGraph contains a list of SubGraph that have same logical
