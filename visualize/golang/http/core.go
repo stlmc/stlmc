@@ -90,9 +90,14 @@ func (ss *StlSever) handleSimpleFileList(w http.ResponseWriter, r *http.Request)
 }
 
 func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
-	if data.Workspace.IsEmpty() {
-		data.Workspace.GetFileList()
-	}
+
+	// update workspace
+	data.Workspace.GetFileList()
+
+	// update database
+
+
+
 	vars := mux.Vars(r)
 	id, convErr := strconv.Atoi(vars["id"])
 
@@ -108,11 +113,7 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 
 
 	// searching for database for caching
-	val := data.Db.Get(id)
-
-	if val == nil {
-		val = data.Json2FullGraph(id, res)
-	}
+	val := data.Json2FullGraph(id, res)
 
 	w.WriteHeader(http.StatusCreated)
 
