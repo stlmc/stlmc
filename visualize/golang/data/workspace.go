@@ -85,7 +85,7 @@ func (ws *workspace) getFileList(dirName string) {
 					ws.counter ++
 				} else {
 					ws.isDir = false
-					tmp := FileDesc {Name:file.Name(), Uid: ws.counter}
+					tmp := FileDesc {Name:dirName +"/" + file.Name(), Uid: ws.counter}
 					ws.counter ++
 					ws.FileList = append(ws.FileList, tmp)
 				}
@@ -118,7 +118,7 @@ func (ws *workspace) getFileListWithOutId(dirName string) {
 					ws.SimpleFileList = append(ws.SimpleFileList, dirName + "/" + file.Name())
 				} else {
 					ws.isDir = false
-					ws.SimpleFileList = append(ws.SimpleFileList, file.Name())
+					ws.SimpleFileList = append(ws.SimpleFileList,dirName +"/"+ file.Name())
 				}
 			}
 		}
