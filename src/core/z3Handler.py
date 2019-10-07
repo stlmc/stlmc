@@ -171,6 +171,7 @@ def _(const):
                     if str(const.ode[subvariables[j]]) == str(RealVal(0)):
                         pass
                     else:
+                        print(str(const.ode[subvariables[j]]))
                         raise z3constODEerror()
                 else:
                     raise z3constODEerror()
