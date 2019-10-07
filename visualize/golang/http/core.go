@@ -117,11 +117,13 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 
 	w.WriteHeader(http.StatusCreated)
 
-	// write back to requester
-	encodingErr := json.NewEncoder(w).Encode(val.ToCompositeGraph4Json())
+	if val != nil {
+		// write back to requester
+		encodingErr := json.NewEncoder(w).Encode(val.ToCompositeGraph4Json())
 
-	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		if encodingErr != nil {
+			log.Fatal(encodingErr)
+		}
 	}
 }
 

@@ -280,6 +280,7 @@ type Proposition struct {
 // TODO: Fill this part
 type Mode struct {
 	Name string		`json:"name"`
+	Type string		`json:"type"`
 	Data []string	`json:"data"`
 }
 
@@ -309,6 +310,32 @@ type FullGraph4Json struct {
 	Mode []Mode					`json:"mode"`
 	IntervalInfo []IntervalInfo	`json:"intervalInfo"`
 }
+
+
+func (fg4j *FullGraph4Json) IsEmpty() bool {
+	if len(fg4j.Var) == 0 {
+		return true
+	}
+
+	if len(fg4j.Interval) == 0 {
+		return true
+	}
+
+	if len(fg4j.Prop) == 0 {
+		return true
+	}
+
+	if len(fg4j.Mode) == 0 {
+		return true
+	}
+
+	if len(fg4j.IntervalInfo) == 0 {
+		return true
+	}
+
+	return false
+}
+
 
 // ToFullGraph returns FullGraph from FullGraph4Json
 func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{

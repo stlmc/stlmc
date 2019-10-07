@@ -59,28 +59,28 @@ class Api:
     def getModesIdDict(self):
         result = {}
         for i in range(len(self.modeVar)):
-            result[str(self.modeVar[i].id)] = list()
+           result[str(self.modeVar[i].id)] = (list(), str(self.modeVar[i].type))
         return result
 
     # return mode declaraion to string
     def getModeDeclWithModelID(self):
         idList = self.getModelIdList()
-        modeIdDict = self. getModesIdDict()
+        modeIdDict = self.getModesIdDict()
         result = []
         for i in range(len(idList)):
             conditions = self.mode_module[idList[i]].getMode().props
             for j in range(len(conditions)):
                 if conditions[j].left in modeIdDict.keys():
                     if modeIdDict[conditions[j].left] is None:
-                        modeIdDict[conditions[j].left] = [str(conditions[j].right)]
+                        modeIdDict[conditions[j].left][0] = [str(conditions[j].right)]
                     else:
-                        modeIdDict[conditions[j].left].extend([str(conditions[j].right)])
-
+                        modeIdDict[conditions[j].left][0].extend([str(conditions[j].right)])
         result = list()
         for key in modeIdDict.keys():
             dictElement = dict()
-            dictElement['name'] = key
-            dictElement['data'] = modeIdDict[key]
+            dictElement["name"] = key
+            dictElement["type"] = modeIdDict[key][1]
+            dictElement["data"] = modeIdDict[key][0]
             result.append(dictElement)
         return result, idList
 

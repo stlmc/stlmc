@@ -37,15 +37,7 @@
     text { display: none; }
 }
 
-#propCanvasIntervalLines {
-    line{
-        stroke: black;
-        stroke-dasharray: 4px;
-    }
-    text { display: none; }
-}
-
-#propCanvasIntervalLinesBase {
+#propCanvasIntervalLines, #modeCanvasIntervalLines{
     line{
         stroke: black;
         stroke-dasharray: 4px;
