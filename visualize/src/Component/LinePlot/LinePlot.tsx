@@ -224,7 +224,7 @@ class LinePlot extends React.Component<Props, State> {
             console.log(e);
             let intv: ([number, number][][] | undefined) = this.njson.GetGraph(e);
             if (intv) {
-                this.renderers[e].loadGraph("", this.state.isRedraw, this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist);
+                this.renderers[e].loadGraph("", this.state.isRedraw, this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist, this.njson.GetIntervalInfoFlat());
             }
         }
 
@@ -347,7 +347,7 @@ class LinePlot extends React.Component<Props, State> {
                 let pr = new PropositionRenderer(
                     new size(
                         this.width,
-                        200.0,
+                        80.0,
                         this.width_viewer,
                         this.height_viewer,
                         this.width_controller,
@@ -358,12 +358,6 @@ class LinePlot extends React.Component<Props, State> {
                         this.margin_viewer_right,
                         this.margin_viewer_bottom,
                         this.margin_viewer_left
-                    ),
-                    new margin(
-                        this.margin_controller_top,
-                        this.margin_controller_right,
-                        this.margin_controller_bottom,
-                        this.margin_controller_left
                     ),
                     // need to concat . before string of className for d3.js
                     // https://www.tutorialspoint.com/d3js/d3js_selections.htm

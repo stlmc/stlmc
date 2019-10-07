@@ -56,11 +56,6 @@ class ModeRenderer {
         // set main canvas
         this.canvas = d3.select(this._tag).append("svg").attr("id", "mode_svg")
             .attr("width", this._size.width).attr("height", this._size.height);
-        //.attr("transform", "translate(0, "+ this._index * this.effective_controller_height_difference + ")");
-        //this.canvas = d3.select(this._tag).append("svg").attr("id", "prop_svg"+this._index).attr("width", this._size.width).attr("height", this._size.height);
-        //this.canvas = d3.select("#main_svg").append("g").attr("id", "prop"+this._index).attr("width", this._size.width).attr("height", 100);
-        // set data canvas
-        //this.setDataCanvas();
         this.setCanvasAxis();
         // set prop canvas
         this.setPropCanvas(d);
@@ -94,11 +89,6 @@ class ModeRenderer {
 
 
             this.dataCanvasXscaleZoom = this.dataCanvasXscale;
-
-            // update when redraw, remove previous proposition graph.
-            //this.propCanvas.selectAll("#propGraphGroup").remove();
-            //this.propCanvas.selectAll("#focusCircle2").remove();
-
 
             this.propGraph = this.propCanvasBack
                 .append("g")

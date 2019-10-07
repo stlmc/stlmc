@@ -70,7 +70,7 @@ class Renderer {
         this._graph = graph;
     }
 
-    loadGraph(propName, isRedraw, maxX, maxY, l, xdata) {
+    loadGraph(propName, isRedraw, maxX, maxY, l, xdata,  pdata) {
         console.log(xdata);
         this.isRedraw = isRedraw;
         this.refData = l;
@@ -220,12 +220,19 @@ class Renderer {
                 this.dataCanvasYaxis.call(d3.axisLeft(this.dataCanvasYscaleZoom));
                 //this.propCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
                 d3.selectAll("#propCanvasXaxis").call(d3.axisBottom(this.dataCanvasXscaleZoom));
-                d3.selectAll("#propCanvasIntervalLinesBase").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(this.intervalList).tickSize(-(this.viewer_height + 100)).tickPadding(3).tickFormat(() => {
+                d3.selectAll("#propCanvasIntervalLinesBase").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(pdata).tickSize(100).tickPadding(3).tickFormat(() => {
                     return ""
                 })).select(".domain").remove();
-                d3.selectAll("#propCanvasIntervalLines").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(this.intervalList).tickSize(-(this.effective_controller_height)).tickPadding(3).tickFormat(() => {
+                d3.selectAll("#propCanvasIntervalLines").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(pdata).tickSize(100).tickPadding(3).tickFormat(() => {
                     return ""
                 })).select(".domain").remove();
+
+
+
+                this.propCanvasYscale =
+                    d3.scaleLinear()
+                        .domain([0, 3])
+                        .range([60.0, 0]);
 
 
                 // Make new line scale functions using latest scale functions.
@@ -238,13 +245,28 @@ class Renderer {
                     })
                     .curve(d3.curveMonotoneX);
 
+                this.lineGenerator2 = d3.line()
+                    .x((d) => {
+                        return this.dataCanvasXscaleZoom(d[0]);
+                    })
+                    .y((d) => {
+                        return this.propCanvasYscale(d[1]);
+                    })
+                    .curve(d3.curveMonotoneX);
+
+
+
+                d3.selectAll(".propGraphData")
+                    .attr("d",(d) =>{
+                        return this.lineGenerator2(d);
+                    });
+
+
                 // Update lines positions.
                 // Update position first and then rendering it
                 this.lineGraph.selectAll(".lines")
                     .each((d) => {
-
                         d.newX = this.lineGenerator(d);
-
                     })
 
                 this.lineGraph.selectAll(".lines")
