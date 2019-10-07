@@ -31,7 +31,7 @@ init:
 (and (heater == false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
 
 propositions:
-reachability = x > 23;
+reachability = x > 22;
 
 goal:
 (<> [0.0, 40.0] (reachability)) ;
