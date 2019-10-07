@@ -4,9 +4,10 @@ import styleVariable from './style/variable.module.scss';
 import './style/LinePlotStyle.scss';
 import '../../Style/scss/main.scss';
 import {Intervals, margin, size} from '../Core/Util/Util';
+import {ModeRenderer} from '../Core/Renderer/ModeRenderer';
 import {Renderer} from '../Core/Renderer/MainRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
-import {Json, NewJson, WorkspaceJson} from '../Core/Util/DataParser';
+import {Json, NewJson, Proposition} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
@@ -45,6 +46,8 @@ interface State {
     isRedraw: boolean;
     model: WorkspaceData[];
     graphNum : number;
+    prop: Proposition[];
+
     xlist: number[];
     selectedProps: string[];
     allProps: string[];
@@ -107,60 +110,9 @@ class LinePlot extends React.Component<Props, State> {
 
     private renderers: Renderer[] = [];
     private propRenderers: PropositionRenderer[] = [];
+    private modeRenderers: ModeRenderer[] = [];
     private instance: AxiosInstance;
 
-    private propRenderer: PropositionRenderer = new PropositionRenderer(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "#graph"
-    );
-
-    private propRenderer2: PropositionRenderer = new PropositionRenderer(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "#graph",
-        1
-    );
 
 
     private json = new Json("");
@@ -184,7 +136,8 @@ class LinePlot extends React.Component<Props, State> {
         serverError: {
             message: "",
             error: false,
-        }
+        },
+        prop: [],
     };
 
     constructor(props: Props) {
@@ -240,11 +193,6 @@ class LinePlot extends React.Component<Props, State> {
                     })
                 }
             })
-        // must invoke setdata() before draw()
-        //this.renderer.setdata(this.json);
-
-        //this.propRenderer.setdata(this.json);
-        //this.propRenderer2.setdata(this.json);
 
 
 
@@ -284,9 +232,21 @@ class LinePlot extends React.Component<Props, State> {
 
         //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
         //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
-        /*for (let e = 0; e < this.state.selectedProps.length; e++) {
-            this.propRenderers[e].reload(this.json.isEmpty(), this.state.selectedProps[e], this.state.isRedraw);
-        }*/
+        for (let e = 0; e < this.njson.propSize; e++) {
+            let d = this.njson.GetProp(e);
+            if (d) {
+                this.propRenderers[e].loadGraph(false, [this.njson.TotalMinX, this.njson.TotalMaxX], d.data , this.njson.GetIntervalInfoFlat());
+            }
+
+        }
+
+        for (let e = 0; e < this.njson.GetModeSize(); e++) {
+            let d = this.njson.GetMode(e);
+            if (d) {
+                this.modeRenderers[e].loadGraph(false, [this.njson.TotalMinX, this.njson.TotalMaxX], d.data , this.njson.GetIntervalInfoFlat(), d);
+            }
+
+        }
     }
 
     onPopupChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -382,14 +342,12 @@ class LinePlot extends React.Component<Props, State> {
                 this.renderers.push(red);
             }
 
-            //this.renderer.setdata(this.json);
-/*
             this.propRenderers = [];
-            for (let e = 0; e < this.json.propNames.length; e++) {
+            for (let e = 0; e < this.njson.propSize; e++) {
                 let pr = new PropositionRenderer(
                     new size(
                         this.width,
-                        this.height,
+                        200.0,
                         this.width_viewer,
                         this.height_viewer,
                         this.width_controller,
@@ -409,17 +367,46 @@ class LinePlot extends React.Component<Props, State> {
                     ),
                     // need to concat . before string of className for d3.js
                     // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-                    "#graph",
                     e
                 );
                 pr.setdata(this.json);
                 this.propRenderers.push(pr);
             }
-*/
+
+            this.modeRenderers = [];
+            for (let e = 0; e < this.njson.GetModeSize(); e++) {
+                let md = new ModeRenderer(
+                    new size(
+                        this.width,
+                        200.0,
+                        this.width_viewer,
+                        this.height_viewer,
+                        this.width_controller,
+                        this.height_controller
+                    ),
+                    new margin(
+                        this.margin_viewer_top,
+                        this.margin_viewer_right,
+                        this.margin_viewer_bottom,
+                        this.margin_viewer_left
+                    ),
+                    new margin(
+                        this.margin_controller_top,
+                        this.margin_controller_right,
+                        this.margin_controller_bottom,
+                        this.margin_controller_left
+                    ),
+                    // need to concat . before string of className for d3.js
+                    // https://www.tutorialspoint.com/d3js/d3js_selections.htm
+                    e
+                );
+                md.setdata(this.json);
+                this.modeRenderers.push(md);
+            }
             //this.propRenderer.setdata(this.json);
             //this.propRenderer2.setdata(this.json);
             // get reloaded new variables.
-            for (let i = 0; i < this.njson.GetGraphSize(); i++) {
+            for (let i = 0; i < this.njson.GetGraphSize() + this.njson.propSize; i++) {
                 this.state.toggle.set(i, true);
             }
 
@@ -540,14 +527,99 @@ class LinePlot extends React.Component<Props, State> {
         )
     }
 
+    Item2(index: number){
+
+        return (
+            <Form.Row>
+                <Form.Check
+                    label={`Enabled it`}
+                    checked={this.state.toggle.get(index)}
+                    onClick={() => {
+                        let r = this.state.toggle.get(index);
+                        console.log(this.state.toggle);
+                        if (r == false) {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, true)
+                            });
+
+                        } else {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, false)
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div className="svg_div" id={"proposition"+index} style={{display: this.state.toggle.get(index) ? 'block' : 'none' }}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+        )
+    }
+
+    Item3(index: number){
+
+        return (
+            <Form.Row>
+                <Form.Check
+                    label={`Enabled it`}
+                    checked={this.state.toggle.get(index)}
+                    onClick={() => {
+                        let r = this.state.toggle.get(index);
+                        console.log(this.state.toggle);
+                        if (r == false) {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, true)
+                            });
+
+                        } else {
+                            this.setState({
+                                isToggleChanged: true,
+                                toggle:
+                                    this.state.toggle.set(index, false)
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div className="svg_div" id={"mode"+index} style={{display: this.state.toggle.get(index) ? 'block' : 'none' }}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+        )
+    }
+
     ItemList(){
         let res = [];
+        let res2 = [];
+        let res3 = [];
         for(let i = 0; i < this.state.graphNum; i++){
             res.push(this.Item(i));
         }
+        for(let i = 0; i < this.njson.propSize; i++){
+            console.log("hhh");
+            res2.push(this.Item2(i));
+        }
+
+        for(let i = 0; i < this.njson.GetModeSize(); i++){
+            console.log("hhh");
+            res3.push(this.Item3(i));
+        }
         return (
             <Form>
+                {res3}
                 {res}
+                {res2}
             </Form>
         )
 

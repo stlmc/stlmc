@@ -9,16 +9,6 @@ import (
 
 
 
-
-// VGraph is data structure for sending graph data usign JSON format.
-// This graph may contain multiple CompositeGraph
-// as well as multiple Propositions and Mode.
-type VGraph struct {
-	Graph []CompositeGraph
-	Props []Proposition
-	Mode []Mode
-}
-
 // Json2FullGraph generates FullGraph and its elements.
 func Json2FullGraph(index int, filename string) *FullGraph{
 	b, readErr := ioutil.ReadFile(filename)

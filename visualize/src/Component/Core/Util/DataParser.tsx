@@ -561,6 +561,23 @@ class WorkspaceJson {
 }
 
 
+export interface Proposition {
+    name: string;
+    actual: string;
+    data: [number, number][][];
+}
+
+export interface IntervalInfo {
+    intIndex: number;
+    range: number[];
+    data: number[];
+}
+
+export interface Mode {
+    name: string;
+    data: [number, number][][];
+}
+
 class NewJson {
     /**
      * Internally has intervals.
@@ -569,11 +586,22 @@ class NewJson {
     private _xRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _yRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _graph_size: number = 0;
+
+    private maxX:number = 0.0;
+    private minX:number = 0.0;
+    private totalMaxX:number = 0.0;
+    private totalMinX:number = 0.0;
     private _isEmpty: Boolean = true;
     private _var_list: string[] = [];
     private _x_data_list: number[] = [];
+
+    private _interval_flat_list: number[] = [];
     // Array of propositions. ["x>1", "x<0", ...]
-    public _props: Props = new Props();
+
+    private _interval_info: Map<number, IntervalInfo> = new Map<number, IntervalInfo>();
+    // i'th graph with auto interval and proposition
+    private _propMap: Map<number, Proposition> = new Map<number, Proposition>();
+    private _modeMap: Map<number, Mode> = new Map<number, Mode>();
 
     /**
      *
@@ -613,10 +641,53 @@ class NewJson {
         return this._intervalsMap.size;
     }
 
-    get map(){
-        return this._intervalsMap
+    GetIntervalInfo(index: number) {
+        return this._interval_info.get(index);
     }
 
+    GetModeSize(){
+        return this._modeMap.size;
+    }
+
+    GetMode(index: number) {
+        return this._modeMap.get(index);
+    }
+
+
+    GetIntervalInfoFlat(){
+        return this._interval_flat_list;
+    }
+
+
+    get map(){
+        return this._intervalsMap;
+    }
+
+    // Get data list related to intervals from map structure.
+    GetProp(index:number){
+        return this._propMap.get(index);
+    }
+
+    get propSize() {
+        return this._propMap.size;
+    }
+
+
+    get MaxX(){
+        return this.maxX;
+    }
+
+    get MinX(){
+        return this.minX;
+    }
+
+    get TotalMaxX(){
+        return this.totalMaxX;
+    }
+
+    get TotalMinX(){
+        return this.totalMinX;
+    }
 
     /**
      * @params jsonString Simple string that looks like Json file.
@@ -624,6 +695,7 @@ class NewJson {
     set string(jsonString: string) {
         if (jsonString != "") {
             this._jsonString = jsonString;
+            console.log("called");
             this.parse();
         }
     }
@@ -640,15 +712,88 @@ class NewJson {
             console.log("parsingNewjson!");
             // clear all element in intervals list.
             this._intervalsMap.clear();
-            this._props.removeAll();
+            this._propMap.clear();
+
             this._isEmpty = false;
             // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
             // need to take both key and value.
             console.log(this._jsonString);
-            let [variable, interval, prop, mode, xdata] = Object.values(this._jsonString);
+            let [variable, interval, prop, mode, xdata, intervalInfo, full_interval_range] = Object.values(this._jsonString);
+            this._interval_flat_list = Object.values(full_interval_range).map((e)=> { return parseFloat(e); })
+
+            // get interval info
+            for (let [okey, ovalue] of Object.entries(intervalInfo)){
+                let [interval_index, interval_range, interval_data] = Object.values(ovalue);
+                let tmp: IntervalInfo = {
+                    intIndex: parseInt(interval_index),
+                    range: Object.values(interval_range).map((e)=>{ return parseFloat(e) }),
+                    data: Object.values(interval_data).map((e)=>{ return parseFloat(e) }),
+                };
+                this._interval_info.set(parseInt(interval_index),tmp);
+            }
+
+
+            // get mode
+            let counter_mode = 0;
+            for (let [okey, ovalue] of Object.entries(mode)){
+                let [mode_name, mode_data] = Object.values(ovalue);
+                let data = Object.values(mode_data);
+
+                let intv_data_set: [number, number][][] = [];
+                for ( let ii2 = 0; ii2 < this._interval_info.size; ii2++){
+                    let numnumlist: [number, number][] = [];
+                    let iifg = this._interval_info.get(ii2);
+                    if (iifg) {
+                        numnumlist = iifg.data.map((e) => {
+                            return data[ii2] == "True" ? [e, 1] : [e, 0];
+                        });
+                    }
+                    intv_data_set.push(numnumlist);
+                }
+
+                let tmp_mode: Mode = {
+                    name: mode_name,
+                    data: intv_data_set,
+                };
+                this._modeMap.set(counter_mode, tmp_mode);
+                counter_mode++;
+            }
+            console.log(this._propMap);
+
+            // get proposition
+            let counter = 0;
+            for (let [okey, ovalue] of Object.entries(prop)){
+                let [prop_name, prop_actual, prop_data] = Object.values(ovalue);
+                let data = Object.values(prop_data);
+
+                let intv_data_set: [number, number][][] = [];
+                for ( let ii2 = 0; ii2 < this._interval_info.size; ii2++){
+                    let numnumlist: [number, number][] = [];
+                    let iifg = this._interval_info.get(ii2);
+                    if (iifg) {
+                        numnumlist = iifg.data.map((e) => {
+                            return data[ii2] == "True" ? [e, 1] : [e, 0];
+                        });
+                    }
+                    intv_data_set.push(numnumlist);
+                }
+                let tmp_prop: Proposition = {
+                    name: prop_name,
+                    actual: prop_actual,
+                    data: intv_data_set,
+                };
+                this._propMap.set(counter, tmp_prop);
+                counter++;
+            }
+            console.log(this._propMap);
+
+
+
+
             this._var_list = Object.values(variable);
             this._x_data_list = Object.values(xdata).map((s:string) => {return parseFloat(s)});
             this._graph_size = interval.length;
+
             for (let i = 0; i < interval.length; i++) {
                 let intervals: [number, number][][] = [];
                 let [index, graph, range] = Object.values(interval[i]);
@@ -663,10 +808,17 @@ class NewJson {
                 }
                 let [maxX, minX, maxY, minY, m, m1, m2, m3] = Object.values(range);
 
+                this.maxX = parseFloat(maxX);
+                this.minX = parseFloat(minX);
+
                 this._xRangeMap.set(parseInt(index), [parseFloat(minX), parseFloat(maxX)]);
                 this._yRangeMap.set(parseInt(index), [parseFloat(minY), parseFloat(maxY)]);
 
                 this._intervalsMap.set(parseInt(index), intervals);
+                if (i == 0){
+                    this.totalMinX = parseFloat(minX);
+                    this.totalMaxX = parseFloat(maxX);
+                }
             }
             console.log(this._intervalsMap);
             console.log(this._xRangeMap);

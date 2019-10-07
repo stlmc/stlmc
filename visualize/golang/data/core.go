@@ -129,6 +129,30 @@ type Point struct {
 	Y float64	`json:"y"`
 }
 
+type Range struct {
+
+	MaxXfloat float64		`json:"max_x"`
+	MinXfloat float64		`json:"min_x"`
+	MaxYfloat float64		`json:"max_y"`
+	MinYfloat float64		`json:"min_y"`
+
+	// MaxWithX is maximum point with
+	// respect to X axis
+	MaxX *Point		`json:"max_with_x"`
+
+	// MinWithX is point with respect
+	// to X axis
+	MinX *Point		`json:"min_with_x"`
+
+	// MaxWithY is point with respect
+	// to Y axis
+	MaxY *Point		`json:"max_with_y"`
+
+	// MinWithY is point with respect
+	// to Y axis
+	MinY *Point		`json:"min_with_y"`
+}
+
 // SubGraphData is needed for json parsing.
 // If you design SubGraph directly has SubGraphData,
 // you might have <nil> for maxWithX, ..., maxWithY.
@@ -174,21 +198,7 @@ func (sg4j *SubGraph4Json) ToSubGraph() SubGraph{
 type SubGraph struct {
 	// Elem is getting from json file
 	Elem *SubGraph4Json
-	// maxWithX is maximum point with
-	// respect to x axis
-	maxWithX *Point
-
-	// minWithX is minimum point with
-	// respect to x axis
-	minWithX *Point
-
-	// maxWithY is maximum point with
-	// respect to y axis
-	maxWithY *Point
-
-	// minWithY is minimum point with
-	// respect to y axis
-	minWithY *Point
+	Range Range
 }
 
 func (sg *SubGraph) ToSubGraph4Json() SubGraph4Json{
@@ -204,42 +214,51 @@ func (sg *SubGraph) getSubPoint() {
 		return
 	}
 
-	sg.maxWithX = &sg.Elem.Data[0]
-	sg.minWithX = &sg.Elem.Data[0]
-	sg.maxWithY = &sg.Elem.Data[0]
-	sg.minWithY = &sg.Elem.Data[0]
+	sg.Range.MaxX = &sg.Elem.Data[0]
+	sg.Range.MinX = &sg.Elem.Data[0]
+	sg.Range.MaxY = &sg.Elem.Data[0]
+	sg.Range.MinY = &sg.Elem.Data[0]
 
 	for i, _ := range sg.Elem.Data {
-
 		// calculate maximum point and minimum in list
 		// with respect to x
-		if sg.Elem.Data[i].X > sg.maxWithX.X {
-			sg.maxWithX = &sg.Elem.Data[i]
+		if sg.Elem.Data[i].X > sg.Range.MaxX.X {
+			sg.Range.MaxX = &sg.Elem.Data[i]
 
 		}
 
-		if sg.Elem.Data[i].X < sg.minWithX.X {
-			sg.minWithX = &sg.Elem.Data[i]
+		if sg.Elem.Data[i].X < sg.Range.MinX.X {
+			sg.Range.MinX = &sg.Elem.Data[i]
 		}
 
 
 		// calculate maximum point and minimum in list
-		// with respect to x
-		if sg.Elem.Data[i].Y > sg.maxWithY.Y {
-			sg.maxWithY = &sg.Elem.Data[i]
+		// with respect to y
+		if sg.Elem.Data[i].Y > sg.Range.MaxY.Y {
+			sg.Range.MaxY = &sg.Elem.Data[i]
 		}
 
-		if sg.Elem.Data[i].Y < sg.minWithY.Y {
-			sg.minWithY = &sg.Elem.Data[i]
+		if sg.Elem.Data[i].Y < sg.Range.MinY.Y {
+			sg.Range.MinY = &sg.Elem.Data[i]
 		}
 	}
+
+	sg.Range.MinXfloat = sg.Range.MinX.X
+	sg.Range.MinYfloat = sg.Range.MinY.Y
+	sg.Range.MaxXfloat = sg.Range.MaxX.X
+	sg.Range.MaxYfloat = sg.Range.MaxY.Y
+
 }
 
 func (sg *SubGraph) Init(){
-	sg.maxWithX = nil
-	sg.minWithX = nil
-	sg.maxWithY = nil
-	sg.minWithY = nil
+	sg.Range.MaxX = nil
+	sg.Range.MinX = nil
+	sg.Range.MaxY = nil
+	sg.Range.MinY = nil
+	sg.Range.MinXfloat = 0.0
+	sg.Range.MaxXfloat = 0.0
+	sg.Range.MinYfloat = 0.0
+	sg.Range.MaxYfloat = 0.0
 	sg.getSubPoint()
 }
 
@@ -253,15 +272,24 @@ func (sg *SubGraph) Init(){
 //		"data": ["True", "False", "True", "False"]
 //	}
 type Proposition struct {
-	Name string		`json:"name"`
-	Actual string	`json:"actual"`
-	Data []string	`json:"data"`
+	Name string			`json:"name"`
+	Actual string		`json:"actual"`
+	Data []string		`json:"data"`
 }
 
 // TODO: Fill this part
 type Mode struct {
 	Name string		`json:"name"`
 	Data []string	`json:"data"`
+}
+
+// IntervalInfo implements interval's range info
+// which saves information such as each interval's
+// start or end points.
+type IntervalInfo struct {
+	IntIndex int		`json:"intIndex"`
+	Range [2]float64	`json:"range"`
+	Data []float64		`json:"data"`
 }
 
 // FullGraphData is used for parsing a json file.
@@ -279,6 +307,7 @@ type FullGraph4Json struct {
 	Interval []SubGraph4Json 	`json:"interval"`
 	Prop []Proposition 			`json:"prop"`
 	Mode []Mode					`json:"mode"`
+	IntervalInfo []IntervalInfo	`json:"intervalInfo"`
 }
 
 // ToFullGraph returns FullGraph from FullGraph4Json
@@ -291,6 +320,7 @@ func (fg4j *FullGraph4Json) ToFullGraph() FullGraph{
 	fg.Prop = fg4j.Prop
 	fg.Mode = fg4j.Mode
 	fg.Var = fg4j.Var
+	fg.IntervalInfo = fg4j.IntervalInfo
 	fg.Init()
 
 	return fg
@@ -320,26 +350,17 @@ type FullGraph struct {
 	// Mode get Mode type data
 	Mode []Mode
 
-	// MaxWithX is FullGraph's maximum
-	// point with respect to X axis
-	MaxWithX *Point
+	// IntervalInfo get interval information
+	IntervalInfo []IntervalInfo
 
-	// MinWithX is FullGraph's minimum
-	// point with respect to X axis
-	MinWithX *Point
-
-	// MaxWithY is FullGraph's maximum
-	// point with respect to Y axis
-	MaxWithY *Point
-
-	// MinWithY is FullGraph's minimum
-	// point with respect to Y axis
-	MinWithY *Point
+	Range Range
 }
 
 func (fg *FullGraph) GetXData() []float64 {
 	var xList []float64
+
 	for _, e := range fg.Sub {
+
 		for _, e1 := range e.Elem.Data {
 			xList = append(xList, e1.X)
 		}
@@ -347,11 +368,13 @@ func (fg *FullGraph) GetXData() []float64 {
 	return xList
 }
 
+
 func (fg *FullGraph) ToFullGraph4Json() FullGraph4Json{
 	var fg4j FullGraph4Json
 	fg4j.Var = fg.Var
 	fg4j.Prop = fg.Prop
 	fg4j.Mode = fg.Mode
+	fg4j.IntervalInfo = fg.IntervalInfo
 	var sub []SubGraph4Json
 	for i, _ := range fg.Sub {
 		sub = append(sub, fg.Sub[i].ToSubGraph4Json())
@@ -369,41 +392,50 @@ func (fg *FullGraph) getSubPoint(){
 		return
 	}
 
-	fg.MaxWithX = fg.Sub[0].maxWithX
-	fg.MinWithX = fg.Sub[0].minWithX
-	fg.MaxWithY = fg.Sub[0].maxWithY
-	fg.MinWithY = fg.Sub[0].minWithY
+	fg.Range.MaxX = fg.Sub[0].Range.MaxX
+	fg.Range.MinX = fg.Sub[0].Range.MinX
+	fg.Range.MaxY = fg.Sub[0].Range.MaxY
+	fg.Range.MinY = fg.Sub[0].Range.MinY
 
 
 	for _, e := range fg.Sub{
 
 		// calculate maximum point and minimum in point list
 		// with respect to x
-		if e.maxWithX.X > fg.MaxWithX.X {
-			fg.MaxWithX = e.maxWithX
+		if e.Range.MaxX.X > fg.Range.MaxX.X {
+			fg.Range.MaxX = e.Range.MaxX
 		}
 
-		if e.minWithX.X < fg.MinWithX.X {
-			fg.MinWithX = e.minWithX
+		if e.Range.MinX.X < fg.Range.MinX.X {
+			fg.Range.MinX = e.Range.MinX
 		}
 
 		// calculate maximum point and minimum in point list
 		// with respect to y
-		if e.maxWithY.Y > fg.MaxWithY.Y {
-			fg.MaxWithY = e.maxWithY
+		if e.Range.MaxY.Y > fg.Range.MaxY.Y {
+			fg.Range.MaxY = e.Range.MaxY
 		}
 
-		if e.minWithY.Y < fg.MinWithY.Y {
-			fg.MinWithY = e.minWithY
+		if e.Range.MinY.Y < fg.Range.MinY.Y {
+			fg.Range.MinY = e.Range.MinY
 		}
 	}
+
+	fg.Range.MinXfloat = fg.Range.MinX.X
+	fg.Range.MinYfloat = fg.Range.MinY.Y
+	fg.Range.MaxXfloat = fg.Range.MaxX.X
+	fg.Range.MaxYfloat = fg.Range.MinY.Y
 }
 
 func (fg *FullGraph) Init(){
-	fg.MaxWithX = nil
-	fg.MinWithX = nil
-	fg.MaxWithY = nil
-	fg.MinWithY = nil
+	fg.Range.MaxX = nil
+	fg.Range.MinX = nil
+	fg.Range.MaxY = nil
+	fg.Range.MinY = nil
+	fg.Range.MinXfloat = 0.0
+	fg.Range.MinYfloat = 0.0
+	fg.Range.MaxXfloat = 0.0
+	fg.Range.MaxYfloat = 0.0
 	fg.getSubPoint()
 }
 
@@ -457,8 +489,8 @@ func (fg *FullGraph) Similar() []CompositeGraph {
 			// if two graphs maximum y value's difference is less than 1
 			// and minimum y value's difference is less than 1 then, we
 			// determine that it is same.
-			if math.Abs(e.MaxWithY.Y-e1.MaxWithY.Y) < 10 && i != j {
-				if math.Abs(e.MinWithY.Y-e1.MinWithY.Y) < 10 {
+			if math.Abs(e.Range.MaxY.Y-e1.Range.MaxY.Y) < 10 && i != j {
+				if math.Abs(e.Range.MinY.Y-e1.Range.MinY.Y) < 10 {
 					// same case
 					e.Concat(e1)
 					delete(sameMap, i)
@@ -486,6 +518,8 @@ func (fg *FullGraph) ToCompositeGraph4Json() CompositeGraph4Json{
 	cg4j.Mode = fg.Mode
 	cg4j.Prop = fg.Prop
 	cg4j.Xdata = fg.GetXData()
+	cg4j.IntervalInfo = fg.IntervalInfo
+	cg4j.FullRange = make([]float64, 0)
 	// iterate through each variable's fullgraph
 	for i, _ := range cg {
 		// this one contains all subgraphs of fullgraph
@@ -497,46 +531,39 @@ func (fg *FullGraph) ToCompositeGraph4Json() CompositeGraph4Json{
 		csg4j.Graph = sub
 		csg4j.Index = i
 
-		csg4j.Range.MaxWithY = *cg[i].MaxWithY
-		csg4j.Range.MinWithY = *cg[i].MinWithY
-		csg4j.Range.MaxWithX = *cg[i].MaxWithX
-		csg4j.Range.MinWithX = *cg[i].MinWithX
+		csg4j.Range.MaxY = cg[i].Range.MaxY
+		csg4j.Range.MinY = cg[i].Range.MinY
+		csg4j.Range.MaxX = cg[i].Range.MaxX
+		csg4j.Range.MinX = cg[i].Range.MinX
 
-		csg4j.Range.MaxX = csg4j.Range.MaxWithX.X
-		csg4j.Range.MinX = csg4j.Range.MinWithX.X
-		csg4j.Range.MaxY = csg4j.Range.MaxWithY.Y
-		csg4j.Range.MinY = csg4j.Range.MinWithY.Y
+		csg4j.Range.MinXfloat = cg[i].Range.MinXfloat
+		csg4j.Range.MaxXfloat = cg[i].Range.MaxXfloat
+		csg4j.Range.MinYfloat = cg[i].Range.MinYfloat
+		csg4j.Range.MaxYfloat = cg[i].Range.MaxYfloat
 
 		cg4j.Interval = append(cg4j.Interval, csg4j)
 	}
+	for _, e := range fg.IntervalInfo {
+		if !isInList(cg4j.FullRange, e.Range[0]) {
+			cg4j.FullRange = append(cg4j.FullRange, e.Range[0])
+		}
+
+		if !isInList(cg4j.FullRange, e.Range[1]) {
+			cg4j.FullRange = append(cg4j.FullRange, e.Range[1])
+		}
+	}
+
 	return cg4j
 }
 
-
-type Range struct {
-
-	MaxX float64		`json:"max_x"`
-	MinX float64		`json:"min_x"`
-	MaxY float64		`json:"max_y"`
-	MinY float64		`json:"min_y"`
-
-	// MaxWithX is maximum point with
-	// respect to X axis
-	MaxWithX Point		`json:"max_with_x"`
-
-	// MinWithX is point with respect
-	// to X axis
-	MinWithX Point		`json:"min_with_x"`
-
-	// MaxWithY is point with respect
-	// to Y axis
-	MaxWithY Point		`json:"max_with_y"`
-
-	// MinWithY is point with respect
-	// to Y axis
-	MinWithY Point		`json:"min_with_y"`
+func isInList(l []float64, elem float64) bool{
+	for _, e := range l {
+		if e == elem {
+			return true
+		}
+	}
+	return false
 }
-
 
 type CompositeSubGraph4Json struct {
 	Index int					`json:"index"`
@@ -550,7 +577,8 @@ type CompositeGraph4Json struct {
 	Prop []Proposition 					`json:"prop"`
 	Mode []Mode							`json:"mode"`
 	Xdata []float64						`json:"xdata"`
-
+	IntervalInfo []IntervalInfo			`json:"intervalInfo"`
+	FullRange []float64					`json:"fullIntervalRange"`
 }
 
 // CompositeGraph contains a list of SubGraph that have same logical
@@ -568,21 +596,7 @@ type CompositeGraph4Json struct {
 type CompositeGraph struct {
 	Sub []SubGraph
 
-	// MaxWithX is FullGraph's maximum
-	// point with respect to X axis
-	MaxWithX *Point
-
-	// MinWithX is FullGraph's minimum
-	// point with respect to X axis
-	MinWithX *Point
-
-	// MaxWithY is FullGraph's maximum
-	// point with respect to Y axis
-	MaxWithY *Point
-
-	// MinWithY is FullGraph's minimum
-	// point with respect to Y axis
-	MinWithY *Point
+	Range Range
 
 	// PointCounter counts number of points
 	PointCounter int
@@ -615,47 +629,56 @@ func (cg *CompositeGraph) getSubPoint(){
 		return
 	}
 
-	cg.MaxWithX = cg.Sub[0].maxWithX
-	cg.MinWithX = cg.Sub[0].minWithX
-	cg.MaxWithY = cg.Sub[0].maxWithY
-	cg.MinWithY = cg.Sub[0].minWithY
+	cg.Range.MaxX = cg.Sub[0].Range.MaxX
+	cg.Range.MinX = cg.Sub[0].Range.MinX
+	cg.Range.MaxY = cg.Sub[0].Range.MaxY
+	cg.Range.MinY = cg.Sub[0].Range.MinY
 
 
 	for _, e := range cg.Sub{
 
 		// calculate maximum point and minimum in point list
 		// with respect to x
-		if e.maxWithX.X > cg.MaxWithX.X {
-			cg.MaxWithX = e.maxWithX
+		if e.Range.MaxX.X > cg.Range.MaxX.X {
+			cg.Range.MaxX = e.Range.MaxX
 		}
 
-		if e.minWithX.X < cg.MinWithX.X {
-			cg.MinWithX = e.minWithX
+		if e.Range.MinX.X < cg.Range.MinX.X {
+			cg.Range.MinX = e.Range.MinX
 		}
 
 		// calculate maximum point and minimum in point list
 		// with respect to y
-		if e.maxWithY.Y > cg.MaxWithY.Y {
-			cg.MaxWithY = e.maxWithY
+		if e.Range.MaxY.Y > cg.Range.MaxY.Y {
+			cg.Range.MaxY = e.Range.MaxY
 		}
 
-		if e.minWithY.Y < cg.MinWithY.Y {
-			cg.MinWithY = e.minWithY
+		if e.Range.MinY.Y < cg.Range.MinY.Y {
+			cg.Range.MinY = e.Range.MinY
 		}
 
 		cg.PointCounter += len(e.Elem.Data)
 	}
 
-	cg.DeltaY = cg.MaxWithY.Y - cg.MinWithY.Y
+	cg.DeltaY = cg.Range.MaxY.Y - cg.Range.MinY.Y
 	cg.FootStep = cg.DeltaY / float64(cg.PointCounter)
+	cg.Range.MinXfloat = cg.Range.MinX.X
+	cg.Range.MinYfloat = cg.Range.MinY.Y
+	cg.Range.MaxXfloat = cg.Range.MaxX.X
+	cg.Range.MaxYfloat = cg.Range.MaxY.Y
 
 }
 
 func (cg *CompositeGraph) Init(){
-	cg.MaxWithX = nil
-	cg.MinWithX = nil
-	cg.MaxWithY = nil
-	cg.MinWithY = nil
+	cg.Range.MaxX = nil
+	cg.Range.MinX = nil
+	cg.Range.MaxY = nil
+	cg.Range.MinY = nil
+	cg.Range.MinXfloat = 0.0
+	cg.Range.MinYfloat = 0.0
+	cg.Range.MaxXfloat = 0.0
+	cg.Range.MaxYfloat = 0.0
+
 	cg.DeltaY = 0.0
 	cg.PointCounter = 0
 	cg.FootStep = 0.0

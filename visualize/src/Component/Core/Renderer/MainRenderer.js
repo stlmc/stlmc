@@ -71,6 +71,7 @@ class Renderer {
     }
 
     loadGraph(propName, isRedraw, maxX, maxY, l, xdata) {
+        console.log(xdata);
         this.isRedraw = isRedraw;
         this.refData = l;
         d3.select(this._tag).selectAll("#main_svg").remove();

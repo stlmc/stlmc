@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import $ from "jquery";
 import "./MainRenderer.scss";
 
-class PropositionRenderer {
+class ModeRenderer {
 
 
     constructor(
@@ -28,7 +28,7 @@ class PropositionRenderer {
         this._margin_viewer = _margin_viewer;
         this._margin_controller = _margin_controller;
         this._index = _index;
-        this._tag = "#proposition"+this._index;
+        this._tag = "#mode"+this._index;
         this._jd = _jd;
         this._size = {
             width: this._size.width,
@@ -52,26 +52,26 @@ class PropositionRenderer {
      * d3.select must be invoke after Reactjs's componentdidmount called.
      * This will get DOM elements well.
      */
-    setCanvas() {
+    setCanvas(d) {
         // set main canvas
-        this.canvas = d3.select(this._tag).append("svg").attr("id", "prop_svg")
+        this.canvas = d3.select(this._tag).append("svg").attr("id", "mode_svg")
             .attr("width", this._size.width).attr("height", this._size.height);
-            //.attr("transform", "translate(0, "+ this._index * this.effective_controller_height_difference + ")");
+        //.attr("transform", "translate(0, "+ this._index * this.effective_controller_height_difference + ")");
         //this.canvas = d3.select(this._tag).append("svg").attr("id", "prop_svg"+this._index).attr("width", this._size.width).attr("height", this._size.height);
         //this.canvas = d3.select("#main_svg").append("g").attr("id", "prop"+this._index).attr("width", this._size.width).attr("height", 100);
         // set data canvas
         //this.setDataCanvas();
         this.setCanvasAxis();
         // set prop canvas
-        this.setPropCanvas();
+        this.setPropCanvas(d);
     }
 
 
-    loadGraph(isEmpty, maxX, data, xrange) {
+    loadGraph(isEmpty, maxX, data, xrange, d) {
         this.dataXrange = maxX;
         this.xrange = xrange;
         console.log(xrange);
-        this.setCanvas();
+        this.setCanvas(d);
         //d3.selectAll("#main_svg").remove();
         //d3.selectAll("#tooltip").remove();
         if (!isEmpty) {
@@ -102,8 +102,8 @@ class PropositionRenderer {
 
             this.propGraph = this.propCanvasBack
                 .append("g")
-                .attr("id", "propGraph")
-                .selectAll(".propGraphData")
+                .attr("id", "modeGraph")
+                .selectAll(".modeGraphData")
                 .data(data)
                 .enter();
 
@@ -128,12 +128,12 @@ class PropositionRenderer {
                 .attr("d", (d) => {
                     return this.propLineGenerator(d);
                 })
-                .attr("class", "propGraphData")
+                .attr("class", "modeGraphData")
                 .attr("stroke", "red")
                 .attr("stroke-width", 1.5)
-                .attr("transform", () => {
-                    return "translate(0," + (this.viewer_height + this.effective_controller_height - this._margin_viewer.top +1.5) + ")"
-                });
+                // .attr("transform", () => {
+                //     return "translate(0," + (this.viewer_height + this.effective_controller_height - this._margin_viewer.top +1.5) + ")"
+                // });
         }
 
     }
@@ -186,7 +186,7 @@ class PropositionRenderer {
      *
      * Need to use propCanvasFront for interactions and propCanvas(back) for data showing or redraw, update.
      */
-    setPropCanvas() {
+    setPropCanvas(d) {
 
         // set prop canvas
         this.propCanvas = this.canvas.append("g").attr("width", this.controller_width).attr("height", this.effective_controller_height);
@@ -224,18 +224,20 @@ class PropositionRenderer {
             // Add interval lines.
             this.propCanvasIntervalLines = this.propCanvasBack.append("g")
                 .attr("id", "propCanvasIntervalLinesBase")
-                .attr("transform", "translate(" + 0 + "," + (newHeight + this.effective_controller_height_difference + 1) + ")");
+                .attr("transform", "translate(" + 0 + "," + (this.viewer_height - 30.0) + ")");
+                //.attr("transform", "translate(" + 0 + "," + (newHeight + this.effective_controller_height_difference + 1) + ")");
             // tickValues is actual data line
             // e.g) if you put [1, 2] in the tickValues than, it will draw line to x:1 and x:2.
-            this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscale).tickValues(this.xrange).tickSize(-(this.viewer_height + this.effective_controller_height)).tickPadding(3).tickFormat(() => {
+            this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscale).tickValues(this.xrange).tickSize((this.viewer_height + 100.0)).tickPadding(3).tickFormat(() => {
                 return ""
             })).select(".domain").remove();
         } else {
             // Add interval lines.
             this.propCanvasIntervalLines = this.propCanvasBack.append("g")
                 .attr("id", "propCanvasIntervalLines")
-                .attr("transform", "translate(" + 0 + "," + (newHeight + this.effective_controller_height_difference + 1) + ")");
-            this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscale).tickValues(this.xrange).tickSize(-(this.effective_controller_height)).tickPadding(3).tickFormat(() => {
+                .attr("transform", "translate(" + 0 + "," + (this.effective_controller_height - 30.0) + ")");
+                //.attr("transform", "translate(" + 0 + "," + (newHeight + this.effective_controller_height_difference + 1) + ")");
+            this.propCanvasIntervalLines.call(d3.axisBottom(this.dataCanvasXscale).tickValues(this.xrange).tickSize((this.viewer_height + 100.0)).tickPadding(3).tickFormat(() => {
                 return ""
             })).select(".domain").remove();
         }
@@ -244,20 +246,23 @@ class PropositionRenderer {
         // Add x axis for propCanvas.
         this.propCanvasXaxis = this.propCanvas.append("g")
             .attr("id", "propCanvasXaxis")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + (this.effective_controller_height_difference) + 1) + ")")
+            .attr("transform", "translate(" + this.x_clip_margin + ", " + (newHeight) + ")")
+            //.attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + (this.effective_controller_height_difference) + 1) + ")")
             .call(d3.axisBottom(this.dataCanvasXscale));
 
         // Add y axis.
         this.propCanvasYaxis = this.propCanvas.append("g")
             .attr("id", "propCanvasYaxis")
-            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + this.effective_controller_height_difference - this.effective_controller_height + 1) + ")");
+            .attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight) + ")");
+            //.attr("transform", "translate(" + this.x_clip_margin + "," + (newHeight + this.effective_controller_height_difference - this.effective_controller_height + 1) + ")");
 
+        // todo
         this.propCanvasYaxis.call(d3.axisLeft(this.propCanvasYscale).ticks(4).tickFormat(
             (d) => {
                 if (d === 1) {
-                    return "false"
+                    return d.name + " = false"
                 } else if (d === 2) {
-                    return "true"
+                    return d.name + " = true"
                 } else {
                     return " "
                 }
@@ -339,4 +344,4 @@ class PropositionRenderer {
 
 }
 
-export {PropositionRenderer};
+export {ModeRenderer};
