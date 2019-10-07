@@ -1,0 +1,39 @@
+bool heater;
+(-20, 100] x;
+{
+    mode:
+        heater == false;
+    inv:
+        x > 0;
+    flow:
+        x(t) = -1.2 * t + x(0);
+    jump:
+        (x > 30) ==>
+          ((heater' = false) and (x' = x));
+        (x <= 24) ==>
+          ((heater' = true) and (x' = x));
+}
+{
+    mode:
+        heater == true;
+    inv:
+        x < 60;
+    flow:
+        d/dt[x] = 4;
+    jump:
+        (x > 30) ==>
+          ((heater' = false) and (x' = x));
+        (x <= 24) ==>
+          ((heater' = true) and (x' = x));
+}
+
+init:
+(and (heater == false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+
+propositions:
+reachability = x > 23;
+
+goal:
+(<> [0.0, 40.0] (reachability)) ;
+([] [0.0, inf) (x > 24)) ;
+
