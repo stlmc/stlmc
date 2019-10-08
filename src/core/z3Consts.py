@@ -142,9 +142,9 @@ class z3Consts:
                 return list()
         for i in list(formula.children):
             result.extend(self.propInformula(i))
-        return result        
-               
-   
+        return result
+
+
     def goalConstraints(self, bound, goal):
         result = list()
         for k in range(bound+1):
@@ -154,19 +154,25 @@ class z3Consts:
             for prop in self.propInformula(goal):
                 time = Real('time' + str(k))
                 const.append(self.makeSubProps(k)[str(prop)] == Forall(time, self.makePropDict()[prop], self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
-                const.append(Not(self.makeSubProps(k)[str(prop)]) == Forall(time, Not(self.makePropDict()[prop]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))) 
+                const.append(Not(self.makeSubProps(k)[str(prop)]) == Forall(time, Not(self.makePropDict()[prop]), self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
             result.append(And(*const))
         return Or(*result)
 
     def propForall(self, exp, bound, curFlow):
-        if exp.getType() == Type.Bool:
-            return exp
-
+        # Change proposition formula type to Gt or Ge
         if isinstance(exp, Lt):
             exp = Gt((exp.right() - exp.left()), RealVal(0))
         if isinstance(exp, Le):
             exp = Ge((exp.right() - exp.left()), RealVal(0))
 
+        # If proposition is just boolean variable, return original expression 
+        if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
+            if exp.getType() == Type.Bool:
+                return exp
+            else:
+                raise ("Proposition constraints something wrong")
+
+        # Case Real value >(or >=) 0
         if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
             return exp 
 
@@ -174,7 +180,9 @@ class z3Consts:
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
         handlingExp = exp.left() - exp.right()
 
+        # f(t) >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+        # f(t') >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
 
         curFlowExp = curFlow.getExpression(self.subvars)
@@ -202,9 +210,14 @@ class z3Consts:
         const.append(Or(Ge(diffExp,RealVal(0)), Le(diffExp,RealVal(0))))
 
         if isinstance(exp, Gt):
+            # Check a start point of interval satisfies the proposition
+            const.append(Gt(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+            # Case : f(t) = 0 -> dot(f(T)) > 0, forall T in (t, t')
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == RealVal(0), self.propForall(Gt(diffExp,RealVal(0)), bound, curFlow)))
+            # Case : f(t') = 0 -> dot(f(T)) < 0, forall T in (t, t')
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == RealVal(0), self.propForall(Lt(diffExp, RealVal(0)), bound, curFlow)))
         elif isinstance(exp,Ge):
+            const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'0')) == RealVal(0), self.propForall(Ge(diffExp,RealVal(0)), bound, curFlow)))
             const.append(Implies(handlingExp.substitution(self.makeSubVars(bound,'t')) == RealVal(0), self.propForall(Le(diffExp, RealVal(0)), bound, curFlow)))
         else:
@@ -228,7 +241,6 @@ class z3Consts:
                         curFlow = self.modeModule[m].getFlow()
                         const.append(Implies(And(i, curMode).substitution(combine), self.propForall(self.makePropDict()[i], k, curFlow)))
                         const.append(Implies(And(Not(i), curMode).substitution(combine), self.propForall(Not(self.makePropDict()[i]).reduce(), k, curFlow)))
-                    #const.append(self.makeSubProps(k)[str(i)] == self.propForall(self.makePropDict()[i], start, end, k, curFlow))
             result.append(And(*const))
         return And(*result)
 

@@ -59,28 +59,28 @@ class Api:
     def getModesIdDict(self):
         result = {}
         for i in range(len(self.modeVar)):
-            result[str(self.modeVar[i].id)] = list()
+           result[str(self.modeVar[i].id)] = (list(), str(self.modeVar[i].type))
         return result
 
     # return mode declaraion to string
     def getModeDeclWithModelID(self):
         idList = self.getModelIdList()
-        modeIdDict = self. getModesIdDict()
+        modeIdDict = self.getModesIdDict()
         result = []
         for i in range(len(idList)):
             conditions = self.mode_module[idList[i]].getMode().props
             for j in range(len(conditions)):
                 if conditions[j].left in modeIdDict.keys():
                     if modeIdDict[conditions[j].left] is None:
-                        modeIdDict[conditions[j].left] = [str(conditions[j].right)]
+                        modeIdDict[conditions[j].left][0] = [str(conditions[j].right)]
                     else:
-                        modeIdDict[conditions[j].left].extend([str(conditions[j].right)])
-
+                        modeIdDict[conditions[j].left][0].extend([str(conditions[j].right)])
         result = list()
         for key in modeIdDict.keys():
             dictElement = dict()
-            dictElement['name'] = key
-            dictElement['data'] = modeIdDict[key]
+            dictElement["name"] = key
+            dictElement["type"] = modeIdDict[key][1]
+            dictElement["data"] = modeIdDict[key][0]
             result.append(dictElement)
         return result, idList
 
@@ -264,12 +264,13 @@ class Api:
         sol_init_list = self.getSolEqInitialValue()
         sol_l = self.getSol()
 
-        interval_dict = dict()
+        interval_list = []
 
 
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
+            interval_dict = dict()
             tmp_res = []
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             global_newT = global_timeValues[index].tolist()
@@ -290,8 +291,9 @@ class Api:
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
+            interval_list.append(interval_dict)
 
-        return interval_dict
+        return interval_list, global_newT
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
@@ -300,9 +302,8 @@ class Api:
         c_val = self.getContValues()
 
         var_list = self.intervalsVariables()
+        interval_list = []
 
-
-        interval_dict = dict()
 
         i_val = []
         for var in range(len(var_list[index])):
@@ -318,6 +319,7 @@ class Api:
         # split by variables
 
         for el in range(len(var_list[index])):
+            interval_dict = dict()
             tmp_res = []
             for i, e in enumerate(res):
                 # this line makes point pair. For example, below lines will makes
@@ -330,10 +332,11 @@ class Api:
             interval_dict["name"] = var_list[index][el]
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
+            interval_list.append(interval_dict)
 
-        #print("calcDIffEq")
-        #print(interval_dict)
-        return interval_dict
+#         print("calcDIffEq")
+#         print(interval_dict)
+        return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
 
@@ -359,33 +362,54 @@ class Api:
                 diffEq_dict.append(tmp)
 
 
-        #print("Sol eq dict")
-        #print(solEq_dict)
-
-        #print("Diff eq dict")
-        #print(diffEq_dict)
+#         print("Sol eq dict")
+#         print(solEq_dict)
 #
-        res = []
+#         print("Diff eq dict")
+#         print(diffEq_dict)
 
+        res = []
+        time_list = []
 
         for elem in solEq_dict:
-            elem["data"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
+            elem["data"], elem["time"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
         # TODO: need to add diffEq part..... down here!
 
 
         for elem in diffEq_dict:
-            elem["data"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
-
+            elem["data"], elem["time"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
         for i in range(len(model_id)):
             for elem in solEq_dict:
-                if elem["interval"] == i and 'data' in elem.keys():
-                    res.append(elem["data"])
+                if elem["interval"] == i :
+                    if 'data' in elem.keys():
+                        res += elem["data"]
+                    if 'time' in elem.keys():
+                        time_dict = dict()
+                        time_dict["intIndex"] = i
+
+                        elem_time_pair = []
+                        elem_time_pair.append(elem["time"][0])
+                        elem_time_pair.append(elem["time"][len(elem["time"])-1])
+                        time_dict["range"] = elem_time_pair
+                        time_dict["data"] = elem["time"]
+                        time_list.append(time_dict)
             for elem in diffEq_dict:
-                if elem["interval"] == i and 'data' in elem.keys():
-                    res.append(elem["data"])
-        return res
+                if elem["interval"] == i:
+                    if 'data' in elem.keys():
+                        res += elem["data"]
+                    if 'time' in elem.keys():
+                        time_dict = dict()
+                        time_dict["intIndex"] = i
+
+                        elem_time_pair = []
+                        elem_time_pair.append(elem["time"][0])
+                        elem_time_pair.append(elem["time"][len(elem["time"])-1])
+                        time_dict["range"] = elem_time_pair
+                        time_dict["data"] = elem["time"]
+                        time_list.append(time_dict)
+        return res, time_list
 
     # get intervals variable list
     def intervalsVariables(self):
@@ -413,28 +437,35 @@ class Api:
             '''
 
             global_t = self.getNumpyGlobalTimeValues()
+            result = list()
+            if self.model is not None:
+                for i in range(self.bound + 1):
+                    declares = self.model.decls()
+                    for k in declares:
+                        if "time" + str(i) == k.name():
+                            result.append(float(self.model[k].as_decimal(6).replace("?", "")))
 
+            print(result)
 
             local_t = self.getNumpyLocalTimeValues()
 
 
-
             outer2 = dict()
-            mode_dict = dict()
-            mode_dict['name'], mode_dict['data'] = self.getModeDeclWithModelID()
 
-            outer2['data'] = self.calcEq(global_t, local_t)
+            gmid, _ = self.getModeDeclWithModelID()
+
+            #outer2['data'] = self.calcEq(global_t, local_t)
 
             outer2['variable'] = self.getVarsId()
-            outer2['interval'] = self.calcEq(global_t, local_t)
+            outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
             outer2['prop'] = self.getProposition()
-            outer2['mode'] = mode_dict
+            outer2['mode'] = gmid
             #outer2['mode'] = self.getModesId()
             #outer2['mode_t'] = self.getModeDecl()
-
+            print(outer2["intervalInfo"])
 
             import json
-            #print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
+            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
