@@ -17,25 +17,25 @@ class Renderer {
         this._size = _size;
         this._margin_viewer = _margin_viewer;
         this._index = _index;
-        this._tag = "#graph"+this._index;
+        this._tag = "#graph" + this._index;
         this._jd = _jd;
         this.data_viewer_height = this._size.height - 20.0;
     }
 
 
-    get graph(){
+    get graph() {
         return this._graph;
     }
 
-    set graph(graph){
+    set graph(graph) {
         this._graph = graph;
     }
 
-    clear(){
+    clear() {
         d3.select(this._tag).selectAll("#main_svg").remove();
     }
 
-    loadGraph(maxX, maxY, l, xdata,  pdata) {
+    loadGraph(maxX, maxY, l, xdata, pdata, vardict) {
         console.log(xdata);
         this.refData = l;
         d3.select(this._tag).selectAll("#main_svg").remove();
@@ -47,10 +47,10 @@ class Renderer {
 
         let t0 = Date.now(), t1;
 
-        d3.timer( function() {
+        d3.timer(function () {
 
             t1 = Date.now();
-            fps.text( Math.round(1000 / (t1-t0)) + " fps");
+            fps.text(Math.round(1000 / (t1 - t0)) + " fps");
             t0 = t1;
         });
 
@@ -111,7 +111,7 @@ class Renderer {
 
         // Add this Grid xis first. If not, left y axis will overlap with grid axis.
         this.graphCanvasXaxisGrid = this.graphCanvas.append("g")
-            .attr("id", "graphCanvasXaxisGrid"+this._index)
+            .attr("id", "graphCanvasXaxisGrid" + this._index)
             .attr("class", "XaxisGrid");
 
         this.graphCanvasXaxisGrid.call(make_y_grid()
@@ -123,7 +123,7 @@ class Renderer {
             .select(".domain").remove();
 
         this.graphCanvasYaxisGrid = this.graphCanvas.append("g")
-            .attr("id", "graphCanvasYaxisGrid"+this._index)
+            .attr("id", "graphCanvasYaxisGrid" + this._index)
             .attr("class", "YaxisGrid");
 
         // -this._size.width will mirroring the position.
@@ -139,16 +139,14 @@ class Renderer {
         // If you are adding clipping path without margin, your zero of your axis will get lost.
         // Add x and y axis to dataCanvas.
         this.graphCanvasXaxis = this.canvas.append("g")
-            .attr("id", "graphCanvasXaxis"+this._index)
+            .attr("id", "graphCanvasXaxis" + this._index)
             .attr("transform", "translate(" + this.x_clip_margin + "," + (this.data_viewer_height + 1) + ")")
             .call(d3.axisBottom(this.dataCanvasXscale));
 
         this.graphCanvasYaxis = this.canvas.append("g")
-            .attr("id", "graphCanvasYaxis"+this._index)
+            .attr("id", "graphCanvasYaxis" + this._index)
             .attr("transform", "translate(" + this.x_clip_margin + "," + 1 + ")")
             .call(d3.axisLeft(this.dataCanvasYscale));
-
-
 
 
         // Add zoom function to dataCanvas
@@ -177,8 +175,6 @@ class Renderer {
                 })).select(".domain").remove();
 
 
-
-
                 this.propCanvasYscale =
                     d3.scaleLinear()
                         .domain([0, 3])
@@ -205,14 +201,13 @@ class Renderer {
                     .curve(d3.curveMonotoneX);
 
 
-
                 d3.selectAll(".propLines")
-                    .attr("d",(d) =>{
+                    .attr("d", (d) => {
                         return this.lineGenerator2(d);
                     });
 
                 d3.selectAll(".modeLines")
-                    .attr("d",(d) =>{
+                    .attr("d", (d) => {
                         return this.lineGenerator2(d);
                     });
 
@@ -231,7 +226,7 @@ class Renderer {
 
 
                 // calculating mouse position
-                let mouse = d3.mouse($("#graphCanvas"+this._index)[0]);
+                let mouse = d3.mouse($("#graphCanvas" + this._index)[0]);
                 let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
                 let bisectDate = d3.bisector((d) => {
                     return d[0];
@@ -265,16 +260,7 @@ class Renderer {
 
             });
         console.log("rogogoggogogog");
-        this.drawGraph(l, xdata);
 
-    }
-
-    /**
-     * Set tooltips for data canvas.
-     *
-     * Add tooltip box, circles, texts for selected data.
-     * */
-    setDataCanvasTooltip() {
         this.tooltip = d3.select(this._tag)
             .append("div")
             .attr("id", "tooltip")
@@ -286,19 +272,62 @@ class Renderer {
             .style("border-radius", "5px")
             .style("padding", "10px");
 
-        // TODO: Calculate initial circles positions.
-        this.lineGraph.append('circle')
-            .attr("r", 7)
+
+
+        this.drawGraph(l, xdata, vardict);
+
+    }
+
+
+    drawGraph(l, xdata, vardict) {
+
+        let dataCanvasXscale = this.dataCanvasXscale;
+        let dataCanvasYscale = this.dataCanvasYscale;
+        this.lineGenerator = d3.line()
+            .x(function (d) {
+                return dataCanvasXscale(d[0]);
+            })
+            .y(function (d) {
+                return dataCanvasYscale(d[1]);
+            }).curve(d3.curveMonotoneX);
+
+        // add line to dataCanvas front where clipping path is added.
+        this.lineGraph = this.graphCanvas
+            .selectAll(".linegraph")
+            .append("g")
+            .data(l)
+            .enter();
+
+        console.log(l);
+
+        this.lineGraphColor = {};
+        this.lineGraph.append("path")
+            .attr("d", (d) => {
+                return this.lineGenerator(d);
+            })
+            .attr("class", "lines")
             .attr("stroke", (d, i) => {
-                return this.lineGraphColor[d.name]
+                let c = this.colorScale((i + 2).toString());
+                this.lineGraphColor[d.name] = c;
+                return c
             })
-            .style("stroke-width", "1px")
-            .attr('id', 'focusCircle')
-            .attr("transform", ()=>{
-                return "translate(0, -20)"
-            })
-            .style("visibility", "hidden")
+            .attr("transform", "translate(0, -20)")
+            .attr("stroke-width", 1.5)
             .style("fill", "none");
+
+        // TODO: Calculate initial circles positions.
+        // this.lineGraph.append('circle')
+        //     .attr("r", 7)
+        //     .attr("stroke", (d, i) => {
+        //         return this.lineGraphColor[d.name]
+        //     })
+        //     .style("stroke-width", "1px")
+        //     .attr('id', 'focusCircle')
+        //     .attr("transform", () => {
+        //         return "translate(0, -20)"
+        //     })
+        //     .style("visibility", "hidden")
+        //     .style("fill", "none");
 
         this.lineGraph.append("text")
             .attr('id', 'focusText')
@@ -309,59 +338,26 @@ class Renderer {
                 return "11px"
             })
             .style("visibility", "hidden");
-    }
 
-    drawGraph(l, xdata){
 
-            let dataCanvasXscale = this.dataCanvasXscale;
-            let dataCanvasYscale = this.dataCanvasYscale;
-            this.lineGenerator = d3.line()
-                .x(function (d) {
-                    return dataCanvasXscale(d[0]);
-                })
-                .y(function (d) {
-                    return dataCanvasYscale(d[1]);
-                }).curve(d3.curveMonotoneX);
+        // Distinguish between original one and redrawn one because of graph coloring
 
-            // add line to dataCanvas front where clipping path is added.
-            this.lineGraph = this.graphCanvas
-                .selectAll(".linegraph")
-                .append("g")
-                .data(l)
-                .enter();
-
-            console.log(l);
-
-            // Distinguish between original one and redrawn one because of graph coloring
-
-                this.lineGraphColor = {};
-                this.lineGraph.append("path")
-                    .attr("d", (d) => {
-                        return this.lineGenerator(d);
-                    })
-                    .attr("class", "lines")
-                    .attr("stroke", (d, i) => {
-                        let c = this.colorScale((i + 2).toString());
-                        this.lineGraphColor[d.name] = c;
-                        return c
-                    })
-                    .attr("transform", "translate(0, -20)")
-                    .attr("stroke-width", 1.5)
-                    .style("fill", "none");
 
         // TODO: Calculate initial circles positions.
-        this.lineGraph.append('circle')
-            .attr("r", 7)
-            .attr("stroke", (d, i) => {
-                return this.lineGraphColor[d.name]
-            })
-            .style("stroke-width", "1px")
-            .attr('id', 'focusCircle')
-            .attr("transform", ()=>{
-                return "translate(0, -20)"
-            })
-            .style("visibility", "hidden")
-            .style("fill", "none");
+        // this.lineGraph.append('circle')
+        //     .attr("r", 7)
+        //     .attr("stroke", (d, i) => {
+        //         return this.lineGraphColor[d.name]
+        //     })
+        //     .style("stroke-width", "1px")
+        //     .attr('id', 'focusCircle')
+        //     .attr("transform", () => {
+        //         return "translate(0, -20)"
+        //     })
+        //     .style("visibility", "hidden")
+        //     .style("fill", "none");
+
+
 
 
         let bisectDate = d3.bisector((d) => {
@@ -392,40 +388,40 @@ class Renderer {
             .on("mousemove", () => {
 
                 // Get current mouse position.
-                let mouse = d3.mouse($("#graphCanvas"+this._index)[0]);
+                let mouse = d3.mouse($("#graphCanvas" + this._index)[0]);
                 let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
+                console.log(l);
                 let bisectPos = bisectDate(xdata, pos);
-                console.log(pos);
-                console.log(bisectPos);
                 if (bisectPos > 0 && xdata.length - 1 >= bisectPos) {
-                    console.log("legolego");
                     // Choose close one, between 2 of them.
                     let d0 = xdata[bisectPos - 1];
                     let d1 = xdata[bisectPos];
 
                     // work out which date value is closest to the mouse
-                    let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                    let x = this.dataCanvasXscaleZoom(final_data[0]);
+                    let final_data = pos - d0 > d1 - pos ? d1 : d0;
+                    let x = this.dataCanvasXscaleZoom(final_data);
+
+
 
                     let tmpText = [];
                     let tmpColor = [];
                     this.lineGraph.selectAll("#focusText")
-                        .attr('x', x)
-                        .attr('y', (d, i) => {
-                            // Another d0, d1.
-                            let d0 = (xdata)[bisectPos - 1];
-                            let d1 = (xdata)[bisectPos];
-
-                            let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                            return this.dataCanvasYscaleZoom(final_data[1]);
-                        })
+                        //.attr('x', x)
+                        // .attr('y', (d, i) => {
+                        //     // Another d0, d1.
+                        //     let d0 = (xdata)[bisectPos - 1];
+                        //     let d1 = (xdata)[bisectPos];
+                        //
+                        //     let final_data = pos - d0 > d1 - pos ? d1 : d0;
+                        //     return this.dataCanvasYscaleZoom(final_data);
+                        // })
                         .text((d, i) => {
                             let d0 = (xdata)[bisectPos - 1];
                             let d1 = (xdata)[bisectPos];
                             //console.log(dd1)
-                            let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                            let newY = this.dataCanvasYscaleZoom(final_data[1]);
-                            let tstring = d.name + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(newY)) + ")";
+                            let final_data = pos - d0 > d1 - pos ? d1 : d0;
+                            //let newY = this.dataCanvasYscaleZoom(final_data);
+                            let tstring = vardict.get(0) + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(mouse[1])) + ")";
                             if (!tmpText.includes(tstring)) {
                                 tmpText.push(tstring);
                                 tmpColor.push(d.name);
@@ -434,15 +430,15 @@ class Renderer {
                         });
 
 
-                    this.lineGraph.selectAll("#focusCircle")
-                        .attr('cx', x)
-                        .attr('cy', (d, i) => {
-                            console.log("???");
-                            let d0 = (xdata)[bisectPos - 1];
-                            let d1 = (xdata)[bisectPos];
-                            let final_data = pos - d0 > d1 - pos ? d1 : d0;
-                            return this.dataCanvasYscaleZoom(final_data);
-                        });
+                    // this.lineGraph.selectAll("#focusCircle")
+                    //     .attr('cx', x)
+                    //     .attr('cy', (d, i) => {
+                    //         console.log("???");
+                    //         let d0 = (xdata)[bisectPos - 1];
+                    //         let d1 = (xdata)[bisectPos];
+                    //         let final_data = pos - d0 > d1 - pos ? d1 : d0;
+                    //         return this.dataCanvasYscaleZoom(final_data);
+                    //     });
                 }
             })
             .call(this.zoom);

@@ -35,6 +35,8 @@ class Json {
      * Internally has intervals.
      */
     private _intervalsMap: Map<number, [number, number][][]> = new Map<number, [number, number][][]>();
+    private _intervalVarMap: Map<number, string[]> = new Map<number, string[]>();
+
     private _xRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _yRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _graph_size: number = 0;
@@ -85,6 +87,10 @@ class Json {
         return this._intervalsMap.get(index)
     }
 
+    GetVar(index:number): (string[] | undefined) {
+        return this._intervalVarMap.get(index);
+    }
+
     GetGraphSize(): number {
         return this._graph_size;
     }
@@ -110,6 +116,9 @@ class Json {
         return this._interval_flat_list;
     }
 
+    get varMap(){
+        return this._intervalVarMap;
+    }
 
     get map() {
         return this._intervalsMap;
@@ -151,6 +160,7 @@ class Json {
 
     clearAll() {
         this._intervalsMap.clear();
+        this._intervalVarMap.clear();
         this._xRangeMap.clear();
         this._yRangeMap.clear();
         this._graph_size = 0;
@@ -289,12 +299,26 @@ class Json {
                 let [index, graph, range] = Object.values(interval[i]);
                 for (let [k, v] of Object.entries(graph)) {
                     let [name, intIndex, points] = Object.values(v);
+                    let intIndexInt = parseInt(intIndex);
+
                     let tmp_interval: [number, number][] = [];
+                    let varMap = this._intervalVarMap.get(intIndexInt);
+                    // already exist
+                    if (varMap) {
+                        varMap.push(name);
+                        this._intervalVarMap.set(intIndexInt, varMap);
+                    } else {
+                        let nVarMap = []
+                        nVarMap.push(name);
+                        this._intervalVarMap.set(intIndexInt, nVarMap);
+                    }
+
                     for (let pv of points) {
                         let [x, y] = Object.values(pv);
                         tmp_interval.push([parseFloat(x), parseFloat(y)]);
                     }
                     intervals.push(tmp_interval)
+
                 }
                 let [maxX, minX, maxY, minY, m, m1, m2, m3] = Object.values(range);
 

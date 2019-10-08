@@ -196,7 +196,7 @@ class LinePlot extends React.Component<Props, State> {
                 console.log(e);
                 let intv: ([number, number][][] | undefined) = this.njson.GetGraph(e);
                 if (intv) {
-                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist, this.njson.GetIntervalInfoFlat());
+                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.varMap);
                 }
             }
 
@@ -254,7 +254,8 @@ class LinePlot extends React.Component<Props, State> {
                 console.log(this.njson.variables);
                 let gs = this.njson.GetGraphSize();
                 console.log("GraphSize is " + gs);
-                this.renderers = []
+                this.renderers = [];
+                let isRedBool = new Map<number, boolean>();
                 for (let e = 0; e < gs; e++) {
                     let red = new Renderer(
                         this.graph_size, this.base_margin, e
@@ -262,6 +263,7 @@ class LinePlot extends React.Component<Props, State> {
                     red.graph = this.njson.GetGraph(e);
                     console.log(red.graph);
                     this.renderers.push(red);
+                    isRedBool.set(e, true);
                 }
 
                 let isBoolean = new Map<number, boolean>();
@@ -292,6 +294,7 @@ class LinePlot extends React.Component<Props, State> {
 
                 this.setState({
                     isCounterExm: true,
+                    toggle: isRedBool,
                     graphNum: this.njson.GetGraphSize(),
                     xlist: this.njson.xlist,
                     propState: {
@@ -346,27 +349,35 @@ class LinePlot extends React.Component<Props, State> {
 
 
     Item(index: number) {
-
+        let vars = this.njson.GetVar(index);
+        let isEnabled = this.state.toggle.get(index);
+        let label = "unknown";
+        if(vars){
+            label = "Var: ";
+            for (let i = 0; i < vars.length; i++){
+                if (i==0)
+                    label += vars[i];
+                else
+                    label += (", "+vars[i]);
+            }
+        }
         return (
             <Form.Row>
                 <Form.Check
-                    label={`Enabled it`}
-                    checked={this.state.toggle.get(index)}
+                    label={label}
+                    checked={isEnabled}
                     onClick={() => {
-                        let r = this.state.toggle.get(index);
-                        console.log(this.state.toggle);
-                        if (r == false) {
+                        let newIsEnabled = this.state.toggle;
+                        if (isEnabled) {
+                            newIsEnabled.set(index, false)
                             this.setState({
-                                isToggleChanged: true,
-                                toggle:
-                                    this.state.toggle.set(index, true)
+                                toggle: newIsEnabled,
                             });
 
                         } else {
+                            newIsEnabled.set(index, true)
                             this.setState({
-                                isToggleChanged: true,
-                                toggle:
-                                    this.state.toggle.set(index, false)
+                                toggle: newIsEnabled,
                             });
                         }
                     }
