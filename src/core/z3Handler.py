@@ -173,8 +173,6 @@ def _(const):
                     else:
                         print(str(const.ode[subvariables[j]]))
                         raise z3constODEerror()
-                else:
-                    raise z3constODEerror()
         substitutionExp = {}
         for i in const.ode.keys():
             substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)

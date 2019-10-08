@@ -416,8 +416,13 @@ class DiffEq:
         return str(self.contVar)
 
     def getFlow(self, varDict):
-        if type(self.flow) in [RealVal, IntVal, BoolVal, Real]:
+        if type(self.flow) in [RealVal, IntVal, BoolVal]:
             return self.flow
+        if type(self.flow) in [Real, Int, Bool] :
+            if str(self.flow) in varDict.keys():
+                return varDict[str(self.flow)]
+            else:
+                return self.flow
         return self.flow.getExpression(varDict)
 
     def getExpression(self, varDict):
@@ -581,7 +586,7 @@ class jumpMod:
     def getExpression(self, varDict):
         if self.nextVarId in varDict.keys():
             left = NextVar(varDict[self.nextVarId])
-            if isinstance(self.exp, BoolVal):
+            if isinstance(self.exp, Constant):
                 right = self.exp
             elif isinstance(self.exp, Real):
                 right = self.exp
