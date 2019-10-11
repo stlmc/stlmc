@@ -32,7 +32,7 @@ def main(argv):
 
     for i in range(len(stlMC.getStlFormsList())):
         #args : (0, bound, step)
-        for k in range(5, 6, 5):
+        for k in range(3, 4, 5):
             formula = stlMC.getStlFormsList()[i]
             timeBound = 60
             module(title, stlMC, formula, k, timeBound, dataGenerator)

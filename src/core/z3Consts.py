@@ -94,7 +94,7 @@ class z3Consts:
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
                 for j in range(len(curFlow)):
                     if curFlow[j].getVarId() in self.subvars.keys():
-                        flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.subvars)
+                        flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(k)))
                     else:
                         raise ("Flow id is not declared")
                 modeConsts = list()
@@ -188,10 +188,10 @@ class z3Consts:
         curFlowExp = curFlow.getExpression(self.subvars)
         curFlowType = curFlow.getFlowType()
         flowModule = dict()
-    
+
         for j in range(len(curFlowExp)):
             if curFlowExp[j].getVarId() in self.subvars.keys():
-                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.subvars)
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(bound)))
             else:
                 raise ("Flow id is not declared")
 
