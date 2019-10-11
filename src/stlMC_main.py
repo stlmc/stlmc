@@ -21,8 +21,6 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator):
 
 def main(argv):
     input = FileStream(argv[1])
-    print(type(input))
-    print(input)
     lexer  = modelLexer(input)
     stream = CommonTokenStream(lexer)
     parser = modelParser(stream)
