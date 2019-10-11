@@ -3,11 +3,6 @@ from core.node import *
 from core.z3Handler import checkSat
 import numpy as np
 from scipy.integrate import odeint
-# add mac dependency
-# that use TkAgg
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
 
 
 class Api:
@@ -52,7 +47,8 @@ class Api:
         result = []
         for i in range(len(self.contVar)):
             result.append(str(self.contVar[i].id))
-        
+        for i in range(len(self.modeVar)):
+           result.append(str(self.modeVar[i].id))
         return result
 
     # return mode variables id
@@ -104,6 +100,22 @@ class Api:
                     final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
+        return result
+
+
+
+    # return (initial, final) pairs for each mode variable until k bound
+    def getModeValues(self):
+        result = {}
+        if self.model is not None:
+            for i in range(len(self.modeVar)):
+                subResult = []
+                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
+                for j in range(self.bound+2):
+                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
+                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    subResult.append((var_value, var_value))
+                result[str(self.modeVar[i].id)] = subResult
         return result
 
     # return list of variable point times
@@ -300,10 +312,10 @@ class Api:
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
         c_val = self.getContValues()
+        m_val = self.getModeValues()
 
         var_list = self.intervalsVariables()
         interval_list = []
-
 
         i_val = []
         for var in range(len(var_list[index])):

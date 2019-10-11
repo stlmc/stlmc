@@ -1,0 +1,38 @@
+real heater;
+(-20, 100] x;
+{
+    mode:
+        heater == -1.2;
+    inv:
+        x > 0;
+    flow:
+        x(t) = heater * t + x(0);
+    jump:
+        (x > 30) ==>
+          ((heater' = -1.2) and (x' = x));
+        (x <= 24) ==>
+          ((heater' = 4) and (x' = x));
+}
+{
+    mode:
+        heater == 4;
+    inv:
+        x < 60;
+    flow:
+        d/dt[x] = heater;
+    jump:
+        (x > 30) ==>
+          ((heater' = -1.2) and (x' = x));
+        (x <= 24) ==>
+          ((heater' = 4) and (x' = x));
+}
+
+init:
+(and (heater == -1.2) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+
+propositions:
+reachability = x > 23;
+
+goal:
+#(<> [0.0, 40.0] (reachability)) ;
+([] [0.0, inf) (x > 24)) ;

@@ -183,6 +183,37 @@ type SubGraph4Json struct {
 	Data []Point	`json:"points"`
 }
 
+
+// GraphAsName holds data with names, this is nothing to
+// do with intervals. When you need name "x1"'s all data, then
+// you should want this structure.
+type GraphAsName struct {
+	Name string		`json:"name"`
+	Data []Point	`json:"points"`
+}
+
+// GraphAsName4Json holds The index and GraphAsName's list which
+// represents similar graph. For example, if you get similar graph
+// using Similar() in FullGraph that ["x1", "x2"] is similar than,
+// GraphAsName4Json will looks something like,
+// {
+//		Index: 0,
+//		GraphAsName: [
+//			{
+//				Name: "x1",
+//				Data: [ ... ]
+//			},
+//			{
+//				Name: "x2",
+//				Data: [ ... ]
+//			},
+//		]
+// }
+type GraphAsName4Json struct {
+	Index int			`json:"index"`
+	Data []GraphAsName	`json:"graph"`
+}
+
 func (sg4j *SubGraph4Json) ToSubGraph() SubGraph{
 	var sg SubGraph
 	sg.Elem = sg4j
@@ -466,7 +497,7 @@ func (fg *FullGraph) Init(){
 	fg.getSubPoint()
 }
 
-// Similar returns similar graphs with respect to y ranges.
+// SameGraph returns similar graphs with respect to y ranges.
 // This is used for determine similar scale graph.
 func (fg *FullGraph) SameGraph() []CompositeGraph {
 
@@ -481,10 +512,12 @@ func (fg *FullGraph) SameGraph() []CompositeGraph {
 	// "y" or "z".
 	for _, e := range fg.Var {
 		var tmp CompositeGraph
+		tmp.Name = e
 		// iterate through whole list of subgraphs
 		for _, el := range fg.Sub {
 			// if find one that matches name
 			if el.Elem.Name == e {
+				tmp.Name = e
 				tmp.Add(el)
 			}
 		}
@@ -495,13 +528,43 @@ func (fg *FullGraph) SameGraph() []CompositeGraph {
 	return same
 }
 
-// Similar returns similar graphs with respect to y ranges.
-// This is used for determine similar scale graph.
+// MakeSameGraphAsNameMap returns same graphs with respect to name
+func (fg *FullGraph) MakeSameGraphAsNameMap() map[string]GraphAsName {
+
+	// Gathering same graph together in the array.
+	// find same graph according to its name
+	// for example, if your "interval" has [{"name": "x" ... },
+	// {"name": "y" ...} then, you can find 2 CompositeGraph.
+	var same = make(map[string]GraphAsName, 0)
+
+	// iterate with variable names
+	// such as ["x", "y", "z"]. e is one of "x" or
+	// "y" or "z".
+	for _, e := range fg.Var {
+		var tmp GraphAsName
+		// iterate through whole list of subgraphs
+		for _, el := range fg.Sub {
+			// if find one that matches name
+			if el.Elem.Name == e {
+				tmp.Name = e
+				tmp.Data = append(tmp.Data, el.Elem.Data...)
+			}
+		}
+		same[e] = tmp
+	}
+
+	return same
+}
+
+// Similar returns similar graphs with respect to y ranges and
+// its variable list. This is used for determine similar scale graph.
 func (fg *FullGraph) Similar() []CompositeGraph {
 
 	// Gathering same graph first
 	same := fg.SameGraph()
 	var sameMap = make(map[int]CompositeGraph)
+	// transform list to Map, key as list index
+	// value as its element: CompositeGraph
 	for i, e := range same {
 		sameMap[i] = e
 	}
@@ -547,13 +610,16 @@ func (fg *FullGraph) ToCompositeGraph4Json() CompositeGraph4Json{
 	cg4j.Xdata = fg.GetXData()
 	cg4j.IntervalInfo = fg.IntervalInfo
 	cg4j.FullRange = make([]float64, 0)
+	graphAsNameMap := fg.MakeSameGraphAsNameMap()
 	// iterate through each variable's fullgraph
 	for i, _ := range cg {
 		// this one contains all subgraphs of fullgraph
 		var sub []SubGraph4Json
 		var csg4j CompositeSubGraph4Json
+		var similarVariable []string
 		for _, elem := range cg[i].Sub {
 			sub = append(sub, elem.ToSubGraph4Json())
+			similarVariable = append(similarVariable, elem.Elem.Name)
 		}
 		csg4j.Graph = sub
 		csg4j.Index = i
@@ -569,6 +635,14 @@ func (fg *FullGraph) ToCompositeGraph4Json() CompositeGraph4Json{
 		csg4j.Range.MaxYfloat = cg[i].Range.MaxYfloat
 
 		cg4j.Interval = append(cg4j.Interval, csg4j)
+
+		// GraphAsName4Json
+		var gs4j GraphAsName4Json
+		gs4j.Index = i
+		for _, sv := range similarVariable {
+			gs4j.Data = append(gs4j.Data, graphAsNameMap[sv])
+		}
+		cg4j.DataByName = append(cg4j.DataByName, gs4j)
 	}
 	for _, e := range fg.IntervalInfo {
 		if !isInList(cg4j.FullRange, e.Range[0]) {
@@ -601,6 +675,7 @@ type CompositeSubGraph4Json struct {
 type CompositeGraph4Json struct {
 	Var	[]string						`json:"variable"`
 	Interval []CompositeSubGraph4Json 	`json:"interval"`
+	DataByName []GraphAsName4Json		`json:"dataByName"`
 	Prop []Proposition 					`json:"prop"`
 	Mode []Mode							`json:"mode"`
 	Xdata []float64						`json:"xdata"`
@@ -622,6 +697,8 @@ type CompositeGraph4Json struct {
 // 			then, you will have only 1 CompositeGraph.
 type CompositeGraph struct {
 	Sub []SubGraph
+
+	Name string
 
 	Range Range
 
