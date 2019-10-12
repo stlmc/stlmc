@@ -100,7 +100,7 @@ class modelVisitorImpl(modelVisitor):
         r.var_dic = var_dict
         return r
 
-    def visitCompCond(self, ctx:modelParser.CompCondContext):
+    def visitCompCond(self, ctx:modelParser.CompCondContext, var_dict=dict()):
         op = ctx.op.text
         left = self.visit(ctx.condition()[0])
         right = self.visit(ctx.condition()[1])
@@ -261,15 +261,34 @@ class modelVisitorImpl(modelVisitor):
     mode module
     '''
     def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
-        return modeModule(self.visit(ctx.mode_decl()), self.visit(ctx.inv_decl()), self.visit(ctx.flow_decl()), self.visit(ctx.jump_decl()))
+        var_dic = dict()
+        var_dic["xxxx"] = 1
+        what = self.visitMode_decl(ctx.mode_decl(), var_dic)
+        dcl = self.visit(ctx.inv_decl())
+        fldcl = self.visit(ctx.flow_decl())
+        jdcl = self.visit(ctx.jump_decl())
+        print("what is what?")
+        print(what)
+        print(dcl)
+        print(fldcl)
+        print(jdcl)
+
+        return modeModule(what, dcl, fldcl, jdcl)
 
     '''
     mode declaration
     '''
-    def visitMode_decl(self, ctx:modelParser.Mode_declContext):
+    def visitMode_decl(self, ctx:modelParser.Mode_declContext, var_dic=dict()):
         element = list()
         for i in range(len(ctx.condition())):
-            element.append(self.visit(ctx.condition()[i]))
+            # CompCond type
+            condElem = self.visitCompCond(ctx.condition()[i])
+            print("cond in")
+            print(condElem.left)
+            if condElem.type == Type.RealVal:
+                var_dic[str(condElem.left)] = 0.0
+            print(var_dic)
+            element.append(condElem)
         return MultyCond("and", element)
 
     '''
@@ -312,6 +331,7 @@ class modelVisitorImpl(modelVisitor):
         # time_dict is single value not dict.
         time_dict = dict()
         for e in v_list:
+            print(e)
             var_dict[e]=0.0
 
         time_dict["time"]=0.0

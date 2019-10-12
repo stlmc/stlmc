@@ -249,10 +249,16 @@ class BinaryExp:
         if isinstance(self.right, BinaryExp):
             right = self.right.value
         if self.op == '+':
+#             print("m,")
+#             print(vright)
+#             print(type(vright))
             return vleft.value + vright.value
         if self.op == '-':
             return vleft.value - vright.value
         if self.op == '*':
+#             print("mmuk")
+#             print(vleft)
+#             print(type(vleft))
             return vleft.value * vright.value
         if self.op == '/':
             return vleft.value / vright.value
@@ -264,18 +270,36 @@ class BinaryExp:
 class CompCond:
     def __init__(self, op, left, right):
         self.op = op
-        self.left = left
-        self.right = right
+        self._left = left
+        self._right = right
         if isinstance(left, str) and isinstance(right, str):
-            self.left = RealVal(float(left)) if isNumber(left) else left
-            self.right = RealVal(float(right)) if isNumber(right) else right
+            if isNumber(left):
+                self._left = RealVal(float(left))
+                self._type = Type.RealVal
+            else:
+                self._left = left
+                self._type = Type.Bool
+            if isNumber(right):
+                self._right = RealVal(float(right))
+                self._type = Type.RealVal
+            else:
+                self._right = right
+                self._type = Type.Bool
 
     def __repr__(self):
-        return str(self.left) + " " + str(self.op) + " " + str(self.right)
+        return str(self._left) + " " + str(self.op) + " " + str(self._right)
+
+    @property
+    def left(self):
+        return self._left
+
+    @property
+    def right(self):
+        return self._right
 
     def getExpression(self, varDict):
-        left = self.left
-        right = self.right
+        left = self._left
+        right = self._right
         if isinstance(left, BinaryExp):
             left = left.getExpression(varDict)
         if isinstance(right, BinaryExp):
@@ -299,8 +323,9 @@ class CompCond:
         else:
             raise "Not yet in Compare Condition"
 
-    def getType(self):
-        return Type.Bool
+    @property
+    def type(self):
+        return self._type
 
 
 class Multy:
@@ -523,14 +548,21 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
+        print("comeon")
         for elem in self.exps:
             # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
+#                 print("realval")
+#                 print(elem)
                 ode_list.append(elem.flow.value)
             elif isinstance(elem.flow, Real):
+#                 print("real")
+#                 print(elem)
                 ode_list.append(elem.flow.value)
                 # every thing goes in here
             else:
+#                 print("else")
+#                 print(type(elem.flow))
                 # elem.flow is BinaryExp type
                 ode_list.append(elem.flow.value)
         #print("return")
