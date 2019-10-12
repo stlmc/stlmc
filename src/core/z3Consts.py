@@ -166,7 +166,7 @@ class z3Consts:
             exp = Ge((exp.right() - exp.left()), RealVal(0))
 
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
-
+        combine['time'] = Real('time' + str(bound))
         # If proposition is just boolean variable, return original expression 
         if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
             if exp.getType() == Type.Bool:
@@ -195,13 +195,15 @@ class z3Consts:
 
         for j in range(len(curFlowExp)):
             if curFlowExp[j].getVarId() in self.subvars.keys():
-                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(bound)))
+                sub = self.combineDict(self.subvars, self.makeSubMode(bound))
+                sub['time'] = Real('time' + str(bound))
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(sub)
             else:
                 raise ("Flow id is not declared")
 
         if curFlowType == 'diff':
             for contVar in flowModule.keys():
-                flowModule[contVar] = flowModule[contVar] * Real('time')
+                flowModule[contVar] = flowModule[contVar] * Real('time' + str(bound))
 
         subContVar = dict()
         for contVar in flowModule.keys():
