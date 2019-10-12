@@ -3,6 +3,8 @@ model=../src/$CORE_PATH/model
 PY_DIR=../src
 TEST_DIR=../src/simpleModel
 venv=../src/venv
+node_dir=../visualize
+go_dir=../visualize/golang
 
 auto_remove () {
 	# remove previous test directories
@@ -61,9 +63,18 @@ runModel () {
     rm -f *.smt2
 }
 
+build_all(){
+    cd $node_dir
+    npm install
+    npm run build
+
+    cd golang
+    go build main.go
+}
 
 case $1 in 
 	-rm | --auto-remove ) auto_remove; echo "remove finished";;
+  -build ) build_all; echo "build finished";;
 	-i | --auto-install ) install_env; antlr_setting;;
 	-ie | --install-env ) install_env; echo "install environment finished";;
 	--run ) runModel "$2"; echo "run finished";;

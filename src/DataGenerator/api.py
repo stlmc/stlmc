@@ -3,11 +3,6 @@ from core.node import *
 from core.z3Handler import checkSat
 import numpy as np
 from scipy.integrate import odeint
-# add mac dependency
-# that use TkAgg
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
 
 
 class Api:
@@ -52,7 +47,8 @@ class Api:
         result = []
         for i in range(len(self.contVar)):
             result.append(str(self.contVar[i].id))
-        
+        for i in range(len(self.modeVar)):
+           result.append(str(self.modeVar[i].id))
         return result
 
     # return mode variables id
@@ -104,6 +100,36 @@ class Api:
                     final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
+        return result
+
+
+
+    # return (initial, final) pairs for each mode variable until k bound
+    def getModeValues(self):
+        result = {}
+        if self.model is not None:
+            for i in range(len(self.modeVar)):
+                subResult = []
+                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
+                for j in range(self.bound+2):
+                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
+                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    subResult.append((var_value, var_value))
+                result[str(self.modeVar[i].id)] = subResult
+        return result
+
+    # return (initial, final) pairs for each mode variable until k bound
+    def getModeValues4Sol(self):
+        result = {}
+        if self.model is not None:
+            for i in range(len(self.modeVar)):
+                subResult = []
+                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
+                for j in range(self.bound+2):
+                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
+                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    subResult.append(var_value)
+                result[str(self.modeVar[i].id)] = subResult
         return result
 
     # return list of variable point times
@@ -172,28 +198,40 @@ class Api:
      
         return result
 
-
+    # return (var, mod, both)
+    # return variable only, mode variable only, both initial value
     def getSolEqInitialValue(self):
         c_val = self.getContValues()
+
+        c_initial = dict()
+        m_initial = dict()
         initial_val = dict()
+
+        # add mode var
+        if self.model is not None:
+            for i in range(len(self.modeVar)):
+                subResult = []
+                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
+                for j in range(self.bound+2):
+                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
+                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    subResult.append(var_value)
+                m_initial[str(self.modeVar[i].id)] = subResult
+                initial_val[str(self.modeVar[i].id)] = subResult
+
         for i in c_val.keys():
             subResult = []
             for j in range(self.bound + 2):
                 subResult.append(c_val[i][j][0])
+            c_initial[i] = subResult
             initial_val[i] = subResult
-        return initial_val
+
+        return c_initial, m_initial, initial_val
 
 
     def getSol(self):
-        c_val = self.getContValues()
         ode_l = self.getModelIdList()
-        initial_val = dict()
-        for i in c_val.keys():
-            subResult = []
-            for j in range(self.bound+2):
-                subResult.append(c_val[i][j][0])
-            initial_val[i] = subResult
-        #print(initial_val)
+        initial_val, _, _ = self.getSolEqInitialValue()
         solutionBound = dict()
 
         #return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
@@ -212,7 +250,7 @@ class Api:
                         break
             solutionBound[i] = solutionList
         '''
-        for i in c_val.keys():
+        for i in initial_val.keys():
             solutionList = list()
             for j in range(len(ode_l)):
                 modexps = self.mode_module[ode_l[j]].getFlow().exp()
@@ -256,22 +294,36 @@ class Api:
        return result
 
 
-
     # inner function of sol equation
     # generate list that correspond to indexed interval
     def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
         # TODO : Add new functions
-        sol_init_list = self.getSolEqInitialValue()
+        _, only_mod, sol_init_list = self.getSolEqInitialValue()
+
+        print(sol_init_list)
         sol_l = self.getSol()
 
-        interval_list = []
 
+
+
+        print(sol_l)
+        interval_list = []
 
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
             interval_dict = dict()
             tmp_res = []
+            print(k)
+            print("See")
+            print(sol_init_list[k])
+
+            for vv in only_mod:
+                print(id(self.mode_module[model_id].getFlow().var_dict))
+                self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
+                print(id(self.mode_module[model_id].getFlow().var_dict))
+            print("putme")
+            print(self.mode_module[model_id].getFlow().var_dict)
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
@@ -286,13 +338,16 @@ class Api:
                 # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[0]" instead.
                 tmp = dict()
                 tmp["x"] = global_newT[i]
+                print("endup")
+                print(self.mode_module[model_id].getFlow().exp2exp())
+                print("endup2")
                 tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
                 tmp_res.append(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
-
+        print("good?")
         return interval_list, global_newT
 
     # buggy
@@ -300,10 +355,10 @@ class Api:
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
         c_val = self.getContValues()
+        m_val = self.getModeValues()
 
         var_list = self.intervalsVariables()
         interval_list = []
-
 
         i_val = []
         for var in range(len(var_list[index])):
@@ -375,7 +430,6 @@ class Api:
             elem["data"], elem["time"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
 
         # TODO: need to add diffEq part..... down here!
-
 
         for elem in diffEq_dict:
             elem["data"], elem["time"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
@@ -458,6 +512,9 @@ class Api:
 
             outer2['variable'] = self.getVarsId()
             outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
+
+            print(outer2['interval'])
+            print(outer2['intervalInfo'])
             outer2['prop'] = self.getProposition()
             outer2['mode'] = gmid
             #outer2['mode'] = self.getModesId()
@@ -471,4 +528,4 @@ class Api:
             f.close()
 
         except Exception as ex:
-            print('Nothing to draw!', str(ex))
+            print('Nothing to draw!', ex)

@@ -202,8 +202,11 @@ class Real(Variable, ArithRef):
     # should call after dic is setted
     @property
     def value(self):
+        print("conemememeon")
+        print(id(self.__var_dic))
         self.__value = self.__var_dic[self.__id]
         return self.__value
+
 
     @value.setter
     def value(self, value):

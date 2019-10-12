@@ -30,11 +30,27 @@ export interface Mode {
     data: [number, number][][];
 }
 
+export interface Interval {
+    name: string;
+    points: [number, number][][];
+}
+
+export interface Interval4List {
+    index: number;
+    interval: Interval[];
+}
+
 class Json {
     /**
      * Internally has intervals.
      */
-    private _intervalsMap: Map<number, [number, number][][]> = new Map<number, [number, number][][]>();
+
+    // intervals map needs to be different of each graphs.
+    // you will have many different graphs..
+    private _intervalsMap: Map<number, Map<number, Interval[]>> = new Map<number, Map<number, Interval[]>>();
+    private _intervalVarMap: Map<number, string[]> = new Map<number, string[]>();
+    private _dataByNameMap: Map<number, Map<string, [number, number][]>> = new Map<number, Map<string, [number, number][]>>();
+
     private _xRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _yRangeMap: Map<number, [number, number]> = new Map<number, [number, number]>();
     private _graph_size: number = 0;
@@ -81,8 +97,32 @@ class Json {
         return this._x_data_list;
     }
 
-    GetGraph(index: number): ([number, number][][] | undefined) {
+    // graph with number, each number is interval...
+    GetGraph(index: number): (Map<number, Interval[]> | undefined) {
         return this._intervalsMap.get(index)
+    }
+
+    // graph with number, each number is interval...
+    GetGraph2List(index: number): (Interval4List[]) {
+        let res = [];
+        for (let i = 0; i < this._intervalsMap.size; i++){
+            let intv = this._intervalsMap.get(index);
+            if (intv){
+                let intvElem = intv.get(i);
+                if (intvElem){
+                    let newI = {
+                        index: i,
+                        interval: intvElem,
+                    };
+                    res.push(newI);
+                }
+            }
+        }
+        return res;
+    }
+
+    GetVar(index:number): (string[] | undefined) {
+        return this._intervalVarMap.get(index);
     }
 
     GetGraphSize(): number {
@@ -95,6 +135,10 @@ class Json {
 
     GetIntervalInfo(index: number) {
         return this._interval_info.get(index);
+    }
+
+    GetDataByName(index: number){
+        return this._dataByNameMap.get(index);
     }
 
     GetModeSize() {
@@ -110,6 +154,9 @@ class Json {
         return this._interval_flat_list;
     }
 
+    get varMap(){
+        return this._intervalVarMap;
+    }
 
     get map() {
         return this._intervalsMap;
@@ -149,8 +196,19 @@ class Json {
         return this.totalMinX;
     }
 
+    IsInList(l:string[], elem:string){
+        for(let e of l){
+            if(e == elem){
+                return true;
+            }
+        }
+        return false;
+    }
+
     clearAll() {
         this._intervalsMap.clear();
+        this._intervalVarMap.clear();
+        this._dataByNameMap.clear();
         this._xRangeMap.clear();
         this._yRangeMap.clear();
         this._graph_size = 0;
@@ -193,17 +251,15 @@ class Json {
             console.log("parsingNewjson!");
             // clear all element in intervals list.
 
-            this._intervalsMap.clear();
-            this._propMap.clear();
-            this._modeMap.clear();
+            this.clearAll();
             this._isEmpty = false;
             // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
             // need to take both key and value.
             console.log(this._jsonString);
-            let [variable, interval, prop, mode, xdata, intervalInfo, full_interval_range] = Object.values(this._jsonString);
+            let [variable, interval, dataByName, prop, mode, xdata, intervalInfo, full_interval_range] = Object.values(this._jsonString);
             this._interval_flat_list = Object.values(full_interval_range).map((e) => {
                 return parseFloat(e);
-            })
+            });
 
             // get interval info
             for (let [okey, ovalue] of Object.entries(intervalInfo)) {
@@ -284,18 +340,53 @@ class Json {
             });
             this._graph_size = interval.length;
 
+
+            // iterate through multiple sets of graphs.
             for (let i = 0; i < interval.length; i++) {
-                let intervals: [number, number][][] = [];
                 let [index, graph, range] = Object.values(interval[i]);
+
+
+                let tmp = new Map<number, Interval[]>();
+                let varList: string[] = [];
                 for (let [k, v] of Object.entries(graph)) {
                     let [name, intIndex, points] = Object.values(v);
+                    let intIndexInt = parseInt(intIndex);
+                    let intervals: Interval = {
+                        name: "",
+                        points: []
+                    };
+
                     let tmp_interval: [number, number][] = [];
+                    if (!this.IsInList(varList, name)){
+                        varList.push(name);
+                    }
+
                     for (let pv of points) {
                         let [x, y] = Object.values(pv);
                         tmp_interval.push([parseFloat(x), parseFloat(y)]);
                     }
-                    intervals.push(tmp_interval)
+                    intervals.name = name;
+                    intervals.points.push(tmp_interval);
+
+                    // check if is in list
+                    let getFromGraph = tmp.get(intIndexInt);
+
+                    // if exists
+                    if(getFromGraph){
+                        getFromGraph.push(intervals);
+                        tmp.set(intIndexInt, getFromGraph);
+                    } else {
+                        let elem = [];
+                        elem.push(intervals);
+                        tmp.set(intIndexInt, elem);
+                    }
+
                 }
+
+                this._intervalVarMap.set(parseInt(index), varList);
+                this._intervalsMap.set(parseInt(index), tmp);
+
+
                 let [maxX, minX, maxY, minY, m, m1, m2, m3] = Object.values(range);
 
                 this.maxX = parseFloat(maxX);
@@ -304,11 +395,33 @@ class Json {
                 this._xRangeMap.set(parseInt(index), [parseFloat(minX), parseFloat(maxX)]);
                 this._yRangeMap.set(parseInt(index), [parseFloat(minY), parseFloat(maxY)]);
 
-                this._intervalsMap.set(parseInt(index), intervals);
+                //this._intervalsMap.set(parseInt(index), intervals);
                 if (i == 0) {
                     this.totalMinX = parseFloat(minX);
                     this.totalMaxX = parseFloat(maxX);
                 }
+            }
+
+            // get data by variable name
+            for (let i = 0; i < dataByName.length; i++) {
+                let [index, graph] = Object.values(dataByName[i]);
+                let intIndex = parseInt(index);
+
+
+                let tmp = new Map<string, [number, number][]>();
+                for (let [k, v] of Object.entries(graph)) {
+                    let [name, points] = Object.values(v);
+                    let tmp_data:[number, number][] = [];
+
+                    for (let pv of points) {
+                        let [x, y] = Object.values(pv);
+                        tmp_data.push([parseFloat(x), parseFloat(y)]);
+                    }
+                    tmp.set(name, tmp_data)
+                }
+
+                this._dataByNameMap.set(intIndex, tmp);
+
             }
             console.log(this._intervalsMap);
             console.log(this._xRangeMap);

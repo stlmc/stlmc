@@ -7,14 +7,16 @@ import {margin, PropData, size} from '../Core/Util/Util';
 import {ModeRenderer} from '../Core/Renderer/ModeRenderer';
 import {Renderer} from '../Core/Renderer/MainRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
-import {Json, Mode, Proposition} from '../Core/Util/DataParser';
+import {Interval, Interval4List, Json, Mode, Proposition} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import "react-tabs/style/react-tabs.css";
 import Axios, {AxiosInstance} from "axios";
 import {Button, Form, Toast} from 'react-bootstrap';
+import $ from 'jquery';
 
 import {ModeState, PropState} from "../Core/Data";
+import {SVGObject} from "three/examples/jsm/renderers/SVGRenderer";
 
 
 /*
@@ -147,7 +149,6 @@ class LinePlot extends React.Component<Props, State> {
     async componentDidMount() {
 
         console.log("ComponentDidMount");
-
         // get file_list
         await this.instance.get(`/file_list`)
             .catch((error) => {
@@ -189,14 +190,13 @@ class LinePlot extends React.Component<Props, State> {
             });
         }
 
-
-        console.log(this.njson.isEmpty())
         if (!this.njson.isEmpty()) {
             for (let e = 0; e < this.renderers.length; e++) {
-                console.log(e);
-                let intv: ([number, number][][] | undefined) = this.njson.GetGraph(e);
-                if (intv) {
-                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), intv, this.state.xlist, this.njson.GetIntervalInfoFlat());
+                let eGraph: (Map<string, [number, number][]> | undefined) = this.njson.GetDataByName(e);
+                console.log(eGraph);
+                if (eGraph) {
+                    // vardict should always exist or undefined error would occur!
+                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), eGraph, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.variables);
                 }
             }
 
@@ -217,7 +217,6 @@ class LinePlot extends React.Component<Props, State> {
 
             }
         } else {
-            console.log("sivalama")
             for (let e = 0; e < this.renderers.length; e++) {
                 this.renderers[e].clear();
             }
@@ -254,21 +253,36 @@ class LinePlot extends React.Component<Props, State> {
                 console.log(this.njson.variables);
                 let gs = this.njson.GetGraphSize();
                 console.log("GraphSize is " + gs);
-                this.renderers = []
+                this.renderers = [];
+                let isRedBool = new Map<number, boolean>();
+
+                let width = $(window).width();
+                if (width){
+                    width = width * 0.8 - this.base_margin.left - this.base_margin.right;
+                }
+                let newSize = new size(
+                    width,
+                    80.0
+                );
+
                 for (let e = 0; e < gs; e++) {
                     let red = new Renderer(
-                        this.graph_size, this.base_margin, e
+                        new size(
+                            width,
+                            this.height
+                        ), this.base_margin, e
                     );
                     red.graph = this.njson.GetGraph(e);
                     console.log(red.graph);
                     this.renderers.push(red);
+                    isRedBool.set(e, true);
                 }
 
                 let isBoolean = new Map<number, boolean>();
                 this.propRenderers = [];
                 for (let e = 0; e < this.njson.propSize; e++) {
                     let tmp_prop = new PropositionRenderer(
-                        this.base_size, this.base_margin, e
+                        newSize, this.base_margin, e
                     );
                     this.propRenderers.push(tmp_prop);
                     isBoolean.set(e, true);
@@ -279,7 +293,7 @@ class LinePlot extends React.Component<Props, State> {
                 this.modeRenderers = [];
                 for (let e = 0; e < this.njson.GetModeSize(); e++) {
                     let md = new ModeRenderer(
-                        this.base_size, this.base_margin, e
+                        newSize, this.base_margin, e
                     );
                     this.modeRenderers.push(md);
                     modeIsBoolean.set(e, true);
@@ -292,6 +306,7 @@ class LinePlot extends React.Component<Props, State> {
 
                 this.setState({
                     isCounterExm: true,
+                    toggle: isRedBool,
                     graphNum: this.njson.GetGraphSize(),
                     xlist: this.njson.xlist,
                     propState: {
@@ -345,44 +360,54 @@ class LinePlot extends React.Component<Props, State> {
     }
 
 
-    Item(index: number) {
+    Item(index: number, margin: number|undefined) {
+        let vars = this.njson.GetVar(index);
+        let isEnabled = this.state.toggle.get(index);
+        let label = "unknown";
+        if(vars){
+            label = "Var: ";
+            for (let i = 0; i < vars.length; i++){
+                if (i==0)
+                    label += vars[i];
+                else
+                    label += (", "+vars[i]);
+            }
+        }
 
         return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
             <Form.Row>
                 <Form.Check
-                    label={`Enabled it`}
-                    checked={this.state.toggle.get(index)}
+                    label={label}
+                    checked={isEnabled}
                     onClick={() => {
-                        let r = this.state.toggle.get(index);
-                        console.log(this.state.toggle);
-                        if (r == false) {
+                        let newIsEnabled = this.state.toggle;
+                        if (isEnabled) {
+                            newIsEnabled.set(index, false)
                             this.setState({
-                                isToggleChanged: true,
-                                toggle:
-                                    this.state.toggle.set(index, true)
+                                toggle: newIsEnabled,
                             });
 
                         } else {
+                            newIsEnabled.set(index, true)
                             this.setState({
-                                isToggleChanged: true,
-                                toggle:
-                                    this.state.toggle.set(index, false)
+                                toggle: newIsEnabled,
                             });
                         }
                     }
                     }
                 />
                 <Form.Row>
-                    <div className="svg_div" id={"graph" + index}
-                         style={{display: this.state.toggle.get(index) ? 'block' : 'none'}}>
+                    <div id={"graph" + index} style={{display: this.state.toggle.get(index) ? 'block' : 'none'}}>
                         <span></span>
                     </div>
                 </Form.Row>
             </Form.Row>
+            </div>
         )
     }
 
-    PropUI(index: number) {
+    PropUI(index: number, margin: number|undefined) {
         let prop = this.state.propState.propMap.get(index);
         let isEnabled = this.state.propState.isEnabled.get(index);
         let label = "unknown";
@@ -390,6 +415,7 @@ class LinePlot extends React.Component<Props, State> {
             label = prop.name + " : " + prop.actual;
         }
         return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
             <Form.Row>
                 <Form.Check
                     label={label}
@@ -430,10 +456,11 @@ class LinePlot extends React.Component<Props, State> {
                     </div>
                 </Form.Row>
             </Form.Row>
+            </div>
         )
     }
 
-    ModeUI(index: number) {
+    ModeUI(index: number, margin: number|undefined) {
 
         let label = "unknown";
         let mod = this.state.modeState.modeMap.get(index);
@@ -443,6 +470,7 @@ class LinePlot extends React.Component<Props, State> {
         let isBool = this.state.modeState.isEnabled.get(index);
 
         return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
             <Form.Row>
                 <Form.Check
                     label={label}
@@ -479,6 +507,7 @@ class LinePlot extends React.Component<Props, State> {
                     </div>
                 </Form.Row>
             </Form.Row>
+            </div>
         )
     }
 
@@ -486,15 +515,20 @@ class LinePlot extends React.Component<Props, State> {
         let res = [];
         let res2 = [];
         let res3 = [];
+        let margin = $(window).width();
+        if (margin){
+            margin = margin * 0.1 + this.base_margin.left;
+        }
+
         for (let i = 0; i < this.state.graphNum; i++) {
-            res.push(this.Item(i));
+            res.push(this.Item(i, margin));
         }
         for (let i = 0; i < this.njson.propSize; i++) {
-            res2.push(this.PropUI(i));
+            res2.push(this.PropUI(i, margin));
         }
 
         for (let i = 0; i < this.njson.GetModeSize(); i++) {
-            res3.push(this.ModeUI(i));
+            res3.push(this.ModeUI(i, margin));
         }
         return (
             <Form>
