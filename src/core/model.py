@@ -178,7 +178,6 @@ class UnaryFunc:
         #else:
         #    degree = Real(str(self.val)).value
         else:
-            print("you here")
             degree = RealVal(str(self.val)).value
 
         print("comeone")
@@ -201,6 +200,7 @@ class BinaryExp:
         self.op = op
         self.left = left
         self.right = right
+        self._var_dict = dict()
         if isinstance(left, str) and isinstance(right, str):
             self.left = RealVal(float(left)) if isNumber(left) else left
             self.right = RealVal(float(right)) if isNumber(right) else right
@@ -240,25 +240,29 @@ class BinaryExp:
         return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
 
     @property
+    def var_dic(self):
+        return self._var_dict
+
+    @var_dic.setter
+    def var_dic(self, var_dict):
+        self._var_dict = var_dict
+
+    @property
     def value(self):
         vleft = self.left
         vright = self.right
+        vleft.var_dic = self._var_dict
+        vright.var_dic = self._var_dict
         # TODO: Erase dependency
         if isinstance(self.left, BinaryExp):
             left = self.left.value
         if isinstance(self.right, BinaryExp):
             right = self.right.value
         if self.op == '+':
-#             print("m,")
-#             print(vright)
-#             print(type(vright))
             return vleft.value + vright.value
         if self.op == '-':
             return vleft.value - vright.value
         if self.op == '*':
-#             print("mmuk")
-#             print(vleft)
-#             print(type(vleft))
             return vleft.value * vright.value
         if self.op == '/':
             return vleft.value / vright.value
@@ -270,21 +274,10 @@ class BinaryExp:
 class CompCond:
     def __init__(self, op, left, right):
         self.op = op
+        # default is Bool Type
+        self._type = Type.Bool
         self._left = left
         self._right = right
-        if isinstance(left, str) and isinstance(right, str):
-            if isNumber(left):
-                self._left = RealVal(float(left))
-                self._type = Type.RealVal
-            else:
-                self._left = left
-                self._type = Type.Bool
-            if isNumber(right):
-                self._right = RealVal(float(right))
-                self._type = Type.RealVal
-            else:
-                self._right = right
-                self._type = Type.Bool
 
     def __repr__(self):
         return str(self._left) + " " + str(self.op) + " " + str(self._right)
@@ -304,10 +297,10 @@ class CompCond:
             left = left.getExpression(varDict)
         if isinstance(right, BinaryExp):
             right = right.getExpression(varDict)
-        if str(self.left) in varDict.keys():
-            left = varDict[str(self.left)]
-        if str(self.right) in varDict.keys():
-            right = varDict[str(self.right)]
+        if str(self._left) in varDict.keys():
+            left = varDict[str(self._left)]
+        if str(self._right) in varDict.keys():
+            right = varDict[str(self._right)]
         if self.op == '<':
             return left < right
         elif self.op == '<=':
@@ -519,19 +512,15 @@ class modeModule:
 
 
 class flowDecl:
-    def __init__(self, expType, exps, var_dict, time_dict):
+    def __init__(self, expType, exps, var_dict):
         self.type = expType  # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
         self.__var_dict = var_dict
-        self.__time_dict = time_dict
+        print(exps)
 
     @property
     def var_dict(self):
         return self.__var_dict
-
-    @property
-    def time_dict(self):
-        return self.__time_dict
 
     def __repr__(self):
         return str(self.type) + " " + str(self.exps)
@@ -549,6 +538,8 @@ class flowDecl:
 
         ode_list = []
         print("comeon")
+        print(self.__var_dict)
+        print(self.exps)
         for elem in self.exps:
             # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
@@ -564,6 +555,12 @@ class flowDecl:
 #                 print("else")
 #                 print(type(elem.flow))
                 # elem.flow is BinaryExp type
+                elem.flow.var_dic = self.__var_dict
+#                 print("inside")
+#                 print(elem.flow)
+#                 print(elem.flow.var_dic)
+#                 print(elem.flow.value)
+#                 print("````````inside")
                 ode_list.append(elem.flow.value)
         #print("return")
         #print(ode_list)

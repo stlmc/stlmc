@@ -47,8 +47,8 @@ class Api:
         result = []
         for i in range(len(self.contVar)):
             result.append(str(self.contVar[i].id))
-        for i in range(len(self.modeVar)):
-           result.append(str(self.modeVar[i].id))
+#         for i in range(len(self.modeVar)):
+#            result.append(str(self.modeVar[i].id))
         return result
 
     # return mode variables id
@@ -300,13 +300,7 @@ class Api:
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
 
-        print(sol_init_list)
         sol_l = self.getSol()
-
-
-
-
-        print(sol_l)
         interval_list = []
 
         # k is variable name of dic
@@ -314,22 +308,15 @@ class Api:
         for k in sol_l:
             interval_dict = dict()
             tmp_res = []
-            print(k)
-            print("See")
-            print(sol_init_list[k])
 
             for vv in only_mod:
-                print(id(self.mode_module[model_id].getFlow().var_dict))
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
-                print(id(self.mode_module[model_id].getFlow().var_dict))
-            print("putme")
-            print(self.mode_module[model_id].getFlow().var_dict)
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
             for i in range(len(local_newT)):
-                self.mode_module[model_id].getFlow().time_dict["time"] = local_newT[i]
+                self.mode_module[model_id].getFlow().var_dict["t"] = local_newT[i]
                 # this line makes point pair. For example, below lines will makes
                 # pair { "x": 0.0, "y": 20.0 }. "global_newT[i]" is correspond to x value and
                 # "self.mode_module[model_id].getFlow().exp2exp()" is correspond to y value
@@ -338,33 +325,37 @@ class Api:
                 # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[0]" instead.
                 tmp = dict()
                 tmp["x"] = global_newT[i]
-                print("endup")
-                print(self.mode_module[model_id].getFlow().exp2exp())
-                print("endup2")
                 tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
                 tmp_res.append(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
-        print("good?")
         return interval_list, global_newT
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
+        print("yellow")
         c_val = self.getContValues()
         m_val = self.getModeValues()
 
         var_list = self.intervalsVariables()
+        _, only_mod, sol_init_list = self.getSolEqInitialValue()
         interval_list = []
+
 
         i_val = []
         for var in range(len(var_list[index])):
             key = var_list[index][var]
             i_val.append(c_val[str(key)][index][0])
+            for vv in only_mod:
+                self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
+
+        print("result")
+        print(self.mode_module[model_id].getFlow().var_dict)
 
         res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
         global_newT = global_timeValues[index].tolist()

@@ -121,6 +121,7 @@ JSON format, for example:
 package data
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -565,8 +566,9 @@ func (fg *FullGraph) Similar() []CompositeGraph {
 	var sameMap = make(map[int]CompositeGraph)
 	// transform list to Map, key as list index
 	// value as its element: CompositeGraph
-	for i, e := range same {
-		sameMap[i] = e
+	for i, _ := range same {
+		sameMap[i] = same[i]
+		fmt.Println(sameMap[i])
 	}
 
 	// iterate through CompositeGraph array i.e. CompositeGraph1,

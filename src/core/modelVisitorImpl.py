@@ -23,15 +23,31 @@ class modelVisitorImpl(modelVisitor):
         propDecl = list()
         self.newPropDecl = list()
         self.formulaText = list()
+        self.var_dic = list()
 
+        # generate variable dictionary * number of mode module
+        for i in range(len(ctx.mode_module())):
+            dic = dict()
+            dic["t"] = 0.0
+            self.var_dic.append(dic)
+
+        # iterate through mode declaration
         for i in range(len(ctx.mode_var_decl())):
-            modesDecl.append(self.visit(ctx.mode_var_decl()[i]))
+            md = self.visitMode_var_decl(ctx.mode_var_decl()[i])
+            modesDecl.append(md)
+            # set every instance with none
+            for j in range(len(ctx.mode_module())):
+                self.var_dic[j][md.id] = None
 
         for i in range(len(ctx.variable_var_decl())):
-            varsDecl.append(self.visit(ctx.variable_var_decl()[i]))
+            vs = self.visitVariable_var_decl(ctx.variable_var_decl()[i])
+            varsDecl.append(vs)
+            for j in range(len(ctx.mode_module())):
+                self.var_dic[j][vs.id] = None
+
 
         for i in range(len(ctx.mode_module())):
-            modeModuleDecl.append(self.visit(ctx.mode_module()[i]))
+            modeModuleDecl.append(self.visitMode_module(ctx.mode_module()[i], self.var_dic[i]))
 
         init = self.visit(ctx.init_decl())
 
@@ -55,7 +71,7 @@ class modelVisitorImpl(modelVisitor):
         return ContVar(self.visit(ctx.var_range()), ctx.VARIABLE().getText())
 
 
-    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict(), init_dict=dict()):
+    def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict()):
         left = None
         right = None
         op = ctx.op.text
@@ -64,21 +80,21 @@ class modelVisitorImpl(modelVisitor):
             left = self.visit(ctx.expression()[0])
             right = self.visit(ctx.expression()[1])
         else:
-            left = self.visitExpression(ctx.expression()[0], var_dic, init_dict)
-            right = self.visitExpression(ctx.expression()[1], var_dic, init_dict)
+            left = self.visitExpression(ctx.expression()[0], var_dic)
+            right = self.visitExpression(ctx.expression()[1], var_dic)
         return BinaryExp(op, left, right)
 
     '''
     Not yet
     '''
-    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict(), init_dict=dict()):
-        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic, init_dict), var_dic, init_dict)
+    def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict()):
+        return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic), var_dic)
 
-    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict(), init_dict=dict()):
+    def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):
         if not var_dict:
             return self.visit(ctx.expression())
         else:
-            return self.visitExpression(ctx.expression(), var_dict, init_dict)
+            return self.visitExpression(ctx.expression(), var_dict)
 
     def visitConstantExp(self, ctx:modelParser.ConstantExpContext, var_dict=dict()):
         if ctx.VARIABLE():
@@ -86,7 +102,7 @@ class modelVisitorImpl(modelVisitor):
             r.var_dic = var_dict
             return r
         elif ctx.TIME():
-            r = Real('time')
+            r = Real('t')
             r.var_dic = var_dict
             return r
         elif ctx.VALUE():
@@ -200,49 +216,21 @@ class modelVisitorImpl(modelVisitor):
         return (leftBracket, leftNumber,  rightNumber, rightBracket)
 
     # new function for expression
-    def visitExpression(self, ctx:modelParser.ExpressionContext, var_dict=dict(), init_dict=dict()):
+    def visitExpression(self, ctx:modelParser.ExpressionContext, var_dict=dict()):
         # empty
         if not var_dict:
             return self.visit(ctx)
-        # sol case
-        elif init_dict:
-            #print("herer???")
-            #print(ctx.getText())
-            if isinstance(ctx, modelParser.InitialValueContext):
-                #print("initial")
-                #print(ctx.getText())
-                return self.visitInitialValue(ctx, init_dict)
-            elif isinstance(ctx, modelParser.ConstantExpContext):
-                #print("constant")
-                #print(ctx.getText())
-                #print(var_dict)
-                return self.visitConstantExp(ctx, var_dict)
-            # TODO: update this first.
-            elif isinstance(ctx, modelParser.BinaryExpContext):
-                #print("binary")
-                #print(ctx.getText())
-                return self.visitBinaryExp(ctx, var_dict, init_dict)
-            elif isinstance(ctx, modelParser.ParenthesisExpContext):
-                #print("parent")
-                #print(ctx.getText())
-                return self.visitParenthesisExp(ctx, var_dict, init_dict)
-            elif isinstance(ctx, modelParser.UnaryExpContext):
-                #print("this case is ...")
-                #print(ctx.getText())
-                return self.visitUnaryExp(ctx, var_dict, init_dict)
-        # sol or diff case
-        # TODO: Unary case will not be used in diff case..
         else:
             if isinstance(ctx, modelParser.InitialValueContext):
-                return self.visitInitialValue(ctx, init_dict)
+                return self.visitInitialValue(ctx)
             elif isinstance(ctx, modelParser.ConstantExpContext):
                 return self.visitConstantExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.BinaryExpContext):
-                return self.visitBinaryExp(ctx, var_dict, init_dict)
+                return self.visitBinaryExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.ParenthesisExpContext):
                 return self.visitParenthesisExp(ctx, var_dict)
             elif isinstance(ctx, modelParser.UnaryExpContext):
-                return self.visitUnaryExp(ctx, var_dict, init_dict)
+                return self.visitUnaryExp(ctx, var_dict)
 
 
     '''
@@ -254,41 +242,23 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow solution equation type
     '''
-    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict(), time_dict=dict()):
-        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), time_dict, var_dict))
+    def visitSol_eq(self, ctx:modelParser.Sol_eqContext, var_dict=dict()):
+        return SolEq(ctx.VARIABLE().getText(), self.visitExpression(ctx.expression(), var_dict))
 
     '''
     mode module
     '''
-    def visitMode_module(self, ctx:modelParser.Mode_moduleContext):
-        var_dic = dict()
-        var_dic["xxxx"] = 1
-        what = self.visitMode_decl(ctx.mode_decl(), var_dic)
-        dcl = self.visit(ctx.inv_decl())
-        fldcl = self.visit(ctx.flow_decl())
-        jdcl = self.visit(ctx.jump_decl())
-        print("what is what?")
-        print(what)
-        print(dcl)
-        print(fldcl)
-        print(jdcl)
-
-        return modeModule(what, dcl, fldcl, jdcl)
+    def visitMode_module(self, ctx:modelParser.Mode_moduleContext, var_dic):
+        return modeModule(self.visitMode_decl(ctx.mode_decl()), self.visit(ctx.inv_decl()), self.visitFlow_decl(ctx.flow_decl(), var_dic), self.visit(ctx.jump_decl()))
 
     '''
     mode declaration
     '''
-    def visitMode_decl(self, ctx:modelParser.Mode_declContext, var_dic=dict()):
+    def visitMode_decl(self, ctx:modelParser.Mode_declContext):
         element = list()
         for i in range(len(ctx.condition())):
             # CompCond type
-            condElem = self.visitCompCond(ctx.condition()[i])
-            print("cond in")
-            print(condElem.left)
-            if condElem.type == Type.RealVal:
-                var_dic[str(condElem.left)] = 0.0
-            print(var_dic)
-            element.append(condElem)
+            element.append(self.visitCompCond(ctx.condition()[i]))
         return MultyCond("and", element)
 
     '''
@@ -303,7 +273,7 @@ class modelVisitorImpl(modelVisitor):
     '''
     flow declaration
     '''
-    def visitFlow_decl(self, ctx:modelParser.Flow_declContext):
+    def visitFlow_decl(self, ctx:modelParser.Flow_declContext, var_dic):
         result = list()
         expType = "empty"
         if ctx.diff_eq():
@@ -326,28 +296,26 @@ class modelVisitorImpl(modelVisitor):
             for e in result:
                 v_list.append(e.contVar)
 
-        var_dict = dict()
         # time only have one variable, time.
         # time_dict is single value not dict.
-        time_dict = dict()
         for e in v_list:
             print(e)
-            var_dict[e]=0.0
+            var_dic[e]=0.0
 
-        time_dict["time"]=0.0
+        var_dic["t"]=0.0
 
         if ctx.diff_eq():
             expType = "diff"
             # check if there exist variable
             for i in range(len(ctx.diff_eq())):
-                a = self.visitDiff_eq(ctx.diff_eq()[i], var_dict)
+                a = self.visitDiff_eq(ctx.diff_eq()[i], var_dic)
                 f_result.append(a)
         elif ctx.sol_eq():
             expType = "sol"
             # testing....
             for i in range(len(ctx.sol_eq())):
-                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], var_dict, time_dict))
-        return flowDecl(expType, f_result, var_dict, time_dict)
+                 f_result.append(self.visitSol_eq(ctx.sol_eq()[i], var_dic))
+        return flowDecl(expType, f_result, var_dic)
 
     '''
     jump declaration
