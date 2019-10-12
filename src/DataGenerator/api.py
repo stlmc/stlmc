@@ -100,6 +100,7 @@ class Api:
                     final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
+        print(result)
         return result
 
 
@@ -316,7 +317,7 @@ class Api:
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
             for i in range(len(local_newT)):
-                self.mode_module[model_id].getFlow().var_dict["t"] = local_newT[i]
+                self.mode_module[model_id].getFlow().var_dict["time"] = local_newT[i]
                 # this line makes point pair. For example, below lines will makes
                 # pair { "x": 0.0, "y": 20.0 }. "global_newT[i]" is correspond to x value and
                 # "self.mode_module[model_id].getFlow().exp2exp()" is correspond to y value

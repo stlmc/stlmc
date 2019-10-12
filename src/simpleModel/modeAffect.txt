@@ -19,7 +19,7 @@ real heater;
     inv:
         x < 60;
     flow:
-        d/dt[x] = heater;
+        d/dt[x] = 2 * heater;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));

@@ -28,7 +28,7 @@ class modelVisitorImpl(modelVisitor):
         # generate variable dictionary * number of mode module
         for i in range(len(ctx.mode_module())):
             dic = dict()
-            dic["t"] = 0.0
+            dic["time"] = 0.0
             self.var_dic.append(dic)
 
         # iterate through mode declaration
@@ -102,7 +102,7 @@ class modelVisitorImpl(modelVisitor):
             r.var_dic = var_dict
             return r
         elif ctx.TIME():
-            r = Real('t')
+            r = Real('time')
             r.var_dic = var_dict
             return r
         elif ctx.VALUE():
@@ -302,7 +302,7 @@ class modelVisitorImpl(modelVisitor):
             print(e)
             var_dic[e]=0.0
 
-        var_dic["t"]=0.0
+        var_dic["time"]=0.0
 
         if ctx.diff_eq():
             expType = "diff"
