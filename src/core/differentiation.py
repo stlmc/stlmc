@@ -2,10 +2,11 @@ import itertools
 from functools import singledispatch
 from .error import *
 from .node import *
+from .z3Handler import *
 
-
-# return a check result and the Z3 constraint size
 def diff(expression):
+    print("first diff")
+    print(expression)
     return diff(expression)
 
 @singledispatch
@@ -25,25 +26,39 @@ def _(const):
 
 @diff.register(Plus)
 def _(const):
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
     x = diff(const.left())
     y = diff(const.right())
+    if z3.is_rational_value(z3.simplify(z3Obj(x))) and (z3.simplify(z3Obj(x)) == 0):
+        return y
+    if z3.is_rational_value(z3.simplify(z3Obj(y))) and (z3.simplify(z3Obj(y)) == 0):
+        return x
     return x + y
 
 @diff.register(Minus)
 def _(const):
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
     x = diff(const.left())
     y = diff(const.right())
+    if z3.is_rational_value(z3.simplify(z3Obj(x))) and (z3.simplify(z3Obj(x)) == 0):
+        return -y
+    if z3.is_rational_value(z3.simplify(z3Obj(y))) and (z3.simplify(z3Obj(y)) == 0):
+        return x
     return x - y
 
 @diff.register(Pow)
-def _(const):
-    if isinstance(const.left(), Variable) and isinstance(const.right(), Constant) :
-        if str(const.left().id == 'time'):
-            const.right() * const.left() ** (const.right() - RealVal(1))
+def _(const): 
+    if isinstance(const.left(), Variable) and z3.is_rational_value(z3.simplify(z3Obj(const.right()))) :
+        if z3.simplify(z3Obj(const.right())) == 0:
+            return RealVal(1)
+        elif str(const.left().id == 'time'):
+            return (const.right() * (const.left() ** (const.right() - RealVal(1))))
         else:
             return RealVal(0)
     else:
-        raise NotImplementedError('Something wrong')
+        raise NotImplementedError('Cannot hanlindg polynomial yet')
 
 
 @diff.register(Mul)
