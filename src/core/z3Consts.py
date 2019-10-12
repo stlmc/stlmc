@@ -1,7 +1,6 @@
 import core.encoding as ENC
 from .node import *
 from .differentiation import *
-from .z3Handler import *
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
@@ -58,6 +57,7 @@ class z3Consts:
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
              
             # add steady state jump constraints 
+            '''
             steadyStateConsts = list()
             op = {'bool' : Bool, 'int' : Int, 'real' : Real}
             for k in range(len(self.modeVar)):
@@ -67,7 +67,7 @@ class z3Consts:
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
-
+            '''
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []
@@ -165,10 +165,12 @@ class z3Consts:
         if isinstance(exp, Le):
             exp = Ge((exp.right() - exp.left()), RealVal(0))
 
+        combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
+
         # If proposition is just boolean variable, return original expression 
         if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
             if exp.getType() == Type.Bool:
-                return exp
+                return exp.substitution(combine)
             else:
                 raise ("Proposition constraints something wrong")
 
@@ -177,8 +179,10 @@ class z3Consts:
             return exp 
 
         const = list()
-        combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
-        handlingExp = exp.left() - exp.right()
+        if exp.right() == RealVal(0): 
+            handlingExp = exp.left()
+        else: 
+            handlingExp = exp.left() - exp.right()
 
         # f(t) >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
@@ -204,6 +208,7 @@ class z3Consts:
             subContVar[str(contVar.id)] = flowModule[contVar]
 
         substitutionExp = handlingExp.substitution(subContVar)
+        
         diffExp = diff(substitutionExp)
 
         #monotone increase or decrease
