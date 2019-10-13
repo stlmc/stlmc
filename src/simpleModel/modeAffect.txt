@@ -19,7 +19,7 @@ real heater;
     inv:
         x < 60;
     flow:
-        d/dt[x] = heater;
+        d/dt[x] = 2 * heater;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));
@@ -35,4 +35,4 @@ reachability = x > 23;
 
 goal:
 #(<> [0.0, 40.0] (reachability)) ;
-([] [0.0, inf) (x > 24)) ;
+([] [0.0, inf) (x > 27)) ;

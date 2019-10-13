@@ -6,6 +6,6 @@
 #python3 stlMC_main.py simpleModel/oneThermostatMix.txt
 python3 stlMC_main.py simpleModel/modeAffect.txt
 #python3 stlMC_main.py simpleModel/twoThermostatLinear.txt
-#python3 stlMC_main.py simpleModel/demo.txt
+#python3 stlMC_main.py simpleModel/carPoster.txt
 #python3 stlMC_main.py simpleModel/demoGraphSeveral.txt
 #python3 stlMC_main.py simpleModel/twoThermostatPolySimple.txt
