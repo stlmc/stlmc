@@ -299,7 +299,6 @@ class modelVisitorImpl(modelVisitor):
         # time only have one variable, time.
         # time_dict is single value not dict.
         for e in v_list:
-            print(e)
             var_dic[e]=0.0
 
         var_dic["time"]=0.0

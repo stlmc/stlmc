@@ -28,12 +28,11 @@ def isNumber(s):
         return False
 
 
-def printResult(result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
-    print(result + " at bound k : " + str(k) + ", time bound : " + str(tauMax) + ".")
-    print("Constraint Size : " + str(cSize) + ", Translation Size : " + str(fSize) + ".")
-    print(
-                "Generation Time(sec) : " + generationTime + ", Solving Time(sec) : " + solvingTime + ", Total Time(sec) : " + totalTime + ".\n")
-    print("--------------------------------------------------------------------------------------\n")
+def printResult(modelName, formula, result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
+    print("Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
+    print("Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
+    print("Execution Time(sec) : " + totalTime + "\n")
+    print("---------------------------------------------------------------------------\n")
 
 
 class Variable:
@@ -180,8 +179,6 @@ class UnaryFunc:
         else:
             degree = RealVal(str(self.val)).value
 
-        print("comeone")
-        print(degree)
 
         if self.func == 'sin':
             return degree - degree * degree * degree / RealVal(6).value
@@ -516,7 +513,6 @@ class flowDecl:
         self.type = expType  # empty : wrong, diff : diff_eq(), sol : sol_eq()
         self.exps = exps
         self.__var_dict = var_dict
-        print(exps)
 
     @property
     def var_dict(self):
@@ -537,30 +533,16 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
-        print("comeon")
-        print(self.__var_dict)
-        print(self.exps)
         for elem in self.exps:
             # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
-#                 print("realval")
-#                 print(elem)
                 ode_list.append(elem.flow.value)
             elif isinstance(elem.flow, Real):
-#                 print("real")
-#                 print(elem)
                 ode_list.append(elem.flow.value)
                 # every thing goes in here
             else:
-#                 print("else")
-#                 print(type(elem.flow))
                 # elem.flow is BinaryExp type
                 elem.flow.var_dic = self.__var_dict
-#                 print("inside")
-#                 print(elem.flow)
-#                 print(elem.flow.var_dic)
-#                 print(elem.flow.value)
-#                 print("````````inside")
                 ode_list.append(elem.flow.value)
         #print("return")
         #print(ode_list)
@@ -702,7 +684,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, stlFormula, bound, timeBound, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -710,10 +692,7 @@ class StlMC:
         isUnknown = False
         negFormula = NotFormula(stlFormula)  # negate the formula
 
-        print("Scheduleing " + str(stlFormula) + " bound: " + str(bound))
-
         for i in range(0 if iterative else bound, bound + 1):
-
             stime1 = time.process_time()
             # base partition
             baseP = PART.baseCase(i)
@@ -765,14 +744,14 @@ class StlMC:
             totalTime = round((stime2 - stime1), 4)
 
             if result == z3.sat:
-                printResult("False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
+                printResult(modelName, self.strStlFormula, "False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                             str(totalTime))
                 return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
             if result == z3.unknown:
                 isUnknown = True
 
         result = "Unknown" if isUnknown else True
-        printResult(str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
+        printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                     str(totalTime))
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
