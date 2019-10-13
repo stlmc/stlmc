@@ -288,8 +288,9 @@ class Json {
                     let numnumlist: [number, number][] = [];
                     let iifg = this._interval_info.get(ii2);
                     if (iifg) {
+                        // Todo: not right....
                         numnumlist = iifg.data.map((e) => {
-                            return data[ii2] == "True" ? [e, 1] : [e, 0];
+                            return data[ii2] === "True" ? [e, 1] : (data[ii2] === "False" ? [e, 0] : [e, parseFloat(data[ii2])]);
                         });
                     }
                     intv_data_set.push(numnumlist);

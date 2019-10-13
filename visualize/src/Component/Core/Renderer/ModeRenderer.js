@@ -58,12 +58,24 @@ class ModeRenderer {
             .domain([this.dataXrange[0], this.dataXrange[1] + XscaleError])
             .range([0, this._size.width]);
 
-        // set scale function for y
-        // 0: none, 1: false, 2: true, 3:none
-        this.Yscale =
-            d3.scaleLinear()
-                .domain([0, 3])
-                .range([this.data_viewer_height, 0]);
+
+        let isModeBool = false;
+        if (isModeBool){
+            // set scale function for y
+            // 0: none, 1: false, 2: true, 3:none
+            this.Yscale =
+                d3.scaleLinear()
+                    .domain([0, 3])
+                    .range([this.data_viewer_height, 0]);
+        } else {
+            // set scale function for y
+            // 0: none, 1: false, 2: true, 3:none
+            this.Yscale =
+                d3.scaleLinear()
+                    .domain([-2, 5])
+                    .range([this.data_viewer_height, -2]);
+        }
+
 
 
 
@@ -74,16 +86,13 @@ class ModeRenderer {
             .attr("height", this.data_viewer_height);
 
 
-
-
         let scaleX = this.Xscale;
         let scaleY = this.Yscale;
 
 
         // Add interval lines.
         this.modeCanvasIntervalLines = this.modeCanvas.append("g")
-            .attr("id", "modeCanvasIntervalLines")
-        //.attr("transform", "translate(" + 0 + "," + (-50) + ")");
+            .attr("id", "modeCanvasIntervalLines");
 
         // tickValues is actual data line
         // e.g) if you put [1, 2] in the tickValues than, it will draw line to x:1 and x:2.
@@ -103,16 +112,33 @@ class ModeRenderer {
             .attr("id", "modeCanvasYaxis")
             .attr("transform", "translate(" + this.x_clip_margin + "," + 1 + ")");
 
-        this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
-            (d) => {
-                if (d === 1) {
-                    return "false"
-                } else if (d === 2) {
-                    return "true"
-                } else {
-                    return " "
-                }
-            }));
+        if(isModeBool){
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
+                (d) => {
+                    console.log(d);
+                    if (d === 1) {
+                        return "false"
+                    } else if (d === 2) {
+                        return "true"
+                    } else {
+                        return " "
+                    }
+                }));
+        }
+        else {
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
+                (d) => {
+                    console.log(d);
+                    if (d === -1.2) {
+                        return "-1.2"
+                    } else if (d === 4) {
+                        return "4"
+                    }
+                }));
+        }
+
+        console.log(data);
+
 
         // update when redraw, remove previous proposition graph.
         this.modeGraph = this.modeCanvas
@@ -142,8 +168,8 @@ class ModeRenderer {
             })
             .attr("class", "modeLines")
             .attr("stroke", "red")
-            .attr("stroke-width", 1.5)
-            .attr("transform", "translate( 0," + -20.0 +")")
+            .attr("stroke-width", 1.5);
+            //.attr("transform", "translate( 0," + -20.0 +")")
 
     }
 
