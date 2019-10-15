@@ -164,6 +164,9 @@ if __name__ == '__main__':
     parser.add_argument('-multithread','-multy', type = bool, default = False,
                     help='run the given model using multithread (default: false)')
 
+    parser.add_argument('-visualize', type = bool, default = False,
+                                help='Start visualizing tool for the trace of the counterexample (default: false)')
+
     parser.add_argument('-json', type = bool, default = False,
                     help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
 
