@@ -8,7 +8,7 @@ import io, os, sys
 import multiprocessing
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator):
-    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(title,formula, k, timeBound, False)
 
     # variable points bound, timeBound, goal
 #    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 

@@ -82,10 +82,6 @@ def main(args):
 
 #'''
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process some integers.')
-
-    parser.add_argument('file')
-
     parser.add_argument('-lower','-l', type = int, default = 1,
         help='model checking from the given lower bound (default: 1)')\
 
