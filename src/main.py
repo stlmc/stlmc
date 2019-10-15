@@ -10,7 +10,8 @@ import argparse
 
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave):
-    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(formula, k, timeBound, False)
+    modelName = os.path.splitext(os.path.basename(title))[0] 
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, False)
 
     # variable points bound, timeBound, goal
 #    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
@@ -22,7 +23,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
         dataGenerator.visualize()
 
     if resultSave:
-        filename = "report" + "_" + os.path.splitext(os.path.basename(title))[0] + ".txt"
+        filename = "report" + "_" + modelName + ".txt"
         rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
