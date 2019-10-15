@@ -66,14 +66,17 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     workspace_info = dict()
     title = fileName
 
+    job_list_info = []
     job_list = []
     for i in range(len(stlMC.getStlFormsList())):
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
+            job_list_info.append(title+str(formula))
             if multy:
                 job_list.append((title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
             else:
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave)
+    stlLogger.info(job_list_info)
     if multy:
         pool = Pool(process=20)
         pool.map(module, job_list)
