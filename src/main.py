@@ -145,7 +145,7 @@ if __name__ == '__main__':
     stlLogger.info("StlMC main start")
 
 
-    parser = ArgumentParser()
+    parser = argparse.ArgumentParser(description='For more information. See below:')
 
     parser.add_argument('file', type = str, default = "", help="Type file or directory to process")
 
