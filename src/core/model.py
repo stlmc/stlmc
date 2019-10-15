@@ -139,11 +139,10 @@ class ContVar(Variable):
 
 
 class UnaryFunc:
-    def __init__(self, func, val, var_dict, init_dict):
+    def __init__(self, func, val, var_dict):
         self.func = func
         self.val = val
         self._var_dict = var_dict
-        self._init_dict = init_dict
 
     def __repr__(self):
         return str(self.func) + "(" + str(self.val) + ")"
