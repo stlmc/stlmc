@@ -23,6 +23,7 @@ node_modules/
 
 # unignored data
 !visualize/golang/data/
-!visualize/*.json
+!visualize/package.json
+!visualize/tsconfig.json
 # log
 /log
