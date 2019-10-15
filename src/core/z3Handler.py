@@ -25,8 +25,10 @@ def z3checkSat(consts, logic="None"):
     result = solver.check()
     if result == z3.sat:
         m = solver.model()
+        result = False
     else:
         m = None
+        result = True if z3.unsat else "Unknown"
 
     return (result, sizeAst(z3.And(*z3Consts)), m)
 

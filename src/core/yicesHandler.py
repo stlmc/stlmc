@@ -5,10 +5,9 @@ from functools import singledispatch
 from .error import *
 from .node import *
 
-
 # return a check result and the Z3 constraint size
 def yicescheckSat(consts, logic="None"):
-    yicesConsts=[yicesObj(c) for c in consts]
+    strConsts = [yicesObj(c) for c in consts]
     cfg = Config()
 
     if logic != "None":
@@ -17,20 +16,21 @@ def yicescheckSat(consts, logic="None"):
         cfg.default_config_for_logic('QF_NRA')
 
     ctx = Context(cfg)
-    
+
+    yicesConsts = [Terms.parse_term(c) for c in strConsts]
     ctx.assert_formulas(yicesConsts)
 
     result = ctx.check_context()
     if result == Status.SAT:
         m = Model.from_context(ctx, 1)
         model_string = m.to_string(80, 100, 0)
-        print(model_string)
+        result = False
     else:
         m = None
+        result = True if Status.UNSAT else "Unknown" 
 
     cfg.dispose()
     ctx.dispose()
-    Yices.exit()
 
     #return (result, sizeAst(yices.yand(*yicesConsts)), m)
     return (result, -1, m)
@@ -49,109 +49,135 @@ def yicesObj(const:Node):
 @yicesObj.register(Constant)
 def _(const):
     if const.getType() == Type.Bool:
-        value = Terms.TRUE if const.value else Terms.FALSE
+        value = 'true' if const.value else 'false'
         return value
-    if const.getType() == Type.Real:
-        return yapi.yices_parse_float(str(const.value))
-    if const.getType() == Type.Int:
-        return Terms.integer(int(str(const.value)))
+    return str(const.value)
 
 @yicesObj.register(Variable)
 def _(const):
     op = {Type.Bool: Types.bool_type(), Type.Real: Types.real_type(), Type.Int: Types.int_type()}
-    return  Terms.new_uninterpreted_term(op[const.getType()], str(const.id))
+    x = Terms.new_uninterpreted_term(op[const.getType()], str(const.id))
+
+    return  str(const.id)
 
 @yicesObj.register(Ge)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.arith_geq_atom(x, y)
+    result = '(>= ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Gt)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.arith_gt_atom(x, y)
+    result = '(> ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Le)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.arith_leq_atom(x, y)
+    result = '(<= ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Lt)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.arith_lt_atom(x, y)
+    result = '(< ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Numeq)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.arith_eq_atom(x, y)
+    result = '(= ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Plus)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.add(x, y)
+    result = '(+ ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Minus)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.sub(x, y)
+    result = '(- ' + x + ' ' + y + ')'
+    return result
 
+'''
 @yicesObj.register(Pow)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.power(x, y)
+    return Terms.parse_term('(** ' + x + ' ' + y + ')')
+'''
 
 @yicesObj.register(Mul)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.mul(x, y)
+    result = '(* ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Div)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Temrs.division(x, y)
+    result = '(/ ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Neg)
 def _(const):
     x = yicesObj(const.child())
-    return Terms.neg(x)
+    result = '(- ' + str(0) + ' ' + x + ')'
+    return result
 
 @yicesObj.register(And)
 def _(const):
     yicesargs = [yicesObj(c) for c in const.children]
-    return Terms.yand(yicesargs)
+    if len(yicesargs) < 1:
+        return 'true'
+    elif len(yicesargs) < 2:
+        return yicesargs[0]
+    else:
+        result = '(and ' + ' '.join(yicesargs) + ')'
+        return result 
 
 @yicesObj.register(Or)
 def _(const):
     yicesargs = [yicesObj(c) for c in const.children]
-    return Terms.yor(yicesargs)
+    if len(yicesargs) < 1:
+        return 'true'
+    elif len(yicesargs) < 2:
+        return yicesargs[0]
+    else:
+        result = '(or ' + ' '.join(yicesargs) + ')'
+        return result
 
 @yicesObj.register(Implies)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.implies(x, y)
+    result = '(=> ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Beq)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.eq(x, y)
+    result = '(= ' + x + ' ' + y + ')'
+    return result
 
 @yicesObj.register(Not)
 def _(const):
     x = yicesObj(const.child())
-    return Terms.ynot(x)
+    result = '(not ' + x + ')'
+    return result
 
 @yicesObj.register(Integral)
 def _(const):
@@ -193,7 +219,8 @@ def _(const):
 
 
     yicesresult = [yicesObj(c) for c in result]
-    return Terms.yand(yicesresult) 
+    result = '(and ' + ' '.join(yicesresult) + ')'
+    return result  
 
 @yicesObj.register(Forall)
 def _(const):
@@ -204,7 +231,8 @@ def _(const):
     else:
         endCond = yicesObj(const.condition.substitution(const.endDict))
         startCond = yicesObj(const.condition.substitution(const.startDict))
-        return Terms.yand(endCond, startCond)
+        result = '(and ' + endCond + ' ' + startCond + ')'
+        return result 
 
 @yicesObj.register(Solution)
 def _(const):
@@ -233,5 +261,6 @@ def _(const):
         result.append(const.endList[i] == substitutionExp[keyValue])
 
     yicesresult = [yicesObj(c) for c in result]
-    return Terms.yand(yicesresult)
+    result = '(and ' + ' '.join(yicesresult) + ')'
+    return result
 

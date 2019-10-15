@@ -746,14 +746,7 @@ class StlMC:
             solvingTime = round((stime2 - etime1), 4)
             totalTime = round((stime2 - stime1), 4)
 
-            if result == z3.sat:
-                printResult(modelName, self.strStlFormula, "False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
-                            str(totalTime))
-                return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
-            if result == z3.unknown:
-                isUnknown = True
 
-        result = "Unknown" if isUnknown else True
         printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                     str(totalTime))
 
