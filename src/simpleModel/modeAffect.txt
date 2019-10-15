@@ -6,7 +6,7 @@ real heater;
     inv:
         x > 0;
     flow:
-        x(t) = heater * t + x(0) ;
+        x(t) = heater * t ** 2 + x(0) ;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));

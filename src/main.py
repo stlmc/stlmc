@@ -1,4 +1,6 @@
 import sys
+import logging
+import logging.handlers
 import subprocess
 from antlr4 import *
 from core.syntax.modelLexer import modelLexer
@@ -32,7 +34,7 @@ class ArgumentParser(argparse.ArgumentParser):
         #self.exit(2, ('%(prog)s: error: %(message)s\n') % args)
 
 
-def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave):
+def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave):
     modelName = os.path.splitext(os.path.basename(title))[0] 
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, False)
 
@@ -40,7 +42,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
 #    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
 #    stlModel.reach(k, 60, Bool('xl2'))
 
-    if visualize:
+    if json:
         dataGenerator.data = stlModel.data
         dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
         dataGenerator.visualize()
@@ -51,7 +53,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave):
+def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave, stlLogger):
 
     handlingModel = FileStream(fileName)
     lexer  = modelLexer(handlingModel)
@@ -59,7 +61,7 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
     parser = modelParser(stream)
     tree   = parser.stlMC()
     stlMC =  modelVisitorImpl().visit(tree)
-    dataGenerator = Api()
+    dataGenerator = Api(stlLogger)
     workspace_info = dict()
     title = fileName
    
@@ -67,13 +69,13 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
             if multy:
-                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave))
+                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
                 p.start()
             else:
-                module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave)
+                module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave)
 
 
-def main(args):
+def main(args, stlLogger):
     modelList = list()
     if os.path.isdir(args.file):
         fileList = os.listdir(args.file)
@@ -83,12 +85,20 @@ def main(args):
     elif os.path.isfile(args.file):
         modelList.append(args.file)
     else:
+        stlLogger.error("file name is wrong")
         raise ("file name is wrong")
 
     # create data directory for storing report files
     if args.save:
         if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
             os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
+
+    # TODO: update golang ...
+    if args.visualize:
+        visOut = subprocess.Popen(["../visualize/golang/main", "-v"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = visOut.communicate()
+        print(stdout)
+        print(stderr)
 
     for m in modelList:
         if args.save:
@@ -100,16 +110,40 @@ def main(args):
             upper = args.lower
         else:
             upper = args.upper
-        if args.visualize:
-            visOut = subprocess.Popen(["../visualize/golang/main", "-v"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            stdout, stderr = visOut.communicate()
-            print(stdout)
-            print(stderr)
-        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.save)
+        modelCheck(m, args.lower, upper, args.step, args.timebound, args.json, args.multithread, args.save, stlLogger)
         
 
 #'''
 if __name__ == '__main__':
+
+    # setting logger
+    stlLogger = logging.getLogger("StlMC")
+    stlLogger.setLevel(logging.DEBUG)
+
+
+    formatter = logging.Formatter('[%(levelname)s ==> %(filename)s:%(lineno)s] %(asctime)s >> %(message)s')
+    try:
+        if not(os.path.isdir("./log")):
+            os.makedirs(os.path.join("./log"))
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            stlLogger.error("Failed to create directory!!!!!")
+            raise
+
+    log_file_count = 2000
+    fileHandler = logging.handlers.TimedRotatingFileHandler(filename="./log/main.log"
+    ,when='s', interval=1, backupCount=log_file_count)
+    streamHandler = logging.StreamHandler()
+
+    fileHandler.setFormatter(formatter)
+    streamHandler.setFormatter(formatter)
+
+    stlLogger.addHandler(fileHandler)
+    stlLogger.addHandler(streamHandler)
+
+    stlLogger.info("StlMC main start")
+
+
     parser = ArgumentParser()
 
     parser.add_argument('file', type = str, default = "", help="Type file or directory to process")
@@ -139,9 +173,9 @@ if __name__ == '__main__':
 
     try:
         args = parser.parse_args()
-        main(args)
+        main(args, stlLogger)
         isVis = args.visualize
     except SystemExit:
         if isVis:
-            print("yellllll")
+            stlLogger.debug("hello")
 #'''

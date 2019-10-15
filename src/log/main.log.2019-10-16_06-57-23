@@ -1,0 +1,2 @@
+[DEBUG ==> api.py:23] 2019-10-16 06:57:23,668 >> Set id as: modeAffect_([]_[0.0,inf)^[0.0,inf) newPropDecl_0)_3
+[ERROR ==> api.py:516] 2019-10-16 06:57:23,674 >> Error occured, can only concatenate str (not "list") to str

@@ -1,0 +1,18 @@
+[DEBUG ==> api.py:23] 2019-10-16 06:59:08,638 >> Set id as: modeAffect_([]_[0.0,inf)^[0.0,inf) newPropDecl_0)_3
+[DEBUG ==> api.py:471] 2019-10-16 06:59:08,649 >> Json file generator with modelId list: [0, 1, 1, 1]
+[DEBUG ==> api.py:388] 2019-10-16 06:59:08,665 >> main calculation start
+[DEBUG ==> api.py:409] 2019-10-16 06:59:08,669 >> Sol eq dict: [{'interval': 0, 'model_id': 0}]
+[DEBUG ==> api.py:410] 2019-10-16 06:59:08,669 >> Diff eq dict: [{'interval': 1, 'model_id': 1}, {'interval': 2, 'model_id': 1}, {'interval': 3, 'model_id': 1}]
+[DEBUG ==> api.py:299] 2019-10-16 06:59:08,669 >> calculation start
+[DEBUG ==> api.py:334] 2019-10-16 06:59:08,678 >> end of calculation
+[DEBUG ==> api.py:341] 2019-10-16 06:59:08,678 >> calculation start
+[DEBUG ==> api.py:358] 2019-10-16 06:59:08,685 >> variable dictionary: {'time': 0.0, 'heater': 4.0, 'x': -5.0}
+[DEBUG ==> api.py:383] 2019-10-16 06:59:08,685 >> end of calculation
+[DEBUG ==> api.py:341] 2019-10-16 06:59:08,685 >> calculation start
+[DEBUG ==> api.py:358] 2019-10-16 06:59:08,691 >> variable dictionary: {'time': 0.0, 'heater': 4.0, 'x': 0.0}
+[DEBUG ==> api.py:383] 2019-10-16 06:59:08,691 >> end of calculation
+[DEBUG ==> api.py:341] 2019-10-16 06:59:08,691 >> calculation start
+[DEBUG ==> api.py:358] 2019-10-16 06:59:08,697 >> variable dictionary: {'time': 0.0, 'heater': 4.0, 'x': 3.0}
+[DEBUG ==> api.py:383] 2019-10-16 06:59:08,698 >> end of calculation
+[DEBUG ==> api.py:452] 2019-10-16 06:59:08,698 >> end of main calculation
+[ERROR ==> api.py:516] 2019-10-16 06:59:08,705 >> Error occured, name 'os' is not defined

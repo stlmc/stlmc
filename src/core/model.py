@@ -262,6 +262,14 @@ class BinaryExp:
             return vleft.value * vright.value
         if self.op == '/':
             return vleft.value / vright.value
+        if self.op == '**':
+            # assume that right case will only be constant!
+            if not isNumber(vright.value):
+                raise ("unsupported power evaluation:" + str(vright.value))
+            return pow(vleft.value, vright.value)
+        else:
+            raise "unsupported calcuation"
+
 
     def getType(self):
         return Type.Real

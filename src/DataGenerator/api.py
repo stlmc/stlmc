@@ -1,4 +1,7 @@
 import z3
+import os
+import logging
+import logging.handlers
 from core.node import *
 from core.z3Handler import checkSat
 import numpy as np
@@ -6,8 +9,8 @@ from scipy.integrate import odeint
 
 
 class Api:
-    def __init__(self):
-        pass
+    def __init__(self, stlLogger=logging.getLogger("DefaultStlMC")):
+        self.stlLogger = stlLogger
     
     @property
     def stackID(self):
@@ -18,8 +21,7 @@ class Api:
     @stackID.setter
     def stackID(self, stackID):
         self._stackID = stackID + "_" + self.stl + "_" + str(self.bound)
-        #print("ID")
-        #print(self._stackID)
+        self.stlLogger.debug("Set id as: " + self.stackID)
 
     @property
     def data(self):
@@ -100,7 +102,6 @@ class Api:
                     final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
-        print(result)
         return result
 
 
@@ -164,9 +165,7 @@ class Api:
                 sum += result[t_el]
             if t_el == 0:
                 t.append(np.linspace(0, sum))
-                #print("0 ~ " + str(sum))
             else:
-                #print(str(sum_pre) + " ~ " + str(sum))
                 t.append(np.linspace(sum_pre, sum))
         return t
 
@@ -298,6 +297,7 @@ class Api:
     # inner function of sol equation
     # generate list that correspond to indexed interval
     def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
+        self.stlLogger.debug("calculation start")
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
 
@@ -332,13 +332,14 @@ class Api:
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
+        self.stlLogger.debug("end of calculation")
         return interval_list, global_newT
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
 
-        print("yellow")
+        self.stlLogger.debug("calculation start")
         c_val = self.getContValues()
         m_val = self.getModeValues()
 
@@ -355,8 +356,7 @@ class Api:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
 
-        print("result")
-        print(self.mode_module[model_id].getFlow().var_dict)
+        self.stlLogger.debug("variable dictionary: {}".format(self.mode_module[model_id].getFlow().var_dict))
 
         res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
         global_newT = global_timeValues[index].tolist()
@@ -381,13 +381,12 @@ class Api:
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
 
-#         print("calcDIffEq")
-#         print(interval_dict)
+        self.stlLogger.debug("end of calculation")
         return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
 
-
+        self.stlLogger.debug("main calculation start")
         # get total model id
         model_id = self.getModelIdList()
 
@@ -408,12 +407,8 @@ class Api:
                 tmp["model_id"] = ids
                 diffEq_dict.append(tmp)
 
-
-#         print("Sol eq dict")
-#         print(solEq_dict)
-#
-#         print("Diff eq dict")
-#         print(diffEq_dict)
+        self.stlLogger.debug("Sol eq dict: {}".format(solEq_dict))
+        self.stlLogger.debug("Diff eq dict: {}".format(diffEq_dict))
 
         res = []
         time_list = []
@@ -455,6 +450,7 @@ class Api:
                         time_dict["range"] = elem_time_pair
                         time_dict["data"] = elem["time"]
                         time_list.append(time_dict)
+        self.stlLogger.debug("end of main calculation")
         return res, time_list
 
     # get intervals variable list
@@ -473,8 +469,7 @@ class Api:
 
     def visualize(self):
         try:
-            #print("visualize start")
-            #print(self.getModelIdList())
+            self.stlLogger.debug("Json file generator with modelId list: {}".format(self.getModelIdList()))
             '''
                 if solution equation exists: 
                 checking it via sol_l's length,
@@ -491,7 +486,6 @@ class Api:
                         if "time" + str(i) == k.name():
                             result.append(float(self.model[k].as_decimal(6).replace("?", "")))
 
-            print(result)
 
             local_t = self.getNumpyLocalTimeValues()
 
@@ -500,24 +494,24 @@ class Api:
 
             gmid, _ = self.getModeDeclWithModelID()
 
-            #outer2['data'] = self.calcEq(global_t, local_t)
-
             outer2['variable'] = self.getVarsId()
             outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
-
-            print(outer2['interval'])
-            print(outer2['intervalInfo'])
             outer2['prop'] = self.getProposition()
             outer2['mode'] = gmid
-            #outer2['mode'] = self.getModesId()
-            #outer2['mode_t'] = self.getModeDecl()
-            print(outer2["intervalInfo"])
+
+            try:
+                if not(os.path.isdir("../visualize/src/DataDir")):
+                    os.makedirs(os.path.join("../visualize/src/DataDir"))
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    self.stlLogger.error("Failed to create directory!!!!!")
+                    raise
 
             import json
-            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
             f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
+            self.stlLogger.info("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
 
         except Exception as ex:
-            print('Nothing to draw!', ex)
+            self.stlLogger.error("Error occured, {}".format(ex))
