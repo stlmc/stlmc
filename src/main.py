@@ -63,12 +63,12 @@ def main(args):
         raise ("file name is wrong")
 
     # create data directory for storing report files
-    if args.store:
+    if args.save:
         if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
             os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
 
     for m in modelList:
-        if args.store:
+        if args.save:
             filename = "report" + "_" + os.path.splitext(os.path.basename(m))[0] + ".txt"
             rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
             with open(rel_path, 'w') as fle :
@@ -77,7 +77,7 @@ def main(args):
             upper = args.lower + 1;
         else:
             upper = args.upper
-        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.store)
+        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.save)
         
 
 #'''
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     parser.add_argument('-visualize','-visual', type = bool, default = False,
                     help='if a model have a counterexample, visualize the trace of the counterexample (default: false)')
 
-    parser.add_argument('-store', type = bool, default = False,
-        help='store results of execution in report.txt (default: false)')
+    parser.add_argument('-save', type = bool, default = False,
+        help='save results of execution in report.txt (default: false)')
 
     args = parser.parse_args()
     main(args)
