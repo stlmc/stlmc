@@ -15,6 +15,7 @@ venv/
 
 # NPM dependencies
 package-lock.json
+package-electron.json
 node_modules/
 
 # WebStorm config file
@@ -22,6 +23,6 @@ node_modules/
 
 # unignored data
 !visualize/golang/data/
-
+!visualize/*.json
 # log
 /log
