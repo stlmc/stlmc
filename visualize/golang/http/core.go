@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"golang/data"
+	"golang/logger"
 	"log"
 	"net/http"
 	"os"
@@ -65,6 +66,7 @@ type StlSever struct {
 
 func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
 	//data.Workspace.GetFileListWithOutId()
+	logger.Logger.Debug("Data request for file list")
 	data.Workspace.GetFileList()
 	w.WriteHeader(http.StatusCreated)
 
@@ -90,7 +92,6 @@ func (ss *StlSever) handleSimpleFileList(w http.ResponseWriter, r *http.Request)
 }
 
 func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
-
 	// update workspace
 	data.Workspace.GetFileList()
 
@@ -99,6 +100,7 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 
 
 	vars := mux.Vars(r)
+	logger.Logger.Debug("Data request for file number ", vars["id"])
 	id, convErr := strconv.Atoi(vars["id"])
 
 	if convErr != nil {
@@ -149,12 +151,14 @@ func (ss *StlSever) Init(cancel context.CancelFunc) {
 }
 
 func (ss *StlSever) Start() {
+	logger.Logger.Debug("Welcome to visualize server!")
 	if err := ss.server.ListenAndServe(); err != nil {
-		log.Println(err)
+		logger.Logger.Debug("error occured...")
+		logger.Logger.Debug(err)
 	}
 }
 
 func (ss *StlSever) Shutdown(ctx context.Context){
 	_ = ss.server.Shutdown(ctx)
-	log.Println("Shutting down server...")
+	logger.Logger.Debug("Shutting down server...")
 }

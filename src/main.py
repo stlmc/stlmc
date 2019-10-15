@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from antlr4 import *
 from core.syntax.modelLexer import modelLexer
 from core.syntax.modelParser import modelParser
@@ -7,6 +8,28 @@ from DataGenerator import *
 import io, os, sys
 import multiprocessing
 import argparse
+
+class ArgumentParser(argparse.ArgumentParser):
+
+    def __init__(self):
+        super(ArgumentParser, self).__init__(description='For more information. See below:')
+        self.add_argument('-visualize', type = bool, default = False,
+                            help='Start visualizing tool for the trace of the counterexample (default: false)')
+
+    def error(self, message):
+        """error(message: string)
+        Prints a usage message incorporating the message to stderr and
+        exits.
+        If you override this in a subclass, it should not return -- it
+        should either exit or raise an exception.
+        """
+        print(self._optionals)
+#         if args.visualize:
+#             print("ffff")
+        self.print_usage(sys.stderr)
+        args = {'prog': self.prog, 'message': message}
+
+        #self.exit(2, ('%(prog)s: error: %(message)s\n') % args)
 
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave):
@@ -74,23 +97,28 @@ def main(args):
             with open(rel_path, 'w') as fle :
                 print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         if args.upper == -1 :
-            upper = args.lower + 1;
+            upper = args.lower
         else:
             upper = args.upper
+        if args.visualize:
+            visOut = subprocess.Popen(["../visualize/golang/main", "-v"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout, stderr = visOut.communicate()
+            print(stdout)
+            print(stderr)
         modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.save)
         
 
 #'''
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = ArgumentParser()
 
-    parser.add_argument('file')
+    parser.add_argument('file', type = str, default = "", help="Type file or directory to process")
 
     parser.add_argument('-lower','-l', type = int, default = 1,
         help='model checking from the given lower bound (default: 1)')\
 
     parser.add_argument('-upper','-u', type = int, default = -1,
-                help='model checking upto given upper bound (default: (lower_bound + 1))')
+                help='model checking upto given upper bound (default: lower_bound)')
 
     parser.add_argument('-step','-s', type = int, default = 1,
                 help='model checking at intervals of step in (lower, upper) (default: 1)')\
@@ -101,12 +129,19 @@ if __name__ == '__main__':
     parser.add_argument('-multithread','-multy', type = bool, default = False,
                     help='run the given model using multithread (default: false)')
 
-    parser.add_argument('-visualize','-visual', type = bool, default = False,
-                    help='if a model have a counterexample, visualize the trace of the counterexample (default: false)')
+    parser.add_argument('-json', type = bool, default = False,
+                    help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
 
     parser.add_argument('-save', type = bool, default = False,
         help='save results of execution in report.txt (default: false)')
 
-    args = parser.parse_args()
-    main(args)
+    isVis = False
+
+    try:
+        args = parser.parse_args()
+        main(args)
+        isVis = args.visualize
+    except SystemExit:
+        if isVis:
+            print("yellllll")
 #'''
