@@ -23,7 +23,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
         dataGenerator.visualize()
 
     if resultSave:
-        filename = "report" + "_" + modelName + ".txt"
+        filename = "report" + "_" + modelName + "_" + str(formula) + ".txt"
         rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
