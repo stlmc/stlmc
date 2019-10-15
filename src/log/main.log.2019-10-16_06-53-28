@@ -1,2 +1,0 @@
-[DEBUG ==> api.py:389] 2019-10-16 06:53:28,646 >> main calculation start
-[ERROR ==> api.py:517] 2019-10-16 06:53:28,652 >> Error occured, name 'soleEq_dict' is not defined

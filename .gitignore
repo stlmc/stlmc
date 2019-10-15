@@ -26,4 +26,4 @@ node_modules/
 !visualize/package.json
 !visualize/tsconfig.json
 # log
-/log
+log/
