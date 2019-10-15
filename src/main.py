@@ -11,6 +11,7 @@ import io, os, sys
 import multiprocessing
 import argparse
 
+'''
 class ArgumentParser(argparse.ArgumentParser):
 
     def __init__(self):
@@ -32,7 +33,7 @@ class ArgumentParser(argparse.ArgumentParser):
         args = {'prog': self.prog, 'message': message}
 
         #self.exit(2, ('%(prog)s: error: %(message)s\n') % args)
-
+'''
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave):
     modelName = os.path.splitext(os.path.basename(title))[0] 
