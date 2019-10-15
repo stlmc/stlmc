@@ -9,9 +9,9 @@ import multiprocessing
 import argparse
 
 
-def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave):
+def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave, solver):
     modelName = os.path.splitext(os.path.basename(title))[0] 
-    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, False)
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, solver, False)
 
     # variable points bound, timeBound, goal
 #    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
@@ -23,12 +23,12 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
         dataGenerator.visualize()
 
     if resultSave:
-        filename = "report" + "_" + modelName + ".txt"
+        filename = "report" + "_" + modelName + "_" + str(formula) + ".txt"
         rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave):
+def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver):
 
     handlingModel = FileStream(fileName)
     lexer  = modelLexer(handlingModel)
@@ -44,10 +44,10 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
         for k in range(lower, upper, step):
             formula = stlMC.getStlFormsList()[i]
             if multy:
-                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave))
+                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver))
                 p.start()
             else:
-                module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave)
+                module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver)
 
 
 def main(args):
@@ -74,10 +74,10 @@ def main(args):
             with open(rel_path, 'w') as fle :
                 print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
         if args.upper == -1 :
-            upper = args.lower + 1;
+            upper = args.lower + 1 ;
         else:
             upper = args.upper
-        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.store)
+        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.store, args.solver)
         
 
 #'''
@@ -106,6 +106,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-store', type = bool, default = False,
         help='store results of execution in report.txt (default: false)')
+
+    parser.add_argument('-solver', type = str, default = 'z3',
+            help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
 
     args = parser.parse_args()
     main(args)

@@ -1,4 +1,5 @@
 from yices import *
+import yices_api as yapi
 import itertools
 from functools import singledispatch
 from .error import *
@@ -6,34 +7,40 @@ from .node import *
 
 
 # return a check result and the Z3 constraint size
-def checkSat(consts, logic="None"):
+def yicescheckSat(consts, logic="None"):
     yicesConsts=[yicesObj(c) for c in consts]
+    cfg = Config()
+
     if logic != "None":
-        solver = yices.SolverFor(logic)
+        cfg.default_config_for_logic(logic)
     else:
-        solver = yices.Solver()
+        cfg.default_config_for_logic('QF_NRA')
+
+    ctx = Context(cfg)
     
-#    target_yices_simplify = yices.simplify(yices.And(*yicesConsts))
-#    solver.add(target_yices_simplify)
+    ctx.assert_formulas(yicesConsts)
 
-    solver.add(yicesConsts)
-
-    solver.set("timeout", 9000000)  #timeout : 150 min
-    with open("thermoLinear.smt2", 'w') as fle:
-        print(solver.to_smt2(), file=fle)
-
-    result = solver.check()
-    if result == yices.sat:
-        m = solver.model()
+    result = ctx.check_context()
+    if result == Status.SAT:
+        m = Model.from_context(ctx, 1)
+        model_string = m.to_string(80, 100, 0)
+        print(model_string)
     else:
         m = None
 
-    return (result, sizeAst(yices.And(*yicesConsts)), m)
+    cfg.dispose()
+    ctx.dispose()
+    Yices.exit()
 
+    #return (result, sizeAst(yices.yand(*yicesConsts)), m)
+    return (result, -1, m)
+
+'''
 # return the size of the Z3 constraint
 def sizeAst(node:yices.AstRef):
-    return 1 + sum([sizeAst(c) for c in node.children()])
-
+    #return 1 + sum([sizeAst(c) for c in node.children()])
+    return -1
+'''
 
 @singledispatch
 def yicesObj(const:Node):
@@ -41,13 +48,13 @@ def yicesObj(const:Node):
 
 @yicesObj.register(Constant)
 def _(const):
-    op = {Type.Bool: Types.bool_type(), Type.Real: Types.real_type(), Type.Int: Types.int_type()}
     if const.getType() == Type.Bool:
         value = Terms.TRUE if const.value else Terms.FALSE
         return value
-    else:
-        value = str(const.value)
-    return Terms.constant(op[const.getType()], value)
+    if const.getType() == Type.Real:
+        return yapi.yices_parse_float(str(const.value))
+    if const.getType() == Type.Int:
+        return Terms.integer(int(str(const.value)))
 
 @yicesObj.register(Variable)
 def _(const):
@@ -122,39 +129,29 @@ def _(const):
 @yicesObj.register(And)
 def _(const):
     yicesargs = [yicesObj(c) for c in const.children]
-    if len(yicesargs) < 1:
-        return True
-    elif len(yicesargs) < 2:
-        return yicesargs[0]
-    else:
-        return yices.And(yicesargs)
+    return Terms.yand(yicesargs)
 
 @yicesObj.register(Or)
 def _(const):
     yicesargs = [yicesObj(c) for c in const.children]
-    if len(yicesargs) < 1:
-        return True
-    elif len(yicesargs) < 2:
-        return yicesargs[0]
-    else:
-        return yices.Or(yicesargs)
+    return Terms.yor(yicesargs)
 
 @yicesObj.register(Implies)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return yices.Implies(x, y)
+    return Terms.implies(x, y)
 
 @yicesObj.register(Beq)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return x == y
+    return Terms.eq(x, y)
 
 @yicesObj.register(Not)
 def _(const):
     x = yicesObj(const.child())
-    return yices.Not(x)
+    return Terms.ynot(x)
 
 @yicesObj.register(Integral)
 def _(const):
@@ -196,7 +193,7 @@ def _(const):
 
 
     yicesresult = [yicesObj(c) for c in result]
-    return yices.And(yicesresult) 
+    return Terms.yand(yicesresult) 
 
 @yicesObj.register(Forall)
 def _(const):
@@ -207,7 +204,7 @@ def _(const):
     else:
         endCond = yicesObj(const.condition.substitution(const.endDict))
         startCond = yicesObj(const.condition.substitution(const.startDict))
-        return yices.And(endCond, startCond)
+        return Terms.yand(endCond, startCond)
 
 @yicesObj.register(Solution)
 def _(const):
@@ -236,5 +233,5 @@ def _(const):
         result.append(const.endList[i] == substitutionExp[keyValue])
 
     yicesresult = [yicesObj(c) for c in result]
-    return yices.And(yicesresult)
+    return Terms.yand(yicesresult)
 

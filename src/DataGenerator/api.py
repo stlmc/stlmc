@@ -1,6 +1,5 @@
 import z3
 from core.node import *
-from core.z3Handler import checkSat
 import numpy as np
 from scipy.integrate import odeint
 

@@ -6,7 +6,7 @@ from .node import *
 
 
 # return a check result and the Z3 constraint size
-def checkSat(consts, logic="None"):
+def z3checkSat(consts, logic="None"):
     z3Consts=[z3Obj(c) for c in consts]
     if logic != "None":
         solver = z3.SolverFor(logic)
