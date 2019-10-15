@@ -78,7 +78,7 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave)
     stlLogger.info(job_list_info)
     if multy:
-        pool = Pool(process=20)
+        pool = multiprocessing.Pool(process=20)
         pool.map(module, job_list)
 
 def main(args, stlLogger):
