@@ -68,18 +68,23 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
 
     job_list_info = []
     job_list = []
+    pool = multiprocessing.Pool(processes=20)
     for i in range(len(stlMC.getStlFormsList())):
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
             job_list_info.append(title+str(formula))
             if multy:
-                job_list.append((title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
+                nmodelName = os.path.splitext(os.path.basename(modelName))[0]
+                stlModel.stlFormula = formula
+                #(result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(nmodelName, k, timeBound, False)
+                pool.apply(stlModel.modelCheck, (nmodelName, k, timeBound, False))
+                #job_list.append((title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
             else:
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave)
     stlLogger.info(job_list_info)
-    if multy:
-        pool = multiprocessing.Pool(processes=20)
-        pool.map(module, job_list)
+#     if multy:
+#         pool = multiprocessing.Pool(processes=20)
+#         pool.map(module, job_list)
 
 def main(args, stlLogger):
     modelList = list()
