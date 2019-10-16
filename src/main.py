@@ -125,6 +125,7 @@ def main(args, stlLogger):
             raise
 
 if __name__ == '__main__':
+
     # setting logger
     stlLogger = logging.getLogger("StlMC")
     stlLogger.setLevel(logging.NOTSET)

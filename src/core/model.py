@@ -702,11 +702,12 @@ class StlMC:
 
         for i in range(0 if iterative else bound, bound + 1):
             stime1 = time.process_time()
-            # base partition
+
             baseP = PART.baseCase(i)
 
             # partition constraint
             (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+
             '''
             print("partition")
             print(partition)
