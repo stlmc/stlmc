@@ -13,8 +13,9 @@ y = Terms.new_uninterpreted_term(real_t, 'y')
 
 fmla0 = Terms.parse_term('(> (+ x y) 0)')
 fmla1 = Terms.parse_term('(or (< x 0) (< y 0))')
+fmla2 = Terms.parse_term('(= x 2.0)')
 
-ctx.assert_formulas([fmla0, fmla1])
+ctx.assert_formulas([fmla0, fmla1, fmla2])
 
 status = ctx.check_context()
 

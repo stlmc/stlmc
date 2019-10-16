@@ -4,6 +4,12 @@ import itertools
 from functools import singledispatch
 from .error import *
 from .node import *
+def getvarval(self):
+    all_terms = self.model.collect_defined_terms()
+    var_val = dict()
+    for term in all_terms:
+        var_val[str(Terms.get_name(term))] = self.model.get_value(term)
+    return var_val
 
 # return a check result and the Z3 constraint size
 def yicescheckSat(consts, logic="None"):
@@ -16,6 +22,7 @@ def yicescheckSat(consts, logic="None"):
         cfg.default_config_for_logic('QF_NRA')
 
     ctx = Context(cfg)
+
 
     yicesConsts = [Terms.parse_term(c) for c in strConsts]
     ctx.assert_formulas(yicesConsts)
@@ -43,6 +50,7 @@ def sizeAst(node:yices.AstRef):
 
 @singledispatch
 def yicesObj(const:Node):
+    print(type(const))
     raise NotImplementedError('Something wrong')
 
 @yicesObj.register(Constant)
@@ -108,13 +116,28 @@ def _(const):
     result = '(- ' + x + ' ' + y + ')'
     return result
 
-'''
 @yicesObj.register(Pow)
 def _(const):
     x = yicesObj(const.left())
     y = yicesObj(const.right())
-    return Terms.parse_term('(** ' + x + ' ' + y + ')')
-'''
+
+    cfg = Config()
+    cfg.default_config_for_logic('QF_LRA')
+    ctx = Context(cfg)
+    red_val = Terms.new_uninterpreted_term(Types.real_type(), 'red')
+    red = Terms.parse_term('(= red ' + y + ')')
+    ctx.assert_formulas([red])
+    status = ctx.check_context()
+
+    if status == Status.SAT:
+        model = Model.from_context(ctx, 1)
+        yval = str(model.get_value(red_val))
+    else:
+        raise("something wrong in divisor of power")
+    cfg.dispose()
+    ctx.dispose()
+    result = '(^ ' + x + ' ' + yval + ')'
+    return result 
 
 @yicesObj.register(Mul)
 def _(const):
