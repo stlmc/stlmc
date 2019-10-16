@@ -10,7 +10,6 @@ from DataGenerator import *
 import io, os, sys
 import multiprocessing
 import argparse
-from ctypes import *
 from yices import *
 
 def str2bool(v):
@@ -126,7 +125,6 @@ def main(args, stlLogger):
             raise
 
 if __name__ == '__main__':
-    cdll.LoadLibrary(os.path.abspath("libyices.so.6"))
     # setting logger
     stlLogger = logging.getLogger("StlMC")
     stlLogger.setLevel(logging.NOTSET)
