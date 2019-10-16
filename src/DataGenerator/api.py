@@ -530,7 +530,7 @@ class Api:
 
     def visualize(self):
         try:
-            self.stlLogger.debug("Json file generator with modelId list: {}".format(self.getModelIdList()))
+            self.stlLogger.debug("Json file generator with modelId list: {}".format(self.getModeIdList()))
 
             '''
                 if solution equation exists: 
