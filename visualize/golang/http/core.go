@@ -140,7 +140,7 @@ func (ss *StlSever) handleShutdown(w http.ResponseWriter, r *http.Request) {
 
 func (ss *StlSever) Init(cancel context.CancelFunc) {
 	ss.router = mux.NewRouter().StrictSlash(true)
-	ss.spaHandler = spaHandler{staticPath:"../build", indexPath:"index.html"}
+	ss.spaHandler = spaHandler{staticPath:"../visualize/build", indexPath:"index.html"}
 	ss.router.HandleFunc("/file_list", ss.handleFileList)
 	ss.router.HandleFunc("/file/{id:[0-9]+}", ss.handleData)
 	ss.router.HandleFunc("/simple_file_list", ss.handleSimpleFileList)
