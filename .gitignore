@@ -9,6 +9,7 @@ src/run.sh
 __pycache__
 *.json
 data/
+reports/
 
 # Virtual Env for python
 venv/
