@@ -1,4 +1,7 @@
 import os
+import subprocess
 
-myCmd = '../visualize/golang/main'
-os.system(myCmd)
+visOut = subprocess.call(["../visualize/golang/main", "-v"])
+#stdout, stderr = visOut.communicate()
+#print(stdout)
+#print(stderr)

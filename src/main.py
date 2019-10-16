@@ -11,37 +11,17 @@ import io, os, sys
 import multiprocessing
 import argparse
 
-'''
-class ArgumentParser(argparse.ArgumentParser):
-
-    def __init__(self):
-        super(ArgumentParser, self).__init__(description='For more information. See below:')
-        self.add_argument('-visualize', type = bool, default = False,
-                            help='Start visualizing tool for the trace of the counterexample (default: false)')
-
-    def error(self, message):
-        """error(message: string)
-        Prints a usage message incorporating the message to stderr and
-        exits.
-        If you override this in a subclass, it should not return -- it
-        should either exit or raise an exception.
-        """
-        print(self._optionals)
-#         if args.visualize:
-#             print("ffff")
-        self.print_usage(sys.stderr)
-        args = {'prog': self.prog, 'message': message}
-
-        #self.exit(2, ('%(prog)s: error: %(message)s\n') % args)
-'''
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave):
     modelName = os.path.splitext(os.path.basename(title))[0] 
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, False)
-
-    # variable points bound, timeBound, goal
-#    stlModel.reach(k, 60, Or(Not(Bool('xl2')), (Bool('xg3')))) 
-#    stlModel.reach(k, 60, Bool('xl2'))
 
     if json:
         dataGenerator.data = stlModel.data
@@ -77,48 +57,74 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
 
 def main(args, stlLogger):
     modelList = list()
-    if os.path.isdir(args.file):
-        fileList = os.listdir(args.file)
-        for item in fileList:
-            if item.find('txt') is not -1:
-                modelList.append(os.path.abspath(args.file) + "/" + item)
-    elif os.path.isfile(args.file):
-        modelList.append(args.file)
-    else:
-        stlLogger.error("file name is wrong")
-        raise ("file name is wrong")
-
-    # create data directory for storing report files
-    if args.save:
-        if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
-            os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
-
-    # TODO: update golang ...
-    if args.visualize:
-        visOut = subprocess.Popen(["../visualize/golang/main", "-v"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout, stderr = visOut.communicate()
-        print(stdout)
-        print(stderr)
-
-    for m in modelList:
-        if args.save:
-            filename = "report" + "_" + os.path.splitext(os.path.basename(m))[0] + ".txt"
-            rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
-            with open(rel_path, 'w') as fle :
-                print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
-        if args.upper == -1 :
-            upper = args.lower
+    try:
+        if os.path.isdir(args.file):
+            fileList = os.listdir(args.file)
+            for item in fileList:
+                if item.find('txt') is not -1:
+                    modelList.append(os.path.abspath(args.file) + "/" + item)
+        elif os.path.isfile(args.file):
+            modelList.append(args.file)
         else:
-            upper = args.upper
-        modelCheck(m, args.lower, upper, args.step, args.timebound, args.json, args.multithread, args.save, stlLogger)
-        
+            stlLogger.error("file name is wrong")
+            raise ("file name is wrong")
 
-#'''
+        save = False if args.save is None else args.save
+        lower = 1 if args.lower is None else args.lower
+        upper = lower if args.upper is None else args.upper
+        visualize = False if args.visualize is None else args.visualize
+        json = visualize if args.json is None else args.json
+        if visualize and not json:
+            print("automatically change json option to true")
+            json = True
+
+        multithread = False if args.multithread is None else args.multithread
+        timebound = 60 if args.timebound is None else args.timebound
+        step = 1 if args.step is None else args.step
+
+        # create data directory for storing report files
+        if save:
+            if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
+                os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
+
+        for m in modelList:
+            if save:
+                filename = "report" + "_" + os.path.splitext(os.path.basename(m))[0] + ".txt"
+                rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
+                with open(rel_path, 'w') as fle :
+                    print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
+            modelCheck(m, lower, upper, step, timebound, json, multithread, save, stlLogger)
+
+        if visualize:
+            try:
+                if not(os.path.isdir("./DataDir")):
+                    os.makedirs(os.path.join("./DataDir"))
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    stlLogger.error("Failed to create directory!!!!!")
+                    raise
+            subprocess.call(["../visualize/golang/main", "-v"])
+    except Exception as ex:
+        if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json]):
+            print("\nNeed to provide file name!")
+            print("Type [-h] to see help.")
+        elif args.visualize:
+            try:
+                if not(os.path.isdir("./DataDir")):
+                    os.makedirs(os.path.join("./DataDir"))
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    stlLogger.error("Failed to create directory!!!!!")
+                    raise
+            subprocess.call(["../visualize/golang/main", "-v"])
+        else:
+            raise
+
 if __name__ == '__main__':
 
     # setting logger
     stlLogger = logging.getLogger("StlMC")
-    stlLogger.setLevel(logging.DEBUG)
+    stlLogger.setLevel(logging.NOTSET)
 
 
     formatter = logging.Formatter('[%(levelname)s ==> %(filename)s:%(lineno)s] %(asctime)s >> %(message)s')
@@ -146,39 +152,41 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='For more information. See below:')
 
-    parser.add_argument('file', type = str, default = "", help="Type file or directory to process")
+    parser.add_argument('file', nargs='?', type = str, help="Type file or directory to process")
 
-    parser.add_argument('-lower','-l', type = int, default = 1,
+    parser.add_argument('-lower','-l', type = int,
         help='model checking from the given lower bound (default: 1)')\
 
-    parser.add_argument('-upper','-u', type = int, default = -1,
+    parser.add_argument('-upper','-u', type = int,
                 help='model checking upto given upper bound (default: lower_bound)')
 
-    parser.add_argument('-step','-s', type = int, default = 1,
+    parser.add_argument('-step','-s', type = int,
                 help='model checking at intervals of step in (lower, upper) (default: 1)')\
 
-    parser.add_argument('-timebound','-tb', type = int, default = 60,
+    parser.add_argument('-timebound','-tb', type = int,
                             help='set time bound of model checking (default: 60)')\
 
-    parser.add_argument('-multithread','-multy', type = bool, default = False,
+    parser.add_argument('-multithread','-multy', type = str2bool,
                     help='run the given model using multithread (default: false)')
 
-    parser.add_argument('-visualize', type = bool, default = False,
+    parser.add_argument('-visualize', type = str2bool,
                                 help='Start visualizing tool for the trace of the counterexample (default: false)')
 
-    parser.add_argument('-json', type = bool, default = False,
+    parser.add_argument('-json', type = str2bool,
                     help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
 
-    parser.add_argument('-save', type = bool, default = False,
+    parser.add_argument('-save', type = str2bool,
         help='save results of execution in report.txt (default: false)')
 
-    isVis = False
+    parser.add_argument('-log', type = str2bool, default="False",
+            help='show logging information (default: false)')
+
 
     try:
         args = parser.parse_args()
+        if args.log:
+            stlLogger.setLevel(logging.INFO)
         main(args, stlLogger)
-        isVis = args.visualize
     except SystemExit:
-        if isVis:
-            stlLogger.debug("hello")
+        stlLogger.debug("System error")
 #'''

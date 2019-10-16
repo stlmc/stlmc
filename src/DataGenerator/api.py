@@ -508,10 +508,10 @@ class Api:
                     raise
 
             import json
-            f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
+            f = open(("./DataDir/"+self._stackID+".json"), "w")
             json.dump(outer2, f)
             f.close()
-            self.stlLogger.info("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
+            self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+".json")
 
         except Exception as ex:
             self.stlLogger.error("Error occured, {}".format(ex))

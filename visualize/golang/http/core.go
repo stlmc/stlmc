@@ -74,7 +74,7 @@ func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
 	encodingErr := json.NewEncoder(w).Encode(data.Workspace)
 
 	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		logger.Logger.Error(encodingErr)
 	}
 }
 
@@ -87,7 +87,7 @@ func (ss *StlSever) handleSimpleFileList(w http.ResponseWriter, r *http.Request)
 	encodingErr := json.NewEncoder(w).Encode(data.Workspace)
 
 	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		logger.Logger.Error(encodingErr)
 	}
 }
 
@@ -104,13 +104,15 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 	id, convErr := strconv.Atoi(vars["id"])
 
 	if convErr != nil {
-		log.Fatal(convErr)
+		logger.Logger.Error(convErr)
+		return
 	}
 
 	res, err := data.Workspace.Get(id)
 
 	if !err {
-		log.Fatal("No such file.")
+		logger.Logger.Error("No such file.")
+		return
 	}
 
 
@@ -124,7 +126,8 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 		encodingErr := json.NewEncoder(w).Encode(val.ToCompositeGraph4Json())
 
 		if encodingErr != nil {
-			log.Fatal(encodingErr)
+			logger.Logger.Error(encodingErr)
+			return
 		}
 	}
 }
@@ -154,7 +157,7 @@ func (ss *StlSever) Start() {
 	logger.Logger.Debug("Welcome to visualize server!")
 	if err := ss.server.ListenAndServe(); err != nil {
 		logger.Logger.Debug("error occured...")
-		logger.Logger.Debug(err)
+		log.Fatal(err)
 	}
 }
 

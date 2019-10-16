@@ -17,6 +17,12 @@ func (lo *loggerStruct) Debug(args ...interface{}) {
 	}
 }
 
+func (lo *loggerStruct) Error(args ...interface{}) {
+	if lo.IsDebug {
+		lo.Print(args...)
+	}
+}
+
 func (lo *loggerStruct) Print(args ...interface{}) {
 	log.Print(args...)
 }
