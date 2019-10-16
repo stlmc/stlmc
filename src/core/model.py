@@ -690,23 +690,14 @@ class StlMC:
         return (self.model, self.modeVar, self.contVar, self.subvars, self.prop, self.bound, self.modeModule,
                 self.strStlFormula)
 
-    @property
-    def stlFormula(self):
-        return self.stlFormula
-
-    @stlFormula.setter
-    def stlFormula(self, formula):
-        self.stlFormula = formula
-
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, bound, timeBound, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
-        self.stlFormula = stlFormula
         (constSize, fsSize) = (0, 0)
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
-        negFormula = NotFormula(self.stlFormula)  # negate the formula
+        negFormula = NotFormula(stlFormula)  # negate the formula
 
         for i in range(0 if iterative else bound, bound + 1):
             stime1 = time.process_time()
