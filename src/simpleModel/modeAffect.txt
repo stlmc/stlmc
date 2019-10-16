@@ -34,5 +34,5 @@ propositions:
 reachability = x > 23;
 
 goal:
-#(<> [0.0, 40.0] (reachability)) ;
+(<> [0.0, 40.0] (reachability)) ;
 ([] [0.0, inf) (x > 27)) ;

@@ -10,6 +10,7 @@ from DataGenerator import *
 import io, os, sys
 import multiprocessing
 import argparse
+from yices import *
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -60,7 +61,6 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
 
 def main(args, stlLogger):
     modelList = list()
-<<<<<<< HEAD
     try:
         if os.path.isdir(args.file):
             fileList = os.listdir(args.file)

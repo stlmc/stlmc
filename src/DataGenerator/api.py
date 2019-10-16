@@ -1,11 +1,8 @@
 import z3
-<<<<<<< HEAD
 import os
 import logging
 import logging.handlers
-=======
 from yices import *
->>>>>>> yices
 from core.node import *
 import numpy as np
 from scipy.integrate import odeint
