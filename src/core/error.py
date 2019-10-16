@@ -14,5 +14,8 @@ class Z3OpError(Exception):
 class z3constODEerror(Exception):
     pass
 
+class yicesconstODEerror(Exception):
+    pass
+
 class FlowTypeEerror(Exception):
     pass

@@ -88,6 +88,8 @@ class modelVisitorImpl(modelVisitor):
     Not yet
     '''
     def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict()):
+        if ctx.op.text in ['sin', 'cos', 'tan', 'log', 'sqrt']:
+            raise ("Can't support non-linear function")
         return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic), var_dic)
 
     def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):

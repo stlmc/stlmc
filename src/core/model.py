@@ -1,7 +1,8 @@
 import core.partition as PART
 import core.separation as SEP
 import time
-from .z3Handler import *
+from .z3Handler import * 
+from .yicesHandler import *
 from .formula import *
 from .z3Consts import *
 
@@ -202,7 +203,7 @@ class BinaryExp:
             self.right = RealVal(float(right)) if isNumber(right) else right
 
     def __repr__(self):
-        return str(self.left) + str(self.op) + str(self.right)
+        return "(" + str(self.op) + " " + str(self.left) + " " + str(self.right) + ")"
 
     def getExpression(self, varDict):
         left = self.left
@@ -691,7 +692,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver,iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -739,7 +740,10 @@ class StlMC:
             etime1 = time.process_time()
 
             # check the satisfiability
-            (result, cSize, self.model) = checkSat(modelConsts + partitionConsts + [formulaConst])
+            if solver == 'z3':
+                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst])
+            elif solver == 'yices':
+                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst])
             stime2 = time.process_time()
 
             # calculate size
@@ -750,14 +754,7 @@ class StlMC:
             solvingTime = round((stime2 - etime1), 4)
             totalTime = round((stime2 - stime1), 4)
 
-            if result == z3.sat:
-                printResult(modelName, self.strStlFormula, "False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
-                            str(totalTime))
-                return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
-            if result == z3.unknown:
-                isUnknown = True
 
-        result = "Unknown" if isUnknown else True
         printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                     str(totalTime))
 
