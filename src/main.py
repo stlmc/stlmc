@@ -69,13 +69,11 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     for i in range(len(stlMC.getStlFormsList())):
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
-            job_list_info.append(title+str(formula))
             if multy:
-                p = multiprocessing.Process(target=module, arg=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
+                p = multiprocessing.Process(target=module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave))
                 p.start()
             else:
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave)
-    stlLogger.info(job_list_info)
 
 def main(args, stlLogger):
     modelList = list()
