@@ -556,8 +556,8 @@ class Api:
             outer2['mode'] = gmid
 
             try:
-                if not(os.path.isdir("../visualize/src/DataDir")):
-                    os.makedirs(os.path.join("../visualize/src/DataDir"))
+                if not(os.path.isdir("./DataDir")):
+                    os.makedirs(os.path.join("./DataDir"))
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     self.stlLogger.error("Failed to create directory!!!!!")
