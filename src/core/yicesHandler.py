@@ -23,7 +23,6 @@ def yicescheckSat(consts, logic="None"):
     result = ctx.check_context()
     if result == Status.SAT:
         m = Model.from_context(ctx, 1)
-        model_string = m.to_string(80, 100, 0)
         result = False
     else:
         m = None

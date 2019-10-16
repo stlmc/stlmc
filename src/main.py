@@ -8,6 +8,13 @@ import io, os, sys
 import multiprocessing
 import argparse
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, resultSave, solver):
     modelName = os.path.splitext(os.path.basename(title))[0] 
@@ -20,6 +27,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, visualize, res
     if visualize:
         dataGenerator.data = stlModel.data
         dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
+        dataGenerator.solver = solver
         dataGenerator.visualize()
 
     if resultSave:
@@ -77,7 +85,7 @@ def main(args):
             upper = args.lower + 1 ;
         else:
             upper = args.upper
-        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.store, args.solver)
+        modelCheck(m, args.lower, upper, args.step, args.timebound, args.visualize, args.multithread, args.store, args.solver.lower())
         
 
 #'''
@@ -104,12 +112,13 @@ if __name__ == '__main__':
     parser.add_argument('-visualize','-visual', type = bool, default = False,
                     help='if a model have a counterexample, visualize the trace of the counterexample (default: false)')
 
-    parser.add_argument('-store', type = bool, default = False,
+    parser.add_argument('-store', type = str2bool, default = "False",
         help='store results of execution in report.txt (default: false)')
 
     parser.add_argument('-solver', type = str, default = 'z3',
             help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
 
     args = parser.parse_args()
+    print(args.store)
     main(args)
 #'''

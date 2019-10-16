@@ -732,9 +732,9 @@ class StlMC:
             etime1 = time.process_time()
 
             # check the satisfiability
-            if solver.lower() == 'z3':
+            if solver == 'z3':
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst])
-            elif solver.lower() == 'yices':
+            elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst])
             stime2 = time.process_time()
 
