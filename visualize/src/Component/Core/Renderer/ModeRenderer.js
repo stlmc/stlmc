@@ -29,7 +29,7 @@ class ModeRenderer {
         d3.select(this._tag).selectAll("#mode_svg").remove();
     }
 
-    loadGraph(maxX, data, xrange) {
+    loadGraph(maxX, data, xrange, yrange, type, min, max) {
         this.dataXrange = maxX;
         this.xrange = xrange;
 
@@ -45,11 +45,19 @@ class ModeRenderer {
             .attr("clip-path", "url(#modeCanvasClip" + this._index + ")")
             .attr("transform", "translate(" + this.x_clip_margin + "," + 0 + ")");
 
+
+        this.canvas.append("clipPath")
+            .attr("id", "modeCanvasClip" + this._index)
+            .append("rect")
+            .attr("width", this._size.width)
+            .attr("height", this.data_viewer_height);
+
+
         // set data canvas
         // Add scale error to make lines fit the view box.
         // TODO: Update formula for error. Divide by 10 is not optimal.
         let XscaleError = (this.dataXrange[1] - this.dataXrange[0]) / 10;
-
+        let YscaleError = (max - min) / 10;
 
         // Set scale function for x.
         // Clipping margin does the correction of calculate length of x axis.
@@ -59,8 +67,7 @@ class ModeRenderer {
             .range([0, this._size.width]);
 
 
-        let isModeBool = false;
-        if (isModeBool){
+        if (type == "bool"){
             // set scale function for y
             // 0: none, 1: false, 2: true, 3:none
             this.Yscale =
@@ -69,21 +76,14 @@ class ModeRenderer {
                     .range([this.data_viewer_height, 0]);
         } else {
             // set scale function for y
-            // 0: none, 1: false, 2: true, 3:none
             this.Yscale =
                 d3.scaleLinear()
-                    .domain([-2, 5])
-                    .range([this.data_viewer_height, -2]);
+                    .domain([min - YscaleError, max + YscaleError])
+                    .range([this.data_viewer_height, 0]);
         }
 
-
-
-
-        this.canvas.append("clipPath")
-            .attr("id", "modeCanvasClip" + this._index)
-            .append("rect")
-            .attr("width", this._size.width)
-            .attr("height", this.data_viewer_height);
+        console.log(min);
+        console.log(max);
 
 
         let scaleX = this.Xscale;
@@ -112,10 +112,9 @@ class ModeRenderer {
             .attr("id", "modeCanvasYaxis")
             .attr("transform", "translate(" + this.x_clip_margin + "," + 1 + ")");
 
-        if(isModeBool){
+        if(type === "bool"){
             this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
                 (d) => {
-                    console.log(d);
                     if (d === 1) {
                         return "false"
                     } else if (d === 2) {
@@ -125,16 +124,33 @@ class ModeRenderer {
                     }
                 }));
         }
-        else {
-            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
+        else if(type === "int"){
+            let yIntRange = yrange.map((e) => {
+                return parseInt(e);
+            });
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(yrange.length).tickFormat(
                 (d) => {
-                    console.log(d);
-                    if (d === -1.2) {
-                        return "-1.2"
-                    } else if (d === 4) {
-                        return "4"
+                    if (yIntRange.includes(d)){
+                        return String(d);
+                    } else {
+                        return ""
                     }
-                }));
+                }
+            ));
+        } else if(type === "real"){
+            let yRealRange = yrange.map((e) => {
+                return parseFloat(e);
+            });
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(yrange.length).tickFormat(
+                (d) => {
+                    if (yRealRange.includes(d)){
+                        console.log(d);
+                        return String(d);
+                    } else {
+                        return ""
+                    }
+                }
+            ));
         }
 
         console.log(data);
@@ -169,7 +185,6 @@ class ModeRenderer {
             .attr("class", "modeLines")
             .attr("stroke", "red")
             .attr("stroke-width", 1.5);
-            //.attr("transform", "translate( 0," + -20.0 +")")
 
     }
 

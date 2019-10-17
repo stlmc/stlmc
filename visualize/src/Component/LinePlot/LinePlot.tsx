@@ -212,7 +212,7 @@ class LinePlot extends React.Component<Props, State> {
             for (let e = 0; e < this.njson.GetModeSize(); e++) {
                 let d = this.njson.GetMode(e);
                 if (d) {
-                    this.modeRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat());
+                    this.modeRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat(), d.originalData, d.type, d.min, d.max);
                 }
 
             }

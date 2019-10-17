@@ -142,8 +142,7 @@ class PropositionRenderer {
             })
             .attr("class", "propLines")
             .attr("stroke", "red")
-            .attr("stroke-width", 1.5)
-            .attr("transform", "translate( 0," + -20.0 +")")
+            .attr("stroke-width", 1.5);
 
     }
 
