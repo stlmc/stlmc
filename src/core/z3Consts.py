@@ -168,7 +168,7 @@ class z3Consts:
         # If proposition is just boolean variable, return original expression
         if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
             if exp.getType() == Type.Bool:
-                return exp
+                return exp.substitution(self.makeSubMode(bound))
             else:
                 raise ("Proposition constraints something wrong")
 

@@ -325,6 +325,30 @@ class Api:
     def getProposition(self):
        result = []
        if self.model is not None:
+           midList = []
+           for modevar in self.modeVar:
+               if modevar.id in self.stl:
+                   midList.append(modevar)
+           if len(midList) > 0:
+               for mode in midList:
+                   subResult = []
+                   for j in range(self.bound+2):
+                       if self._solver == 'z3':
+                           propVar = z3.Bool(mode.id + "_" + str(j))
+                           if self.model[propVar] is not None:
+                               subResult.append(str(self.model[propVar]))
+                       elif self._solver == 'yices':
+                           var_val = self.getvarval()
+                           propVar = mode.id + "_" + str(j)
+                           if propVar in var_val.keys():
+                               subResult.append(str(var_val[propVar]))
+                       else:
+                           raise("Can't support the given solver, please use z3 or yices solvers")
+                   resultVal = dict()
+                   resultVal["name"] = str(mode.id)
+                   resultVal["actual"] = str(mode)
+                   resultVal["data"] = subResult
+                   result.append(resultVal)
            for i in range(len(self.props)):
                subResult = []
                propID = str(self.props[i].getId())
@@ -335,6 +359,7 @@ class Api:
                            propVar = z3.Bool(propID + "_" + str(j))
                            if self.model[propVar] is not None:
                                subResult.append(str(self.model[propVar]))
+
                        elif self._solver == 'yices':
                            var_val = self.getvarval()
                            propVar = propID + "_" + str(j)
