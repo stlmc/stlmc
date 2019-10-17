@@ -33,6 +33,23 @@ class ModeRenderer {
         this.dataXrange = maxX;
         this.xrange = xrange;
 
+
+        if (yrange.length === 0){
+            return 0;
+        }
+        let uniqueNum = 0;
+        let sim = [];
+        for (let elem of yrange){
+            if (!sim.includes(elem)){
+                sim.push(elem);
+                uniqueNum += 1;
+            }
+        }
+
+        console.log(uniqueNum);
+
+
+
         d3.select(this._tag).selectAll("#mode_svg").remove();
 
         // set main canvas
@@ -57,7 +74,7 @@ class ModeRenderer {
         // Add scale error to make lines fit the view box.
         // TODO: Update formula for error. Divide by 10 is not optimal.
         let XscaleError = (this.dataXrange[1] - this.dataXrange[0]) / 10;
-        let YscaleError = (max - min) / 10;
+        this.YscaleError = (max - min) / 10;
 
         // Set scale function for x.
         // Clipping margin does the correction of calculate length of x axis.
@@ -78,12 +95,12 @@ class ModeRenderer {
             // set scale function for y
             this.Yscale =
                 d3.scaleLinear()
-                    .domain([min - YscaleError, max + YscaleError])
+                    .domain([min - this.YscaleError, max + this.YscaleError])
                     .range([this.data_viewer_height, 0]);
         }
 
-        console.log(min);
-        console.log(max);
+        this.min = min;
+        this.max = max;
 
 
         let scaleX = this.Xscale;
@@ -125,30 +142,21 @@ class ModeRenderer {
                 }));
         }
         else if(type === "int"){
-            let yIntRange = yrange.map((e) => {
+            let yRealRange = yrange.map((e) => {
                 return parseInt(e);
             });
-            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(yrange.length).tickFormat(
-                (d) => {
-                    if (yIntRange.includes(d)){
-                        return String(d);
-                    } else {
-                        return ""
-                    }
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).tickValues(sim).tickFormat(
+                (d, i) => {
+                    return sim[i];
                 }
             ));
         } else if(type === "real"){
             let yRealRange = yrange.map((e) => {
                 return parseFloat(e);
             });
-            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(yrange.length).tickFormat(
-                (d) => {
-                    if (yRealRange.includes(d)){
-                        console.log(d);
-                        return String(d);
-                    } else {
-                        return ""
-                    }
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).tickValues(sim).tickFormat(
+                (d, i) => {
+                    return sim[i];
                 }
             ));
         }
@@ -158,7 +166,7 @@ class ModeRenderer {
 
         // update when redraw, remove previous proposition graph.
         this.modeGraph = this.modeCanvas
-            .selectAll(".modeLines")
+            .selectAll("#modeLines"+this._index)
             .append("g")
             .data(data)
             .enter();
@@ -182,11 +190,21 @@ class ModeRenderer {
             .attr("d", (d) => {
                 return modeLineG(d);
             })
-            .attr("class", "modeLines")
+            .attr("id", "modeLines"+this._index)
             .attr("stroke", "red")
             .attr("stroke-width", 1.5);
 
     }
+
+    getXscale(){
+        return this.Xscale;
+    }
+
+    getYscale(){
+        return this.Yscale;
+    }
+
+
 
 }
 

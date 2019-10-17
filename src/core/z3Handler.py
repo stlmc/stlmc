@@ -24,13 +24,13 @@ def z3checkSat(consts, logic="None"):
 #        print(solver.to_smt2(), file=fle)
 
     result = solver.check()
-    if result == z3.sat:
+    str_result = str(result)
+    if str_result == "sat":
         m = solver.model()
         result = False
     else:
         m = None
-        result = True if z3.unsat else "Unknown"
-
+        result = True if str_result == "unsat" else "Unknown"
     return (result, sizeAst(z3.And(*z3Consts)), m)
 
 # return the size of the Z3 constraint

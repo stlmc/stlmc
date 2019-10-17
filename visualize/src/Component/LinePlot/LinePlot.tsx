@@ -140,6 +140,7 @@ class LinePlot extends React.Component<Props, State> {
         // Set config defaults when creating the instance
         this.onModelListSelect = this.onModelListSelect.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
+        this.onOffButtonClick = this.onOffButtonClick.bind(this);
         this.instance = Axios.create({baseURL: 'http://localhost:3001'});
         this.Item = this.Item.bind(this);
         this.ItemList = this.ItemList.bind(this);
@@ -191,12 +192,23 @@ class LinePlot extends React.Component<Props, State> {
         }
 
         if (!this.njson.isEmpty()) {
+            let modeRenderersXScale = [];
+            let modeRenderersYScale = [];
+            for (let e = 0; e < this.njson.GetModeSize(); e++) {
+                let d = this.njson.GetMode(e);
+                if (d) {
+                    this.modeRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat(), d.originalData, d.type, d.min, d.max);
+                    modeRenderersXScale.push(this.modeRenderers[e].getXscale());
+                    modeRenderersYScale.push(this.modeRenderers[e].getYscale());
+                }
+
+            }
             for (let e = 0; e < this.renderers.length; e++) {
                 let eGraph: (Map<string, [number, number][]> | undefined) = this.njson.GetDataByName(e);
                 console.log(eGraph);
                 if (eGraph) {
                     // vardict should always exist or undefined error would occur!
-                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), eGraph, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.variables);
+                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), eGraph, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.variables, this.njson.GetModeSize(), modeRenderersXScale, modeRenderersYScale);
                 }
             }
 
@@ -205,14 +217,6 @@ class LinePlot extends React.Component<Props, State> {
                 let d = this.njson.GetProp(e);
                 if (d) {
                     this.propRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat());
-                }
-
-            }
-
-            for (let e = 0; e < this.njson.GetModeSize(); e++) {
-                let d = this.njson.GetMode(e);
-                if (d) {
-                    this.modeRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat(), d.originalData, d.type, d.min, d.max);
                 }
 
             }
@@ -337,6 +341,12 @@ class LinePlot extends React.Component<Props, State> {
         }
     }
 
+    async onOffButtonClick() {
+        let response = await this.instance.get(`/shutdown`);
+        if (response.data == "Shutdown called"){
+            console.log("server shutdown.. you need to restart server for progress!");
+        }
+    }
 
     async onResetButtonClick() {
         console.log("reset called");
@@ -568,6 +578,12 @@ class LinePlot extends React.Component<Props, State> {
         return (
             <div>
                 <div className="row">
+                    <div className="col-md-11"/>
+                    <div className="col-md-1">
+                        <Button variant="outline-danger" onClick={this.onOffButtonClick} id="non-outline">off</Button>
+                    </div>
+                </div>
+                <div className="row">
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Models</label>
@@ -578,8 +594,14 @@ class LinePlot extends React.Component<Props, State> {
                         )} onChange={this.onModelListSelect}/>
                     </div>
                     <div className="col-md-1">
+                    </div>
+                </div>
+                <div className="row items-7">
+                    <div className="col-md-10"/>
+                    <div className="col-md-1 text-right">
                         <Button variant="outline-dark" onClick={this.onResetButtonClick} id="non-outline">reset</Button>
                     </div>
+                    <div className="col-md-1"/>
                 </div>
                 <this.Main/>
 

@@ -35,7 +35,7 @@ class Renderer {
         d3.select(this._tag).selectAll("#main_svg").remove();
     }
 
-    loadGraph(maxX, maxY, l, xdata, pdata, vardict) {
+    loadGraph(maxX, maxY, l, xdata, pdata, vardict, modeSize, subXscale, subYscale) {
         this.refData = l;
         d3.select(this._tag).selectAll("#main_svg").remove();
         d3.select(this._tag).selectAll("#main_svg_info").remove();
@@ -277,10 +277,23 @@ class Renderer {
                         return this.lineGenerator2(d);
                     });
 
-                d3.selectAll(".modeLines")
-                    .attr("d", (d) => {
-                        return this.lineGenerator2(d);
-                    });
+
+                // update mode variable scale
+                for(let i = 0; i < modeSize; i++){
+                    let lineG = d3.line()
+                        .x((d) => {
+                            return this.dataCanvasXscaleZoom(d[0]);
+                        })
+                        .y((d) => {
+                            return subYscale[i](d[1]);
+                        }).curve(d3.curveMonotoneX);
+
+                    d3.selectAll("#modeLines"+i)
+                        .attr("d", (d)=>{
+                            return lineG(d);
+                        })
+                }
+
 
 
                 // Update lines positions.
@@ -294,7 +307,6 @@ class Renderer {
                     .attr("d", (d) => {
                         return d.newX;
                     });
-
 
 
                 // // calculating mouse position

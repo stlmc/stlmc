@@ -29,6 +29,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSa
         dataGenerator.data = stlModel.data
         dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
         dataGenerator.solver = solver
+        dataGenerator.result = result
         dataGenerator.visualize()
 
     if resultSave:
@@ -142,7 +143,7 @@ if __name__ == '__main__':
 
     log_file_count = 2000
     fileHandler = logging.handlers.TimedRotatingFileHandler(filename="./log/main.log"
-    ,when='s', interval=1, backupCount=log_file_count)
+    ,when='m', interval=10, backupCount=log_file_count)
     streamHandler = logging.StreamHandler()
 
     fileHandler.setFormatter(formatter)

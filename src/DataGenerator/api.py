@@ -43,6 +43,14 @@ class Api:
             var_val[str(Terms.get_name(term))] = self.model.get_value(term)
         return var_val
 
+    @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, res):
+        self._result = str(res)
+
     @data.setter
     def data(self, data):
         self._data = data
@@ -166,6 +174,8 @@ class Api:
                         var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
                         if self.modeVar[i].type == 'bool':
                             var_value = str(self.model[var])
+                        elif self.modeVar[i].type == 'int':
+                            var_value = int(str(self.model[var]))
                         else:
                             var_value = float(self.model[var].as_decimal(6).replace("?", ""))
                     elif self._solver == 'yices':
@@ -588,11 +598,13 @@ class Api:
                     self.stlLogger.error("Failed to create directory!!!!!")
                     raise
 
-            import json
-            f = open(("./DataDir/"+self._stackID+".json"), "w")
-            json.dump(outer2, f)
-            f.close()
-            self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+".json")
+            if self._result == "False":
+                import json
+                f = open(("./DataDir/"+self._stackID+".json"), "w")
+                json.dump(outer2, f)
+                f.close()
+                print("New filename: " + "./DataDir/"+self._stackID+".json")
+                self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+".json")
 
         except Exception as ex:
             self.stlLogger.error("Error occured, {}".format(ex))
