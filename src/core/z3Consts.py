@@ -191,13 +191,15 @@ class z3Consts:
 
         for j in range(len(curFlowExp)):
             if curFlowExp[j].getVarId() in self.subvars.keys():
-                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(bound)))
+                substitutionDict = self.combineDict(self.subvars, self.makeSubMode(bound))
+                substitutionDict['time'] = Real('time' + str(bound))
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(substitutionDict)
             else:
                 raise ("Flow id is not declared")
 
         if curFlowType == 'diff':
             for contVar in flowModule.keys():
-                flowModule[contVar] = flowModule[contVar] * Real('time')
+                flowModule[contVar] = flowModule[contVar] * Real('time' + str(bound))
 
         subContVar = dict()
         for contVar in flowModule.keys():
