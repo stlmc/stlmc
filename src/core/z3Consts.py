@@ -1,18 +1,19 @@
 import core.encoding as ENC
 from .node import *
 from .differentiation import *
+from .z3Handler import *
 
 class z3Consts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
         self.modeVar = modeVar
         self.contVar = contVar
-        self.modeModule = modeModule 
+        self.modeModule = modeModule
         self.init = init
         self.prop = propositions    #list type
         self.subvars = substitutionVars
 
 
-    # Substitution proposition and mode variables according to bound k: {'fonepo' : fonepo_k} 
+    # Substitution proposition and mode variables according to bound k: {'fonepo' : fonepo_k}
     def makeSubMode(self, k):
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
         result = {}
@@ -25,7 +26,7 @@ class z3Consts:
         for i in range(len(self.prop)):
             result[str(self.prop[i].getId())] = Bool(str(self.prop[i].getId()) + '_' + str(k))
         return result
- 
+
     # Substituion varialbes according to bound k, sOe: var_k_0 or var_k_t
     def makeSubVars(self, k, sOe):
         op = {'bool' : Bool, 'int' : Int, 'real' : Real}
@@ -55,9 +56,8 @@ class z3Consts:
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
-             
-            # add steady state jump constraints 
-            '''
+
+            # add steady state jump constraints
             steadyStateConsts = list()
             op = {'bool' : Bool, 'int' : Int, 'real' : Real}
             for k in range(len(self.modeVar)):
@@ -67,7 +67,7 @@ class z3Consts:
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
-            '''
+
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
         result = []
@@ -165,24 +165,20 @@ class z3Consts:
         if isinstance(exp, Le):
             exp = Ge((exp.right() - exp.left()), RealVal(0))
 
-        combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
-        combine['time'] = Real('time' + str(bound))
-        # If proposition is just boolean variable, return original expression 
+        # If proposition is just boolean variable, return original expression
         if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
             if exp.getType() == Type.Bool:
-                return exp.substitution(combine)
+                return exp
             else:
                 raise ("Proposition constraints something wrong")
 
         # Case Real value >(or >=) 0
         if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
-            return exp 
+            return exp
 
         const = list()
-        if exp.right() == RealVal(0): 
-            handlingExp = exp.left()
-        else: 
-            handlingExp = exp.left() - exp.right()
+        combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
+        handlingExp = exp.left() - exp.right()
 
         # f(t) >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
@@ -195,22 +191,19 @@ class z3Consts:
 
         for j in range(len(curFlowExp)):
             if curFlowExp[j].getVarId() in self.subvars.keys():
-                sub = self.combineDict(self.subvars, self.makeSubMode(bound))
-                sub['time'] = Real('time' + str(bound))
-                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(sub)
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(bound)))
             else:
                 raise ("Flow id is not declared")
 
         if curFlowType == 'diff':
             for contVar in flowModule.keys():
-                flowModule[contVar] = flowModule[contVar] * Real('time' + str(bound))
+                flowModule[contVar] = flowModule[contVar] * Real('time')
 
         subContVar = dict()
         for contVar in flowModule.keys():
             subContVar[str(contVar.id)] = flowModule[contVar]
 
         substitutionExp = handlingExp.substitution(subContVar)
-        
         diffExp = diff(substitutionExp)
 
         #monotone increase or decrease
