@@ -1,56 +1,62 @@
 real gateVel;
 [-10, 25] trainPosition;
 [-10, 150] gateHeight;
-[-10, 150] constGateHeight;
+[-10, 150] cGateHeight;
 {
     mode:
-        gateVel == -2 ;
+        gateVel == -1 ;
     inv:
         gateHeight < 10 ;
 	(and (y >= -5) (y < 5.1)) ; 
     flow:
         d/dt[trainPosition] = 4;
-	d/dt[constGateHeight] = 0;
-        d/dt[gateHeight] = (gateVel - constGateHeight) / 2;
+	d/dt[cGateHeight] = 0;
+        d/dt[gateHeight] = gateVel / 2;
     jump:
+        (trainPosition < 4.9) ==>
+          (and (gateVel' = -1) (trainPosition' = trainPosition) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
         (and (trainPosition >= 4.9) (trainPosition < 5.1)) ==>
-          (and (gateVel' = 2) (trainPosition' = trainPosition) (constGateHeight' = gateHeight) (gateHeight' = gateHeight));
+          (and (gateVel' = 5) (trainPosition' = trainPosition) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
 }
 
 {
     mode:
-        gateVel == 1.5 ;
+        gateVel == 5 ;
     inv:
     flow:
         trainPosition(t) = 4 * t + trainPosition(0);
-        constGateHeight(t) = constGateHeight(0);
+        cGateHeight(t) = cGateHeight(0);
         gateHeight(t) = gateVel - time / 2  + gateHeight(0);
     jump:
+        (trainPosition < 14.9) ==>
+	          (and (gateVel' = 5) (trainPosition' = trainPosition) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
         (and (trainPosition >= 14.9) (trainPosition < 15.1)) ==>
-          (and (gateVel' = -1) (trainPosition' = trainPosition) (constGateHeight' = gateHeight) (gateHeight' = gateHeight));
+          (and (gateVel' = -2) (trainPosition' = trainPosition) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
 }
 
 {
     mode:
-        gateVel == -1 ;
+        gateVel == -2 ;
     inv:
     flow:
         d/dt[trainPosition] = 4;
-        d/dt[constGateHeight] = 0;
-        d/dt[gateHeight] = (gateVel - constGateHeight) / 2;
+        d/dt[cGateHeight] = 0;
+        d/dt[gateHeight] = (gateVel - cGateHeight) / 2;
     jump:
+        (trainPosition < 20.9) ==>
+	                  (and (gateVel' = -2) (trainPosition' = trainPosition) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
         (and (trainPosition >= 20.9) (trainPosition < 21.1)) ==>
-          (and (gateVel' = -2) (trainPosition' = (trainPosition - 25)) (constGateHeight' = gateHeight) (gateHeight' = gateHeight));
+          (and (gateVel' = -1) (trainPosition' = (trainPosition - 25)) (cGateHeight' = gateHeight) (gateHeight' = gateHeight));
 }
 
 
 init:
-(and (gateVel == -2) (trainPosition == 0) (gateHeight < 1) (gateHeight >= 0) (constGateHeight == gateHeight)) ;
+(and (gateVel == -1) (trainPosition >= 0) (trainPosition <= 0.1) (gateHeight < 6) (gateHeight >= 3) (cGateHeight == gateHeight)) ;
 
 propositions:
 ghl5 = gateHeight < 5 ;
 
 goal:
-#([] [0.0,40.0] (trainPosition < 3) -> ([][0.0,3.0] reachability));
-(<> [0.0, 50.0] ([] [1.0, 20.0] ghl5)) ; 
+([] [0.0,40.0] (trainPosition < 14)) ; 
+#(<> [0.0, 50.0] ([] [0.0, 1.0] gateVel == -2)) ; 
 
