@@ -53,11 +53,18 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     for i in range(len(stlMC.getStlFormsList())):
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
+            if resultSave:
+                modelName = os.path.splitext(os.path.basename(title))[0]
+                filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+                rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
+                with open(rel_path, 'w') as fle :
+                    print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
             if multy:
                 p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic))
                 p.start()
             else:
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
+        print("New filename: ./reports/" + str(filename))
 
 def main(args, stlLogger):
     modelList = list()
@@ -94,11 +101,6 @@ def main(args, stlLogger):
                 os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
 
         for m in modelList:
-            if save:
-                filename = "report" + "_" + os.path.splitext(os.path.basename(m))[0] + ".txt"
-                rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
-                with open(rel_path, 'w') as fle :
-                    print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
             modelCheck(m, lower, upper, step, timebound, json, multithread, save, solver.lower(), logic.upper(), stlLogger)
 
         if visualize:
