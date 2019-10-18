@@ -4,7 +4,7 @@ import time
 from .z3Handler import * 
 from .yicesHandler import *
 from .formula import *
-from .z3Consts import *
+from .modelConsts import *
 
 
 def flatten(l):
@@ -661,7 +661,7 @@ class StlMC:
         self.prop = prop  # list type
         self.goal = goal
         self.subvars = self.makeVariablesDict()
-        self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.consts = modelConsts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
 
     @property
     def cont_id_dict(self):
@@ -777,7 +777,7 @@ class StlMC:
         consts.append(self.consts.goalConstraints(bound, goal))
       
 
-        consts = consts + self.consts.z3TimeBoundConsts(consts, timeBound)
+        consts = consts + self.consts.timeBoundConsts(consts, timeBound)
 
         #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
         (result, cSize, self.model) = checkSat(consts)

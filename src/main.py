@@ -110,6 +110,7 @@ def main(args, stlLogger):
                     raise
             subprocess.call(["../visualize/golang/main", "-v"])
     except Exception as ex:
+        print(ex)
         if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json]):
             print("\nNeed to provide file name!")
             print("Type [-h] to see help.")

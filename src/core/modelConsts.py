@@ -1,9 +1,8 @@
 import core.encoding as ENC
 from .node import *
 from .differentiation import *
-from .z3Handler import *
 
-class z3Consts:
+class modelConsts:
     def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
         self.modeVar = modeVar
         self.contVar = contVar
@@ -246,7 +245,7 @@ class z3Consts:
             result.append(And(*const))
         return And(*result)
 
-    def z3TimeBoundConsts(self, consts, timeBound):
+    def timeBoundConsts(self, consts, timeBound):
         result = []
         variables = set().union(*[c.getVars() for c in consts])
         curMode = list()
@@ -299,6 +298,6 @@ class z3Consts:
 
         addTimeBound = result + partitionConsts + formula
 
-        result = result + self.z3TimeBoundConsts(addTimeBound, timeBound)
+        result = result + self.timeBoundConsts(addTimeBound, timeBound)
 
         return result
