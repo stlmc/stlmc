@@ -541,8 +541,8 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
+        #print(self.__var_dict)
         for elem in self.exps:
-            # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
                 ode_list.append(elem.flow.value)
             elif isinstance(elem.flow, Real):

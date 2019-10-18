@@ -137,7 +137,6 @@ if __name__ == '__main__':
     stlLogger = logging.getLogger("StlMC")
     stlLogger.setLevel(logging.NOTSET)
 
-
     formatter = logging.Formatter('[%(levelname)s ==> %(filename)s:%(lineno)s] %(asctime)s >> %(message)s')
     try:
         if not(os.path.isdir("./log")):

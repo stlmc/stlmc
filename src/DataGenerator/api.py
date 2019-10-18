@@ -153,6 +153,8 @@ class Api:
 
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
+        print("getContValues")
+        print(result)
         return result
 
 
@@ -393,13 +395,17 @@ class Api:
     # inner function of sol equation
     # generate list that correspond to indexed interval
     def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
-        self.stlLogger.debug("calculation start")
+        self.stlLogger.debug("SOL EQ: calculation start")
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
 
         sol_l = self.getSol()
         interval_list = []
 
+        sol_l_list = list(sol_l.keys())
+
+#         self.stlLogger.debug("sol_init_list: {}".format(sol_init_list))
+#         self.stlLogger.debug("sol_list: {}".format(sol_l))
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
@@ -408,7 +414,11 @@ class Api:
 
             for vv in only_mod:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
+
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
+#             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
+#             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
+#             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
@@ -419,16 +429,20 @@ class Api:
                 # "self.mode_module[model_id].getFlow().exp2exp()" is correspond to y value
                 # but for some reason "self.mode_module[model_id].getFlow().exp2exp()" itself
                 # contains [value]. So we need to remove list before putting it inside tmp dictionary.
-                # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[0]" instead.
+                # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[k]" instead.
                 tmp = dict()
                 tmp["x"] = global_newT[i]
-                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
+                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[sol_l_list.index(k)]
+                if k == "gateHeight":
+                    self.stlLogger.debug("x is {}".format(local_newT[i]))
+                    self.stlLogger.debug("y is {}".format(tmp["y"]))
                 tmp_res.append(tmp)
+                #self.stlLogger.debug(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
-        self.stlLogger.debug("end of calculation")
+        self.stlLogger.debug("SOL EQ: end of calculation")
         return interval_list, global_newT
 
     # buggy
