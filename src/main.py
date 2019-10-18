@@ -23,10 +23,10 @@ def str2bool(v):
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave, solver, logic):
     modelName = os.path.splitext(os.path.basename(title))[0] 
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, solver, logic, False)
-
+   
     if json:
         dataGenerator.data = stlModel.data
-        dataGenerator.stackID = str(title).rsplit('/',1)[1].split(".")[0]
+        dataGenerator.stackID = modelName
         dataGenerator.solver = solver
         dataGenerator.result = result
         dataGenerator.visualize()
@@ -49,7 +49,7 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     dataGenerator = Api(stlLogger)
     workspace_info = dict()
     title = fileName
-
+    filename = ""
     for i in range(len(stlMC.getStlFormsList())):
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
@@ -64,7 +64,8 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
                 p.start()
             else:
                 module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
-        print("New filename: ./reports/" + str(filename))
+        if resultSave:
+            print("New filename: ./reports/" + str(filename))
 
 def main(args, stlLogger):
     modelList = list()
@@ -114,10 +115,11 @@ def main(args, stlLogger):
             subprocess.call(["../visualize/golang/main", "-v"])
     except Exception as ex:
         print(ex)
-        if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json, args.solver, args.logic]):
-            print("\nNeed to provide file name!")
-            print("Type [-h] to see help.")
-        elif args.visualize:
+        if args.visualize:
+            if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json, args.solver, args.logic]):
+                print("\nNeed to provide file name!")
+                print("Type [-h] to see help.")
+                raise
             try:
                 if not(os.path.isdir("./DataDir")):
                     os.makedirs(os.path.join("./DataDir"))
