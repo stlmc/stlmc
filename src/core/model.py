@@ -692,7 +692,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver,iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -742,9 +742,9 @@ class StlMC:
 
             # check the satisfiability
             if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst])
+                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
-                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst])
+                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
             stime2 = time.process_time()
 
             # calculate size
@@ -781,5 +781,4 @@ class StlMC:
 
         #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
         (result, cSize, self.model) = checkSat(consts)
-        print(result)
         return result

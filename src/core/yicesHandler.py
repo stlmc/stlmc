@@ -16,7 +16,7 @@ def yicescheckSat(consts, logic="None"):
     strConsts = [yicesObj(c) for c in consts]
     cfg = Config()
 
-    if logic != "None":
+    if logic != "NONE":
         cfg.default_config_for_logic(logic)
     else:
         cfg.default_config_for_logic('QF_NRA')

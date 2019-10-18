@@ -8,10 +8,10 @@ from .node import *
 # return a check result and the Z3 constraint size
 def z3checkSat(consts, logic="None"):
     z3Consts=[z3Obj(c) for c in consts]
-    if logic != "None":
+    if logic != "NONE":
         solver = z3.SolverFor(logic)
     else:
-        solver = z3.Solver()
+        solver = z3.SolverFor("NRA")
     
     target_z3_simplify = z3.simplify(z3.And(*z3Consts))
     solver.add(target_z3_simplify)

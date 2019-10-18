@@ -10,7 +10,6 @@ from DataGenerator import *
 import io, os, sys
 import multiprocessing
 import argparse
-from yices import *
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -21,9 +20,9 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave, solver):
+def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave, solver, logic):
     modelName = os.path.splitext(os.path.basename(title))[0] 
-    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, solver, False)
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, solver, logic, False)
 
     if json:
         dataGenerator.data = stlModel.data
@@ -33,13 +32,13 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSa
         dataGenerator.visualize()
 
     if resultSave:
-        filename = "report" + "_" + modelName + "_" + str(formula) + ".txt"
+        filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
         rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
 
-def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave, solver, stlLogger):
+def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave, solver, logic, stlLogger):
 
     handlingModel = FileStream(fileName)
     lexer  = modelLexer(handlingModel)
@@ -55,10 +54,10 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
         for k in range(lower, upper+1, step):
             formula = stlMC.getStlFormsList()[i]
             if multy:
-                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver))
+                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic))
                 p.start()
             else:
-                module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver)
+                module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
 
 def main(args, stlLogger):
     modelList = list()
@@ -78,6 +77,8 @@ def main(args, stlLogger):
         lower = 1 if args.lower is None else args.lower
         upper = lower if args.upper is None else args.upper
         visualize = False if args.visualize is None else args.visualize
+        solver = 'z3' if args.solver is None else args.solver
+        logic = 'None' if args.logic is None else args.logic
         json = visualize if args.json is None else args.json
         if visualize and not json:
             print("automatically change json option to true")
@@ -98,7 +99,7 @@ def main(args, stlLogger):
                 rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
                 with open(rel_path, 'w') as fle :
                     print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
-            modelCheck(m, lower, upper, step, timebound, json, multithread, save, args.solver.lower(), stlLogger)
+            modelCheck(m, lower, upper, step, timebound, json, multithread, save, solver.lower(), logic.upper(), stlLogger)
 
         if visualize:
             try:
@@ -111,7 +112,7 @@ def main(args, stlLogger):
             subprocess.call(["../visualize/golang/main", "-v"])
     except Exception as ex:
         print(ex)
-        if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json]):
+        if not all(argi is None for argi in [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.json, args.solver, args.logic]):
             print("\nNeed to provide file name!")
             print("Type [-h] to see help.")
         elif args.visualize:
@@ -175,8 +176,11 @@ if __name__ == '__main__':
     parser.add_argument('-multithread','-multy', type = str2bool,
                     help='run the given model using multithread (default: false)')
 
-    parser.add_argument('-solver', type = str, default = 'z3',
+    parser.add_argument('-solver', type = str,
             help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
+
+    parser.add_argument('-logic', type = str,
+            help='run the SMT solver using given given logic (default: QF-NRA)')
 
     parser.add_argument('-visualize', type = str2bool,
                                 help='Start visualizing tool for the trace of the counterexample (default: false)')
