@@ -153,8 +153,6 @@ class Api:
 
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
-        print("getContValues")
-        print(result)
         return result
 
 
@@ -338,9 +336,11 @@ class Api:
        result = []
        if self.model is not None:
            midList = []
+           formulaTerms = self.stl.split()
            for modevar in self.modeVar:
-               if modevar.id in self.stl:
+               if modevar.id in formulaTerms:
                    midList.append(modevar)
+
            if len(midList) > 0:
                for mode in midList:
                    subResult = []
