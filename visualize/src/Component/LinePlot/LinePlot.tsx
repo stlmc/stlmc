@@ -141,7 +141,7 @@ class LinePlot extends React.Component<Props, State> {
         this.onModelListSelect = this.onModelListSelect.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
         this.onOffButtonClick = this.onOffButtonClick.bind(this);
-        this.instance = Axios.create({baseURL: 'http://localhost:3001'});
+        this.instance = Axios.create({baseURL: 'http://snow.postech.ac.kr:3001'});
         this.Item = this.Item.bind(this);
         this.ItemList = this.ItemList.bind(this);
         this.Main = this.Main.bind(this);

@@ -225,7 +225,8 @@ def _(const):
         for i in range(len(const.endList)):
             keyIndex = str(const.endList[i]).find('_') 
             keyValue = str(const.endList[i])[0:keyIndex]
-            result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
+            if keyValue in substitutionExp.keys():
+                result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
   
     elif const.flowType == 'sol':
         subDict['time'] = const.time
@@ -235,7 +236,8 @@ def _(const):
         for i in range(len(const.endList)):
             keyIndex = str(const.endList[i]).find('_')
             keyValue = str(const.endList[i])[0:keyIndex]
-            result.append(const.endList[i] == substitutionExp[keyValue])
+            if keyValue in substitutionExp.keys():
+                result.append(const.endList[i] == substitutionExp[keyValue])
     else:
         raise FlowTypeEerror() 
 
