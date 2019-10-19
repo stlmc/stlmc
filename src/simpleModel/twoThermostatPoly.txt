@@ -4,7 +4,6 @@ bool b;
 [-20, 100] constx1;
 [-20, 100] constx2;
 [-20, 100] x2;
-[-20, 100] constx3;
 {
     mode:
         a == false;
