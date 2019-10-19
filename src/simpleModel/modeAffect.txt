@@ -1,4 +1,4 @@
-int heater;
+real heater;
 (-20, 100] x;
 {
     mode:
@@ -6,7 +6,7 @@ int heater;
     inv:
         x > 0;
     flow:
-        x(t) = heater * t + x(0) ;
+        x(t) = heater * (t ** 2) + x(0)  - 0.1;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));
@@ -19,7 +19,7 @@ int heater;
     inv:
         x < 60;
     flow:
-        d/dt[x] = 2 * heater;
+        d/dt[x] = 2 * heater / 0.9;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));

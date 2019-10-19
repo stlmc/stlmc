@@ -200,7 +200,7 @@ if __name__ == '__main__':
     try:
         args = parser.parse_args()
         if args.log:
-            stlLogger.setLevel(logging.INFO)
+            stlLogger.setLevel(logging.DEBUG)
         main(args, stlLogger)
     except SystemExit:
         stlLogger.debug("System error")

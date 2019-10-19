@@ -26,29 +26,46 @@ def _(const):
 
 @diff.register(Plus)
 def _(const):
-    x = diff(const.left())
-    y = diff(const.right())
-    return x + y
+    x = const.left()
+    y = const.right()
+
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+        return diff(y)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+        return diff(x)
+
+    return diff(x) + diff(y)
 
 @diff.register(Minus)
 def _(const):
-    x = diff(const.left())
-    y = diff(const.right())
-    return x - y
+    x = const.left()
+    y = const.right()
+
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+        return RealVal(0) - diff(y)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+        return diff(x)
+
+    return diff(x) - diff(y)
 
 @diff.register(Pow)
 def _(const):
-    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))) and z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+    x = const.left()
+    y = const.right()
+    if z3.is_rational_value(z3.simplify(z3Obj(x))) and z3.is_rational_value(z3.simplify(z3Obj(y))):
         return RealVal(0)
-    if isinstance(const.left(), Variable) and z3.is_rational_value(z3.simplify(z3Obj(const.right()))) :
-        if z3.simplify(z3Obj(const.right())) == 0:
-            return RealVal(1)
-        elif str(const.left().id[0:4] == 'time'):
-            return (const.right() * (const.left() ** (const.right() - RealVal(1))))
+    if isinstance(x, Variable) and z3.is_rational_value(z3.simplify(z3Obj(y))) :
+        if z3.simplify(z3Obj(y)) == 0:
+            return RealVal(0)
+        elif str(x.id[0:4] == 'time'):
+            return (y * (x ** (y - RealVal(1))))
         else:
             return RealVal(0)
     else:
-        print("diff cannot")
         print(type(const))
         print(const)
         raise NotImplementedError('Cannot hanlindg polynomial yet')
@@ -58,12 +75,27 @@ def _(const):
 def _(const):
     x = const.left()
     y = const.right()
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+        return x * diff(y)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+        return diff(x) * y
+
     return diff(x) * y + x * diff(y)
 
 @diff.register(Div)
 def _(const):
     x = const.left()
     y = const.right()
+    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+        return RealVal(0)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+        return RealVal(0) - diff(y) * x / (y * y)
+    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+        return diff(x) / y
+
+
     return diff(x) / y - diff(y) * x / (y * y) 
 
 @diff.register(Neg)

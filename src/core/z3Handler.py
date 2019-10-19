@@ -11,7 +11,7 @@ def z3checkSat(consts, logic="None"):
     if logic != "NONE":
         solver = z3.SolverFor(logic)
     else:
-        solver = z3.SolverFor("NRA")
+        solver = z3.Solver()
     
 #    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
 #    solver.add(target_z3_simplify)
@@ -20,7 +20,7 @@ def z3checkSat(consts, logic="None"):
 
     solver.set("timeout", 21600000)  #timeout : 6 hours
 
-    with open("thermoLinear.smt2", 'w') as fle:
+    with open("thermoPoly.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
 
     result = solver.check()

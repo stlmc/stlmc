@@ -57,7 +57,7 @@ class modelConsts:
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
 
             # add steady state jump constraints
-            '''
+            
             steadyStateConsts = list()
             op = {'bool' : Bool, 'int' : Int, 'real' : Real}
             for k in range(len(self.modeVar)):
@@ -67,7 +67,7 @@ class modelConsts:
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
             subresult.append(And(*steadyStateConsts))
-            '''
+           
 
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
@@ -99,6 +99,7 @@ class modelConsts:
                     else:
                         raise ("Flow id is not declared")
                 modeConsts = list()
+                
                 for otherModeID in range(0, i):
                     modeConsts.append(Not(Real('currentMode_'+str(k)) == IntVal(otherModeID)))
                 for otherModeID in range(i+1, len(self.modeModule)):
@@ -109,7 +110,7 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_'+str(k)) == IntVal(i))
                 modeConsts.append(Real('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
                 modeConsts.append(Real('currentMode_'+str(k)) >= IntVal(0))
-
+               
                 modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))

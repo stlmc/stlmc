@@ -153,6 +153,7 @@ class Api:
 
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
+
         return result
 
 
@@ -391,8 +392,6 @@ class Api:
                    resultVal["actual"] = str(self.props[i].getExpStr())
                    resultVal["data"] = subResult
                    result.append(resultVal)
-       print("getProposition")
-       print(result)
        return result
 
 
@@ -402,7 +401,6 @@ class Api:
         self.stlLogger.debug("SOL EQ: calculation start")
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
-
         sol_l = self.getSol()
         interval_list = []
 
@@ -452,7 +450,6 @@ class Api:
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
-
         self.stlLogger.debug("calculation start")
         c_val = self.getContValues()
         m_val = self.getModeValues()
@@ -499,7 +496,6 @@ class Api:
         return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
-
         self.stlLogger.debug("main calculation start")
         # get total model id
         model_id = self.getModeIdList()
@@ -621,8 +617,8 @@ class Api:
                 f = open(("./DataDir/"+self._stackID+".json"), "w")
                 json.dump(outer2, f)
                 f.close()
-                print("New filename: " + "./DataDir/"+self._stackID+".json")
-                self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+".json")
+                print("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
+                self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
 
         except Exception as ex:
             self.stlLogger.error("Error occured, {}".format(ex))
