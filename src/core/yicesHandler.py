@@ -24,6 +24,10 @@ def yicescheckSat(consts, logic="None"):
     ctx = Context(cfg)
 
 
+    for c in strConsts:
+        print("yicescheckSat")
+        print(c)
+        print(Terms.parse_term(c))
     yicesConsts = [Terms.parse_term(c) for c in strConsts]
     ctx.assert_formulas(yicesConsts)
 

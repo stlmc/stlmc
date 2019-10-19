@@ -1,7 +1,6 @@
 real gateVel;
 [-10, 25] trainPosition;
 [-10, 150] gateHeight;
-[-100, 100] sth ;
 {
     mode:
         gateVel == -1 ;
@@ -11,7 +10,6 @@ real gateVel;
     flow:
         d/dt[trainPosition] = 4;
         d/dt[gateHeight] = gateVel;
-        d/dt[sth] = 0;
     jump:
         (trainPosition < 4.9) ==>
           (and (gateVel' = -1) (trainPosition' = trainPosition) (gateHeight' = gateHeight));
@@ -25,8 +23,7 @@ real gateVel;
     inv:
     flow:
         trainPosition(t) = 4 * t + trainPosition(0);
-        gateHeight(t) = gateVel - t / 2 + (t ** 2) / 8 + gateHeight(0);
-        sth(t) = 0;
+        gateHeight(t) = gateVel - (gateVel * t) / 2 + (t ** 2) / 8 + gateHeight(0);
     jump:
         (trainPosition < 14.9) ==>
                   (and (gateVel' = 5) (trainPosition' = trainPosition) (gateHeight' = gateHeight));
@@ -41,16 +38,15 @@ real gateVel;
     flow:
         d/dt[trainPosition] = 4;
         d/dt[gateHeight] = gateVel ;
-        d/dt[sth] = 0 ;
     jump:
         (trainPosition < 20.9) ==>
                           (and (gateVel' = -2) (trainPosition' = trainPosition) (gateHeight' = gateHeight));
         (and (trainPosition >= 20.9) (trainPosition < 21.1)) ==>
-          (and (gateVel' = -2) (trainPosition' = (trainPosition - 25)) (gateHeight' = gateHeight));
+          (and (gateVel' = -1) (trainPosition' = (trainPosition - 25)) (gateHeight' = gateHeight));
 }
 
 init:
-(and (sth == 0) (gateVel == -1) (trainPosition >= 0) (trainPosition < 0.1) (gateHeight < 1) (gateHeight >= 0) ) ;
+(and (gateVel == -1) (trainPosition >= 0) (trainPosition < 0.1) (gateHeight < 1) (gateHeight >= 0) ) ;
 
 propositions:
 ghl5 = gateHeight < 5 ;
