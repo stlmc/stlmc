@@ -336,7 +336,9 @@ class Api:
        result = []
        if self.model is not None:
            midList = []
-           formulaTerms = self.stl.split()
+           formulaTerms = []
+           for termElem in self.stl.split():
+               formulaTerms.append(termElem.replace("(", "").replace(")", ""))
            for modevar in self.modeVar:
                if modevar.id in formulaTerms:
                    midList.append(modevar)
@@ -389,6 +391,8 @@ class Api:
                    resultVal["actual"] = str(self.props[i].getExpStr())
                    resultVal["data"] = subResult
                    result.append(resultVal)
+       print("getProposition")
+       print(result)
        return result
 
 
