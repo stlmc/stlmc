@@ -40,6 +40,8 @@ def sizeAst(node:z3.AstRef):
 
 @singledispatch
 def z3Obj(const:Node):
+    print(type(const))
+    print(const)
     raise NotImplementedError('Something wrong')
 
 @z3Obj.register(Constant)

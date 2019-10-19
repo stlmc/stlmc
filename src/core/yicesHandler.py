@@ -51,6 +51,7 @@ def sizeAst(node:yices.AstRef):
 @singledispatch
 def yicesObj(const:Node):
     print(type(const))
+    print(const)
     raise NotImplementedError('Something wrong')
 
 @yicesObj.register(Constant)

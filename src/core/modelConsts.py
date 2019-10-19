@@ -171,6 +171,8 @@ class modelConsts:
             if exp.getType() == Type.Bool:
                 return exp.substitution(self.makeSubMode(bound))
             else:
+                print(exp)
+                print(exp.getType())
                 raise ("Proposition constraints something wrong")
 
         # Case Real value >(or >=) 0

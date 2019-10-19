@@ -37,7 +37,9 @@ def _(const):
     return x - y
 
 @diff.register(Pow)
-def _(const): 
+def _(const):
+    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))) and z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+        return RealVal(0)
     if isinstance(const.left(), Variable) and z3.is_rational_value(z3.simplify(z3Obj(const.right()))) :
         if z3.simplify(z3Obj(const.right())) == 0:
             return RealVal(1)
@@ -46,6 +48,9 @@ def _(const):
         else:
             return RealVal(0)
     else:
+        print("diff cannot")
+        print(type(const))
+        print(const)
         raise NotImplementedError('Cannot hanlindg polynomial yet')
 
 
