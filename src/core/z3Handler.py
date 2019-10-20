@@ -20,8 +20,6 @@ def z3checkSat(consts, logic="None"):
 
     solver.set("timeout", 21600000)  #timeout : 6 hours
 
-    with open("thermoPoly.smt2", 'w') as fle:
-        print(solver.to_smt2(), file=fle)
 
     result = solver.check()
     str_result = str(result)
