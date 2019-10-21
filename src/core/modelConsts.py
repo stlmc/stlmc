@@ -53,7 +53,9 @@ class modelConsts:
         jumpConsts = list()
         for i in range(len(self.modeModule)):
             subresult = list()
+            conditions = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
+                conditions.append(self.modeModule[i].getJump().getRedeclList()[j].getCond(self.subvars))
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
 
             # add steady state jump constraints
@@ -66,7 +68,7 @@ class modelConsts:
             for k in range(len(self.contVar)):
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
-            subresult.append(And(*steadyStateConsts))
+            subresult.append(Implies(Not(And(*conditions)), And(*steadyStateConsts)))
            
 
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
