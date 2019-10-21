@@ -23,6 +23,7 @@ def z3checkSat(consts, logic="None"):
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
 
+
     result = solver.check()
     str_result = str(result)
     if str_result == "sat":
