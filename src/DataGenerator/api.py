@@ -614,7 +614,7 @@ class Api:
 
             if self._result == "False":
                 import json
-                f = open(("./DataDir/"+self._stackID+".json"), "w")
+                f = open(("./DataDir/"+self._stackID+"_"+self._solver+".json"), "w")
                 json.dump(outer2, f)
                 f.close()
                 print("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")

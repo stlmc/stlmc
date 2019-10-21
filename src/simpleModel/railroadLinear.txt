@@ -2,6 +2,11 @@ bool a;
 bool b;
 [-20, 100] tx;
 [0, 90] bx;
+# state
+# 00: Past and Far(more than 85)
+# 01: Past and Approach
+# 10: Past and Near
+# 11: Past and Past
 {
     mode:
         a == false;
