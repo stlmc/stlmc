@@ -53,9 +53,7 @@ class modelConsts:
         jumpConsts = list()
         for i in range(len(self.modeModule)):
             subresult = list()
-            conditions = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
-                conditions.append(self.modeModule[i].getJump().getRedeclList()[j].getCond(self.subvars))
                 subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
 
             # add steady state jump constraints
@@ -68,7 +66,7 @@ class modelConsts:
             for k in range(len(self.contVar)):
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
-            subresult.append(Implies(Not(And(*conditions)), And(*steadyStateConsts)))
+            subresult.append(And(*steadyStateConsts))
            
 
             jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
@@ -117,7 +115,8 @@ class modelConsts:
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
-
+    
+    '''
     def invConstraints(self, bound):
         result = list()
         for k in range(bound+1):
@@ -129,6 +128,18 @@ class modelConsts:
                 invConsts.append(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
             result.append(Or(*invConsts))
         return And(*result)
+    '''
+    def invConstraints(self, bound):
+       result = list()
+       for k in range(bound+1):
+           time = Real('time' + str(k))
+           invConsts = list()
+           for i in range(len(self.modeModule)):
+               curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+               curInv = self.modeModule[i].getInv().getExpression(self.subvars)
+               invConsts.append(Implies(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+           result.append(And(*invConsts))
+       return And(*result)
 
     # {propId : Expression} // {str :  Exp}
     def makePropDict(self):
@@ -282,6 +293,8 @@ class modelConsts:
         result.append(self.makeVarRangeConsts(bound))
         # make initial constraints
         result.append(self.init.getExpression(self.subvars).substitution(combine))
+        # make invariant constraints
+        result.append(self.invConstraints(bound))
         # make flow constraints
         result.append(self.flowConstraints(bound))
         # make jump constraints
@@ -308,3 +321,4 @@ class modelConsts:
         result = result + self.timeBoundConsts(addTimeBound, timeBound)
 
         return result
+

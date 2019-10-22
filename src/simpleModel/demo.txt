@@ -17,7 +17,7 @@ bool heater;
     mode:
         heater == true;
     inv:
-        x < 60;
+        x <= 30;
     flow:
         d/dt[x] = 4;
     jump:
