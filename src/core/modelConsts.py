@@ -116,28 +116,80 @@ class modelConsts:
             result.append(Or(*flowConsts))
         return And(*result)
     
-    '''
-    def invConstraints(self, bound):
-        result = list()
-        for k in range(bound+1):
-            time = Real('time' + str(k))
-            invConsts = list()
-            for i in range(len(self.modeModule)):
-                curMode = self.modeModule[i].getMode().getExpression(self.subvars)
-                curInv = self.modeModule[i].getInv().getExpression(self.subvars)
-                invConsts.append(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k)))
-            result.append(Or(*invConsts))
-        return And(*result)
-    '''
+
+    # making key strID : matched atomic expression
+    def makeAtomicDict(self, exp, startIndex, totalDict, bound):
+        invAtomicID = "invAtomicID_"
+        result = dict()
+        copyList = list(exp.getListElem())
+        for index in range(len(copyList)):
+            element = copyList[index]
+            if isinstance(element, And):
+                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
+                for subKey in returnResult.keys():
+                    if not (subKey in totalDict.keys()):
+                        totalDict[subKey] = invAtomicID + str(startIndex)
+                        startIndex = startIndex + 1
+                result.update(totalDict)
+                formula = list()
+                for strId in returnResult.keys():
+                    formula.append(Bool(totalDict[strId] + "_" + str(bound)))
+                copyList[index] = And(*formula)
+            elif isinstance(element, Or):
+                '''
+                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
+                result.update(returnResult)
+                formula = list()
+                for strId in returnResult.values():
+                    formula.append(Bool(strId + "_" + str(bound)))
+                copyList[index] = Or(*formula)
+                '''
+                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
+                for subKey in returnResult.keys():
+                    if not (subKey in totalDict.keys()):
+                        totalDict[subKey] = invAtomicID + str(startIndex)
+                        startIndex = startIndex + 1
+
+                result.update(totalDict)
+                formula = list()
+                for strId in returnResult.keys():
+                    formula.append(Bool(totalDict[strId] + "_" + str(bound)))
+                copyList[index] = Or(*formula)
+            elif isinstance(element, Relational):
+                if not (element in totalDict.keys()):
+                    totalDict[element] = invAtomicID + str(startIndex)
+                    startIndex = startIndex + 1 
+                result.update(totalDict)
+                copyList[index] = Bool(totalDict[element] + "_" + str(bound))
+            else:
+                pass
+
+        if len(copyList) > 1:
+            returnFormula = {'and' : And, 'or' : Or}[exp.getOp().lower()](*copyList)
+        elif len(copyList) == 1 :
+            returnFormula = copyList[0]
+        else:
+            returnFormula = BoolVal(True)
+
+        return (result, returnFormula) 
+
     def invConstraints(self, bound):
        result = list()
-       for k in range(bound+1):
-           time = Real('time' + str(k))
+       atomicDict = dict()
+       for i in range(len(self.modeModule)): 
+           curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+           curInv = self.modeModule[i].getInv().getExpression(self.subvars)
            invConsts = list()
-           for i in range(len(self.modeModule)):
-               curMode = self.modeModule[i].getMode().getExpression(self.subvars)
-               curInv = self.modeModule[i].getInv().getExpression(self.subvars)
-               invConsts.append(Implies(curMode.substitution(self.makeSubMode(k)), Forall(time, curInv, self.makeSubVars(k, '0'), self.makeSubVars(k, 't'), self.makeSubMode(k))))
+           propIdDict = dict()
+           for k in range(bound+1):
+               time = Real('time' + str(k))
+               (propIdDict, formula) = (self.makeAtomicDict(curInv, len(atomicDict), propIdDict, k))
+               atomicDict.update(propIdDict)
+               invConsts.append(formula)
+           curFlow = self.modeModule[i].getFlow()
+           for prop in propIdDict.keys():
+               for k in range(bound+1):
+                   invConsts.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
            result.append(And(*invConsts))
        return And(*result)
 
@@ -197,11 +249,6 @@ class modelConsts:
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
         handlingExp = exp.left() - exp.right()
 
-        # f(t) >= 0
-        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
-        # f(t') >= 0
-        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
-
         curFlowExp = curFlow.getExpression(self.subvars)
         curFlowType = curFlow.getFlowType()
         flowModule = dict()
@@ -227,6 +274,26 @@ class modelConsts:
 
         #monotone increase or decrease
         const.append(Or(Ge(diffExp,RealVal(0)), Le(diffExp,RealVal(0))))
+
+        # Special case : a == b
+        if isinstance(exp, Numeq):
+            subconst = list()
+            subconst.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+            subconst.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
+            subconst.append(Numeq(diffExp, RealVal(0)))
+            return subconst
+
+        # Special case : a =/= b
+        if isinstance(exp, Numneq):
+            subconst = list()
+            subconst.append(self.propForall(Gt(handlingExp, RealVal(0)), bound, curFlow))
+            subconst.append(self.propForall(Lt(handlingExp, RealVal(0)), bound, curFlow))
+            return Or(*subconst)
+
+        # f(t) >= 0
+        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+        # f(t') >= 0
+        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
 
         if isinstance(exp, Gt):
             # Check a start point of interval satisfies the proposition

@@ -4,7 +4,9 @@ bool heater;
     mode:
         heater == false;
     inv:
-        x > 0;
+        (x > -10) ;
+        (or (x > -15) (x < 20)) ;
+        (and (x > 0) (x < 50));
     flow:
         x(t) = -1.2 * t + x(0);
     jump:
