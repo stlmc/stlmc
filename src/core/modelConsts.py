@@ -136,14 +136,6 @@ class modelConsts:
                     formula.append(Bool(totalDict[strId] + "_" + str(bound)))
                 copyList[index] = And(*formula)
             elif isinstance(element, Or):
-                '''
-                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
-                result.update(returnResult)
-                formula = list()
-                for strId in returnResult.values():
-                    formula.append(Bool(strId + "_" + str(bound)))
-                copyList[index] = Or(*formula)
-                '''
                 returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
                 for subKey in returnResult.keys():
                     if not (subKey in totalDict.keys()):
