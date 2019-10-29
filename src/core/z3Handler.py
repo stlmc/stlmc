@@ -6,28 +6,32 @@ from .node import *
 
 
 # return a check result and the Z3 constraint size
-def checkSat(consts, logic="None"):
+def z3checkSat(consts, logic="None"):
     z3Consts=[z3Obj(c) for c in consts]
-    if logic != "None":
+    if logic != "NONE":
         solver = z3.SolverFor(logic)
     else:
         solver = z3.Solver()
     
-#    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-#    solver.add(target_z3_simplify)
+    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+    solver.add(target_z3_simplify)
 
-    solver.add(z3Consts)
+#    solver.add(z3Consts)
 
-    solver.set("timeout", 9000000)  #timeout : 150 min
+#    solver.set("timeout", 21600000)  #timeout : 6 hours
+    solver.set("timeout", 7200000) 
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
 
+
     result = solver.check()
-    if result == z3.sat:
+    str_result = str(result)
+    if str_result == "sat":
         m = solver.model()
+        result = False
     else:
         m = None
-
+        result = True if str_result == "unsat" else "Unknown"
     return (result, sizeAst(z3.And(*z3Consts)), m)
 
 # return the size of the Z3 constraint
@@ -37,6 +41,8 @@ def sizeAst(node:z3.AstRef):
 
 @singledispatch
 def z3Obj(const:Node):
+    print(type(const))
+    print(const)
     raise NotImplementedError('Something wrong')
 
 @z3Obj.register(Constant)
@@ -179,7 +185,8 @@ def _(const):
         for i in range(len(const.endList)):
             keyIndex = str(const.endList[i]).find('_') 
             keyValue = str(const.endList[i])[0:keyIndex]
-            result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
+            if keyValue in substitutionExp.keys():
+                result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
   
     elif const.flowType == 'sol':
         subDict['time'] = const.time
@@ -189,7 +196,8 @@ def _(const):
         for i in range(len(const.endList)):
             keyIndex = str(const.endList[i]).find('_')
             keyValue = str(const.endList[i])[0:keyIndex]
-            result.append(const.endList[i] == substitutionExp[keyValue])
+            if keyValue in substitutionExp.keys():
+                result.append(const.endList[i] == substitutionExp[keyValue])
     else:
         raise FlowTypeEerror() 
 

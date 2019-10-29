@@ -28,6 +28,9 @@ export interface Mode {
     type: string;
     actual: string[];
     data: [number, number][][];
+    min: number;
+    max: number;
+    originalData: string[];
 }
 
 export interface Interval {
@@ -284,13 +287,42 @@ class Json {
                 let data = Object.values(mode_data);
 
                 let intv_data_set: [number, number][][] = [];
+                let min = 0.0;
+                let max = 0.0;
                 for (let ii2 = 0; ii2 < this._interval_info.size; ii2++) {
                     let numnumlist: [number, number][] = [];
                     let iifg = this._interval_info.get(ii2);
                     if (iifg) {
-                        numnumlist = iifg.data.map((e) => {
-                            return data[ii2] == "True" ? [e, 1] : [e, 0];
-                        });
+                        // Todo: not right....
+                        if (mode_type == "bool"){
+                            max = 3;
+                            numnumlist = iifg.data.map((e) => {
+                                return data[ii2] == "True" ? [e, 2] : [e, 1];
+                            });
+                        } else if (mode_type == "int") {
+                            numnumlist = iifg.data.map((e) => {
+                                let yy = parseInt(data[ii2]);
+                                if (yy < min){
+                                    min = yy;
+                                }
+                                if (yy > max){
+                                    max = yy;
+                                }
+                                return [e, yy];
+                            });
+                        } else if (mode_type == "real") {
+                            numnumlist = iifg.data.map((e) => {
+                                let yy = parseFloat(data[ii2]);
+                                if (yy < min){
+                                    min = yy;
+                                }
+                                if (yy > max){
+                                    max = yy;
+                                }
+                                return [e, yy];
+                            });
+                        }
+                        // Todo update it.
                     }
                     intv_data_set.push(numnumlist);
                 }
@@ -300,6 +332,9 @@ class Json {
                     type: mode_type,
                     actual: data,
                     data: intv_data_set,
+                    min: min,
+                    max: max,
+                    originalData: data,
                 };
                 this._modeMap.set(counter_mode, tmp_mode);
                 counter_mode++;
@@ -318,7 +353,7 @@ class Json {
                     let iifg = this._interval_info.get(ii2);
                     if (iifg) {
                         numnumlist = iifg.data.map((e) => {
-                            return data[ii2] == "True" ? [e, 1] : [e, 0];
+                            return data[ii2] == "True" ? [e, 2] : [e, 1];
                         });
                     }
                     intv_data_set.push(numnumlist);

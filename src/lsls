@@ -1,0 +1,20 @@
+inv
+[(or (=> (and (= heater_0 False)) (and (and (and (> x_0_t 0)) (and (> x_0_0 0))) (forall_t  [0. time0] (and (> x_0_t 0))))) (=> (and (= heater_0 True)) (and (and (and (<= x_0_t 30)) (and (<= x_0_0 30))) (forall_t  [0. time0] (and (<= x_0_t 30))))))]
+inv
+[(or (=> (and (= heater_0 False)) (and (and (and (> x_0_t 0)) (and (> x_0_0 0))) (forall_t  [0. time0] (and (> x_0_t 0))))) (=> (and (= heater_0 True)) (and (and (and (<= x_0_t 30)) (and (<= x_0_0 30))) (forall_t  [0. time0] (and (<= x_0_t 30)))))), (or (=> (and (= heater_1 False)) (and (and (and (> x_1_t 0)) (and (> x_1_0 0))) (forall_t  [0. time1] (and (> x_1_t 0))))) (=> (and (= heater_1 True)) (and (and (and (<= x_1_t 30)) (and (<= x_1_0 30))) (forall_t  [0. time1] (and (<= x_1_t 30))))))]
+Model : "demo", STL formula : "(<>_[0.0,40.0]^[0.0,inf) reachability)"
+Result : True, Variable point bound : 1, Time bound : 60
+Execution Time(sec) : 0.0338
+
+---------------------------------------------------------------------------
+
+inv
+[(or (=> (and (= heater_0 False)) (and (and (and (> x_0_t 0)) (and (> x_0_0 0))) (forall_t  [0. time0] (and (> x_0_t 0))))) (=> (and (= heater_0 True)) (and (and (and (<= x_0_t 30)) (and (<= x_0_0 30))) (forall_t  [0. time0] (and (<= x_0_t 30))))))]
+inv
+[(or (=> (and (= heater_0 False)) (and (and (and (> x_0_t 0)) (and (> x_0_0 0))) (forall_t  [0. time0] (and (> x_0_t 0))))) (=> (and (= heater_0 True)) (and (and (and (<= x_0_t 30)) (and (<= x_0_0 30))) (forall_t  [0. time0] (and (<= x_0_t 30)))))), (or (=> (and (= heater_1 False)) (and (and (and (> x_1_t 0)) (and (> x_1_0 0))) (forall_t  [0. time1] (and (> x_1_t 0))))) (=> (and (= heater_1 True)) (and (and (and (<= x_1_t 30)) (and (<= x_1_0 30))) (forall_t  [0. time1] (and (<= x_1_t 30))))))]
+Model : "demo", STL formula : "([]_[0.0,inf)^[0.0,inf) newPropDecl_0)"
+Result : True, Variable point bound : 1, Time bound : 60
+Execution Time(sec) : 0.0331
+
+---------------------------------------------------------------------------
+

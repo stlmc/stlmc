@@ -229,6 +229,9 @@ class nonLeaf(Node):
         self.children = args
         super().__init__(nonLeafType)
 
+    def getOp(self):
+        return self.op
+
     def __hash__(self):
         return hash(str(self))
 
@@ -402,6 +405,9 @@ class Logical(nonLeaf):
                 if not (a.getType() == Type.Bool):
                     raise TypeError()
         super().__init__(op, Type.Bool, args)
+
+    def getListElem(self):
+        return self.children
 
 
 class And(Logical):

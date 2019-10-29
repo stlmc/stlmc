@@ -29,9 +29,26 @@ class ModeRenderer {
         d3.select(this._tag).selectAll("#mode_svg").remove();
     }
 
-    loadGraph(maxX, data, xrange) {
+    loadGraph(maxX, data, xrange, yrange, type, min, max) {
         this.dataXrange = maxX;
         this.xrange = xrange;
+
+
+        if (yrange.length === 0){
+            return 0;
+        }
+        let uniqueNum = 0;
+        let sim = [];
+        for (let elem of yrange){
+            if (!sim.includes(elem)){
+                sim.push(elem);
+                uniqueNum += 1;
+            }
+        }
+
+        console.log(uniqueNum);
+
+
 
         d3.select(this._tag).selectAll("#mode_svg").remove();
 
@@ -45,27 +62,6 @@ class ModeRenderer {
             .attr("clip-path", "url(#modeCanvasClip" + this._index + ")")
             .attr("transform", "translate(" + this.x_clip_margin + "," + 0 + ")");
 
-        // set data canvas
-        // Add scale error to make lines fit the view box.
-        // TODO: Update formula for error. Divide by 10 is not optimal.
-        let XscaleError = (this.dataXrange[1] - this.dataXrange[0]) / 10;
-
-
-        // Set scale function for x.
-        // Clipping margin does the correction of calculate length of x axis.
-        // X axis is move this.x_clip_margin by below code.
-        this.Xscale = d3.scaleLinear()
-            .domain([this.dataXrange[0], this.dataXrange[1] + XscaleError])
-            .range([0, this._size.width]);
-
-        // set scale function for y
-        // 0: none, 1: false, 2: true, 3:none
-        this.Yscale =
-            d3.scaleLinear()
-                .domain([0, 3])
-                .range([this.data_viewer_height, 0]);
-
-
 
         this.canvas.append("clipPath")
             .attr("id", "modeCanvasClip" + this._index)
@@ -74,6 +70,37 @@ class ModeRenderer {
             .attr("height", this.data_viewer_height);
 
 
+        // set data canvas
+        // Add scale error to make lines fit the view box.
+        // TODO: Update formula for error. Divide by 10 is not optimal.
+        let XscaleError = (this.dataXrange[1] - this.dataXrange[0]) / 10;
+        this.YscaleError = (max - min) / 10;
+
+        // Set scale function for x.
+        // Clipping margin does the correction of calculate length of x axis.
+        // X axis is move this.x_clip_margin by below code.
+        this.Xscale = d3.scaleLinear()
+            .domain([this.dataXrange[0], this.dataXrange[1] + XscaleError])
+            .range([0, this._size.width]);
+
+
+        if (type == "bool"){
+            // set scale function for y
+            // 0: none, 1: false, 2: true, 3:none
+            this.Yscale =
+                d3.scaleLinear()
+                    .domain([0, 3])
+                    .range([this.data_viewer_height, 0]);
+        } else {
+            // set scale function for y
+            this.Yscale =
+                d3.scaleLinear()
+                    .domain([min - this.YscaleError, max + this.YscaleError])
+                    .range([this.data_viewer_height, 0]);
+        }
+
+        this.min = min;
+        this.max = max;
 
 
         let scaleX = this.Xscale;
@@ -82,8 +109,7 @@ class ModeRenderer {
 
         // Add interval lines.
         this.modeCanvasIntervalLines = this.modeCanvas.append("g")
-            .attr("id", "modeCanvasIntervalLines")
-        //.attr("transform", "translate(" + 0 + "," + (-50) + ")");
+            .attr("id", "modeCanvasIntervalLines");
 
         // tickValues is actual data line
         // e.g) if you put [1, 2] in the tickValues than, it will draw line to x:1 and x:2.
@@ -103,20 +129,44 @@ class ModeRenderer {
             .attr("id", "modeCanvasYaxis")
             .attr("transform", "translate(" + this.x_clip_margin + "," + 1 + ")");
 
-        this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
-            (d) => {
-                if (d === 1) {
-                    return "false"
-                } else if (d === 2) {
-                    return "true"
-                } else {
-                    return " "
+        if(type === "bool"){
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).ticks(4).tickFormat(
+                (d) => {
+                    if (d === 1) {
+                        return "false"
+                    } else if (d === 2) {
+                        return "true"
+                    } else {
+                        return " "
+                    }
+                }));
+        }
+        else if(type === "int"){
+            let yRealRange = yrange.map((e) => {
+                return parseInt(e);
+            });
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).tickValues(sim).tickFormat(
+                (d, i) => {
+                    return sim[i];
                 }
-            }));
+            ));
+        } else if(type === "real"){
+            let yRealRange = yrange.map((e) => {
+                return parseFloat(e);
+            });
+            this.modeCanvasYaxis.call(d3.axisLeft(scaleY).tickValues(sim).tickFormat(
+                (d, i) => {
+                    return sim[i];
+                }
+            ));
+        }
+
+        console.log(data);
+
 
         // update when redraw, remove previous proposition graph.
         this.modeGraph = this.modeCanvas
-            .selectAll(".modeLines")
+            .selectAll("#modeLines"+this._index)
             .append("g")
             .data(data)
             .enter();
@@ -140,12 +190,21 @@ class ModeRenderer {
             .attr("d", (d) => {
                 return modeLineG(d);
             })
-            .attr("class", "modeLines")
+            .attr("id", "modeLines"+this._index)
             .attr("stroke", "red")
-            .attr("stroke-width", 1.5)
-            .attr("transform", "translate( 0," + -20.0 +")")
+            .attr("stroke-width", 1.5);
 
     }
+
+    getXscale(){
+        return this.Xscale;
+    }
+
+    getYscale(){
+        return this.Yscale;
+    }
+
+
 
 }
 

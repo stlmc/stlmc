@@ -1,0 +1,1 @@
+k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime

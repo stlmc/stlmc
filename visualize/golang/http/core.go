@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"golang/data"
+	"golang/logger"
 	"log"
 	"net/http"
 	"os"
@@ -65,6 +66,7 @@ type StlSever struct {
 
 func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
 	//data.Workspace.GetFileListWithOutId()
+	logger.Logger.Debug("Data request for file list")
 	data.Workspace.GetFileList()
 	w.WriteHeader(http.StatusCreated)
 
@@ -72,7 +74,7 @@ func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
 	encodingErr := json.NewEncoder(w).Encode(data.Workspace)
 
 	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		logger.Logger.Error(encodingErr)
 	}
 }
 
@@ -85,12 +87,11 @@ func (ss *StlSever) handleSimpleFileList(w http.ResponseWriter, r *http.Request)
 	encodingErr := json.NewEncoder(w).Encode(data.Workspace)
 
 	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		logger.Logger.Error(encodingErr)
 	}
 }
 
 func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
-
 	// update workspace
 	data.Workspace.GetFileList()
 
@@ -99,16 +100,19 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 
 
 	vars := mux.Vars(r)
+	logger.Logger.Debug("Data request for file number ", vars["id"])
 	id, convErr := strconv.Atoi(vars["id"])
 
 	if convErr != nil {
-		log.Fatal(convErr)
+		logger.Logger.Error(convErr)
+		return
 	}
 
 	res, err := data.Workspace.Get(id)
 
 	if !err {
-		log.Fatal("No such file.")
+		logger.Logger.Error("No such file.")
+		return
 	}
 
 
@@ -122,7 +126,8 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 		encodingErr := json.NewEncoder(w).Encode(val.ToCompositeGraph4Json())
 
 		if encodingErr != nil {
-			log.Fatal(encodingErr)
+			logger.Logger.Error(encodingErr)
+			return
 		}
 	}
 }
@@ -135,7 +140,7 @@ func (ss *StlSever) handleShutdown(w http.ResponseWriter, r *http.Request) {
 
 func (ss *StlSever) Init(cancel context.CancelFunc) {
 	ss.router = mux.NewRouter().StrictSlash(true)
-	ss.spaHandler = spaHandler{staticPath:"../build", indexPath:"index.html"}
+	ss.spaHandler = spaHandler{staticPath:"../visualize/build", indexPath:"index.html"}
 	ss.router.HandleFunc("/file_list", ss.handleFileList)
 	ss.router.HandleFunc("/file/{id:[0-9]+}", ss.handleData)
 	ss.router.HandleFunc("/simple_file_list", ss.handleSimpleFileList)
@@ -149,12 +154,14 @@ func (ss *StlSever) Init(cancel context.CancelFunc) {
 }
 
 func (ss *StlSever) Start() {
+	logger.Logger.Debug("Welcome to visualize server!")
 	if err := ss.server.ListenAndServe(); err != nil {
-		log.Println(err)
+		logger.Logger.Debug("error occured...")
+		log.Fatal(err)
 	}
 }
 
 func (ss *StlSever) Shutdown(ctx context.Context){
 	_ = ss.server.Shutdown(ctx)
-	log.Println("Shutting down server...")
+	logger.Logger.Debug("Shutting down server...")
 }

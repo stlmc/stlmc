@@ -1,13 +1,16 @@
 import z3
+import os
+import logging
+import logging.handlers
+from yices import *
 from core.node import *
-from core.z3Handler import checkSat
 import numpy as np
 from scipy.integrate import odeint
 
 
 class Api:
-    def __init__(self):
-        pass
+    def __init__(self, stlLogger=logging.getLogger("DefaultStlMC")):
+        self.stlLogger = stlLogger
     
     @property
     def stackID(self):
@@ -18,12 +21,35 @@ class Api:
     @stackID.setter
     def stackID(self, stackID):
         self._stackID = stackID + "_" + self.stl + "_" + str(self.bound)
-        #print("ID")
-        #print(self._stackID)
+        self.stlLogger.debug("Set id as: " + self.stackID)
+
+    @property
+    def solver(self):
+        return self._solver
+
+    @solver.setter
+    def solver(self, solver):
+        self._solver = solver
 
     @property
     def data(self):
         return self._data
+
+    # return {'var_id' : value ,...} dictionary, for yices solver
+    def getvarval(self):
+        all_terms = self.model.collect_defined_terms()
+        var_val = dict()
+        for term in all_terms:
+            var_val[str(Terms.get_name(term))] = self.model.get_value(term)
+        return var_val
+
+    @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, res):
+        self._result = str(res)
 
     @data.setter
     def data(self, data):
@@ -60,7 +86,7 @@ class Api:
 
     # return mode declaraion to string
     def getModeDeclWithModelID(self):
-        idList = self.getModelIdList()
+        idList = self.getModeIdList()
         modeIdDict = self.getModesIdDict()
         result = []
         for i in range(len(idList)):
@@ -87,22 +113,48 @@ class Api:
         if self.model is not None:
             for i in range(len(self.contVar)):
                 subResult = []
-                op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                if self._solver == 'z3':
+                    op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                elif self._solver == 'yices':
+                    op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
+                else:
+                    raise("Can't support the given solver, please use z3 or yices solvers")
+
                 for j in range(self.bound+1):
-                    initial_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_0")
-                    final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_t")
-                    initial_value = float(self.model[initial_var].as_decimal(6).replace("?", ""))
-                    final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                    if self._solver == 'z3':
+                        initial_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_0")
+                        final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_t")
+                        initial_value = float(self.model[initial_var].as_decimal(6).replace("?", ""))
+                        final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                    elif self._solver == 'yices':
+                        var_val = self.getvarval()
+                        initial_id = str(self.contVar[i].id) + "_" + str(j) + "_0"
+                        final_id = (str(self.contVar[i].id) + "_" + str(j) + "_t")
+                        if initial_id in var_val.keys():
+                            initial_value = float(var_val[initial_id])
+                        if final_id in var_val.keys():
+                            final_value = float(var_val[final_id])
+                    else: 
+                        raise("Can't support the given solver, please use z3 or yices solvers")
+
                     subResult.append((initial_value, final_value))
 
-                final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
-                if self.model[final_var] is not None:
-                    final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+
+                if self._solver == 'z3':
+                    final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
+                    if self.model[final_var] is not None:
+                        final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
+                elif self._solver == 'yices':
+                    final_id = str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0"
+                    if final_id in self.getvarval().keys():
+                        final_value = float(self.getvarval()[final_id])
+                else:
+                    pass
+
                 subResult.append((final_value, final_value))
                 result[str(self.contVar[i].id)] = subResult
-        print(result)
-        return result
 
+        return result
 
 
     # return (initial, final) pairs for each mode variable until k bound
@@ -111,49 +163,64 @@ class Api:
         if self.model is not None:
             for i in range(len(self.modeVar)):
                 subResult = []
-                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
+                if self._solver == 'z3':
+                    op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                elif self._solver == 'yices':
+                    op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
+                else:
+                    raise("Can't support the given solver, please use z3 or yices solvers")
+              
                 for j in range(self.bound+2):
-                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
-                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    if self._solver == 'z3':
+                        var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
+                        if self.modeVar[i].type == 'bool':
+                            var_value = str(self.model[var])
+                        elif self.modeVar[i].type == 'int':
+                            var_value = int(str(self.model[var]))
+                        else:
+                            var_value = float(self.model[var].as_decimal(6).replace("?", ""))
+                    elif self._solver == 'yices':
+                        var_val = self.getvarval()
+                        var = str(self.modeVar[i].id) + "_" + str(j)
+                        if self.modeVar[i].type == 'bool':
+                            var_value = str(var_val[var])
+                        else:
+                            var_value = float(var_val[var]) 
                     subResult.append((var_value, var_value))
                 result[str(self.modeVar[i].id)] = subResult
         return result
 
-    # return (initial, final) pairs for each mode variable until k bound
-    def getModeValues4Sol(self):
-        result = {}
-        if self.model is not None:
-            for i in range(len(self.modeVar)):
-                subResult = []
-                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
-                for j in range(self.bound+2):
-                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
-                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
-                    subResult.append(var_value)
-                result[str(self.modeVar[i].id)] = subResult
-        return result
 
     # return list of variable point times
     def getTauValues(self):
         result = list()
         if self.model is not None:
             for i in range(self.bound+1):
-                declares = self.model.decls()
-                for k in declares:
-                    if "time" + str(i) == k.name():
-                        result.append(float(self.model[k].as_decimal(6).replace("?", "")))
+                time_value = None
+                if self._solver == 'z3':
+                    time_var = z3.Real("time" + str(i))
+                    if self.model[time_var] is not None:
+                        time_value = float(self.model[time_var].as_decimal(6).replace("?", ""))
+                elif self._solver == 'yices':
+                    all_terms = self.model.collect_defined_terms()
+                    var_val = dict()
+                    for term in all_terms:
+                        var_val[str(Terms.get_name(term))] = self.model.get_value(term)
+                    time_id = "time" + str(i)
+                    if time_id in var_val.keys():
+                        time_value = var_val[time_id]
+                else:
+                    raise("Can't support the given solver, please use z3 or yices solvers")
+
+                if time_value is not None:
+                    result.append(time_value)
         return result
+
+
 
     # return list of time points
     def getNumpyGlobalTimeValues(self):
-        result = list()
-        if self.model is not None:
-            for i in range(self.bound + 1):
-                declares = self.model.decls()
-                for k in declares:
-                    if "time" + str(i) == k.name():
-                        result.append(float(self.model[k].as_decimal(6).replace("?", "")))
-
+        result = self.getTauValues()
         t = []
         sum = 0.0
         for t_el in range(len(result) + 1):
@@ -164,21 +231,13 @@ class Api:
                 sum += result[t_el]
             if t_el == 0:
                 t.append(np.linspace(0, sum))
-                #print("0 ~ " + str(sum))
             else:
-                #print(str(sum_pre) + " ~ " + str(sum))
                 t.append(np.linspace(sum_pre, sum))
         return t
 
     # return list of interval's time points
     def getNumpyLocalTimeValues(self):
-        result = list()
-        if self.model is not None:
-            for i in range(self.bound + 1):
-                declares = self.model.decls()
-                for k in declares:
-                    if "time" + str(i) == k.name():
-                        result.append(float(self.model[k].as_decimal(6).replace("?", "")))
+        result = self.getTauValues()
 
         t = []
         for t_el in range(len(result)):
@@ -187,16 +246,24 @@ class Api:
 
 
     # TODO : change function name to getModeIdList
-    def getModelIdList(self):
+    def getModeIdList(self):
         result = []
         if self.model is not None:
             for i in range(self.bound+2):
-                declares = self.model.decls()
-                for k in declares:
-                    if ("currentMode_" + str(i)) == k.name():
-                        result.append(int(str(self.model[k])))
-        #self.getSol(result)
-     
+                modeId_value = None
+                if self._solver == 'z3':
+                    modeId_var = z3.Real("currentMode_" + str(i))
+                    if self.model[modeId_var] is not None:
+                        modeId_value = int(self.model[modeId_var].as_decimal(6).replace("?", ""))
+                elif self._solver == 'yices':
+                    var_val = self.getvarval()
+                    modeId_var = "currentMode_" + str(i)
+                    if modeId_var in var_val.keys():
+                        modeId_value = int(var_val[modeId_var])
+                else:
+                    raise("Can't support the given solver, please use z3 or yices solvers")
+                if modeId_value is not None:
+                    result.append(modeId_value)
         return result
 
     # return (var, mod, both)
@@ -211,12 +278,8 @@ class Api:
         # add mode var
         if self.model is not None:
             for i in range(len(self.modeVar)):
-                subResult = []
-                op = {"bool" : z3.Bool, "int" : z3.Int, "real" : z3.Real}
-                for j in range(self.bound+2):
-                    var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
-                    var_value = float(self.model[var].as_decimal(6).replace("?", ""))
-                    subResult.append(var_value)
+                total = self.getModeValues()
+                subResult = [i[0] for i in total[str(self.modeVar[i].id)]]
                 m_initial[str(self.modeVar[i].id)] = subResult
                 initial_val[str(self.modeVar[i].id)] = subResult
 
@@ -231,7 +294,7 @@ class Api:
 
 
     def getSol(self):
-        ode_l = self.getModelIdList()
+        ode_l = self.getModeIdList()
         initial_val, _, _ = self.getSolEqInitialValue()
         solutionBound = dict()
 
@@ -273,16 +336,53 @@ class Api:
     def getProposition(self):
        result = []
        if self.model is not None:
+           midList = []
+           formulaTerms = []
+           for termElem in self.stl.split():
+               formulaTerms.append(termElem.replace("(", "").replace(")", ""))
+           for modevar in self.modeVar:
+               if modevar.id in formulaTerms:
+                   midList.append(modevar)
+
+           if len(midList) > 0:
+               for mode in midList:
+                   subResult = []
+                   for j in range(self.bound+2):
+                       if self._solver == 'z3':
+                           propVar = z3.Bool(mode.id + "_" + str(j))
+                           if self.model[propVar] is not None:
+                               subResult.append(str(self.model[propVar]))
+                       elif self._solver == 'yices':
+                           var_val = self.getvarval()
+                           propVar = mode.id + "_" + str(j)
+                           if propVar in var_val.keys():
+                               subResult.append(str(var_val[propVar]))
+                       else:
+                           raise("Can't support the given solver, please use z3 or yices solvers")
+                   resultVal = dict()
+                   resultVal["name"] = str(mode.id)
+                   resultVal["actual"] = str(mode)
+                   resultVal["data"] = subResult
+                   result.append(resultVal)
            for i in range(len(self.props)):
                subResult = []
                propID = str(self.props[i].getId())
                idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
                for j in range(self.bound+2):
-                   declares = self.model.decls()
-                   for k in declares:
-                       if idCheck and (propID + "_" + str(j) == k.name()):
-                           subResult.append(str(self.model[k]))
-                           declares.remove(k)
+                   if idCheck:
+                       if self._solver == 'z3':
+                           propVar = z3.Bool(propID + "_" + str(j))
+                           if self.model[propVar] is not None:
+                               subResult.append(str(self.model[propVar]))
+
+                       elif self._solver == 'yices':
+                           var_val = self.getvarval()
+                           propVar = propID + "_" + str(j)
+                           if propVar in var_val.keys():
+                               subResult.append(str(var_val[propVar]))
+                       else:
+                           raise("Can't support the given solver, please use z3 or yices solvers")
+
                if idCheck and (len(subResult) > 0):
                    # result is for { "prop": [values...] }
                    # value is in form of { "Name": "disl10", "Actual": "x2-x1 < 10", "Data": ["True", "False"] }
@@ -298,12 +398,16 @@ class Api:
     # inner function of sol equation
     # generate list that correspond to indexed interval
     def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
+        self.stlLogger.debug("SOL EQ: calculation start")
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
-
         sol_l = self.getSol()
         interval_list = []
 
+        sol_l_list = list(sol_l.keys())
+
+#         self.stlLogger.debug("sol_init_list: {}".format(sol_init_list))
+#         self.stlLogger.debug("sol_list: {}".format(sol_l))
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
@@ -312,7 +416,11 @@ class Api:
 
             for vv in only_mod:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
+
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
+#             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
+#             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
+#             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
@@ -323,22 +431,26 @@ class Api:
                 # "self.mode_module[model_id].getFlow().exp2exp()" is correspond to y value
                 # but for some reason "self.mode_module[model_id].getFlow().exp2exp()" itself
                 # contains [value]. So we need to remove list before putting it inside tmp dictionary.
-                # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[0]" instead.
+                # That is why we use "self.mode_module[model_id].getFlow().exp2exp()[k]" instead.
                 tmp = dict()
                 tmp["x"] = global_newT[i]
-                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[0]
+                tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[sol_l_list.index(k)]
+                if k == "gateHeight":
+                    self.stlLogger.debug("x is {}".format(local_newT[i]))
+                    self.stlLogger.debug("y is {}".format(tmp["y"]))
                 tmp_res.append(tmp)
+                #self.stlLogger.debug(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
+        self.stlLogger.debug("SOL EQ: end of calculation")
         return interval_list, global_newT
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
-
-        print("yellow")
+        self.stlLogger.debug("calculation start")
         c_val = self.getContValues()
         m_val = self.getModeValues()
 
@@ -355,8 +467,7 @@ class Api:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
 
-        print("result")
-        print(self.mode_module[model_id].getFlow().var_dict)
+        self.stlLogger.debug("variable dictionary: {}".format(self.mode_module[model_id].getFlow().var_dict))
 
         res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
         global_newT = global_timeValues[index].tolist()
@@ -381,15 +492,13 @@ class Api:
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
 
-#         print("calcDIffEq")
-#         print(interval_dict)
+        self.stlLogger.debug("end of calculation")
         return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
-
-
+        self.stlLogger.debug("main calculation start")
         # get total model id
-        model_id = self.getModelIdList()
+        model_id = self.getModeIdList()
 
         # Get unique solEq model id list
         solEq_dict = []
@@ -408,12 +517,8 @@ class Api:
                 tmp["model_id"] = ids
                 diffEq_dict.append(tmp)
 
-
-#         print("Sol eq dict")
-#         print(solEq_dict)
-#
-#         print("Diff eq dict")
-#         print(diffEq_dict)
+        self.stlLogger.debug("Sol eq dict: {}".format(solEq_dict))
+        self.stlLogger.debug("Diff eq dict: {}".format(diffEq_dict))
 
         res = []
         time_list = []
@@ -455,11 +560,12 @@ class Api:
                         time_dict["range"] = elem_time_pair
                         time_dict["data"] = elem["time"]
                         time_list.append(time_dict)
+        self.stlLogger.debug("end of main calculation")
         return res, time_list
 
     # get intervals variable list
     def intervalsVariables(self):
-        model_id = self.getModelIdList()
+        model_id = self.getModeIdList()
         var_list = []
         for i in range(len(model_id)):
             var_list_tmp = []
@@ -473,8 +579,8 @@ class Api:
 
     def visualize(self):
         try:
-            #print("visualize start")
-            #print(self.getModelIdList())
+            self.stlLogger.debug("Json file generator with modelId list: {}".format(self.getModeIdList()))
+
             '''
                 if solution equation exists: 
                 checking it via sol_l's length,
@@ -483,41 +589,36 @@ class Api:
             '''
 
             global_t = self.getNumpyGlobalTimeValues()
-            result = list()
-            if self.model is not None:
-                for i in range(self.bound + 1):
-                    declares = self.model.decls()
-                    for k in declares:
-                        if "time" + str(i) == k.name():
-                            result.append(float(self.model[k].as_decimal(6).replace("?", "")))
+            result = self.getTauValues()
 
-            print(result)
 
             local_t = self.getNumpyLocalTimeValues()
-
 
             outer2 = dict()
 
             gmid, _ = self.getModeDeclWithModelID()
 
-            #outer2['data'] = self.calcEq(global_t, local_t)
 
             outer2['variable'] = self.getVarsId()
             outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
-
-            print(outer2['interval'])
-            print(outer2['intervalInfo'])
             outer2['prop'] = self.getProposition()
             outer2['mode'] = gmid
-            #outer2['mode'] = self.getModesId()
-            #outer2['mode_t'] = self.getModeDecl()
-            print(outer2["intervalInfo"])
 
-            import json
-            print("New filename: " + "../visualize/src/DataDir/"+self._stackID+".json")
-            f = open(("../visualize/src/DataDir/"+self._stackID+".json"), "w")
-            json.dump(outer2, f)
-            f.close()
+            try:
+                if not(os.path.isdir("./DataDir")):
+                    os.makedirs(os.path.join("./DataDir"))
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    self.stlLogger.error("Failed to create directory!!!!!")
+                    raise
+
+            if self._result == "False":
+                import json
+                f = open(("./DataDir/"+self._stackID+"_"+self._solver+".json"), "w")
+                json.dump(outer2, f)
+                f.close()
+                print("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
+                self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
 
         except Exception as ex:
-            print('Nothing to draw!', ex)
+            self.stlLogger.error("Error occured, {}".format(ex))

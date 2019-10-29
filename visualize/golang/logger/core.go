@@ -11,8 +11,13 @@ type loggerStruct struct {
 	IsDebug bool
 }
 
-
 func (lo *loggerStruct) Debug(args ...interface{}) {
+	if lo.IsDebug {
+		lo.Print(args...)
+	}
+}
+
+func (lo *loggerStruct) Error(args ...interface{}) {
 	if lo.IsDebug {
 		lo.Print(args...)
 	}

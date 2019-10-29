@@ -2,11 +2,11 @@ real heater;
 (-20, 100] x;
 {
     mode:
-        heater == -1.2;
+        heater == -1;
     inv:
         x > 0;
     flow:
-        x(t) = heater * t + x(0) ;
+        x(t) = heater * (t ** 2) + x(0)  - 0.1;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));
@@ -19,7 +19,7 @@ real heater;
     inv:
         x < 60;
     flow:
-        d/dt[x] = 2 * heater;
+        d/dt[x] = 2 * heater / 0.9;
     jump:
         (x > 30) ==>
           ((heater' = -1.2) and (x' = x));
@@ -28,11 +28,11 @@ real heater;
 }
 
 init:
-(and (heater == -1.2) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+(and (heater == -1) (x <= 25 + 0.1) (x >= 25 - 0.1));
 
 propositions:
 reachability = x > 23;
 
 goal:
 #(<> [0.0, 40.0] (reachability)) ;
-([] [0.0, inf) (x > 27)) ;
+([] [0.0, inf) (x > 24)) ;

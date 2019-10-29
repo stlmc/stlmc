@@ -38,18 +38,7 @@ func updateWorkspace(w http.ResponseWriter, r *http.Request){
 	if encodingErr != nil {
 		log.Fatal(encodingErr)
 	}
-/*
-	file, marshalErr := json.Marshal(newEvent)
 
-	if marshalErr != nil {
-		log.Fatal(marshalErr)
-	}
-
-	writeError := ioutil.WriteFile(data.DirName + ".workspace_info.json", file, 0644)
-
-	if writeError != nil {
-		log.Fatal(writeError)
-	}*/
 }
 
 func test(w http.ResponseWriter, r *http.Request){
@@ -68,18 +57,7 @@ func test(w http.ResponseWriter, r *http.Request){
 	if encodingErr != nil {
 		log.Fatal(encodingErr)
 	}
-/*
-	file, marshalErr := json.Marshal(event)
 
-	if marshalErr != nil {
-		log.Fatal(marshalErr)
-	}
-
-	writeError := ioutil.WriteFile(data.Workspace.DirName + ".workspace_info.json", file, 0644)
-
-	if writeError != nil {
-		log.Fatal(writeError)
-	}*/
 }
 
 
@@ -91,8 +69,6 @@ func main() {
 	flag.Parse()
 
 	logger.Logger.IsDebug = *logFlag
-	//data.Json2FullGraph(data.Workspace.DirName+"singleMode_(<>_[0.0,40.0]^[0.0,inf) (xl2 and ([]_[3.0,10.0]^[0.0,inf) (~ xl1))))_3.json")
-	//data.SendFullGraph2Json()
 
 	// https://medium.com/@int128/shutdown-http-server-by-endpoint-in-go-2a0e2d7f9b8c
 	// https://jaehue.github.io/post/how-to-use-golang-context/

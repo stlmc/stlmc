@@ -1,3 +1,8 @@
+# state
+# 00: stay
+# 01: accelerate
+# 10: deaccelerate
+
 bool a;
 bool b;
 [0, 10] v1;

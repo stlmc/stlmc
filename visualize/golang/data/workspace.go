@@ -4,11 +4,12 @@ import (
 	"golang/logger"
 	"io/ioutil"
 	"log"
+	"os"
 )
 
 
 var Workspace = workspace{
-	DirName: "../src/DataDir",
+	DirName: "./DataDir",
 }
 
 
@@ -96,6 +97,12 @@ func (ws *workspace) getFileList(dirName string) {
 
 func (ws *workspace) GetFileList(){
 	ws.reset()
+	path, err := os.Getwd()
+	if err != nil {
+		logger.Logger.Error(err)
+		return
+	}
+	logger.Logger.Debug("Get file list from:" + path)  // for example /home/user
 	ws.getFileList(ws.DirName)
 	ws.Num = ws.counter
 }

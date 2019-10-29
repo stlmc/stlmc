@@ -1,9 +1,10 @@
 import core.partition as PART
 import core.separation as SEP
 import time
-from .z3Handler import *
+from .z3Handler import * 
+from .yicesHandler import *
 from .formula import *
-from .z3Consts import *
+from .modelConsts import *
 
 
 def flatten(l):
@@ -139,11 +140,10 @@ class ContVar(Variable):
 
 
 class UnaryFunc:
-    def __init__(self, func, val, var_dict, init_dict):
+    def __init__(self, func, val, var_dict):
         self.func = func
         self.val = val
         self._var_dict = var_dict
-        self._init_dict = init_dict
 
     def __repr__(self):
         return str(self.func) + "(" + str(self.val) + ")"
@@ -203,7 +203,7 @@ class BinaryExp:
             self.right = RealVal(float(right)) if isNumber(right) else right
 
     def __repr__(self):
-        return str(self.left) + str(self.op) + str(self.right)
+        return "(" + str(self.op) + " " + str(self.left) + " " + str(self.right) + ")"
 
     def getExpression(self, varDict):
         left = self.left
@@ -263,6 +263,14 @@ class BinaryExp:
             return vleft.value * vright.value
         if self.op == '/':
             return vleft.value / vright.value
+        if self.op == '**':
+            # assume that right case will only be constant!
+            if not isNumber(vright.value):
+                raise ("unsupported power evaluation:" + str(vright.value))
+            return pow(vleft.value, vright.value)
+        else:
+            raise "unsupported calcuation"
+
 
     def getType(self):
         return Type.Real
@@ -533,8 +541,8 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
+        #print(self.__var_dict)
         for elem in self.exps:
-            # for e in elem.flow:
             if isinstance(elem.flow, RealVal):
                 ode_list.append(elem.flow.value)
             elif isinstance(elem.flow, Real):
@@ -653,7 +661,7 @@ class StlMC:
         self.prop = prop  # list type
         self.goal = goal
         self.subvars = self.makeVariablesDict()
-        self.consts = z3Consts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.consts = modelConsts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
 
     @property
     def cont_id_dict(self):
@@ -684,7 +692,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -733,7 +741,10 @@ class StlMC:
             etime1 = time.process_time()
 
             # check the satisfiability
-            (result, cSize, self.model) = checkSat(modelConsts + partitionConsts + [formulaConst])
+            if solver == 'z3':
+                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
+            elif solver == 'yices':
+                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
             stime2 = time.process_time()
 
             # calculate size
@@ -744,14 +755,7 @@ class StlMC:
             solvingTime = round((stime2 - etime1), 4)
             totalTime = round((stime2 - stime1), 4)
 
-            if result == z3.sat:
-                printResult(modelName, self.strStlFormula, "False", i, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
-                            str(totalTime))
-                return (False, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))  # counterexample found
-            if result == z3.unknown:
-                isUnknown = True
 
-        result = "Unknown" if isUnknown else True
         printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
                     str(totalTime))
 
@@ -773,9 +777,8 @@ class StlMC:
         consts.append(self.consts.goalConstraints(bound, goal))
       
 
-        consts = consts + self.consts.z3TimeBoundConsts(consts, timeBound)
+        consts = consts + self.consts.timeBoundConsts(consts, timeBound)
 
         #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
         (result, cSize, self.model) = checkSat(consts)
-        print(result)
         return result

@@ -35,9 +35,10 @@ class Renderer {
         d3.select(this._tag).selectAll("#main_svg").remove();
     }
 
-    loadGraph(maxX, maxY, l, xdata, pdata, vardict) {
+    loadGraph(maxX, maxY, l, xdata, pdata, vardict, modeSize, subXscale, subYscale) {
         this.refData = l;
         d3.select(this._tag).selectAll("#main_svg").remove();
+        d3.select(this._tag).selectAll("#main_svg_info").remove();
 
         this.canvas = d3.select(this._tag).append("svg").attr("id", "main_svg")
             .attr("width", this._size.width).attr("height", this._size.height);
@@ -63,7 +64,7 @@ class Renderer {
         this.canvas.append("clipPath")
             .attr("id", "graphCanvasClip" + this._index)
             .append("rect")
-            .attr("width", this._size.width - 2 * this.x_clip_margin)
+            .attr("width", this._size.width)
             .attr("height", this.data_viewer_height);
 
         this.graphCanvasFront =
@@ -276,10 +277,23 @@ class Renderer {
                         return this.lineGenerator2(d);
                     });
 
-                d3.selectAll(".modeLines")
-                    .attr("d", (d) => {
-                        return this.lineGenerator2(d);
-                    });
+
+                // update mode variable scale
+                for(let i = 0; i < modeSize; i++){
+                    let lineG = d3.line()
+                        .x((d) => {
+                            return this.dataCanvasXscaleZoom(d[0]);
+                        })
+                        .y((d) => {
+                            return subYscale[i](d[1]);
+                        }).curve(d3.curveMonotoneX);
+
+                    d3.selectAll("#modeLines"+i)
+                        .attr("d", (d)=>{
+                            return lineG(d);
+                        })
+                }
+
 
 
                 // Update lines positions.
@@ -293,7 +307,6 @@ class Renderer {
                     .attr("d", (d) => {
                         return d.newX;
                     });
-
 
 
                 // // calculating mouse position
@@ -367,25 +380,29 @@ class Renderer {
             nameList.push(k);
         }
         console.log(nameList);
+        let infoHeight = nameList.length * 30;
 
-        this.canvas.selectAll("dots")
+
+        this.InfoCanvas = d3.select(this._tag).append("svg").attr("id", "main_svg_info")
+            .attr("width", this._size.width).attr("height", infoHeight);
+
+        this.InfoCanvas.selectAll("dots")
             .data(nameList)
             .enter()
             .append("circle")
-            .attr("cx", 100)
-            .attr("cy", (d, i) => {return 100 + i * 25})
+            .attr("cx", 20)
+            .attr("cy", (d, i) => {return 15 + i * 25})
             .attr("r", 7)
             .style("fill", (d)=> { return color(d) });
 
 
-
         // Add one dot in the legend for each name.
-        this.canvas.selectAll("labels")
+        this.InfoCanvas.selectAll("labels")
             .data(nameList)
             .enter()
             .append("text")
-            .attr("x", 120)
-            .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("x", 40)
+            .attr("y", function(d,i){ return 15 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
             .style("fill", function(d){ return color(d)})
             .text(function(d){ return d})
             .attr("text-anchor", "left")
@@ -412,7 +429,7 @@ class Renderer {
 
         // add line to dataCanvas front where clipping path is added.
         this.lineGraph = this.graphCanvas
-            .selectAll(".linegraph")
+            .selectAll(".lines")
             .append("g")
             .data(newDataList)
             .enter();
@@ -431,7 +448,6 @@ class Renderer {
             .attr("stroke", (d, i) => {
                 return color(d.name);
             })
-            .attr("transform", "translate(0, -20)")
             .attr("stroke-width", 1.5)
             .style("fill", "none");
 
@@ -495,7 +511,7 @@ class Renderer {
             .attr("id", "mainrect")
             .attr('width', this._size.width - this.x_clip_margin)
             .attr('height', this.data_viewer_height)
-            .attr("transform", "translate(" + this.x_clip_margin + "," + 1 + ")")
+            .attr("transform", "translate(" + 0 + "," + 1 + ")")
             //.attr("clip-path", "url(#dataCanvasClip)")
             .style("fill-opacity", "0.0")
             .on("mouseover", () => {
