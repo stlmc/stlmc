@@ -19,3 +19,6 @@ class yicesconstODEerror(Exception):
 
 class FlowTypeEerror(Exception):
     pass
+
+class dreal4ODEerror(Exception):
+    pass

@@ -13,10 +13,10 @@ def z3checkSat(consts, logic="None"):
     else:
         solver = z3.Solver()
     
-    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-    solver.add(target_z3_simplify)
+    #target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+    #solver.add(target_z3_simplify)
 
-#    solver.add(z3Consts)
+    solver.add(z3Consts)
 
 #    solver.set("timeout", 21600000)  #timeout : 6 hours
     solver.set("timeout", 7200000) 

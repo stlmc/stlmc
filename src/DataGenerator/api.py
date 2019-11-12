@@ -1,4 +1,5 @@
 import z3
+import dreal
 import os
 import logging
 import logging.handlers
@@ -117,8 +118,11 @@ class Api:
                     op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
                 elif self._solver == 'yices':
                     op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
+                elif self._solver == 'dreal4':
+                    op = {'bool' : dreal.Variable.Bool, 'int' : dreal.Variable.Int, 'real' : dreal.Variable.Real}
+
                 else:
-                    raise("Can't support the given solver, please use z3 or yices solvers")
+                    raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                 for j in range(self.bound+1):
                     if self._solver == 'z3':
@@ -134,8 +138,18 @@ class Api:
                             initial_value = float(var_val[initial_id])
                         if final_id in var_val.keys():
                             final_value = float(var_val[final_id])
+                    elif self._solver == 'dreal4':
+                        print("getcont")
+                        print(self.model)
+                        #var_val = self.getvarval()
+                        #initial_id = str(self.contVar[i].id) + "_" + str(j) + "_0"
+                        #final_id = (str(self.contVar[i].id) + "_" + str(j) + "_t")
+                        #if initial_id in var_val.keys():
+                        #    initial_value = float(var_val[initial_id])
+                        #if final_id in var_val.keys():
+                        #    final_value = float(var_val[final_id])
                     else: 
-                        raise("Can't support the given solver, please use z3 or yices solvers")
+                        raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                     subResult.append((initial_value, final_value))
 
@@ -145,6 +159,10 @@ class Api:
                     if self.model[final_var] is not None:
                         final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 elif self._solver == 'yices':
+                    final_id = str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0"
+                    if final_id in self.getvarval().keys():
+                        final_value = float(self.getvarval()[final_id])
+                elif self._solver == 'dreal4':
                     final_id = str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0"
                     if final_id in self.getvarval().keys():
                         final_value = float(self.getvarval()[final_id])
@@ -167,8 +185,10 @@ class Api:
                     op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
                 elif self._solver == 'yices':
                     op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
+                elif self._solver == 'dreal4':
+                    op = {'bool' : dreal.Variable.Bool, 'int' : dreal.Variable.Int, 'real' : dreal.Variable.Real}
                 else:
-                    raise("Can't support the given solver, please use z3 or yices solvers")
+                    raise ValueError("Can't support the given solver, please use z3 or yices solvers")
               
                 for j in range(self.bound+2):
                     if self._solver == 'z3':
@@ -186,6 +206,8 @@ class Api:
                             var_value = str(var_val[var])
                         else:
                             var_value = float(var_val[var]) 
+                    elif self._solver == 'dreal4':
+                        raise ValueError("Can't support the given solver, please use z3 or yices solvers")
                     subResult.append((var_value, var_value))
                 result[str(self.modeVar[i].id)] = subResult
         return result
@@ -209,8 +231,14 @@ class Api:
                     time_id = "time" + str(i)
                     if time_id in var_val.keys():
                         time_value = var_val[time_id]
+                elif self._solver == 'dreal4':
+                    time_var = dreal.Variable("time" + str(i), dreal.Variable.Real)
+                    if self.model[time_var] is not None:
+                        # dreal4's variable returns box type and lb, ub are always same.
+                        # get lb as represented value.
+                        time_value = self.model[time_var].lb()
                 else:
-                    raise("Can't support the given solver, please use z3 or yices solvers")
+                    raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                 if time_value is not None:
                     result.append(time_value)
@@ -233,6 +261,7 @@ class Api:
                 t.append(np.linspace(0, sum))
             else:
                 t.append(np.linspace(sum_pre, sum))
+        print(t)
         return t
 
     # return list of interval's time points
@@ -260,8 +289,10 @@ class Api:
                     modeId_var = "currentMode_" + str(i)
                     if modeId_var in var_val.keys():
                         modeId_value = int(var_val[modeId_var])
+                elif self._solver == 'dreal4':
+                    print("hello")
                 else:
-                    raise("Can't support the given solver, please use z3 or yices solvers")
+                    raise ValueError("Can't support the given solver, please use z3 or yices solvers")
                 if modeId_value is not None:
                     result.append(modeId_value)
         return result
@@ -357,8 +388,10 @@ class Api:
                            propVar = mode.id + "_" + str(j)
                            if propVar in var_val.keys():
                                subResult.append(str(var_val[propVar]))
+                       elif self._solver == 'dreal4':
+                           print("hello")
                        else:
-                           raise("Can't support the given solver, please use z3 or yices solvers")
+                           raise ValueError("Can't support the given solver, please use z3 or yices solvers")
                    resultVal = dict()
                    resultVal["name"] = str(mode.id)
                    resultVal["actual"] = str(mode)
@@ -380,8 +413,10 @@ class Api:
                            propVar = propID + "_" + str(j)
                            if propVar in var_val.keys():
                                subResult.append(str(var_val[propVar]))
+                       elif self._solver == 'dreal4':
+                           print("hello")
                        else:
-                           raise("Can't support the given solver, please use z3 or yices solvers")
+                           raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                if idCheck and (len(subResult) > 0):
                    # result is for { "prop": [values...] }
@@ -591,7 +626,6 @@ class Api:
             global_t = self.getNumpyGlobalTimeValues()
             result = self.getTauValues()
 
-
             local_t = self.getNumpyLocalTimeValues()
 
             outer2 = dict()
@@ -610,7 +644,14 @@ class Api:
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     self.stlLogger.error("Failed to create directory!!!!!")
-                    raise
+                    raise ValueError("Failed to create directory!!!!!")
+            fp_dict = dict()
+            fp_dict["vkvk"] = str(self.model)
+            f1 = open(("./DataDir/meymey.txt"), "w")
+            import json
+            json.dump(fp_dict, f1)
+            f1.close()
+
 
             if self._result == "False":
                 import json
