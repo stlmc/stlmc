@@ -4,8 +4,8 @@ bool b;
 [0, 10] x2;
 {
     mode:
-        a == false;
-        b == false ;
+        a = false;
+        b = false ;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -22,20 +22,20 @@ bool b;
 	x2(t) = 0.0104 * t - 0.014 * t + 1;
 
     jump:
-        (and (x1 >= 5) (x2 >= 5)) ==>
+        (and (x1 >= 5) (x2 >= 5)) =>
           (and (not a') (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 >= 5) (x2 < 5)) ==>
+        (and (x1 >= 5) (x2 < 5)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 >= 5)) ==>
+        (and (x1 < 5) (x2 >= 5)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 < 5)) ==>
+        (and (x1 < 5) (x2 < 5)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) );
 
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
         x1 > 0;
         (x2 < 9);
@@ -51,19 +51,19 @@ bool b;
 	x2(t) = 0.01 * t - 0.014 * t + 1.06;
 
     jump:
-        (and (x1 >= 5) (x2 >= 5)) ==>
+        (and (x1 >= 5) (x2 >= 5)) =>
           (and (not a') (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 >= 5) (x2 < 5)) ==>
+        (and (x1 >= 5) (x2 < 5)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 >= 5)) ==>
+        (and (x1 < 5) (x2 >= 5)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 < 5)) ==>
+        (and (x1 < 5) (x2 < 5)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) );
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
         x1 < 8;
         (x2 > 0);
@@ -78,19 +78,19 @@ bool b;
 	x2(t) = 0.01 * t - 0.014 * t + 1.1;
 
     jump:
-        (and (x1 >= 5) (x2 >= 5)) ==>
+        (and (x1 >= 5) (x2 >= 5)) =>
           (and (not a') (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 >= 5) (x2 < 5)) ==>
+        (and (x1 >= 5) (x2 < 5)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 >= 5)) ==>
+        (and (x1 < 5) (x2 >= 5)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 < 5)) ==>
+        (and (x1 < 5) (x2 < 5)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) );
 }
 {
     mode:
-        a == true;
-        b == true;
+        a = true;
+        b = true;
     inv:
         x1 < 9;
         (x2 < 8);
@@ -104,17 +104,17 @@ bool b;
 	x2(t) = 0.01 * t - 0.014 * t + 1.16;
 
     jump:
-        (and (x1 >= 5) (x2 >= 5)) ==>
+        (and (x1 >= 5) (x2 >= 5)) =>
           (and (not a') (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 >= 5) (x2 < 5)) ==>
+        (and (x1 >= 5) (x2 < 5)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 >= 5)) ==>
+        (and (x1 < 5) (x2 >= 5)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 < 5) (x2 < 5)) ==>
+        (and (x1 < 5) (x2 < 5)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 init:
-(and (a == false) (b == false) (x1 <= 5 + 0.1) (x1 >= 5 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1) );
+(and (a = false) (b = false) (x1 <= 5 + 0.1) (x1 >= 5 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1) );
 
 propositions:
 reachability = x1 > 5.1 ;

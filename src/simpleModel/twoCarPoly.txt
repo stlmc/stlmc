@@ -24,8 +24,8 @@ bool b;
 [-1.5, 1.5] consttheta2; 
 {
     mode:
-        a == false;
-        b == false ;
+        a = false;
+        b = false ;
     inv:
         (-0.75 <= arbitraryPhi1) and (arbitraryPhi1 <= 0.75);
     flow:
@@ -47,17 +47,17 @@ bool b;
         d/dt[phi1] = 0;
         d/dt[phi2] = (constphi1 - constphi2);
     jump:
-        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) ==>
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) =>
                 (and (not a') (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) ==> 
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) => 
                 (and a' (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));  
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) ==>
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
                 (and (not a') b' (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
         (-0.75 <= arbitraryPhi1) and (arbitraryPhi1 <= 0.75);
     flow:
@@ -80,17 +80,17 @@ bool b;
         d/dt[phi2] = (constphi1 - constphi2);
 
     jump:
-        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) ==>
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) =>
                 (and (not a') (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) ==>
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) =>
                 (and a' (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));      
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) ==>
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
                 (and (not a') b' (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
         (-0.75 <= arbitraryPhi1) and (arbitraryPhi1 <= 0.75);
     flow:
@@ -112,17 +112,17 @@ bool b;
         d/dt[phi1] = 0;
         d/dt[phi2] = (constphi1 - constphi2);
     jump:
-        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) ==>
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) =>
                 (and (not a') (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) ==>
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) =>
                 (and a' (not b') (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));      
-                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) ==>
+                (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
                 (and (not a') b' (x1' = x1) (x2' = x2) (v1' = v1) (v2' = v2) (phi1' = arbitraryPhi1) (phi2' = phi2) (theta1' = theta1) (theta2' = theta2) (y1' = y1) (y2' = y2) (constv1' = v1) (constv2' = v2) (constphi1' = phi1) (constphi2' = phi2) (consttheta1' = theta1) (consttheta2' = theta2));
 
 }
 
 init:
-and (~ a) (~ b) (x1 > 0) (x1 < 3) (x2 > 5) (x2 < 10) (y1 < 10) (y1 > 3) (y2 > 3) (y2 < 10) (v1 >= 1) (v1 <= 3) (v2 >= 3) (v2 <= 4) (theta1 > 0) (theta1 < 1) (theta2 < 0) (theta2 > -1) (phi1 <= 1) (phi1 >= 0) (phi2 <= 0) (phi2 >= -1) (constv1 == v1) (constv2 == v2) (constphi1 == phi1) (constphi2 == phi2) (consttheta1 == theta1) (consttheta2 == theta2);
+and (~ a) (~ b) (x1 > 0) (x1 < 3) (x2 > 5) (x2 < 10) (y1 < 10) (y1 > 3) (y2 > 3) (y2 < 10) (v1 >= 1) (v1 <= 3) (v2 >= 3) (v2 <= 4) (theta1 > 0) (theta1 < 1) (theta2 < 0) (theta2 > -1) (phi1 <= 1) (phi1 >= 0) (phi2 <= 0) (phi2 >= -1) (constv1 = v1) (constv2 = v2) (constphi1 = phi1) (constphi2 = phi2) (consttheta1 = theta1) (consttheta2 = theta2);
 
 propositions:
 disgzero = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 0.01 ;

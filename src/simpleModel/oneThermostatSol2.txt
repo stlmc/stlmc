@@ -2,28 +2,28 @@ bool a;
 [-20, 100] x1;
 {
     mode:
-        a == false;
+        a = false;
     inv:
         x1 < 50;
     flow:
         x1(t) = -0.04 * t * (t + 5) + x1(0) + 0.5;
     jump:
-        (x1 > 26) ==>
+        (x1 > 26) =>
           (and (not a') (x1' = x1));
-        (x1 <= 24) ==>
+        (x1 <= 24) =>
           (and (a') (x1' = x1));
 }
 {
     mode:
-        a == true;
+        a = true;
     inv:
         x1 > 0;
     flow:
         x1(t) = -0.04 * t + x1(0) + 5;
     jump:
-        (x1 > 26) ==>
+        (x1 > 26) =>
           (and (not a') (x1' = x1));
-        (x1 <= 24) ==>
+        (x1 <= 24) =>
           (and (a') (x1' = x1));
 }
 init:
