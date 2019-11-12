@@ -25,7 +25,7 @@ real x1Start;
     inv:
         x1 < 30;
     flow:
-        d/dt[x1] = 0.025 * (-h1 + (1 - 2 * 0.01) * x1Start);
+        d/dt[x1] = 0.025 * ((1 - 2 * 0.01) * x1Start - h1);
     jump:
         (x1 > 27) =>
           (and (h1' < -85) (h1' > -100) (x1Start' = x1) (x1' = x1)) ;
