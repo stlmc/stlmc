@@ -183,11 +183,11 @@ class modelVisitorImpl(modelVisitor):
 
     def visitJumpMod(self, ctx:modelParser.JumpModContext):
         if ctx.TRUE():
-            return jumpMod(ctx.NEXT_VAR().getText()[:-1], BoolVal(True))
+            return jumpMod(ctx.op.text, ctx.NEXT_VAR().getText()[:-1], BoolVal(True))
         elif ctx.FALSE():
-            return jumpMod(ctx.NEXT_VAR().getText()[:-1], BoolVal(False))
+            return jumpMod(ctx.op.text, ctx.NEXT_VAR().getText()[:-1], BoolVal(False))
         else:
-            return jumpMod(ctx.NEXT_VAR().getText()[:-1], self.visit(ctx.expression()))
+            return jumpMod(ctx.op.text, ctx.NEXT_VAR().getText()[:-1], self.visit(ctx.expression()))
 
     def vistVar_type(self, ctx:modelParser.Var_typeContext):
         return ctx.varType.text

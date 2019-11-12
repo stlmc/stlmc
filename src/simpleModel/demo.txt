@@ -2,7 +2,7 @@ bool heater;
 (-20, 100] x;
 {
     mode:
-        heater == false;
+        heater = false;
     inv:
         (x > -10) ;
         (or (x > -15) (x < 20)) ;
@@ -17,7 +17,7 @@ bool heater;
 }
 {
     mode:
-        heater == true;
+        heater = true;
     inv:
         x <= 30;
     flow:
@@ -30,7 +30,7 @@ bool heater;
 }
 
 init:
-(and (heater == false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+(and (heater = false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
 
 propositions:
 reachability = x > 23;

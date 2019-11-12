@@ -8,10 +8,10 @@ fragment GT        : '>' ;
 fragment GTE       : '>=' ;
 fragment LT        : '<' ;
 fragment LTE       : '<=' ;
-fragment COM_EQ    : '==' ;
-fragment NEQ       : '!=' ;
 
-COMPARE_OP : (GT | GTE | LT | LTE | COM_EQ | NEQ) ;
+COMPARE_OP : (GT | GTE | LT | LTE) ; 
+EQUAL       : '=' ;
+NEQ         : '!=' ;
 
 fragment OP_SIN    : 'sin' ;
 fragment OP_COS    : 'cos' ;
@@ -60,7 +60,6 @@ RPAREN : ')' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
 COMMA  : ',' ;
-EQUAL  : '=' ;
 
 fragment DIGIT      : [0-9] ;
 
@@ -111,8 +110,8 @@ condition   :
             | FALSE    # constantCond
             | VALUE    # constantCond
             | VARIABLE # constantCond
-            | expression op=COMPARE_OP expression  # compExp
-            | condition op=COMPARE_OP condition    # compCond
+            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
+            | condition op=(COMPARE_OP | EQUAL |NEQ) condition    # compCond
             | condition op=(BOOL_AND | BOOL_OR) condition   # binaryCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
             | op=NOT condition  # unaryCond
@@ -123,9 +122,9 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
             | op=NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
-            | NEXT_VAR EQUAL TRUE # jumpMod
-            | NEXT_VAR EQUAL FALSE # jumpMod
-            | NEXT_VAR EQUAL expression # jumpMod
+            | NEXT_VAR op=EQUAL TRUE # jumpMod
+            | NEXT_VAR op=EQUAL FALSE # jumpMod
+            | NEXT_VAR op=(COMPARE_OP | EQUAL | NEQ) expression # jumpMod
               ;
 
 var_type    : varType=(BOOL | INT | REAL) ;

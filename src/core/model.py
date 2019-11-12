@@ -314,7 +314,7 @@ class CompCond:
             return left > right
         elif self.op == '>=':
             return left >= right
-        elif self.op == '==':
+        elif self.op == '=':
             return left == right
         elif self.op == '!=':
             return left != right
@@ -595,25 +595,37 @@ class jumpDecl:
 
 
 class jumpMod:
-    def __init__(self, nextVarId, exp):
+    def __init__(self, op, nextVarId, exp):
+        self.op = op
         self.nextVarId = nextVarId
         self.exp = exp
 
     def __repr__(self):
-        return str(self.nextVarId) + "' = " + str(self.exp)
+        return str(self.nextVarId) + "' " + str(self.op) + " " + str(self.exp)
 
     def getExpression(self, varDict):
         if self.nextVarId in varDict.keys():
             left = NextVar(varDict[self.nextVarId])
-            if isinstance(self.exp, Constant):
-                right = self.exp
-            elif isinstance(self.exp, Real):
-                right = self.exp
-            elif self.exp in varDict.keys():
-                right = varDict[self.exp]
-            else:
-                right = self.exp.getExpression(varDict)
-            return (left == right)
+        if isinstance(self.exp, Constant):
+            right = self.exp
+        elif type(self.exp) in [Real, Int, Bool]: 
+            right = self.exp
+        elif self.exp in varDict.keys():
+            right = varDict[self.exp]
+        else: 
+            right = self.exp.getExpression(varDict)
+        if self.op == '<':
+            return left < right
+        elif self.op == '<=':
+            return left <= right
+        elif self.op == '>':
+            return left > right
+        elif self.op == '>=':
+            return left >= right
+        elif self.op == '=':
+            return left == right
+        elif self.op == '!=':
+            return left != right
         else:
             raise ("jump undeclared variable id in next variable handling")
 
