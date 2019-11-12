@@ -41,7 +41,7 @@ REAL : 'real' | 'Real' | 'REAL' ;
 BOOL_AND   : 'and' | 'And' ;
 BOOL_OR    : 'or'  | 'Or' ;
 NOT   : 'not' | 'Not' | '~' ;
-JUMP_ARROW : '==>' ;
+JUMP_ARROW : '=>' ;
 DIFF       : 'd/dt' ;
 
 IMP   : '->'  ;
