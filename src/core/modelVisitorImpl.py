@@ -260,7 +260,7 @@ class modelVisitorImpl(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             # CompCond type
-            element.append(self.visitCompCond(ctx.condition()[i]))
+            element.append(self.visit(ctx.condition()[i]))
         return MultyCond("and", element)
 
     '''

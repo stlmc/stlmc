@@ -101,6 +101,7 @@ expression  :
 	    | expression op=POWER expression #binaryExp
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
+            | op=MINUS expression    # unaryExp
             | op=FUNC_OP expression  # unaryExp
             ;
 
