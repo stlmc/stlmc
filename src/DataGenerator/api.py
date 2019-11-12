@@ -86,25 +86,29 @@ class Api:
 
     # return mode declaraion to string
     def getModeDeclWithModelID(self):
-        idList = self.getModeIdList()
-        modeIdDict = self.getModesIdDict()
-        result = []
-        for i in range(len(idList)):
-            conditions = self.mode_module[idList[i]].getMode().props
-            for j in range(len(conditions)):
-                if conditions[j].left in modeIdDict.keys():
-                    if modeIdDict[conditions[j].left] is None:
-                        modeIdDict[conditions[j].left][0] = [str(conditions[j].right)]
-                    else:
-                        modeIdDict[conditions[j].left][0].extend([str(conditions[j].right)])
-        result = list()
-        for key in modeIdDict.keys():
-            dictElement = dict()
-            dictElement["name"] = key
-            dictElement["type"] = modeIdDict[key][1]
-            dictElement["data"] = modeIdDict[key][0]
-            result.append(dictElement)
-        return result, idList
+        total = list()
+        idList = list()
+        if self.model is not None:
+            result = {}
+            modeValues = self.getModeValues()
+        
+            for i in range(len(self.modeVar)):
+                key = self.modeVar[i].id
+                subResult = []
+                for index in range(len(modeValues[key])-1):
+                    subResult.append(modeValues[key][index][0])
+                result[key] = (subResult, self.modeVar[i].type)
+            
+            idList = self.getModeIdList()
+                
+            total = list()
+            for key in result.keys():
+                dictElement = dict()
+                dictElement["name"] = key
+                dictElement["type"] = result[key][1]
+                dictElement["data"] = result[key][0]
+                total.append(dictElement)
+        return total, idList
 
 
     # return (initial, final) pairs for each continuous variable until k bound
