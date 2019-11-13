@@ -170,15 +170,8 @@ class UnaryFunc:
     def value(self):
         if str(self.val) in self._var_dict.keys():
             degree = self._var_dict[str(self.val)]
-        #elif str(self.val).isdigit():
-        #    print("kekekek")
-        #    degree = RealVal(float(self.val)).value
-        # TODO: why need below? problems....
-        #else:
-        #    degree = Real(str(self.val)).value
         else:
             degree = RealVal(str(self.val)).value
-
 
         if self.func == 'sin':
             return degree - degree * degree * degree / RealVal(6).value
@@ -720,35 +713,15 @@ class StlMC:
             # partition constraint
             (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
 
-            '''
-            print("partition")
-            print(partition)
-            print("sepMap")
-            print(sepMap)
-            '''
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
             # FOL translation
-            '''
-            print("full separation result formula")
-            print(str(fs[0]))
-            print("full separtion map")
-            print(fs[1])
-            '''
             baseV = ENC.baseEncoding(partition, baseP)
-            '''
-            print("baseV")
-            print(baseV)
-            '''
+
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
-
-            '''
-            for i in range(len(modelConsts)):
-                print(modelConsts[i])
-            '''
 
             etime1 = time.process_time()
 
@@ -791,6 +764,5 @@ class StlMC:
 
         consts = consts + self.consts.timeBoundConsts(consts, timeBound)
 
-        #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
         (result, cSize, self.model) = checkSat(consts)
         return result
