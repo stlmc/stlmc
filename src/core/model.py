@@ -111,6 +111,21 @@ class InitVal(Variable):
     def substitution(self, subDict):
         return self.getExpression().substitution(subDict)
 
+class VarVal:
+    def __init__(self, varType, varID, value):
+        self.varid = varID
+        self.value = None
+        if varType.lower == 'bool':
+            if not (value.lower() in ['true', 'false']):
+                raise "boolean type variable can be only true or flase"
+            self.value = BoolVal(True) if value.lower() == 'true' else BoolVal(False)
+        else:
+            if value.lower() in ['true', 'fasle']:
+                raise "int or real type variable can't be true or false"
+            self.value = RealVal(float(value)) if varType.lower() == 'real' else \
+                        IntVal(int(value))
+    def getElement(self):
+        return (self.varid, self.value)
 
 class ContVar(Variable):
     def __init__(self, interval, varId):
@@ -162,7 +177,7 @@ class UnaryFunc:
         elif self.func == 'tan':
             return degree + degree * degree * degree
         elif self.func == '-':
-            return RealVal(0) - degree
+            return (RealVal(0) - degree)
         else:
             raise "Not yet in Unary function"
 
@@ -180,7 +195,7 @@ class UnaryFunc:
         elif self.func == 'tan':
             return degree + degree * degree * degree
         elif self.func == '-':
-            return RealVal(0).value - degree
+            return (RealVal(0).value - degree)
         else:
             raise "Not yet in Unary function"
 
@@ -213,15 +228,15 @@ class BinaryExp:
             pass
 
         if self.op == '+':
-            return left + right
+            return (left + right)
         elif self.op == '-':
-            return left - right
+            return (left - right)
         elif self.op == '*':
-            return left * right
+            return (left * right)
         elif self.op == '/':
-            return left / right
+            return (left / right)
         elif self.op == '**':
-            return left ** right
+            return (left ** right)
         else:
             raise "Not yet in Binary Expression"
 
@@ -249,13 +264,13 @@ class BinaryExp:
         if isinstance(self.right, BinaryExp):
             right = self.right.value
         if self.op == '+':
-            return vleft.value + vright.value
+            return (vleft.value + vright.value)
         if self.op == '-':
-            return vleft.value - vright.value
+            return (vleft.value - vright.value)
         if self.op == '*':
-            return vleft.value * vright.value
+            return (vleft.value * vright.value)
         if self.op == '/':
-            return vleft.value / vright.value
+            return (vleft.value / vright.value)
         if self.op == '**':
             # assume that right case will only be constant!
             if not isNumber(vright.value):
@@ -300,17 +315,17 @@ class CompCond:
         if str(self._right) in varDict.keys():
             right = varDict[str(self._right)]
         if self.op == '<':
-            return left < right
+            return (left < right)
         elif self.op == '<=':
-            return left <= right
+            return (left <= right)
         elif self.op == '>':
-            return left > right
+            return (left > right)
         elif self.op == '>=':
-            return left >= right
+            return (left >= right)
         elif self.op == '=':
-            return left == right
+            return (left == right)
         elif self.op == '!=':
-            return left != right
+            return (left != right)
         else:
             raise "Not yet in Compare Condition"
 
@@ -658,15 +673,16 @@ class formulaDecl:
 
 
 class StlMC:
-    def __init__(self, modeVar, contVar, modeModule, init, prop, goal, formulaText):
+    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
+        self.varVal = varVal
         self.modeModule = modeModule
         self.init = init
         self.prop = prop  # list type
         self.goal = goal
         self.subvars = self.makeVariablesDict()
-        self.consts = modelConsts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop, self.subvars)
 
     @property
     def cont_id_dict(self):

@@ -3,9 +3,10 @@ from .node import *
 from .differentiation import *
 
 class modelConsts:
-    def __init__(self, modeVar, contVar, modeModule, init, propositions, substitutionVars):
+    def __init__(self, modeVar, contVar, varVal, modeModule, init, propositions, substitutionVars):
         self.modeVar = modeVar
         self.contVar = contVar
+        self.varVal = varVal
         self.modeModule = modeModule
         self.init = init
         self.prop = propositions    #list type
@@ -76,7 +77,9 @@ class modelConsts:
             time = Real('time' + str(k))
 
             combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 't'))
+            combineSub.update(self.varVal)
             nextSub = self.combineDict(self.makeSubMode(k+1), self.makeSubVars(k+1, '0'))
+            nextSub.update(self.varVal)
 
             const = [i.substitution(combineSub) for i in jumpConsts]
             combineJump = [i.nextSub(nextSub) for i in const]
@@ -95,7 +98,9 @@ class modelConsts:
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
                 for j in range(len(curFlow)):
                     if curFlow[j].getVarId() in self.subvars.keys():
-                        flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(self.combineDict(self.subvars, self.makeSubMode(k)))
+                        subdict = self.combineDict(self.subvars, self.makeSubMode(k))
+                        subdict.update(self.varVal)
+                        flowModule[self.subvars[curFlow[j].getVarId()]] = curFlow[j].getFlow(subdict)
                     else:
                         raise ("Flow id is not declared")
                 modeConsts = list()
@@ -209,6 +214,7 @@ class modelConsts:
         for k in range(bound+1):
             const = list()
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
+            combine.update(self.varVal)
             const.append(goal.substitution(combine))
             for prop in self.propInformula(goal):
                 time = Real('time' + str(k))
@@ -239,6 +245,7 @@ class modelConsts:
 
         const = list()
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
+        combine.update(self.varVal)
         handlingExp = exp.left() - exp.right()
 
         curFlowExp = curFlow.getExpression(self.subvars)
@@ -249,6 +256,7 @@ class modelConsts:
             if curFlowExp[j].getVarId() in self.subvars.keys():
                 substitutionDict = self.combineDict(self.subvars, self.makeSubMode(bound))
                 substitutionDict['time'] = Real('time' + str(bound))
+                substitutionDict.update(self.varVal)
                 flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(substitutionDict)
             else:
                 raise ("Flow id is not declared")
@@ -312,6 +320,7 @@ class modelConsts:
             end = Real('tau_' + str(k))
             const = list()
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
+            combine.update(self.varVal)
             for i in self.makePropDict().keys():
                 if str(i) in propSet:
                     for m in range(len(self.modeModule)):
@@ -348,6 +357,7 @@ class modelConsts:
     def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula):
         result = list()
         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))
+        combine.update(self.varVal)
         # make range constraints
         result.append(self.makeVarRangeConsts(bound))
         # make initial constraints
