@@ -11,7 +11,7 @@ real xStart;
         x > 21 ;
 	x < 26 ;
     flow:
-        d/dt[x] = -0.025 * ((1 - 2 * 0.01) * xStart);
+        d/dt[x] = -0.025 * (-h + (1 - 2 * 0.01) * xStart);
     jump:
         (x > 25) =>
           (and (h' < 100) (h' > 90) (xStart' = x) (x' = x)) ;
