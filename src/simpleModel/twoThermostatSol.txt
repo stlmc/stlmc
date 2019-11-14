@@ -4,8 +4,8 @@ bool b;
 [-20, 100] x2;
 {
     mode:
-        a == false;
-        b == false ;
+        a = false;
+        b = false ;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -13,20 +13,20 @@ bool b;
         x1(t) = -0.4 * t + x1(0);
         x2(t) = -0.6 * t  + x2(0);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
         x1 > 0;
         (x2 < 50);
@@ -34,20 +34,20 @@ bool b;
         x1(t) = -0.4 * t + x1(0);
         x2(t) = t + x2(0);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
         x1 < 50;
         (x2 > 0);
@@ -55,20 +55,20 @@ bool b;
         x1(t) = 0.7 * t  + x1(0);
         x2(t) = -0.6 * t + x2(0);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }
 {
     mode:
-        a == true;
-        b == true;
+        a = true;
+        b = true;
     inv:
         x1 < 50;
         (x2 < 50);
@@ -76,13 +76,13 @@ bool b;
         x1(t) = 0.7 * t + x1(0);
         x2(t) = t + x2(0);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }

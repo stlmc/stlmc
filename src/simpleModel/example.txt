@@ -1,0 +1,69 @@
+real h1;
+real x1Start;
+[-20, 100] x1;
+{
+    mode:
+        h1 = 0;
+	(and (x1Start > 22) (x1Start < 26)) ;
+    inv:
+        x1 > 23;
+	x1 < 26 ;
+    flow:
+        d/dt[x1] = -0.025 * ((1 - 2 * 0.01) * x1Start);
+    jump:
+        (x1 > 27) =>
+          (and (h1' < -85) (h1' > -100) (x1Start' = x1) (x1' = x1)) ;
+        (and (x1 < 26) (x1 > 23)) =>
+          (and (h1' = 0) (x1Start' = x1) (x1' = x1)) ;
+        (x1 <= 22) =>
+          (and (h1' >= 120) (h1' <= 170) (x1Start' = x1) (x1' = x1)) ;
+}
+{
+    mode:
+        (and (h1 < -85) (h1 > -100)) ;
+        x1Start > 27 ;
+    inv:
+        x1 < 30;
+    flow:
+        d/dt[x1] = 0.025 * ((1 - 2 * 0.01) * x1Start - h1);
+    jump:
+        (x1 > 27) =>
+          (and (h1' < -85) (h1' > -100) (x1Start' = x1) (x1' = x1)) ;
+        (and (x1 < 26) (x1 > 23)) =>
+          (and (h1' = 0) (x1Start' = x1) (x1' = x1)) ;
+        (x1 <= 22) =>
+          (and (h1' >= 120) (h1' <= 170) (x1Start' = x1) (x1' = x1)) ;
+}
+{
+    mode:
+        h1 >= 120 ;
+        h1 <= 170 ;
+        x1Start <= 22 ;
+    inv:
+        x1 > 17 ;
+    flow:
+        x1(t) = 0.013 * h1 + 0.025 * (1 - 0.0246 * t) + 0.006 * (1 - 0.0442 * t) + x1(0);
+    jump:
+        (x1 > 27) =>
+          (and (h1' < -85) (h1' > -100) (x1Start' = x1) (x1' = x1)) ;
+        (and (x1 < 26) (x1 > 23)) =>
+          (and (h1' = 0) (x1Start' = x1) (x1' = x1)) ;
+        (x1 <= 22) =>
+          (and (h1' >= 120) (h1' <= 170) (x1Start' = x1) (x1' = x1)) ;
+}
+
+init:
+(and (h1 = 0) (x1 <= 23 + 0.1) (x1 >= 23 - 0.1) (x1Start = x1));
+
+propositions:
+reachability = x1 < 18;
+x2g10 = x1 > 10;
+x1T = h1 > 0 ;
+
+goal:
+(<> [0.0, 40.0] (reachability)) ;
+#(<> [0.0, 20.0] (~x1T -> [][0.0, 5.0] x1T)) ;
+
+
+
+

@@ -4,6 +4,7 @@ import itertools
 from functools import singledispatch
 from .error import *
 from .node import *
+
 def getvarval(self):
     all_terms = self.model.collect_defined_terms()
     var_val = dict()
@@ -40,12 +41,6 @@ def yicescheckSat(consts, logic="None"):
     #return (result, sizeAst(yices.yand(*yicesConsts)), m)
     return (result, -1, m)
 
-'''
-# return the size of the Z3 constraint
-def sizeAst(node:yices.AstRef):
-    #return 1 + sum([sizeAst(c) for c in node.children()])
-    return -1
-'''
 
 @singledispatch
 def yicesObj(const:Node):

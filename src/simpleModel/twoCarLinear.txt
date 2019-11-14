@@ -17,9 +17,9 @@ bool c;
 # x2: 60, 40, 35
 {
     mode:
-        a == false;
-        b == false ;
-        c == false;
+        a = false;
+        b = false ;
+        c = false;
     inv:
         x2 >= x1;
     flow:
@@ -28,149 +28,149 @@ bool c;
     jump:
 
     	# if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
 
 	# if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==>
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
 
 	# if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
 
 	# if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
 
 	# if (x2 - x1) < 1 then, jump to 100 state.
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
 	
 	# if (x2 - x1) >= 5 then, jump to 101 state
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 
 }
 {
     mode:
-        a == false;
-        b == false ;
-        c == true;
+        a = false;
+        b = false ;
+        c = true;
     inv:
         x2 >= x1;
     flow:
         d/dt[x1] = 65;
         d/dt[x2] = 40;
     jump:
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==>
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == false;
-        b == true ;
-        c == false;
+        a = false;
+        b = true ;
+        c = false;
     inv:
         x2 >= x1;
     flow:
         d/dt[x1] = 30;
         d/dt[x2] = 60;
     jump:
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==>
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == false;
-        b == true ;
-        c == true;
+        a = false;
+        b = true ;
+        c = true;
     inv:
         x2 >= x1;
     flow:
         d/dt[x1] = 30;
         d/dt[x2] = 35;
     jump:
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==>
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 }
 {   
     mode: 
-        a == true;
-        b == false ;
-        c == false;
+        a = true;
+        b = false ;
+        c = false;
     inv:
         x2 >= x1;
     flow:
         d/dt[x1] = 25;
         d/dt[x2] = 60;
     jump:
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==> 
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) => 
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 
 }
 {   
     mode: 
-        a == true;
-        b == false ;
-        c == true;
+        a = true;
+        b = false ;
+        c = true;
     inv:
         x2 >= x1;
     flow:
         d/dt[x1] = 25;
         d/dt[x2] = 35;
     jump:
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) ==>
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
           (and (not a') (not b') (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) ==> 
+        (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) => 
           (and (a' = false) (not b') c' (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) ==>
+        (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
           (and (not a') b' (not c') (x1' = x1) (x2' = x2));
-        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) ==>
+        (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
           (and (not a') b' c' (x1' = x1) (x2' = x2));
-        ((x2 - x1) < 1) ==>
+        ((x2 - x1) < 1) =>
           (and a' (not b') (not c') (x1' = x1) (x2' = x2));
-        ((x2 - x1) >= 5) ==>
+        ((x2 - x1) >= 5) =>
           (and a' (not b') c' (x1' = x1) (x2' = x2));
 }
 

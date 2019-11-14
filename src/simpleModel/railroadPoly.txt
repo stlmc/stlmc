@@ -6,8 +6,8 @@ bool b;
 [-50, 50] constvx;
 {
     mode:
-        a == false;
-        b == false ;
+        a = false;
+        b = false ;
     inv:
     flow:
         d/dt[tx] = -5 ;
@@ -15,19 +15,19 @@ bool b;
         d/dt[vx] = 0 ;
         d/dt[constvx] = 0 ;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (40 <= tx) (tx < 50)) =>
           (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (20 <= tx) (tx < 30)) =>
           (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 0)) =>
           (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (-10 <= tx) (tx < -5)) =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
     flow:
         d/dt[tx] = -5 ;
@@ -35,19 +35,19 @@ bool b;
         d/dt[vx] = 5 ;
         d/dt[constvx] = 0 ;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (40 <= tx) (tx < 50)) =>
           (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (20 <= tx) (tx < 30)) =>
           (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 0)) =>
           (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (-10 <= tx) (tx < -5)) =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
     flow:
         d/dt[tx] = -5 ;
@@ -55,19 +55,19 @@ bool b;
         d/dt[vx] = 10 ;
         d/dt[constvx] = 0 ;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (40 <= tx) (tx < 50)) =>
           (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (20 <= tx) (tx < 30)) =>
           (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 0)) =>
           (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (-10 <= tx) (tx < -5)) =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
 }
 {
     mode:
-        a == true;
-        b == true;
+        a = true;
+        b = true;
     inv:
     flow:
         d/dt[tx] = -5 ;
@@ -75,17 +75,17 @@ bool b;
         d/dt[vx] = -5 ;
         d/dt[constvx] = 0 ;
     jump:
-        (and (40 <= tx) (tx < 50)) ==>
+        (and (40 <= tx) (tx < 50)) =>
           (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (20 <= tx) (tx < 30)) ==>
+        (and (20 <= tx) (tx < 30)) =>
           (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-5 <= tx) (tx < 0)) ==>
+        (and (-5 <= tx) (tx < 0)) =>
           (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
-        (and (-10 <= tx) (tx < -5)) ==>
+        (and (-10 <= tx) (tx < -5)) =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
 }
 init:
-(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0) (constvx == vx)) ;
+(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0) (constvx = vx)) ;
 
 propositions:
 reachability = tx < 0 ;

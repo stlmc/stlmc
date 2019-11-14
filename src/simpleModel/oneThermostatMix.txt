@@ -2,24 +2,24 @@ bool a;
 [-20, 100] x1;
 {
     mode:
-        a == false;
+        a = false;
     inv:
         x1 < 50;
     flow:
         x1(t) = t * t + x1(0);
     jump:
-        (x1 > 26) ==>
+        (x1 > 26) =>
           (and (a') (x1' = x1));
 }
 {
     mode:
-        a == true;
+        a = true;
     inv:
         x1 > 19;
     flow:
        d/dt[x1] = -5 ;
     jump:
-        (x1 < 20) ==>
+        (x1 < 20) =>
           (and (not a') (x1' = x1));
 }
 init:

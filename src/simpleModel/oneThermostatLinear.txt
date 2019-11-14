@@ -2,28 +2,28 @@ bool a;
 [-20, 100] x1;
 {
     mode:
-        a == false;
+        a = false;
     inv:
         x1 > 0;
     flow:
         d/dt[x1] = -1;
     jump:
-        ((x1 > 26) and (x1 > 28)) ==>
+        ((x1 > 26) and (x1 > 28)) =>
           ((not a') and (x1' = x1));
-        (x1 <= 24) ==>
+        (x1 <= 24) =>
           (and (a') (x1' = x1));
 }
 {
     mode:
-        a == true;
+        a = true;
     inv:
         x1 < 50;
     flow:
         d/dt[x1] = 1;
     jump:
-        (x1 > 26) ==>
+        (x1 > 26) =>
           (and (not a') (x1' = x1));
-        (x1 <= 24) ==>
+        (x1 <= 24) =>
           (and (a') (x1' = x1));
 }
 init:
@@ -33,7 +33,7 @@ propositions:
 #reachability = (x1 < 27 or x1 > 29);
 
 #goal:
-# ([] [0.0, 40.0] (a == true -> [] [0.0, 5.0] x1 > 27 )) ;
+# ([] [0.0, 40.0] (a = true -> [] [0.0, 5.0] x1 > 27 )) ;
 
 reachability = x1 <= 21 ;
 #x2l20 = x2 <= 20 ;

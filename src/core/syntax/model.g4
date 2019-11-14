@@ -8,10 +8,10 @@ fragment GT        : '>' ;
 fragment GTE       : '>=' ;
 fragment LT        : '<' ;
 fragment LTE       : '<=' ;
-fragment COM_EQ    : '==' ;
-fragment NEQ       : '!=' ;
 
-COMPARE_OP : (GT | GTE | LT | LTE | COM_EQ | NEQ) ;
+COMPARE_OP : (GT | GTE | LT | LTE) ; 
+EQUAL       : '=' ;
+NEQ         : '!=' ;
 
 fragment OP_SIN    : 'sin' ;
 fragment OP_COS    : 'cos' ;
@@ -41,7 +41,7 @@ REAL : 'real' | 'Real' | 'REAL' ;
 BOOL_AND   : 'and' | 'And' ;
 BOOL_OR    : 'or'  | 'Or' ;
 NOT   : 'not' | 'Not' | '~' ;
-JUMP_ARROW : '==>' ;
+JUMP_ARROW : '=>' ;
 DIFF       : 'd/dt' ;
 
 IMP   : '->'  ;
@@ -60,7 +60,6 @@ RPAREN : ')' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
 COMMA  : ',' ;
-EQUAL  : '=' ;
 
 fragment DIGIT      : [0-9] ;
 
@@ -88,8 +87,9 @@ fragment COMMENT :
  * Parser Rules
  */
 
-stlMC : (mode_var_decl | variable_var_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
+stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
+var_val_decl      : var_type VARIABLE val=(VALUE | TRUE| FALSE) SEMICOLON;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;
 
@@ -99,10 +99,10 @@ expression  :
             | TIME      # constantExp
             | VARIABLE  # constantExp
             | INITIALVAL # initialValue
+            | op=(MINUS | FUNC_OP) expression    # unaryExp
 	    | expression op=POWER expression #binaryExp
 	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
-            | op=FUNC_OP expression  # unaryExp
             ;
 
 condition   :
@@ -111,11 +111,11 @@ condition   :
             | FALSE    # constantCond
             | VALUE    # constantCond
             | VARIABLE # constantCond
-            | expression op=COMPARE_OP expression  # compExp
-            | condition op=COMPARE_OP condition    # compCond
+            | op=NOT condition  # unaryCond
+            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
+            | condition op=(COMPARE_OP | EQUAL |NEQ) condition    # compCond
             | condition op=(BOOL_AND | BOOL_OR) condition   # binaryCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
-            | op=NOT condition  # unaryCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
@@ -123,9 +123,9 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
             | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
             | op=NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
-            | NEXT_VAR EQUAL TRUE # jumpMod
-            | NEXT_VAR EQUAL FALSE # jumpMod
-            | NEXT_VAR EQUAL expression # jumpMod
+            | NEXT_VAR op=EQUAL TRUE # jumpMod
+            | NEXT_VAR op=EQUAL FALSE # jumpMod
+            | NEXT_VAR op=(COMPARE_OP | EQUAL | NEQ) expression # jumpMod
               ;
 
 var_type    : varType=(BOOL | INT | REAL) ;

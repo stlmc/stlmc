@@ -5,12 +5,12 @@ bool b;
 
 # state
 # 1 as on, -1 as off
-# a == -1, b == -1
+# a = -1, b = -1
 # ...
 {
     mode:
-        a == false;
-        b == false;
+        a = false;
+        b = false;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -33,20 +33,20 @@ bool b;
 	x2(t) = (-0.0441 * t + 1) + x2(0);
 
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
         x1 > 0;
         (x2 < 50);
@@ -66,19 +66,19 @@ bool b;
 	x2(t) = (-0.0441 * t + 205.0) + x2(0);
 
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
         x1 < 50;
         (x2 > 0);
@@ -97,19 +97,19 @@ bool b;
 	x2(t) = (-0.0441 * t) + x2(0);
 
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) );
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) );
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) );
 }
 {
     mode:
-        a == true;
-        b == true;
+        a = true;
+        b = true;
     inv:
         x1 < 50;
         (x2 < 50);
@@ -127,17 +127,17 @@ bool b;
 	x2(t) = (-0.0441 * t + 204.1) + x2(0);
 
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) ==>
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 init:
-(and (a == false) (b == false) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 0.1) (x2 >= 20 - 0.1));
+(and (a = false) (b = false) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 0.1) (x2 >= 20 - 0.1));
 
 propositions:
 reachability = x1 < 27 ;

@@ -112,6 +112,21 @@ class InitVal(Variable):
     def substitution(self, subDict):
         return self.getExpression().substitution(subDict)
 
+class VarVal:
+    def __init__(self, varType, varID, value):
+        self.varid = varID
+        self.value = None
+        if varType.lower == 'bool':
+            if not (value.lower() in ['true', 'false']):
+                raise "boolean type variable can be only true or flase"
+            self.value = BoolVal(True) if value.lower() == 'true' else BoolVal(False)
+        else:
+            if value.lower() in ['true', 'fasle']:
+                raise "int or real type variable can't be true or false"
+            self.value = RealVal(float(value)) if varType.lower() == 'real' else \
+                        IntVal(int(value))
+    def getElement(self):
+        return (self.varid, self.value)
 
 class ContVar(Variable):
     def __init__(self, interval, varId):
@@ -163,7 +178,7 @@ class UnaryFunc:
         elif self.func == 'tan':
             return degree + degree * degree * degree
         elif self.func == '-':
-            return RealVal(0) - degree
+            return (RealVal(0) - degree)
         else:
             raise "Not yet in Unary function"
 
@@ -171,15 +186,8 @@ class UnaryFunc:
     def value(self):
         if str(self.val) in self._var_dict.keys():
             degree = self._var_dict[str(self.val)]
-        #elif str(self.val).isdigit():
-        #    print("kekekek")
-        #    degree = RealVal(float(self.val)).value
-        # TODO: why need below? problems....
-        #else:
-        #    degree = Real(str(self.val)).value
         else:
             degree = RealVal(str(self.val)).value
-
 
         if self.func == 'sin':
             return degree - degree * degree * degree / RealVal(6).value
@@ -188,7 +196,7 @@ class UnaryFunc:
         elif self.func == 'tan':
             return degree + degree * degree * degree
         elif self.func == '-':
-            return RealVal(0).value - degree
+            return (RealVal(0).value - degree)
         else:
             raise "Not yet in Unary function"
 
@@ -221,15 +229,15 @@ class BinaryExp:
             pass
 
         if self.op == '+':
-            return left + right
+            return (left + right)
         elif self.op == '-':
-            return left - right
+            return (left - right)
         elif self.op == '*':
-            return left * right
+            return (left * right)
         elif self.op == '/':
-            return left / right
+            return (left / right)
         elif self.op == '**':
-            return left ** right
+            return (left ** right)
         else:
             raise "Not yet in Binary Expression"
 
@@ -257,13 +265,13 @@ class BinaryExp:
         if isinstance(self.right, BinaryExp):
             right = self.right.value
         if self.op == '+':
-            return vleft.value + vright.value
+            return (vleft.value + vright.value)
         if self.op == '-':
-            return vleft.value - vright.value
+            return (vleft.value - vright.value)
         if self.op == '*':
-            return vleft.value * vright.value
+            return (vleft.value * vright.value)
         if self.op == '/':
-            return vleft.value / vright.value
+            return (vleft.value / vright.value)
         if self.op == '**':
             # assume that right case will only be constant!
             if not isNumber(vright.value):
@@ -308,17 +316,17 @@ class CompCond:
         if str(self._right) in varDict.keys():
             right = varDict[str(self._right)]
         if self.op == '<':
-            return left < right
+            return (left < right)
         elif self.op == '<=':
-            return left <= right
+            return (left <= right)
         elif self.op == '>':
-            return left > right
+            return (left > right)
         elif self.op == '>=':
-            return left >= right
-        elif self.op == '==':
-            return left == right
+            return (left >= right)
+        elif self.op == '=':
+            return (left == right)
         elif self.op == '!=':
-            return left != right
+            return (left != right)
         else:
             raise "Not yet in Compare Condition"
 
@@ -596,25 +604,37 @@ class jumpDecl:
 
 
 class jumpMod:
-    def __init__(self, nextVarId, exp):
+    def __init__(self, op, nextVarId, exp):
+        self.op = op
         self.nextVarId = nextVarId
         self.exp = exp
 
     def __repr__(self):
-        return str(self.nextVarId) + "' = " + str(self.exp)
+        return str(self.nextVarId) + "' " + str(self.op) + " " + str(self.exp)
 
     def getExpression(self, varDict):
         if self.nextVarId in varDict.keys():
             left = NextVar(varDict[self.nextVarId])
-            if isinstance(self.exp, Constant):
-                right = self.exp
-            elif isinstance(self.exp, Real):
-                right = self.exp
-            elif self.exp in varDict.keys():
-                right = varDict[self.exp]
-            else:
-                right = self.exp.getExpression(varDict)
-            return (left == right)
+        if isinstance(self.exp, Constant):
+            right = self.exp
+        elif type(self.exp) in [Real, Int, Bool]: 
+            right = self.exp
+        elif self.exp in varDict.keys():
+            right = varDict[self.exp]
+        else: 
+            right = self.exp.getExpression(varDict)
+        if self.op == '<':
+            return left < right
+        elif self.op == '<=':
+            return left <= right
+        elif self.op == '>':
+            return left > right
+        elif self.op == '>=':
+            return left >= right
+        elif self.op == '=':
+            return left == right
+        elif self.op == '!=':
+            return left != right
         else:
             raise ("jump undeclared variable id in next variable handling")
 
@@ -654,15 +674,16 @@ class formulaDecl:
 
 
 class StlMC:
-    def __init__(self, modeVar, contVar, modeModule, init, prop, goal, formulaText):
+    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
+        self.varVal = varVal
         self.modeModule = modeModule
         self.init = init
         self.prop = prop  # list type
         self.goal = goal
         self.subvars = self.makeVariablesDict()
-        self.consts = modelConsts(self.modeVar, self.contVar, self.modeModule, self.init, self.prop, self.subvars)
+        self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop, self.subvars)
 
     @property
     def cont_id_dict(self):
@@ -709,35 +730,15 @@ class StlMC:
             # partition constraint
             (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
 
-            '''
-            print("partition")
-            print(partition)
-            print("sepMap")
-            print(sepMap)
-            '''
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
             # FOL translation
-            '''
-            print("full separation result formula")
-            print(str(fs[0]))
-            print("full separtion map")
-            print(fs[1])
-            '''
             baseV = ENC.baseEncoding(partition, baseP)
-            '''
-            print("baseV")
-            print(baseV)
-            '''
+
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
-
-            '''
-            for i in range(len(modelConsts)):
-                print(modelConsts[i])
-            '''
 
             etime1 = time.process_time()
 
@@ -783,6 +784,5 @@ class StlMC:
 
         consts = consts + self.consts.timeBoundConsts(consts, timeBound)
 
-        #        consts.append(goal.substitution(self.combineDict(self.makeSubMode(bound), self.makeSubVars(bound, 't'))))
         (result, cSize, self.model) = checkSat(consts)
         return result

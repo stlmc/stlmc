@@ -4,8 +4,8 @@ bool b;
 [0, 10] x2;
 {
     mode:
-        a == false;
-        b == false ;
+        a = false;
+        b = false ;
     inv:
         x1 > 0;
         (x2 > 0);
@@ -13,19 +13,19 @@ bool b;
         d/dt[x1] = -0.2;
         d/dt[x2] = -0.3;
     jump:
-        (and (x1 >= (x2 - 1)) (x2 >= 1)) ==>
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
-        (and (x1 >= (1 - x2)) (x2 < 1)) ==>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 >= 1)) ==>
+        (and (x1 < 1) (x2 >= 1)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 < 1)) ==>
+        (and (x1 < 1) (x2 < 1)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == false;
-        b == true;
+        a = false;
+        b = true;
     inv:
         x1 > 0;
         (x2 < 8);
@@ -33,19 +33,19 @@ bool b;
         d/dt[x1] = -0.2;
         d/dt[x2] = 0.6;
     jump:
-        (and (x1 >= (x2 - 1)) (x2 >= 1)) ==>
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
-        (and (x1 >= (1 - x2)) (x2 < 1)) ==>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 >= 1)) ==>
+        (and (x1 < 1) (x2 >= 1)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 < 1)) ==>
+        (and (x1 < 1) (x2 < 1)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == true;
-        b == false;
+        a = true;
+        b = false;
     inv:
         x1 < 8;
         (x2 > 0);
@@ -53,19 +53,19 @@ bool b;
         d/dt[x1] = 0.5;
         d/dt[x2] = -0.3;
     jump:
-        (and (x1 >= (x2 - 1)) (x2 >= 1)) ==>
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
-        (and (x1 >= (1 - x2)) (x2 < 1)) ==>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 >= 1)) ==>
+        (and (x1 < 1) (x2 >= 1)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 < 1)) ==>
+        (and (x1 < 1) (x2 < 1)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 {
     mode:
-        a == true;
-        b == true;
+        a = true;
+        b = true;
     inv:
         x1 < 8;
         (x2 < 8);
@@ -73,13 +73,13 @@ bool b;
         d/dt[x1] = 0.5;
         d/dt[x2] = 0.6;
     jump:
-        (and (x1 >= (x2 - 1)) (x2 >= 1)) ==>
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
-        (and (x1 >= (1 - x2)) (x2 < 1)) ==>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 >= 1)) ==>
+        (and (x1 < 1) (x2 >= 1)) =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
-        (and (x1 < 1) (x2 < 1)) ==>
+        (and (x1 < 1) (x2 < 1)) =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 }
 init:

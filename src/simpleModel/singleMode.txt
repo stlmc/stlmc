@@ -3,7 +3,7 @@ Bool a;
 [0, 100] x;
 {
     mode:
-        a == false;
+        a = false;
     inv:
         x > 0;
     flow:

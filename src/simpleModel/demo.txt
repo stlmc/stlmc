@@ -2,35 +2,35 @@ bool heater;
 (-20, 100] x;
 {
     mode:
-        heater == false;
+        heater = false;
     inv:
         (x > -10) ;
         (or (x > -15) (x < 20)) ;
         (and (x > 0) (x < 50));
     flow:
-        x(t) = -1.2 * t + x(0);
+        x(t) = 1.2 * (-t) + x(0);
     jump:
-        (x > 30) ==>
+        (x > 30) =>
           ((heater' = false) and (x' = x));
-        (x <= 24) ==>
+        (x <= 24) =>
           ((heater' = true) and (x' = x));
 }
 {
     mode:
-        heater == true;
+        heater = true;
     inv:
         x <= 30;
     flow:
         d/dt[x] = 4;
     jump:
-        (x > 30) ==>
+        (x > 30) =>
           ((heater' = false) and (x' = x));
-        (x <= 24) ==>
+        (x <= 24) =>
           ((heater' = true) and (x' = x));
 }
 
 init:
-(and (heater == false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+(and (heater = false) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
 
 propositions:
 reachability = x > 23;
