@@ -105,7 +105,6 @@ class modelConsts:
                         raise ("Flow id is not declared")
                 modeConsts = list()
                 
-                '''
                 for otherModeID in range(0, i):
                     modeConsts.append(Not(Real('currentMode_'+str(k)) == IntVal(otherModeID)))
                 for otherModeID in range(i+1, len(self.modeModule)):
@@ -117,7 +116,6 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_'+str(k)) < IntVal(len(self.modeModule)))
                 modeConsts.append(Real('currentMode_'+str(k)) >= IntVal(0))
                
-                '''
 
                 modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
                 flowConsts.append(And(*modeConsts))
