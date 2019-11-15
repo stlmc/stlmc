@@ -1,5 +1,5 @@
 real h;
-real k 0.025 ;
+const real k = 0.025 ;
 real xStart;
 [18, 30] x;
 
@@ -61,7 +61,7 @@ x2g10 = x > 10;
 xT = h > 0 ;
 
 goal:
-(<> [0.0, 40.0] (reachability)) ;
+(<> [0.0, 40.0] (x > 21));
 (<> [0.0, 20.0] (~xT -> [][0.0, 5.0] xT)) ;
 
 

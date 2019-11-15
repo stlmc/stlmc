@@ -33,6 +33,7 @@ JUMP : 'jump' ;
 GOAL : 'goal' ;
 INIT : 'init' ;
 PROP : 'propositions' ;
+CONST : 'const' ;
 
 BOOL : 'bool' | 'Bool' | 'BOOL' ;
 INT  : 'int' | 'Int' | 'INT' ;
@@ -89,7 +90,7 @@ fragment COMMENT :
 
 stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
-var_val_decl      : var_type VARIABLE val=(VALUE | TRUE| FALSE) SEMICOLON;
+var_val_decl      : CONST var_type VARIABLE EQUAL val=(VALUE | TRUE| FALSE) SEMICOLON;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;
 
