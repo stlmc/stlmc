@@ -261,17 +261,16 @@ class modelConsts:
                 substitutionDict['time'] = Real('time' + str(bound))
                 substitutionDict.update(self.varVal)
                 flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(substitutionDict)
+
             else:
                 raise ("Flow id is not declared")
 
         if curFlowType == 'diff':
             for contVar in flowModule.keys():
                 flowModule[contVar] = flowModule[contVar] * Real('time' + str(bound))
-
         subContVar = dict()
         for contVar in flowModule.keys():
             subContVar[str(contVar.id)] = flowModule[contVar]
-
         substitutionExp = handlingExp.substitution(subContVar)
         diffExp = diff(substitutionExp)
 

@@ -103,8 +103,8 @@ class InitVal(Variable):
     def getType(self):
         return Type.Real
 
-    def getInitValue(self, step):
-        return Real(str(self.__varId) + "_" + str(step))
+    #def getInitValue(self, step):
+    #    return Real(str(self.__varId) + "_" + str(step))
 
     def getVars(self):
         return self.getExpression().getVars()

@@ -6,10 +6,10 @@ bool A;
 bool N;
 
 # variable
-[-10, 20] v;
 [-10, 10] theta;
-[-20, 150] y;
+[-10, 20] v;
 [-20, 150] x;
+[-20, 150] y;
 
 # (S, A)
 {
@@ -21,12 +21,10 @@ bool N;
 	inv:
 		v < 15;
 	flow:
-		#x(t) = (2 * t + v(0)) * (1 - (theta(0) * theta(0))/2 + (theta(0) * theta(0) * theta(0) * theta(0))/24) * t + x(0);
-		#y(t) = (2 * t + v(0)) * (theta(0) - (theta(0) * theta(0) * theta(0))/6 + (theta(0) * theta(0) * theta(0) * theta(0) * theta(0))/120) * t + y(0);
-		x(t) = (2 * t + v(0)) * (1 - (theta(0) * theta(0)) / 2 + (theta(0) * theta(0) * theta(0) * theta(0)) / 24) * t ;
-		y(t) = 0 ;
 		theta(t) = theta(0);
-                v(t) = 2 * t + v(0);
+		v(t) = 2 * t + v(0);
+		x(t) = (2 * t + v(0)) * (1 - (theta(0) * theta(0))/2 + (theta(0) * theta(0) * theta(0) * theta(0))/24) * t + x(0);
+		y(t) = (2 * t + v(0)) * (theta(0) - (theta(0) * theta(0) * theta(0))/6 + (theta(0) * theta(0) * theta(0) * theta(0) * theta(0))/120) * t + y(0);
 	jump:
 		# 1 (S, N)
 		(v > 10) => (and (L' = false) (S' = true) (A' = false) (N' = true) (x' = x) (y' = y) (v' = v) (theta' = theta));
@@ -39,7 +37,7 @@ bool N;
 			(((75 - y) / (50 - x)) - (theta + (theta * theta * theta / 3)) <= 0.03553)
 			(((60 - y) / (75 - x)) - (theta + (theta * theta * theta / 3)) <= 0.03553))) => (and (L' = false) (S' = true) (A' = false) (N' = false) (x' = x) (y' = y) (v' = v) (theta' = theta));
 }
-'''
+
 # (S, N)
 {
 	mode:
@@ -90,6 +88,7 @@ bool N;
 		((50 - y - 1) / (50 - x + 1) + (75 - y - 1) / (50 - x + 1) + (60 - y - 1) / (75 - x + 1) < (50 - y + 1) / (50 - x - 1) + (75 - y + 1) / (50 - x - 1) + (60 - y + 1) / (75 - x - 1)) => (and (L') (not S') (A') (not N') (x' = x) (y' = y) (v' = v) (theta' = theta));
 }
 
+'''
 # (L, A)
 {
 	mode:
@@ -223,7 +222,7 @@ propositions:
 
 # Gx = 100, Gy = 100
 goal:
-([] [0.0, 1000.0] (x < 50));
+([] [0.0, 1000.0] (x > 50));
 #([] [0.0, 100.0] (and (and (100 - x < 1) (100 - x > -1)) (and (100 - y < 1) (100 - y > -1))));
 #([] [0.0, 1000.0] (N = false));
 #([] [0.0, 1000.0] ((A = false) and (N = false)));
