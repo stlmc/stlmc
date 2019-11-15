@@ -1,3 +1,5 @@
+#!/bin/bash
+
 CORE_PATH=../src/core/syntax
 model=../src/$CORE_PATH/model
 PY_DIR=../src
