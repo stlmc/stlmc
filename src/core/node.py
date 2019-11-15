@@ -153,10 +153,11 @@ class Variable(Leaf):
 
     def substitution(self, subDict):
         op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
-        if self.id in subDict.keys():
-            if isinstance(subDict[self.id], BinaryArithmetic):
-                return subDict[self.id]
-            return op[self.getType()](subDict[self.id])
+        strid = str(self.id)
+        if strid in subDict.keys():
+            if isinstance(subDict[strid], BinaryArithmetic):
+                return subDict[strid]
+            return op[self.getType()](subDict[strid])
         else:
             return self
 

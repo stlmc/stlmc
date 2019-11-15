@@ -19,6 +19,7 @@ class modelVisitorImpl(modelVisitor):
     def visitStlMC(self, ctx:modelParser.StlMCContext):
         modesDecl = list()
         varsDecl = list()
+        varvalDict = dict()
         modeModuleDecl = list()
         propDecl = list()
         self.newPropDecl = list()
@@ -45,6 +46,11 @@ class modelVisitorImpl(modelVisitor):
             for j in range(len(ctx.mode_module())):
                 self.var_dic[j][vs.id] = None
 
+        for i in range(len(ctx.var_val_decl())):
+            element = self.visitVar_val_decl(ctx.var_val_decl()[i])
+            (elemid, elemval) = element.getElement() 
+            varvalDict[elemid] = elemval
+
 
         for i in range(len(ctx.mode_module())):
             modeModuleDecl.append(self.visitMode_module(ctx.mode_module()[i], self.var_dic[i]))
@@ -56,7 +62,7 @@ class modelVisitorImpl(modelVisitor):
 
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modesDecl, varsDecl, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText)
+        return StlMC(modesDecl, varsDecl, varvalDict, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText)
 
     '''
     mode_var_decl
@@ -70,6 +76,11 @@ class modelVisitorImpl(modelVisitor):
     def visitVariable_var_decl(self, ctx:modelParser.Variable_var_declContext):
         return ContVar(self.visit(ctx.var_range()), ctx.VARIABLE().getText())
 
+    '''
+    variable_var_declaration
+    '''
+    def visitVar_val_decl(self, ctx:modelParser.Var_val_declContext):
+        return VarVal(ctx.var_type().getText(), ctx.VARIABLE().getText(), ctx.val.text)
 
     def visitBinaryExp(self, ctx:modelParser.BinaryExpContext, var_dic=dict()):
         left = None
