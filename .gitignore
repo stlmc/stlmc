@@ -26,5 +26,6 @@ node_modules/
 !visualize/golang/data/
 !visualize/package.json
 !visualize/tsconfig.json
+!visualize/src/.option.json
 # log
 log/
