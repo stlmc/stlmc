@@ -3,6 +3,7 @@ import core.separation as SEP
 import time
 from .z3Handler import * 
 from .yicesHandler import *
+from .dreal4Handler import *
 from .formula import *
 from .modelConsts import *
 
@@ -746,6 +747,9 @@ class StlMC:
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+            elif solver == 'dreal4':
+                d4h = dreal4Handler()
+                (result, cSize, self.model) = d4h.dreal4CheckSat(modelConsts + partitionConsts + [formulaConst], logic)
             stime2 = time.process_time()
 
             # calculate size
