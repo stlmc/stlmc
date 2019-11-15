@@ -144,7 +144,7 @@ func (ss *StlSever) Init(cancel context.CancelFunc) {
 	ss.router.HandleFunc("/shutdown", ss.handleShutdown)
 	ss.router.PathPrefix("/").Handler(&ss.spaHandler)
 	ss.server = &http.Server{
-		Addr:              "0.0.0.0:3001",
+		Addr:              "0.0.0.0:3000",
 		Handler:           handlers.CORS()(ss.router),
 	}
 	ss.cancel = cancel

@@ -13,6 +13,7 @@ auto_remove () {
 	rm -rf $venv
 	rm -rf ${model}.interp ${model}.tokens ${model}Lexer.interp ${model}Lexer.py ${model}Lexer.tokens ${model}Parser.py ${model}Visitor.py
 	rm -rf $PY_DIR/*.smt2
+	rm -rf $go_dir/main
 }
 
 install_env () {
