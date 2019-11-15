@@ -150,71 +150,6 @@ class Renderer {
             .call(d3.axisLeft(this.dataCanvasYscale));
 
 
-
-
-
-
-        // <--------- start of brush ------------>
-
-        // let idleTimeout;
-        // function idled() { idleTimeout = null; }
-        //
-        //
-        // let brush = d3.brushX()
-        //     .extent([[0,0], [this._size.width - 2 * this.x_clip_margin, this.data_viewer_height]])
-        //     .on("end", ()=>{
-        //         let extent = d3.event.selection;
-        //
-        //         // If no selection, back to initial coordinate. Otherwise, update X axis domain
-        //         if(!extent){
-        //             if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
-        //             this.dataCanvasXscale.domain([0,xdata[xdata.length-1]])
-        //         }else{
-        //             this.dataCanvasXscale.domain([ this.dataCanvasXscale.invert(extent[0]), this.dataCanvasXscale.invert(extent[1]) ]);
-        //             this.canvas.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
-        //         }
-        //
-        //         // Update axis and circle position
-        //         this.graphCanvasXaxis.transition().duration(1000).call(d3.axisBottom(this.dataCanvasXscale));
-        //         // this.canvas
-        //         //     .selectAll("circle")
-        //         //     .transition().duration(1000)
-        //         //     .attr("cx", function (d) { return x(d.Sepal_Length); } )
-        //         //     .attr("cy", function (d) { return y(d.Petal_Length); } )
-        //
-        //         // Update lines positions.
-        //         // Update position first and then rendering it
-        //         // Make new line scale functions using latest scale functions.
-        //         this.lineGenerator = d3.line()
-        //             .x((d) => {
-        //                 return this.dataCanvasXscale(d[0]);
-        //             })
-        //             .y((d) => {
-        //                 return this.dataCanvasYscale(d[1]);
-        //             })
-        //             .curve(d3.curveMonotoneX);
-        //
-        //         this.lineGraph.selectAll(".lines")
-        //             .each((d) => {
-        //                 d.newX = this.lineGenerator(d);
-        //             });
-        //
-        //         this.lineGraph.selectAll(".lines")
-        //             .transition().duration(1000)
-        //             .attr("d", (d) => {
-        //                 return d.newX;
-        //             });
-        //
-        //     });
-        //
-        // this.canvas.append("g").attr("class", "brush").call(brush);
-
-        // <------------ end of brush --------------->
-
-
-
-
-
         // Add zoom function to dataCanvas
         this.zoom = d3.zoom()
             .extent([[0, 0], [this._size.width, this.data_viewer_height]])
@@ -230,11 +165,6 @@ class Renderer {
                 this.graphCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
                 this.graphCanvasYaxis.call(d3.axisLeft(this.dataCanvasYscaleZoom));
 
-                //d3.selectAll("#graphCanvasXaxis").call(d3.axisBottom(this.dataCanvasXscaleZoom));
-                //d3.selectAll("#graphCanvasYaxis").call(d3.axisLeft(this.dataCanvasYscaleZoom));
-
-
-                //this.propCanvasXaxis.call(d3.axisBottom(this.dataCanvasXscaleZoom));
                 d3.selectAll("#propCanvasXaxis").call(d3.axisBottom(this.dataCanvasXscaleZoom));
                 d3.selectAll("#propCanvasIntervalLines").call(d3.axisBottom(this.dataCanvasXscaleZoom).tickValues(pdata).tickSize(100).tickPadding(3).tickFormat(() => {
                     return ""
@@ -294,8 +224,6 @@ class Renderer {
                         })
                 }
 
-
-
                 // Update lines positions.
                 // Update position first and then rendering it
                 this.lineGraph.selectAll(".lines")
@@ -308,42 +236,7 @@ class Renderer {
                         return d.newX;
                     });
 
-
-                // // calculating mouse position
-                // let mouse = d3.mouse($("#graphCanvas" + this._index)[0]);
-                // let pos = this.dataCanvasXscaleZoom.invert(mouse[0]);
-                // let bisectDate = d3.bisector((d) => {
-                //     return d[0];
-                // }).left;
-                // let bisectData = bisectDate(this.refData, pos);
-                //
-                // if (this.refData.length - 1 < bisectData) {
-                //     bisectData = this.refData.length - 1;
-                // }
-                // if (bisectData === 0) {
-                //     bisectData = 1;
-                // }
-                // let d0 = this.refData[bisectData - 1];
-                // let d1 = this.refData[bisectData];
-                //
-                // // work out which date value is closest to the mouse
-                // let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                // let x = this.dataCanvasXscaleZoom(final_data[0]);
-                // let y = this.dataCanvasYscaleZoom(final_data[1]);
-                //
-                // // Add focusing circle.
-                // this.lineGraph.selectAll("#focusCircle")
-                //     .attr('cx', x)
-                //     .attr('cy', (d, i) => {
-                //         let d0 = (l)[bisectData - 1];
-                //         let d1 = (l)[bisectData];
-                //         //console.log(dd1)
-                //         let final_data = pos - d0[0] > d1[0] - pos ? d1 : d0;
-                //         return this.dataCanvasYscaleZoom(final_data[1]);
-                //     });
-
             });
-        console.log("rogogoggogogog");
 
         this.tooltip = d3.select(this._tag)
             .append("div")
@@ -379,7 +272,6 @@ class Renderer {
             newDataList.push(elem);
             nameList.push(k);
         }
-        console.log(nameList);
         let infoHeight = nameList.length * 30;
 
 
@@ -420,13 +312,6 @@ class Renderer {
                 return dataCanvasYscale(d[1]);
             }).curve(d3.curveMonotoneX);
 
-
-
-
-        console.log(l);
-        console.log(newDataList);
-
-
         // add line to dataCanvas front where clipping path is added.
         this.lineGraph = this.graphCanvas
             .selectAll(".lines")
@@ -436,12 +321,6 @@ class Renderer {
 
         this.lineGraph.append("path")
             .attr("d", (d) => {
-                // let res = "";
-                // console.log(d);
-                // for (let e of d) {
-                //     res += this.lineGenerator(e);
-                // }
-                // return res;
                 return this.lineGenerator(d.data);
             })
             .attr("class", "lines")
@@ -450,25 +329,6 @@ class Renderer {
             })
             .attr("stroke-width", 1.5)
             .style("fill", "none");
-
-
-
-
-
-
-        // TODO: Calculate initial circles positions.
-        // this.lineGraph.append('circle')
-        //     .attr("r", 7)
-        //     .attr("stroke", (d, i) => {
-        //         return this.lineGraphColor[d.name]
-        //     })
-        //     .style("stroke-width", "1px")
-        //     .attr('id', 'focusCircle')
-        //     .attr("transform", () => {
-        //         return "translate(0, -20)"
-        //     })
-        //     .style("visibility", "hidden")
-        //     .style("fill", "none");
 
         this.lineGraph.append("text")
             .attr('id', 'focusText')
@@ -481,32 +341,12 @@ class Renderer {
             .style("visibility", "hidden");
 
 
-        // Distinguish between original one and redrawn one because of graph coloring
-
-
-        // TODO: Calculate initial circles positions.
-        // this.lineGraph.append('circle')
-        //     .attr("r", 7)
-        //     .attr("stroke", (d, i) => {
-        //         return this.lineGraphColor[d.name]
-        //     })
-        //     .style("stroke-width", "1px")
-        //     .attr('id', 'focusCircle')
-        //     .attr("transform", () => {
-        //         return "translate(0, -20)"
-        //     })
-        //     .style("visibility", "hidden")
-        //     .style("fill", "none");
-
-
-
-
         let bisectDate = d3.bisector((d) => {
             return d;
         }).left;
 
         let lineGraph = this.lineGraph;
-        let mainrect = this.graphCanvasFront
+        this.graphCanvasFront
             .append("rect")
             .attr("id", "mainrect")
             .attr('width', this._size.width - this.x_clip_margin)
@@ -534,53 +374,6 @@ class Renderer {
 
                 let bisectPos = bisectDate(xdata, pos);
                 if (bisectPos > 0 && xdata.length - 1 >= bisectPos) {
-                    // Choose close one, between 2 of them.
-                    let d0 = xdata[bisectPos - 1];
-                    let d1 = xdata[bisectPos];
-
-                    // work out which date value is closest to the mouse
-                    let final_data = pos - d0 > d1 - pos ? d1 : d0;
-                    let x = this.dataCanvasXscaleZoom(final_data);
-
-
-
-                    let tmpText = [];
-                    let tmpColor = [];
-                    this.lineGraph.selectAll("#focusText")
-                        //.attr('x', x)
-                        // .attr('y', (d, i) => {
-                        //     // Another d0, d1.
-                        //     let d0 = (xdata)[bisectPos - 1];
-                        //     let d1 = (xdata)[bisectPos];
-                        //
-                        //     let final_data = pos - d0 > d1 - pos ? d1 : d0;
-                        //     return this.dataCanvasYscaleZoom(final_data);
-                        // })
-                        .text((d, i) => {
-                            let d0 = (xdata)[bisectPos - 1];
-                            let d1 = (xdata)[bisectPos];
-                            //console.log(dd1)
-                            let final_data = pos - d0 > d1 - pos ? d1 : d0;
-                            //let newY = this.dataCanvasYscaleZoom(final_data);
-                            //let tstring = vardict.get(0) + "(" + d3.format(".2f")(this.dataCanvasXscaleZoom.invert(mouse[0])) + " , " + d3.format(".2f")(this.dataCanvasYscaleZoom.invert(mouse[1])) + ")";
-                            // if (!tmpText.includes(tstring)) {
-                            //     tmpText.push(tstring);
-                            //     tmpColor.push(d.name);
-                            // }
-                            //return tstring;
-                            return ""
-                        });
-
-
-                    // this.lineGraph.selectAll("#focusCircle")
-                    //     .attr('cx', x)
-                    //     .attr('cy', (d, i) => {
-                    //         console.log("???");
-                    //         let d0 = (xdata)[bisectPos - 1];
-                    //         let d1 = (xdata)[bisectPos];
-                    //         let final_data = pos - d0 > d1 - pos ? d1 : d0;
-                    //         return this.dataCanvasYscaleZoom(final_data);
-                    //     });
                 }
             })
             .call(this.zoom);

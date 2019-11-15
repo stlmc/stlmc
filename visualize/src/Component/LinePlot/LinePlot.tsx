@@ -1,4 +1,4 @@
-import React, {createRef, useRef} from 'react';
+import React from 'react';
 import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import './style/LinePlotStyle.scss';
@@ -7,22 +7,21 @@ import {margin, PropData, size} from '../Core/Util/Util';
 import {ModeRenderer} from '../Core/Renderer/ModeRenderer';
 import {Renderer} from '../Core/Renderer/MainRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
-import {Interval, Interval4List, Json, Mode, Proposition} from '../Core/Util/DataParser';
+import {Json, Mode, Proposition} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import "react-tabs/style/react-tabs.css";
 import Axios, {AxiosInstance} from "axios";
-import {Button, Form, Toast} from 'react-bootstrap';
+import {Button, Form} from 'react-bootstrap';
 import $ from 'jquery';
-
 import {ModeState, PropState} from "../Core/Data";
-import {SVGObject} from "three/examples/jsm/renderers/SVGRenderer";
 
 
 /*
  * Props and State
  */
 interface Props {
+    url: string;
 }
 
 
@@ -64,20 +63,11 @@ class LinePlot extends React.Component<Props, State> {
 
     private width: number = parseFloat(styleVariable.width.replace("px", ""));
     private height: number = parseFloat(styleVariable.height.replace("px", ""));
-    private width_viewer: number = parseFloat(styleVariable.width_viewer.replace("px", ""));
-    private height_viewer: number = parseFloat(styleVariable.height_viewer.replace("px", ""));
-    private width_controller: number = parseFloat(styleVariable.width_controller.replace("px", ""));
-    private height_controller: number = parseFloat(styleVariable.height_controller.replace("px", ""));
 
     private margin_viewer_top: number = parseFloat(styleVariable.margin_viewer_top.replace("px", ""));
     private margin_viewer_right: number = parseFloat(styleVariable.margin_viewer_right.replace("px", ""));
     private margin_viewer_bottom: number = parseFloat(styleVariable.margin_viewer_bottom.replace("px", ""));
     private margin_viewer_left: number = parseFloat(styleVariable.margin_viewer_left.replace("px", ""));
-
-    private margin_controller_top: number = parseFloat(styleVariable.margin_controller_top.replace("px", ""));
-    private margin_controller_right: number = parseFloat(styleVariable.margin_controller_right.replace("px", ""));
-    private margin_controller_bottom: number = parseFloat(styleVariable.margin_controller_bottom.replace("px", ""));
-    private margin_controller_left: number = parseFloat(styleVariable.margin_controller_left.replace("px", ""));
 
 
     private renderers: Renderer[] = [];
@@ -86,16 +76,6 @@ class LinePlot extends React.Component<Props, State> {
     private instance: AxiosInstance;
 
     private njson = new Json();
-
-    private base_size = new size(
-        this.width,
-        80.0,
-    );
-
-    private graph_size = new size(
-        this.width,
-        this.height,
-    )
 
     private base_margin = new margin(
         this.margin_viewer_top,
@@ -141,15 +121,13 @@ class LinePlot extends React.Component<Props, State> {
         this.onModelListSelect = this.onModelListSelect.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
         this.onOffButtonClick = this.onOffButtonClick.bind(this);
-        this.instance = Axios.create({baseURL: 'http://snow.postech.ac.kr:3001'});
+        this.instance = Axios.create({baseURL: this.props.url});
         this.Item = this.Item.bind(this);
         this.ItemList = this.ItemList.bind(this);
         this.Main = this.Main.bind(this);
     }
 
     async componentDidMount() {
-
-        console.log("ComponentDidMount");
         // get file_list
         await this.instance.get(`/file_list`)
             .catch((error) => {
@@ -180,8 +158,6 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
-        console.log("componentDidUpdate");
-
         if (this.state.serverError.error) {
             this.setState({
                 serverError: {
@@ -205,7 +181,6 @@ class LinePlot extends React.Component<Props, State> {
             }
             for (let e = 0; e < this.renderers.length; e++) {
                 let eGraph: (Map<string, [number, number][]> | undefined) = this.njson.GetDataByName(e);
-                console.log(eGraph);
                 if (eGraph) {
                     // vardict should always exist or undefined error would occur!
                     this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), eGraph, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.variables, this.njson.GetModeSize(), modeRenderersXScale, modeRenderersYScale);
@@ -249,14 +224,10 @@ class LinePlot extends React.Component<Props, State> {
         // if id exists.
         if (ws != undefined) {
             let response = await this.instance.get("/file/" + ws.uid);
-            console.log(response.data);
-
             // if no data is coming from server ...
             if (response.data != "") {
                 this.njson.string = response.data;
-                console.log(this.njson.variables);
                 let gs = this.njson.GetGraphSize();
-                console.log("GraphSize is " + gs);
                 this.renderers = [];
                 let isRedBool = new Map<number, boolean>();
 
@@ -277,7 +248,6 @@ class LinePlot extends React.Component<Props, State> {
                         ), this.base_margin, e
                     );
                     red.graph = this.njson.GetGraph(e);
-                    console.log(red.graph);
                     this.renderers.push(red);
                     isRedBool.set(e, true);
                 }
@@ -332,7 +302,6 @@ class LinePlot extends React.Component<Props, State> {
             } else {
 
                 this.njson.clearAll();
-                console.log(this.njson.isEmpty())
 
                 this.setState({
                     isCounterExm: false,
@@ -349,11 +318,8 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     async onResetButtonClick() {
-        console.log("reset called");
         let response = await this.instance.get(`/file_list`);
         this.njson.clearAll();
-
-        //console.log(v);
         this.setState({
             isCounterExm: false,
             model:

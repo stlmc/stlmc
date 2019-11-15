@@ -251,14 +251,11 @@ class Json {
      */
     parse = () => {
         if (this._jsonString != "") {
-            console.log("parsingNewjson!");
             // clear all element in intervals list.
-
             this.clearAll();
             this._isEmpty = false;
             // https://dmitripavlutin.com/how-to-iterate-easily-over-object-properties-in-javascript/
             // need to take both key and value.
-            console.log(this._jsonString);
             let [variable, interval, dataByName, prop, mode, xdata, intervalInfo, full_interval_range] = Object.values(this._jsonString);
             this._interval_flat_list = Object.values(full_interval_range).map((e) => {
                 return parseFloat(e);
@@ -339,7 +336,6 @@ class Json {
                 this._modeMap.set(counter_mode, tmp_mode);
                 counter_mode++;
             }
-            console.log(this._propMap);
 
             // get proposition
             let counter = 0;
@@ -366,8 +362,6 @@ class Json {
                 this._propMap.set(counter, tmp_prop);
                 counter++;
             }
-            console.log(this._propMap);
-
 
             this._var_list = Object.values(variable);
             this._x_data_list = Object.values(xdata).map((s: string) => {
@@ -458,9 +452,6 @@ class Json {
                 this._dataByNameMap.set(intIndex, tmp);
 
             }
-            console.log(this._intervalsMap);
-            console.log(this._xRangeMap);
-            console.log(this._yRangeMap);
         } else {
             this._isEmpty = true;
         }

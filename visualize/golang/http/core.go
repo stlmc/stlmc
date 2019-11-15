@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"golang/data"
 	"golang/logger"
@@ -79,7 +80,6 @@ func (ss *StlSever) handleFileList(w http.ResponseWriter, r *http.Request){
 }
 
 func (ss *StlSever) handleSimpleFileList(w http.ResponseWriter, r *http.Request){
-	//data.Workspace.GetFileListWithOutId()
 	data.Workspace.GetFileListWithOutId()
 	w.WriteHeader(http.StatusCreated)
 
@@ -96,9 +96,6 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 	data.Workspace.GetFileList()
 
 	// update database
-
-
-
 	vars := mux.Vars(r)
 	logger.Logger.Debug("Data request for file number ", vars["id"])
 	id, convErr := strconv.Atoi(vars["id"])
@@ -148,7 +145,7 @@ func (ss *StlSever) Init(cancel context.CancelFunc) {
 	ss.router.PathPrefix("/").Handler(&ss.spaHandler)
 	ss.server = &http.Server{
 		Addr:              "0.0.0.0:3001",
-		Handler:           ss.router,
+		Handler:           handlers.CORS()(ss.router),
 	}
 	ss.cancel = cancel
 }

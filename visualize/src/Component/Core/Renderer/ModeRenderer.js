@@ -46,10 +46,6 @@ class ModeRenderer {
             }
         }
 
-        console.log(uniqueNum);
-
-
-
         d3.select(this._tag).selectAll("#mode_svg").remove();
 
         // set main canvas
@@ -160,8 +156,6 @@ class ModeRenderer {
                 }
             ));
         }
-
-        console.log(data);
 
 
         // update when redraw, remove previous proposition graph.
