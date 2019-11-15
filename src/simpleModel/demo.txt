@@ -1,4 +1,5 @@
 bool heater;
+real c1 1.2 ;
 (-20, 100] x;
 {
     mode:
@@ -8,7 +9,7 @@ bool heater;
         (or (x > -15) (x < 20)) ;
         (and (x > 0) (x < 50));
     flow:
-        x(t) = 1.2 * (-t) + x(0);
+        x(t) = c1 * (-t) + x(0);
     jump:
         (x > 30) =>
           ((heater' = false) and (x' = x));

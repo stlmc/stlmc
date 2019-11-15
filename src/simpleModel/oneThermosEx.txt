@@ -1,4 +1,5 @@
 real h;
+real k 0.025 ;
 real xStart;
 [18, 30] x;
 
@@ -11,7 +12,7 @@ real xStart;
         x > 21 ;
 	x < 26 ;
     flow:
-        d/dt[x] = -0.025 * (-h + (1 - 2 * 0.01) * xStart);
+        d/dt[x] = -k * (-h + (1 - 2 * 0.01) * xStart);
     jump:
         (x > 25) =>
           (and (h' < 100) (h' > 90) (xStart' = x) (x' = x)) ;
@@ -27,7 +28,7 @@ real xStart;
     inv:
         x > 20  ;
     flow:
-        d/dt[x] = -0.025 * ((1 - 2 * 0.01) * xStart + h);
+        d/dt[x] = -k * ((1 - 2 * 0.01) * xStart + h);
     jump:
         (and (x < 22) (x > 24)) =>
           (and (h' = 0) (xStart' = x) (x' = x)) ;
@@ -43,7 +44,7 @@ real xStart;
     inv:
         x < 28 ;
     flow:
-        x(t) = 0.013 * h + 1 - 0.025 * (1 - 2 * 0.01) * t + 0.006 * t ** 2 + x(0);
+        x(t) = 0.013 * h + 1 - k * (1 - 2 * 0.01) * t + 0.006 * t ** 2 + x(0);
     jump:
         (x >= 25) =>
           (and (h' > 90) (h' < 100) (xStart' = x) (x' = x)) ;
@@ -61,7 +62,7 @@ xT = h > 0 ;
 
 goal:
 (<> [0.0, 40.0] (reachability)) ;
-#(<> [0.0, 20.0] (~xT -> [][0.0, 5.0] xT)) ;
+(<> [0.0, 20.0] (~xT -> [][0.0, 5.0] xT)) ;
 
 
 
