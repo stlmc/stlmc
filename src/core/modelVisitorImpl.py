@@ -383,14 +383,7 @@ class modelVisitorImpl(modelVisitor):
     def visitDirectCond(self, ctx:modelParser.DirectCondContext):
         newProp = "newPropDecl_" + str(len(self.newPropDecl))
 
-        op = ctx.op.text
-        if ctx.expression():
-            left = self.visit(ctx.expression()[0])
-            right = self.visit(ctx.expression()[1])
-        else:
-            left = self.visit(ctx.condition()[0])
-            right = self.visit(ctx.condition()[1])
-        self.newPropDecl.append(propDecl(newProp, CompCond(op, left, right)))
+        self.newPropDecl.append(propDecl(newProp, self.visit(ctx.condition())))
         return PropositionFormula(newProp)
 
     # Visit a parse tree produced by modelParser#binaryFormula.

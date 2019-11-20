@@ -77,7 +77,7 @@ INITIALVAL : VARIABLE '(0)' ;
 
 NEXT_VAR   : VARIABLE '\'' ;
 
-WS      : ((' ' | '\t' | '\n')+ | COMMENT)-> skip ;
+WS      : ((' ' | '\t' | '\n' | '\r')+ | COMMENT)-> skip ;
 
 fragment COMMENT : 
                    '#' ~( '\r' | '\n' )* 
@@ -169,8 +169,7 @@ formula
  | TRUE                                          # constFormula
  | FALSE                                         # constFormula
  | VARIABLE                                      # proposition
- | expression op=COMPARE_OP expression           # directCond
- | condition op=COMPARE_OP condition             # directCond
+ | condition                                     # directCond
  | formula  op=(BOOL_AND | BOOL_OR)     formula  # binaryFormula
  |          op=NOT                      formula  # unaryFormula
  |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
