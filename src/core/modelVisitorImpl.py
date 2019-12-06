@@ -25,6 +25,8 @@ class modelVisitorImpl(modelVisitor):
         self.newPropDecl = list()
         self.formulaText = list()
         self.var_dic = list()
+        # check if model file contains
+        self.isTri = False
 
         # generate variable dictionary * number of mode module
         for i in range(len(ctx.mode_module())):
@@ -62,7 +64,8 @@ class modelVisitorImpl(modelVisitor):
 
         goal = self.visit(ctx.goal_decl())
 
-        return StlMC(modesDecl, varsDecl, varvalDict, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText)
+
+        return (StlMC(modesDecl, varsDecl, varvalDict, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText), self.isTri)
 
     '''
     mode_var_decl
@@ -100,7 +103,8 @@ class modelVisitorImpl(modelVisitor):
     '''
     def visitUnaryExp(self, ctx:modelParser.UnaryExpContext, var_dic=dict()):
         if ctx.op.text in ['sin', 'cos', 'tan', 'log', 'sqrt']:
-            raise ("Can't support non-linear function")
+            self.isTri = True
+            #raise ("Can't support non-linear function")
         return UnaryFunc(ctx.op.text, self.visitExpression(ctx.expression(), var_dic), var_dic)
 
     def visitParenthesisExp(self, ctx:modelParser.ParenthesisExpContext, var_dict=dict()):

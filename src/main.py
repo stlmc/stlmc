@@ -45,27 +45,30 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     stream = CommonTokenStream(lexer)
     parser = modelParser(stream)
     tree   = parser.stlMC()
-    stlMC =  modelVisitorImpl().visit(tree)
+    stlMC, isTri = modelVisitorImpl().visit(tree)
     dataGenerator = Api(stlLogger)
-    workspace_info = dict()
     title = fileName
     filename = ""
-    for i in range(len(stlMC.getStlFormsList())):
-        for k in range(lower, upper+1, step):
-            formula = stlMC.getStlFormsList()[i]
+
+    if (isTri and solver == "dreal4") or (not isTri and solver != "dreal4") or solver == "dreal4":
+        for i in range(len(stlMC.getStlFormsList())):
+            for k in range(lower, upper+1, step):
+                formula = stlMC.getStlFormsList()[i]
+                if resultSave:
+                    modelName = os.path.splitext(os.path.basename(title))[0]
+                    filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+                    rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
+                    with open(rel_path, 'w') as fle :
+                        print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
+                if multy:
+                    p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic))
+                    p.start()
+                else:
+                    module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
             if resultSave:
-                modelName = os.path.splitext(os.path.basename(title))[0]
-                filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
-                rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
-                with open(rel_path, 'w') as fle :
-                    print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime", file=fle)
-            if multy:
-                p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic))
-                p.start()
-            else:
-                module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
-        if resultSave:
-            print("New filename: ./reports/" + str(filename))
+                print("New filename: ./reports/" + str(filename))
+    else:
+        print("does not support trigonometric function without dreal4!")
 
 def main(args, stlLogger):
     modelList = list()

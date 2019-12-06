@@ -165,6 +165,7 @@ class UnaryFunc:
         return str(self.func) + "(" + str(self.val) + ")"
 
     def getExpression(self, varDict):
+        #print(varDict)
         if str(self.val) in varDict.keys():
             degree = varDict[str(self.val)]
         elif str(self.val).isdigit():
@@ -172,13 +173,13 @@ class UnaryFunc:
         else:
             degree = Real(str(self.val))
         if self.func == 'sin':
-            return degree - degree * degree * degree / RealVal(6)
+            return Sin(degree)
         elif self.func == 'cos':
-            return degree - degree * degree / RealVal(2)
+            return Cos(degree)
         elif self.func == 'tan':
-            return degree + degree * degree * degree
+            return Tan(degree)
         elif self.func == '-':
-            return (RealVal(0) - degree)
+            return Neg(degree)
         else:
             raise "Not yet in Unary function"
 
@@ -190,6 +191,7 @@ class UnaryFunc:
             degree = RealVal(str(self.val)).value
 
         if self.func == 'sin':
+            print("value")
             return degree - degree * degree * degree / RealVal(6).value
         elif self.func == 'cos':
             return degree - degree * degree / RealVal(2).value
@@ -738,7 +740,7 @@ class StlMC:
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
             # constraints from the model
-            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
+            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst], solver)
 
             etime1 = time.process_time()
 
@@ -770,19 +772,19 @@ class StlMC:
 
 
 
-    def reach(self, bound, timeBound, goal):
-        self.bound = bound
-        self.strStlFormula = str(goal)
-        consts = []
-        combine = self.consts.combineDict(self.consts.makeSubMode(0), self.consts.makeSubVars(0, '0'))
-        consts.append(self.consts.makeVarRangeConsts(bound))
-        consts.append(self.init.getExpression(self.subvars).substitution(combine))
-        consts.append(self.consts.flowConstraints(bound))
-        consts.append(self.consts.jumpConstraints(bound))
-        consts.append(self.consts.goalConstraints(bound, goal))
-      
-
-        consts = consts + self.consts.timeBoundConsts(consts, timeBound)
-
-        (result, cSize, self.model) = checkSat(consts)
-        return result
+    # def reach(self, bound, timeBound, goal):
+    #     self.bound = bound
+    #     self.strStlFormula = str(goal)
+    #     consts = []
+    #     combine = self.consts.combineDict(self.consts.makeSubMode(0), self.consts.makeSubVars(0, '0'))
+    #     consts.append(self.consts.makeVarRangeConsts(bound))
+    #     consts.append(self.init.getExpression(self.subvars).substitution(combine))
+    #     consts.append(self.consts.flowConstraints(bound))
+    #     consts.append(self.consts.jumpConstraints(bound))
+    #     consts.append(self.consts.goalConstraints(bound, goal))
+    #
+    #
+    #     consts = consts + self.consts.timeBoundConsts(consts, timeBound)
+    #
+    #     (result, cSize, self.model) = checkSat(consts)
+    #     return result

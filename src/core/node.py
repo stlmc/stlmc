@@ -399,6 +399,37 @@ class Neg(UnaryArithmetic):
         return Neg(self.child().nextSub(subDict))
 
 
+class Sin(UnaryArithmetic):
+    def __init__(self, num):
+        super().__init__('sin', num)
+
+    def substitution(self, subDict):
+        return Sin(self.child().substitution(subDict))
+
+    def nextSub(self, subDict):
+        return Sin(self.child().nextSub(subDict))
+
+class Cos(UnaryArithmetic):
+    def __init__(self, num):
+        super().__init__('cos', num)
+
+    def substitution(self, subDict):
+        return Cos(self.child().substitution(subDict))
+
+    def nextSub(self, subDict):
+        return Cos(self.child().nextSub(subDict))
+
+class Tan(UnaryArithmetic):
+    def __init__(self, num):
+        super().__init__('tan', num)
+
+    def substitution(self, subDict):
+        return Tan(self.child().substitution(subDict))
+
+    def nextSub(self, subDict):
+        return Tan(self.child().nextSub(subDict))
+
+
 class Logical(nonLeaf):
     def __init__(self, op, args: list):
         for a in args:

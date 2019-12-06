@@ -74,7 +74,6 @@ VARIABLE     : (LOWERCASE | UPPERCASE)+ (LOWERCASE | UPPERCASE | DIGIT)* ;
 
 INITIALVAL : VARIABLE '(0)' ;
 
-
 NEXT_VAR   : VARIABLE '\'' ;
 
 WS      : ((' ' | '\t' | '\n' | '\r')+ | COMMENT)-> skip ;

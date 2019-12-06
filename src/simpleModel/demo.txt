@@ -1,5 +1,6 @@
 bool heater;
 (-20, 100] x;
+(-20, 100] y;
 {
     mode:
         heater = false;

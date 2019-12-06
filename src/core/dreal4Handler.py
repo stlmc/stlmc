@@ -1,9 +1,8 @@
 import dreal
-import z3
 import itertools
 from functools import singledispatch, update_wrapper
 from .error import *
-from .node import *
+from .dreal4Node import *
 
 # https://gist.github.com/adamnew123456/9218f99ba35da225ca11
 def dispatchmethod(func):
@@ -91,24 +90,25 @@ class dreal4Handler:
     # return a check result and the Z3 constraint size
     def __init__(self):
         self.var_dict = dict()
+        self.solver = dreal.Context()
 
     def dreal4CheckSat(self, consts, logic="None"):
         #dreal.set_log_level(dreal.LogLevel.DEBUG)
-        solver = dreal.Context()
-        dreal4Consts = list()
-        dreal4Consts=[self.dreal4Obj(c, solver) for c in consts]
+        #print(type(consts))
+        #print(consts)
+        dreal4Consts=[self.dreal4Obj(c) for c in consts]
 
         if logic != "NONE":
             #solver = z3.SolverFor(logic)
             ## Logic.QF_NRA
-            solver.SetLogic(logic)
+            self.solver.SetLogic(logic)
         else:
-            solver.SetLogic(dreal.Logic.QF_LRA)
+            self.solver.SetLogic(dreal.Logic.QF_LRA)
 
 
             #testresult = dreal.And(*dreal4Consts)
             #target_dreal_simplify = z3.simplify(dreal.And(*z3Consts))
-        solver.Assert(dreal.And(*dreal4Consts))
+        self.solver.Assert(dreal.And(*dreal4Consts))
         #solver.add(target_z3_simplify)
 
         #    solver.add(z3Consts)
@@ -118,7 +118,7 @@ class dreal4Handler:
         #with open("thermoLinear.smt2", 'w') as fle:
         #    print(dreal.And(), file=fle)
 
-        m = solver.CheckSat()
+        m = self.solver.CheckSat()
         # this case is sat
         if m is not None:
             result = False
@@ -127,22 +127,22 @@ class dreal4Handler:
         else:
             result = True
         #return (result, sizeAst(z3.And(*z3Consts)), m)
-        solver.Exit()
+        self.solver.Exit()
         return (result, 0, m)
 
     # return the size of the Z3 constraint
-    def sizeAst(self, node:z3.AstRef):
-        return 1 + sum([sizeAst(c) for c in node.children()])
+    #def sizeAst(self, node:z3.AstRef):
+    #    return 1 + sum([sizeAst(c) for c in node.children()])
 
 
     @dispatchmethod
-    def dreal4Obj(self, const:Node, ctx):
-        print(type(const))
-        print(const)
+    def dreal4Obj(self, const:Node):
+        #print(type(const))
+        #print(const)
         raise NotImplementedError('Something wrong')
 
     @dreal4Obj.register(Constant)
-    def _(self, const, solver):
+    def _(self, const):
         op = {Type.Bool: dreal.Variable.Bool, Type.Real: dreal.Variable.Real, Type.Int: dreal.Variable.Int}
         if const.getType() == Type.Bool:
             value = dreal.Formula.TRUE() if const.value else dreal.Formula.FALSE()
@@ -153,83 +153,98 @@ class dreal4Handler:
             #return dreal.Variable(value, op[const.getType()])
 
     @dreal4Obj.register(Variable)
-    def _(self, const, solver):
+    def _(self, const):
         op = {Type.Bool: dreal.Variable.Bool, Type.Real: dreal.Variable.Real, Type.Int: dreal.Variable.Int}
         if str(const.id) in self.var_dict:
             return self.var_dict[str(const.id)]
         vv = dreal.Variable(str(const.id), op[const.getType()])
-        solver.DeclareVariable(vv)
+        self.solver.DeclareVariable(vv)
         self.var_dict[str(const.id)] = vv
         return vv
 
     @dreal4Obj.register(Ge)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x >= y
 
     @dreal4Obj.register(Gt)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x > y
 
     @dreal4Obj.register(Le)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x <= y
 
     @dreal4Obj.register(Lt)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x < y
 
     @dreal4Obj.register(Numeq)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x == y
 
     @dreal4Obj.register(Plus)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x + y
 
     @dreal4Obj.register(Minus)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x - y
 
     @dreal4Obj.register(Pow)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x**y
 
     @dreal4Obj.register(Mul)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x * y
 
     @dreal4Obj.register(Div)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x / y
 
     @dreal4Obj.register(Neg)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.child(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.child())
         return -x
 
+    @dreal4Obj.register(Sin)
+    def _(self, const):
+        x = self.dreal4Obj(const.child())
+        return sin(x)
+
+    @dreal4Obj.register(Cos)
+    def _(self, const):
+        x = self.dreal4Obj(const.child())
+        return cos(x)
+
+    @dreal4Obj.register(Tan)
+    def _(self, const):
+        x = self.dreal4Obj(const.child())
+        return tan(x)
+
     @dreal4Obj.register(And)
-    def _(self, const, solver):
-        dreal4Args = [self.dreal4Obj(c, solver) for c in const.children]
+    def _(self, const):
+        dreal4Args = [self.dreal4Obj(c) for c in const.children]
         if len(dreal4Args) < 1:
             return dreal.Formula.TRUE()
         elif len(dreal4Args) < 2:
@@ -238,8 +253,8 @@ class dreal4Handler:
             return dreal.And(*dreal4Args)
 
     @dreal4Obj.register(Or)
-    def _(self, const, solver):
-        dreal4Args = [self.dreal4Obj(c, solver) for c in const.children]
+    def _(self, const):
+        dreal4Args = [self.dreal4Obj(c) for c in const.children]
         if len(dreal4Args) < 1:
             return dreal.Formula.TRUE()
         elif len(dreal4Args) < 2:
@@ -248,24 +263,24 @@ class dreal4Handler:
             return dreal.Or(*dreal4Args)
 
     @dreal4Obj.register(Implies)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return dreal.Implies(x, y)
 
     @dreal4Obj.register(Beq)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.left(), solver)
-        y = self.dreal4Obj(const.right(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.left())
+        y = self.dreal4Obj(const.right())
         return x == y
 
     @dreal4Obj.register(Not)
-    def _(self, const, solver):
-        x = self.dreal4Obj(const.child(), solver)
+    def _(self, const):
+        x = self.dreal4Obj(const.child())
         return dreal.Not(x)
 
     @dreal4Obj.register(Integral)
-    def _(self, const, solver):
+    def _(self, const):
         result = []
         subDict = {}
         for i in range(len(const.endList)):
@@ -304,19 +319,61 @@ class dreal4Handler:
         else:
             raise FlowTypeEerror()
 
-        dreal4Result = [self.dreal4Obj(c, solver) for c in result]
+        dreal4Result = [self.dreal4Obj(c) for c in result]
         return dreal.And(*dreal4Result)
 
     @dreal4Obj.register(Forall)
-    def _(self, const, solver):
+    def _(self, const):
         typeList = [i.getType() for i in const.condition.getVars()]
         if not(Type.Real in typeList):
-            subCondition = self.dreal4Obj(const.condition.substitution(const.modeDict), solver)
+            subCondition = self.dreal4Obj(const.condition.substitution(const.modeDict))
             return subCondition
         else:
-            endCond = self.dreal4Obj(const.condition.substitution(const.endDict), solver)
-            startCond = self.dreal4Obj(const.condition.substitution(const.startDict), solver)
+            endCond = self.dreal4Obj(const.condition.substitution(const.endDict))
+            startCond = self.dreal4Obj(const.condition.substitution(const.startDict))
             return dreal.And(endCond, startCond)
+
+    @dreal4Obj.register(Dreal4Forall)
+    def _(self, const):
+#        print(const.props)
+#        print(type(const.props))
+#        print(const.k)
+#        print(type(const.k))
+        ccc = const.curFlow.exps
+#        print(ccc[0])
+#        print(type(ccc[0]))
+
+#        print(ccc[0].contVar)
+#        print(type(ccc[0].contVar))
+#        print(ccc[0].flow)
+#        print(type(ccc[0].flow))
+        for ct in const.curFlow.exps:
+            # if variable already exists ...
+            if ct.contVar in self.var_dict.keys():
+                pp = self.dreal4Obj(ct.flow)
+                #print("not what")
+                #print (pp)
+                #print (type(pp))
+                return pp
+            else:
+                print(self.var_dict)
+
+                print(ct.contVar)
+                print("what?")
+                return self.dreal4Obj(ct.flow)
+        # TODO: find whether ccc's contVar is in the declaration part
+        # if not included, declared it again
+        # if included, just add.
+        '''
+        typeList = [i.getType() for i in const.condition.getVars()]
+        if not (Type.Real in typeList):
+            subCondition = self.dreal4Obj(const.condition.substitution(const.modeDict))
+            return subCondition
+        else:
+            endCond = self.dreal4Obj(const.condition.substitution(const.endDict))
+            startCond = self.dreal4Obj(const.condition.substitution(const.startDict))
+            return dreal.And(endCond, startCond)
+        '''
 
     @dreal4Obj.register(Solution)
     def _(self, const, solver):
@@ -344,6 +401,6 @@ class dreal4Handler:
             keyValue = str(const.endList[i])[0:keyIndex]
             result.append(const.endList[i] == substitutionExp[keyValue])
 
-        dreal4Result = [dreal4Obj(c, solver) for c in result]
+        dreal4Result = [dreal4Obj(c) for c in result]
         return dreal.And(*dreal4Result)
 
