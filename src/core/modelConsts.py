@@ -93,6 +93,8 @@ class modelConsts:
             time = Real('time' + str(k))
             flowConsts = list()
             for i in range(len(self.modeModule)):
+                flowType = self.modeModule[i].getFlow().getFlowType()
+                time = Real('time' + str(k)) if flowType == 'diff' else Real('tau_' + str(k))
                 flowModule = dict()
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
@@ -117,7 +119,7 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_'+str(k)) >= IntVal(0))
                
 
-                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
+                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule,flowType))) 
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
@@ -162,33 +164,27 @@ class modelConsts:
             else:
                 pass
 
-        if len(copyList) > 1:
-            returnFormula = {'and' : And, 'or' : Or}[exp.getOp().lower()](*copyList)
-        elif len(copyList) == 1 :
-            returnFormula = copyList[0]
-        else:
-            returnFormula = BoolVal(True)
+        returnFormula = {'and' : And, 'or' : Or}[exp.getOp().lower()](*copyList) if (len(copyList) > 1) else (copyList[0] if (len(copyList) == 1) else BoolVal(True))
 
         return (result, returnFormula) 
 
     def invConstraints(self, bound):
        result = list()
        atomicDict = dict()
-       for i in range(len(self.modeModule)): 
-           curMode = self.modeModule[i].getMode().getExpression(self.subvars)
-           curInv = self.modeModule[i].getInv().getExpression(self.subvars)
-           invConsts = list()
+       for k in range(bound+1):
            propIdDict = dict()
-           for k in range(bound+1):
-               time = Real('time' + str(k))
+           invConsts = list()
+           for i in range(len(self.modeModule)): 
+               curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+               curInv = self.modeModule[i].getInv().getExpression(self.subvars)
+               propIdDict = dict()
                (propIdDict, formula) = (self.makeAtomicDict(curInv, len(atomicDict), propIdDict, k))
                atomicDict.update(propIdDict)
-               invConsts.append(formula)
-           curFlow = self.modeModule[i].getFlow()
-           for prop in propIdDict.keys():
-               for k in range(bound+1):
-                   invConsts.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
-           result.append(And(*invConsts))
+               invConsts.append(And(curMode.substitution(self.makeSubMode(k)), formula))
+               curFlow = self.modeModule[i].getFlow()
+               for prop in propIdDict.keys():
+                   result.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
+           result.append(Or(*invConsts))
        return And(*result)
 
     # {propId : Expression} // {str :  Exp}
