@@ -1,46 +1,46 @@
 const int c = 4 ;
 real heater;
-(-inf, inf) x;
+(-inf, inf) constx;
 {
     mode:
         heater >= 0;
     inv:
         (heater < c) ;
-        (x > -10) ;
-        (or (x > -15) (x < 20)) ;
-        (and (x > 0) (x < 50));
+        (constx > -10) ;
+        (or (constx > -15) (constx < 20)) ;
+        (and (constx > 0) (constx < 50));
     flow:
-        x(t) = 1.2 * (-t) + x(0);
+        constx(t) = 1.2 * (-t) + constx(0);
     jump:
-        (x > 30) =>
-          ((heater' = heater + 1) and (x' = x));
+        (constx > 30) =>
+          ((heater' = heater + 1) and (constx' = constx));
 	(heater > c) =>
-	  ((heater' = heater - 1) and (x' = x)) ;
-        (x <= 24) =>
-          ((heater' = -1) and (x' = x));
+	  ((heater' = heater - 1) and (constx' = constx)) ;
+        (constx <= 24) =>
+          ((heater' = -1) and (constx' = constx));
 }
 {
     mode:
         heater < 0;
     inv:
-        x <= 30;
+        constx <= 30;
     flow:
-        d/dt[x] = 4;
+        d/dt[constx] = 4;
     jump:
-        (x > 30) =>
-          ((heater' = heater + 1) and (x' = x));
+        (constx > 30) =>
+          ((heater' = heater + 1) and (constx' = constx));
         (heater > 8) =>
-          ((heater' = heater - 1) and (x' = x)) ;
-        (x <= 24) =>
-          ((heater' = -1) and (x' = x));
+          ((heater' = heater - 1) and (constx' = constx)) ;
+        (constx <= 24) =>
+          ((heater' = -1) and (constx' = constx));
 }
 
 init:
-(and (heater > 0) (heater < 2) (x <= 25 + 0.1) (x >= 25 - 0.1)); 
+(and (heater > 0) (heater < 2) (constx <= 25 + 0.1) (constx >= 25 - 0.1)); 
 
 propositions:
-reachability = x > 23;
+reachability = constx > 24;
 
 goal:
 (<> [0.0, 40.0] (reachability)) ;
-#([] [0.0, inf) (x < 24)) ;
+([] [0.0, inf) (constx < 24)) ;

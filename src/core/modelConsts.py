@@ -229,7 +229,7 @@ class modelConsts:
             exp = Ge((exp.right() - exp.left()), RealVal(0))
 
         # If proposition is just boolean variable, return original expression
-        if not (isinstance(exp, Gt) or isinstance(exp, Ge)):
+        if not (isinstance(exp, Gt) or isinstance(exp, Numeq) or isinstance(exp, Numneq) or isinstance(exp, Ge)):
             if exp.getType() == Type.Bool:
                 return exp.substitution(self.makeSubMode(bound))
             else:
@@ -238,7 +238,7 @@ class modelConsts:
                 raise ("Proposition constraints something wrong")
 
         # Case Real value >(or >=) 0
-        if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
+        if len(exp.getVars()) == 0 :
             return exp
 
         const = list()
@@ -276,18 +276,17 @@ class modelConsts:
 
         # Special case : a == b
         if isinstance(exp, Numeq):
-            subconst = list()
-            subconst.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
-            subconst.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
-            subconst.append(Numeq(diffExp, RealVal(0)))
-            return subconst
+            const.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
+            const.append(Numeq(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
+            const.append(Numeq(diffExp, RealVal(0)))
+            return And(*const)
 
         # Special case : a =/= b
         if isinstance(exp, Numneq):
             subconst = list()
             subconst.append(self.propForall(Gt(handlingExp, RealVal(0)), bound, curFlow))
             subconst.append(self.propForall(Lt(handlingExp, RealVal(0)), bound, curFlow))
-            return Or(*subconst)
+            return And(*const, Or(*subconst))
 
         # f(t') >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
@@ -312,9 +311,6 @@ class modelConsts:
     def propConstraints(self, propSet, bound):
         result = list()
         for k in range(bound+1):
-            time = Real('time' + str(k))
-            start = Real('tau_'+ str(k))
-            end = Real('tau_' + str(k))
             const = list()
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
             combine.update(self.varVal)

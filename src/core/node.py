@@ -478,6 +478,10 @@ class Not(Logical, _UnaryOp):
             return Gt(self.child().left(), self.child().right())
         if isinstance(self.child(), Ge):
             return Lt(self.child().left(), self.child().right())
+        if isinstance(self.child(), Numeq):
+            return Numneq(self.child().left(), self.child().right())
+        if isinstance(self.child(), Numneq):
+            return Numeq(self.child().left(), self.child().right())
         return self
 
 class Integral(Node):
