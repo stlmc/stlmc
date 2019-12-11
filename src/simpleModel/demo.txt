@@ -14,7 +14,7 @@ real heater;
     jump:
         (x > 30) =>
           ((heater' = heater + 1) and (x' = x));
-	(heater > 3) =>
+	(heater > c) =>
 	  ((heater' = heater - 1) and (x' = x)) ;
         (x <= 24) =>
           ((heater' = -1) and (x' = x));
