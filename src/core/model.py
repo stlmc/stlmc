@@ -112,8 +112,9 @@ class InitVal(Variable):
     def substitution(self, subDict):
         return self.getExpression().substitution(subDict)
 
-class VarVal:
+class VarVal(Variable):
     def __init__(self, varType, varID, value):
+        super().__init__(varType, varID)
         self.varid = varID
         self.value = None
         if varType.lower == 'bool':
@@ -709,6 +710,8 @@ class StlMC:
     def makeVariablesDict(self):
         op = {'bool': Bool, 'int': Int, 'real': Real}
         result = dict()
+        for i in self.varVal.keys():
+            result[str(i)] = self.varVal[i]
         for i in range(len(self.modeVar)):
             result[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id)
         for i in range(len(self.contVar)):

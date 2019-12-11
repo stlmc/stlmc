@@ -1,10 +1,11 @@
+const int c = 4 ;
 real heater;
 (-inf, inf) x;
 {
     mode:
         heater >= 0;
     inv:
-        (heater < 10) ;
+        (heater < c) ;
         (x > -10) ;
         (or (x > -15) (x < 20)) ;
         (and (x > 0) (x < 50));
@@ -13,7 +14,7 @@ real heater;
     jump:
         (x > 30) =>
           ((heater' = heater + 1) and (x' = x));
-	(heater > 8) =>
+	(heater > 3) =>
 	  ((heater' = heater - 1) and (x' = x)) ;
         (x <= 24) =>
           ((heater' = -1) and (x' = x));
@@ -42,4 +43,4 @@ reachability = x > 23;
 
 goal:
 (<> [0.0, 40.0] (reachability)) ;
-([] [0.0, inf) (x < 24)) ;
+#([] [0.0, inf) (x < 24)) ;

@@ -289,8 +289,6 @@ class modelConsts:
             subconst.append(self.propForall(Lt(handlingExp, RealVal(0)), bound, curFlow))
             return Or(*subconst)
 
-        # f(t) >= 0
-        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
         # f(t') >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
 
