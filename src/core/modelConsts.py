@@ -246,6 +246,8 @@ class modelConsts:
         combine.update(self.varVal)
         handlingExp = exp.left() - exp.right()
 
+        handlingExp = handlingExp.substitution(combine)
+
         curFlowExp = curFlow.getExpression(self.subvars)
         curFlowType = curFlow.getFlowType()
         flowModule = dict()
