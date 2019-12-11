@@ -93,6 +93,8 @@ class modelConsts:
             time = Real('time' + str(k))
             flowConsts = list()
             for i in range(len(self.modeModule)):
+                flowType = self.modeModule[i].getFlow().getFlowType()
+                time = Real('time' + str(k)) if flowType == 'diff' else Real('tau_' + str(k))
                 flowModule = dict()
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curFlow = self.modeModule[i].getFlow().getExpression(self.subvars)
@@ -117,7 +119,7 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_'+str(k)) >= IntVal(0))
                
 
-                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule, self.modeModule[i].getFlow().getFlowType())))
+                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)), Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule,flowType))) 
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
@@ -131,7 +133,7 @@ class modelConsts:
         for index in range(len(copyList)):
             element = copyList[index]
             if isinstance(element, And):
-                returnResult = self.makeAtomicDict(element, len(totalDict), dict(), bound)[0]
+                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
                 for subKey in returnResult.keys():
                     if not (subKey in totalDict.keys()):
                         totalDict[subKey] = invAtomicID + str(startIndex)
@@ -142,7 +144,7 @@ class modelConsts:
                     formula.append(Bool(totalDict[strId] + "_" + str(bound)))
                 copyList[index] = And(*formula)
             elif isinstance(element, Or):
-                returnResult = self.makeAtomicDict(element, len(totalDict), dict(), bound)[0]
+                returnResult = self.makeAtomicDict(element, len(result), dict(), bound)[0]
                 for subKey in returnResult.keys():
                     if not (subKey in totalDict.keys()):
                         totalDict[subKey] = invAtomicID + str(startIndex)
@@ -162,30 +164,29 @@ class modelConsts:
             else:
                 pass
 
-        if len(copyList) > 1:
-            returnFormula = {'and' : And, 'or' : Or}[exp.getOp().lower()](*copyList)
-        elif len(copyList) == 1 :
-            returnFormula = copyList[0]
-        else:
-            returnFormula = BoolVal(True)
+        returnFormula = {'and' : And, 'or' : Or}[exp.getOp().lower()](*copyList) if (len(copyList) > 1) else (copyList[0] if (len(copyList) == 1) else BoolVal(True))
 
         return (result, returnFormula) 
 
     def invConstraints(self, bound):
-        result = list()
-        for k in range(bound+1):
-            propIdDict = dict()
-            invConsts = list()
-            for i in range(len(self.modeModule)): 
-               curMode = self.modeModule[i].getMode().getExpression(self.subvars)
-               curInv = self.modeModule[i].getInv().getExpression(self.subvars)
-               (propIdDict, formula) = (self.makeAtomicDict(curInv, len(propIdDict), propIdDict, k))
-               invConsts.append(And(curMode.substitution(self.makeSubMode(k)), formula))
-               curFlow = self.modeModule[i].getFlow()
-            for prop in propIdDict.keys():
-               result.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
-            result.append(Or(*invConsts))
-        return And(*result)
+       result = list()
+       atomicDict = dict()
+       for i in range(len(self.modeModule)): 
+           curMode = self.modeModule[i].getMode().getExpression(self.subvars)
+           curInv = self.modeModule[i].getInv().getExpression(self.subvars)
+           invConsts = list()
+           propIdDict = dict()
+           for k in range(bound+1):
+               time = Real('time' + str(k))
+               (propIdDict, formula) = (self.makeAtomicDict(curInv, len(atomicDict), propIdDict, k))
+               atomicDict.update(propIdDict)
+               invConsts.append(formula)
+           curFlow = self.modeModule[i].getFlow()
+           for prop in propIdDict.keys():
+               for k in range(bound+1):
+                   invConsts.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
+           result.append(And(*invConsts))
+       return And(*result)
 
 
     # {propId : Expression} // {str :  Exp}
@@ -238,7 +239,7 @@ class modelConsts:
                 raise ("Proposition constraints something wrong")
 
         # Case Real value >(or >=) 0
-        if z3.is_rational_value(z3.simplify(z3Obj(exp.left()))) and (exp.right() == RealVal(0)):
+        if len(exp.getVars()) == 0 :
             return exp
 
         const = list()
@@ -256,7 +257,6 @@ class modelConsts:
                 substitutionDict['time'] = Real('time' + str(bound))
                 substitutionDict.update(self.varVal)
                 flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(substitutionDict)
-
             else:
                 raise ("Flow id is not declared")
 
@@ -287,8 +287,6 @@ class modelConsts:
             subconst.append(self.propForall(Lt(handlingExp, RealVal(0)), bound, curFlow))
             return Or(*subconst)
 
-        # f(t) >= 0
-        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'0')), RealVal(0)))
         # f(t') >= 0
         const.append(Ge(handlingExp.substitution(self.makeSubVars(bound,'t')), RealVal(0)))
 
@@ -312,9 +310,6 @@ class modelConsts:
     def propConstraints(self, propSet, bound):
         result = list()
         for k in range(bound+1):
-            time = Real('time' + str(k))
-            start = Real('tau_'+ str(k))
-            end = Real('tau_' + str(k))
             const = list()
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
             combine.update(self.varVal)
@@ -342,11 +337,8 @@ class modelConsts:
         for i in range(len(variables)):
             keyIndex = str(variables[i]).find('_')
             key = str(variables[i])[:keyIndex]
-            if (key.find('time') != -1): 
+            if (key.find('time') != -1 or key.find('tau') != -1 or key.find('TauIndex') != -1): 
                 result.append(variables[i] > RealVal(0))
-                result.append(variables[i] <= RealVal(timeBound))
-            if (key.find('tau') != -1 or key.find('TauIndex') != -1):
-                result.append(variables[i] >= RealVal(0))
                 result.append(variables[i] <= RealVal(timeBound))
         return result
 
@@ -387,5 +379,4 @@ class modelConsts:
         result = result + self.timeBoundConsts(addTimeBound, timeBound)
 
         return result
-
 
