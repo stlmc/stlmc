@@ -1,3 +1,6 @@
+#import os
+#import sys
+#import importlib
 import core.partition as PART
 import core.separation as SEP
 import time
@@ -6,20 +9,11 @@ from .yicesHandler import *
 from .formula import *
 from .modelConsts import *
 
-
-def flatten(l):
-    res = []
-    if isinstance(l, list):
-        for elem in l:
-            if isinstance(elem, list):
-                for elemofelem in elem:
-                    res.append(elemofelem)
-            else:
-                res.append(elem)
-    else:
-        res.append(l)
-    return res
-
+'''
+def import_from(module, name):
+    module = __import__(module, fromlist=[name])
+    return getattr(module, name)
+'''
 
 def isNumber(s):
     try:
@@ -760,6 +754,10 @@ class StlMC:
             if solver == 'z3':
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
+                #path = os.path.dirname(__file__)
+                #sys.path.insert(0, path)
+                #mod = import_from('yicesHandler','yicescheckSat')
+                #(result, cSize, self.model) = mod(modelConsts + partitionConsts + [formulaConst], logic)
                 (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
             stime2 = time.process_time()
 

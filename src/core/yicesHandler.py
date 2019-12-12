@@ -2,6 +2,8 @@ from yices import *
 import yices_api as yapi
 import itertools
 from functools import singledispatch
+#import sys, os
+#sys.path.append(os.path.dirname(__file__))
 from .error import *
 from .node import *
 
