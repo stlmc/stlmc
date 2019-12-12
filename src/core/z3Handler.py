@@ -6,17 +6,18 @@ from .node import *
 
 
 # return a check result and the Z3 constraint size
-def z3checkSat(consts, logic="None"):
+def z3checkSat(consts, logic):
     z3Consts=[z3Obj(c) for c in consts]
+
     if logic != "NONE":
         solver = z3.SolverFor(logic)
     else:
         solver = z3.Solver()
     
     target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-#    solver.add(target_z3_simplify)
-    solver.add(z3Consts)
-    solver.set("timeout", 7200000)    # timeout : 2 hours
+    solver.add(target_z3_simplify)
+#    solver.add(z3Consts)
+#    solver.set("timeout", 7200000)    # timeout : 2 hours
 
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)

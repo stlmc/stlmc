@@ -166,16 +166,16 @@ interval
 formula
  :
    LPAREN formula RPAREN                         # parenFormula
- | TRUE                                          # constFormula
- | FALSE                                         # constFormula
- | VARIABLE                                      # proposition
- | condition                                     # directCond
  | formula  op=(BOOL_AND | BOOL_OR)     formula  # binaryFormula
  |          op=NOT                      formula  # unaryFormula
  |          op=(GLOBAL|FINAL)  interval formula  # unaryTemporalFormula
  | op=(BOOL_AND | BOOL_OR) formula formula+      # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula  # binaryTemporalFormula
  | formula  op=IMP                      formula  # binaryFormula
+ | TRUE                                          # constFormula
+ | FALSE                                         # constFormula
+ | VARIABLE                                      # proposition
+ | condition                                     # directCond
  ;
 
 props : PROP COLON (prop)* ;

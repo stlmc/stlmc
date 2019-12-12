@@ -89,7 +89,11 @@ def main(args, stlLogger):
         upper = lower if args.upper is None else args.upper
         visualize = False if args.visualize is None else args.visualize
         solver = 'z3' if args.solver is None else args.solver
-        logic = 'None' if args.logic is None else args.logic
+        logic = 'None'
+        if args.logic == 'linear':
+            logic = 'LRA' if solver == 'z3' else 'qf_lra'
+        elif args.logic == 'nonlinear':
+            logic = 'NRA' if solver == 'z3' else 'qf_nra'
         json = visualize if args.json is None else args.json
         if visualize and not json:
             print("automatically change json option to true")

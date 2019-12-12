@@ -13,7 +13,7 @@ def getvarval(self):
     return var_val
 
 # return a check result and the Z3 constraint size
-def yicescheckSat(consts, logic="None"):
+def yicescheckSat(consts, logic):
     strConsts = [yicesObj(c) for c in consts]
     cfg = Config()
 
