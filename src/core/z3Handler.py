@@ -13,9 +13,9 @@ def z3checkSat(consts, logic="None"):
     else:
         solver = z3.Solver()
     
-    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-    solver.add(target_z3_simplify)
-#    solver.add(z3Consts)
+    #target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+    #solver.add(target_z3_simplify)
+    solver.add(z3Consts)
     solver.set("timeout", 7200000)    # timeout : 2 hours
 
     with open("thermoLinear.smt2", 'w') as fle:
@@ -186,7 +186,7 @@ def _(const):
                 result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
   
     elif const.flowType == 'sol':
-        subDict['time'] = const.time
+        subDict['time'] = Real('tau_' + str(const.time.id)[4:])
         substitutionExp = {}
         for i in const.ode.keys():
             substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)

@@ -86,31 +86,100 @@ def dispatchmethod(func):
     update_wrapper(wrapper, func)
     return wrapper
 
+def dreal4CheckSatPlz(consts, var_dict):
+    # dreal.set_log_level(dreal.LogLevel.DEBUG)
+    # print(type(consts))
+
+    # print(consts)
+    solver = dreal.Context()
+    print("vardict start")
+    print(var_dict)
+    for k in var_dict.values():
+        print(k)
+        solver.DeclareVariable(k)
+    print("vardict end")
+
+    print("const loop start")
+    print(dreal.And(*consts))
+    solver.Assert(dreal.And(*consts))
+    solver.SetLogic(dreal.Logic.QF_LRA)
+    m = solver.CheckSat()
+    print(m)
+    solver.Exit()
+
+
 class dreal4Handler:
     # return a check result and the Z3 constraint size
     def __init__(self):
         self.var_dict = dict()
         self.solver = dreal.Context()
+        self.count = 0
 
     def dreal4CheckSat(self, consts, logic="None"):
         #dreal.set_log_level(dreal.LogLevel.DEBUG)
         #print(type(consts))
         #print(consts)
-        dreal4Consts=[self.dreal4Obj(c) for c in consts]
+        print("plz")
+        hp = [self.dreal4Obj(c) for c in consts]
+        # hp.append(self.dreal4Obj(consts[39]))
+        # hp.append(self.dreal4Obj(consts[40]))
+        # hp.append(self.dreal4Obj(consts[38]))
+        dreal4CheckSatPlz(hp, self.var_dict)
+        print("plz end")
+
+
+
+        print("const loop start")
+        for l in range(len(consts)):
+#        for l in range(0,38):
+            print("index : " + str(l))
+            print(consts[l])
+            lpfp = self.dreal4Obj(consts[l])
+           # print("\nsolver Assert start")
+            #oob = self.dreal4Obj(c)
+            #print(oob)
+            # if l == 40 or l == 39 or l == 38:
+            #     print("dreal print")
+            #     print(lpfp)
+            self.solver.Assert(lpfp)
+
+
+
+        print("dreal check Sat")
+        print(self.dreal4Obj(consts[39]))
+        print(self.dreal4Obj(consts[40]))
+        print("after")
+        #self.solver.Assert(self.dreal4Obj(consts[38]))
+        #self.solver.Assert(self.dreal4Obj(consts[39]))
+        #self.solver.Assert(self.dreal4Obj(consts[40]))
+            #mmm = self.solver.CheckSat()
+        #    print("solver Assert end\n")
+        print("loop loop loop end")
+
+        #    print(type(c))
+        #    print("\n")
+        #    print(c)
+        #    print("\n")
+        #    print("=====================")
+        #print("const loop end")
+        #dreal4Consts=[self.dreal4Obj(c) for c in consts]
 
         if logic != "NONE":
             #solver = z3.SolverFor(logic)
             ## Logic.QF_NRA
             self.solver.SetLogic(logic)
         else:
+            print("none logic")
             self.solver.SetLogic(dreal.Logic.QF_LRA)
 
+        #print("yepopipipi")
+        #print(dreal4Consts)
+        #print("yepspeopseoripseor2end")
 
             #testresult = dreal.And(*dreal4Consts)
             #target_dreal_simplify = z3.simplify(dreal.And(*z3Consts))
-        self.solver.Assert(dreal.And(*dreal4Consts))
+        #self.solver.Assert(dreal.And(*dreal4Consts))
         #solver.add(target_z3_simplify)
-
         #    solver.add(z3Consts)
 
         #    solver.set("timeout", 21600000)  #timeout : 6 hours
@@ -118,7 +187,10 @@ class dreal4Handler:
         #with open("thermoLinear.smt2", 'w') as fle:
         #    print(dreal.And(), file=fle)
 
+        print("hell gate is start")
         m = self.solver.CheckSat()
+
+        print("hell gate is open")
         # this case is sat
         if m is not None:
             result = False
@@ -137,8 +209,8 @@ class dreal4Handler:
 
     @dispatchmethod
     def dreal4Obj(self, const:Node):
-        #print(type(const))
-        #print(const)
+        print(type(const))
+        print(const)
         raise NotImplementedError('Something wrong')
 
     @dreal4Obj.register(Constant)
@@ -250,7 +322,7 @@ class dreal4Handler:
         elif len(dreal4Args) < 2:
             return dreal4Args[0]
         else:
-            return dreal.And(*dreal4Args)
+            return dreal.logical_and(*dreal4Args)
 
     @dreal4Obj.register(Or)
     def _(self, const):
@@ -260,24 +332,33 @@ class dreal4Handler:
         elif len(dreal4Args) < 2:
             return dreal4Args[0]
         else:
-            return dreal.Or(*dreal4Args)
+            return dreal.logical_or(*dreal4Args)
 
     @dreal4Obj.register(Implies)
     def _(self, const):
         x = self.dreal4Obj(const.left())
         y = self.dreal4Obj(const.right())
-        return dreal.Implies(x, y)
+        return dreal.logical_imply(x, y)
 
     @dreal4Obj.register(Beq)
     def _(self, const):
         x = self.dreal4Obj(const.left())
         y = self.dreal4Obj(const.right())
-        return x == y
+        return dreal.logical_iff(x, y)
 
     @dreal4Obj.register(Not)
     def _(self, const):
+        # print("what the not")
+        # print(const.child())
+        # print(type(const.child()))
+        # print("end of what the not")
+        # if type(const.child())==And:
+        #     if type(const.child().left()) == Dreal4Forall:
+        #         return dreal.logical_or(const.child().left(), dreal.logical_not(const.child().right()))
+        #     elif type(const.child().right()) == Dreal4Forall:
+        #         return dreal.logical_or(logical_not(const.child().left()), const.child().right())
         x = self.dreal4Obj(const.child())
-        return dreal.Not(x)
+        return dreal.logical_not(x)
 
     @dreal4Obj.register(Integral)
     def _(self, const):
@@ -335,32 +416,38 @@ class dreal4Handler:
 
     @dreal4Obj.register(Dreal4Forall)
     def _(self, const):
-#        print(const.props)
-#        print(type(const.props))
-#        print(const.k)
-#        print(type(const.k))
-        ccc = const.curFlow.exps
-#        print(ccc[0])
-#        print(type(ccc[0]))
-
-#        print(ccc[0].contVar)
-#        print(type(ccc[0].contVar))
-#        print(ccc[0].flow)
-#        print(type(ccc[0].flow))
+        self.count += 1
+        print(self.count)
         for ct in const.curFlow.exps:
-            # if variable already exists ...
-            if ct.contVar in self.var_dict.keys():
-                pp = self.dreal4Obj(ct.flow)
-                #print("not what")
-                #print (pp)
-                #print (type(pp))
-                return pp
+            p = self.dreal4Obj(const.props)
+            var = dreal.Variable("drealTime_"+str(const.k), dreal.Variable.Real)
+            print("vars id at forall")
+            print(var)
+            print(var.get_id())
+            subProp = p
+            for freeVar in p.GetFreeVariables():
+                if str(freeVar) == "time":
+                    subProp = p.Substitute(freeVar, var)
+                    break
+            for fv in subProp.GetFreeVariables():
+                print(fv)
+                print(fv.get_id())
+            print("Dreal4Forall")
+            print(subProp)
+            if const.k == 0:
+                tau_f = self.var_dict["tau_" + str(const.k)]
+                #dTime = self.var_dict["drealTime_" + str(const.k)]
+                #tau_inv = dreal.logical_and(0 <= dTime, dTime < tau_f)
+                #return dreal.Formula.TRUE()
+                return dreal.forall([var], dreal.logical_imply(dreal.logical_and(var >= 0, var < tau_f), subProp))
             else:
-                print(self.var_dict)
+                tau_i = self.var_dict["tau_" + str(const.k - 1)]
+                tau_f = self.var_dict["tau_" + str(const.k)]
+                #dTime = self.var_dict["drealTime_" + str(const.k)]
+                #tau_inv = dreal.logical_and(tau_i <= dTime, dTime < tau_f)
+                return dreal.forall([var], dreal.logical_imply(dreal.logical_and(var >= tau_i, var < tau_f), subProp))
+                # dreal.forall([var], logical_imply(logical_and(var >= tau_i, var < tau_f), fkfk)
 
-                print(ct.contVar)
-                print("what?")
-                return self.dreal4Obj(ct.flow)
         # TODO: find whether ccc's contVar is in the declaration part
         # if not included, declared it again
         # if included, just add.

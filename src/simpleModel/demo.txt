@@ -1,6 +1,5 @@
 bool heater;
 (-20, 100] x;
-(-20, 100] y;
 {
     mode:
         heater = false;
@@ -38,4 +37,4 @@ reachability = x > 23;
 
 goal:
 (<> [0.0, 40.0] (reachability)) ;
-([] [0.0, inf) (x < 26)) ;
+([] [0.0, 20.0) (x < 26)) ;

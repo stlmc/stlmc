@@ -316,10 +316,6 @@ class BinaryArithmetic(nonLeaf, _BinaryOp):
         lType = left.getType()
         rType = right.getType()
         if not ((lType == Type.Real or lType == Type.Int) and (rType == Type.Real or rType == Type.Int)):
-            print("Binary Arithmetic type error")
-            print(str(left) + " " + str(op) + " " + str(right))
-            print("Type of left : " + str(type(left)))
-            print("Type of right : " + str(type(right)))
             raise TypeError()
         super().__init__(op, left.getType(), [left, right])
 

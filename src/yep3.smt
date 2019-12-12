@@ -1,0 +1,12 @@
+(set-logic QF_NRA)
+(declare-fun t1 () Real)
+(declare-fun t2 () Real)
+;(assert (and (= t1 0) (> t2 2) (< t2 3)))
+(assert
+(and (= t1 0) (< t1 t2) (> t2 -2) (< t2 3)
+ (forall ((x Real))
+         (=> (and (< t1 x) (< x t2))
+             (> x 0)))))
+(check-sat)
+(get-model)
+(exit)

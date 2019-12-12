@@ -138,7 +138,7 @@ class ContVar(Variable):
         self.rightend = interval[3]
 
     def __repr__(self):
-        return super(ContVar, self).getVarString() + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(
+        return super(ContVar, self).id + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(
             self.right) + (']' if self.rightend else ')')
 
     def getConstraint(self):
@@ -486,6 +486,13 @@ class SolEq:
         return str(self.flow)
 
     def getFlow(self, varDict):
+        if type(self.flow) in [RealVal, IntVal, BoolVal]:
+            return self.flow
+        if type(self.flow) in [Real, Int, Bool] :
+            if str(self.flow) in varDict.keys():
+                return varDict[str(self.flow)]
+            else:
+                return self.flow
         return self.flow.getExpression(varDict)
 
     def getExpression(self, varDict):
@@ -746,12 +753,13 @@ class StlMC:
 
             # check the satisfiability
             if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
+                (result, cSize, self.model) = z3checkSat(partitionConsts + [formulaConst] + modelConsts, logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'dreal4':
                 d4h = dreal4Handler()
-                (result, cSize, self.model) = d4h.dreal4CheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+                #partitionConsts + [formulaConst] + modelConsts
+                (result, cSize, self.model) = d4h.dreal4CheckSat(partitionConsts + modelConsts, logic)
             stime2 = time.process_time()
 
             # calculate size

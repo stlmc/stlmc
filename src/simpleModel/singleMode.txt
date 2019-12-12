@@ -5,9 +5,9 @@ Bool a;
     mode:
         a = false;
     inv:
-        x > 0;
+        #x > 0;
     flow:
-        d/dt[x] = tan(x) ;
+        x(t) = t;
     jump:
 }
 
@@ -23,5 +23,6 @@ propositions:
 xl2 = x < 2 ;
 xg3 = x > 3;
 goal:
-(<> [0.0, 40.0] (xl2 and ([] [3,10] (~xl1))));
+    #(<> [0.0, 40.0] (xl2 and ([] [3,10] (~xl1))));
+    (<> [0.0, 20.0] (xl2));
 
