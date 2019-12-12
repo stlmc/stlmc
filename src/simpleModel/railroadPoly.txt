@@ -1,91 +1,82 @@
-bool a;
-bool b;
+real vStart;
+real vacc;
 [-20, 100] tx;
 [0, 90] bx;
 [-50, 50] vx;
-[-50, 50] constvx;
 {
     mode:
-        a = false;
-        b = false ;
+        vacc = 0;
     inv:
     flow:
         d/dt[tx] = -5 ;
-        d/dt[bx] = constvx ;
-        d/dt[vx] = 0 ;
-        d/dt[constvx] = 0 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
     jump:
         (and (40 <= tx) (tx < 50)) =>
-          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (20 <= tx) (tx < 30)) =>
-          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
         (and (-5 <= tx) (tx < 0)) =>
-          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (-10 <= tx) (tx < -5)) =>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
 }
 {
     mode:
-        a = false;
-        b = true;
+        vacc = 5;
     inv:
     flow:
         d/dt[tx] = -5 ;
-        d/dt[bx] = constvx ;
-        d/dt[vx] = 5 ;
-        d/dt[constvx] = 0 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
     jump:
         (and (40 <= tx) (tx < 50)) =>
-          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (20 <= tx) (tx < 30)) =>
-          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
         (and (-5 <= tx) (tx < 0)) =>
-          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (-10 <= tx) (tx < -5)) =>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
 }
 {
     mode:
-        a = true;
-        b = false;
+        vacc = 10;
     inv:
     flow:
         d/dt[tx] = -5 ;
-        d/dt[bx] = constvx ;
-        d/dt[vx] = 10 ;
-        d/dt[constvx] = 0 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
     jump:
         (and (40 <= tx) (tx < 50)) =>
-          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (20 <= tx) (tx < 30)) =>
-          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
         (and (-5 <= tx) (tx < 0)) =>
-          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (-10 <= tx) (tx < -5)) =>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
 }
 {
     mode:
-        a = true;
-        b = true;
+        vacc = -5;
     inv:
     flow:
         d/dt[tx] = -5 ;
-        d/dt[bx] = constvx ;
-        d/dt[vx] = -5 ;
-        d/dt[constvx] = 0 ;
+        d/dt[bx] = vStrat ;
+        d/dt[vx] = vacc ;
     jump:
         (and (40 <= tx) (tx < 50)) =>
-          (and (not a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (20 <= tx) (tx < 30)) =>
-          (and (a') (not b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
         (and (-5 <= tx) (tx < 0)) =>
-          (and (a') (b') (bx' = bx) (tx' = tx) (vx' = vx) (constvx'= vx));
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
         (and (-10 <= tx) (tx < -5)) =>
-          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vx' = vx) (constvx'= vx));
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
 }
 init:
-(and not(a) not(b) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0) (constvx = vx)) ;
+(and (vacc = 0) (vStart = vx) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
 
 propositions:
 reachability = tx < 0 ;

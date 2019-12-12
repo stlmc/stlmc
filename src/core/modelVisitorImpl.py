@@ -51,7 +51,7 @@ class modelVisitorImpl(modelVisitor):
         for i in range(len(ctx.var_val_decl())):
             element = self.visitVar_val_decl(ctx.var_val_decl()[i])
             (elemid, elemval) = element.getElement() 
-            varvalDict[elemid] = elemval
+            varvalDict[str(elemid)] = elemval
 
 
         for i in range(len(ctx.mode_module())):

@@ -64,6 +64,7 @@ COMMA  : ',' ;
 
 fragment DIGIT      : [0-9] ;
 
+NINFTY : MINUS INFTY ;  
 VALUE : MINUS? DIGIT+ ('.' DIGIT+)? ([eE][-+]?DIGIT+)? ;
 
 fragment LOWERCASE : [a-z] ;
@@ -130,7 +131,7 @@ jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
 
 var_type    : varType=(BOOL | INT | REAL) ;
 var_range   : LBRACK VALUE RBRACK #exactValue
-            | leftParen=(LBRACK | LPAREN) leftVal=VALUE COMMA rightVal=VALUE rightParen=(RPAREN | RBRACK)  # variableRange
+            | leftParen=(LBRACK | LPAREN) leftVal=(NINFTY | VALUE) COMMA rightVal=(VALUE | INFTY) rightParen=(RPAREN | RBRACK)  # variableRange
             ;
 
 diff_eq : DIFF LBRACK VARIABLE RBRACK EQUAL expression SEMICOLON ;

@@ -112,8 +112,9 @@ class InitVal(Variable):
     def substitution(self, subDict):
         return self.getExpression().substitution(subDict)
 
-class VarVal:
+class VarVal(Variable):
     def __init__(self, varType, varID, value):
+        super().__init__(varType, varID)
         self.varid = varID
         self.value = None
         if varType.lower == 'bool':
@@ -144,14 +145,16 @@ class ContVar(Variable):
     def getConstraint(self):
         variable = {'bool': Bool, 'int': Int, 'real': Real}[self.type](self.__varId)
         consts = list()
-        if self.leftend:
-            consts.append(variable >= RealVal(float(self.left)))
-        else:
-            consts.append(variable > RealVal(float(self.left)))
-        if self.rightend:
-            consts.append(variable <= RealVal(float(self.right)))
-        else:
-            consts.append(variable < RealVal(float(self.right)))
+        if self.left > -float('inf'):
+            if self.leftend:
+                consts.append(variable >= RealVal(float(self.left)))
+            else:
+                consts.append(variable > RealVal(float(self.left)))
+        if self.right < float('inf'):
+            if self.rightend:
+                consts.append(variable <= RealVal(float(self.right)))
+            else:
+                consts.append(variable < RealVal(float(self.right)))
         return And(*consts)
 
 
@@ -709,6 +712,8 @@ class StlMC:
     def makeVariablesDict(self):
         op = {'bool': Bool, 'int': Int, 'real': Real}
         result = dict()
+        for i in self.varVal.keys():
+            result[str(i)] = self.varVal[i]
         for i in range(len(self.modeVar)):
             result[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id)
         for i in range(len(self.contVar)):
