@@ -1,5 +1,4 @@
 import z3
-import dreal
 import os
 import logging
 import logging.handlers
@@ -12,7 +11,7 @@ from scipy.integrate import odeint
 class Api:
     def __init__(self, stlLogger=logging.getLogger("DefaultStlMC")):
         self.stlLogger = stlLogger
-    
+
     @property
     def stackID(self):
         return self._stackID
@@ -74,15 +73,15 @@ class Api:
         result = []
         for i in range(len(self.contVar)):
             result.append(str(self.contVar[i].id))
-#         for i in range(len(self.modeVar)):
-#            result.append(str(self.modeVar[i].id))
+        #         for i in range(len(self.modeVar)):
+        #            result.append(str(self.modeVar[i].id))
         return result
 
     # return mode variables id
     def getModesIdDict(self):
         result = {}
         for i in range(len(self.modeVar)):
-           result[str(self.modeVar[i].id)] = (list(), str(self.modeVar[i].type))
+            result[str(self.modeVar[i].id)] = (list(), str(self.modeVar[i].type))
         return result
 
     # return mode declaraion to string
@@ -92,16 +91,16 @@ class Api:
         if self.model is not None:
             result = {}
             modeValues = self.getModeValues()
-        
+
             for i in range(len(self.modeVar)):
                 key = self.modeVar[i].id
                 subResult = []
-                for index in range(len(modeValues[key])-1):
+                for index in range(len(modeValues[key]) - 1):
                     subResult.append(modeValues[key][index][0])
                 result[key] = (subResult, self.modeVar[i].type)
-            
+
             idList = self.getModeIdList()
-                
+
             total = list()
             for key in result.keys():
                 dictElement = dict()
@@ -111,7 +110,6 @@ class Api:
                 total.append(dictElement)
         return total, idList
 
-
     # return (initial, final) pairs for each continuous variable until k bound
     def getContValues(self):
         result = {}
@@ -119,16 +117,13 @@ class Api:
             for i in range(len(self.contVar)):
                 subResult = []
                 if self._solver == 'z3':
-                    op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                    op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
                 elif self._solver == 'yices':
-                    op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
-                elif self._solver == 'dreal4':
-                    op = {'bool' : dreal.Variable.Bool, 'int' : dreal.Variable.Int, 'real' : dreal.Variable.Real}
-
+                    op = {'bool': Types.bool_type(), 'int': Types.int_type(), 'real': Types.real_type()}
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
-                for j in range(self.bound+1):
+                for j in range(self.bound + 1):
                     if self._solver == 'z3':
                         initial_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_0")
                         final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(j) + "_t")
@@ -142,32 +137,17 @@ class Api:
                             initial_value = float(var_val[initial_id])
                         if final_id in var_val.keys():
                             final_value = float(var_val[final_id])
-                    elif self._solver == 'dreal4':
-                        print("getcont")
-                        print(self.model)
-                        #var_val = self.getvarval()
-                        #initial_id = str(self.contVar[i].id) + "_" + str(j) + "_0"
-                        #final_id = (str(self.contVar[i].id) + "_" + str(j) + "_t")
-                        #if initial_id in var_val.keys():
-                        #    initial_value = float(var_val[initial_id])
-                        #if final_id in var_val.keys():
-                        #    final_value = float(var_val[final_id])
-                    else: 
+                    else:
                         raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                     subResult.append((initial_value, final_value))
 
-
                 if self._solver == 'z3':
-                    final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0")
+                    final_var = op[self.contVar[i].type](str(self.contVar[i].id) + "_" + str(self.bound + 1) + "_0")
                     if self.model[final_var] is not None:
                         final_value = float(self.model[final_var].as_decimal(6).replace("?", ""))
                 elif self._solver == 'yices':
-                    final_id = str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0"
-                    if final_id in self.getvarval().keys():
-                        final_value = float(self.getvarval()[final_id])
-                elif self._solver == 'dreal4':
-                    final_id = str(self.contVar[i].id) + "_" + str(self.bound+1) + "_0"
+                    final_id = str(self.contVar[i].id) + "_" + str(self.bound + 1) + "_0"
                     if final_id in self.getvarval().keys():
                         final_value = float(self.getvarval()[final_id])
                 else:
@@ -178,7 +158,6 @@ class Api:
 
         return result
 
-
     # return (initial, final) pairs for each mode variable until k bound
     def getModeValues(self):
         result = {}
@@ -186,15 +165,13 @@ class Api:
             for i in range(len(self.modeVar)):
                 subResult = []
                 if self._solver == 'z3':
-                    op = {'bool' : z3.Bool, 'int' : z3.Int, 'real' : z3.Real}
+                    op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
                 elif self._solver == 'yices':
-                    op = {'bool' : Types.bool_type(), 'int' : Types.int_type(), 'real' : Types.real_type()}
-                elif self._solver == 'dreal4':
-                    op = {'bool' : dreal.Variable.Bool, 'int' : dreal.Variable.Int, 'real' : dreal.Variable.Real}
+                    op = {'bool': Types.bool_type(), 'int': Types.int_type(), 'real': Types.real_type()}
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
-              
-                for j in range(self.bound+2):
+
+                for j in range(self.bound + 2):
                     if self._solver == 'z3':
                         var = op[self.modeVar[i].type](str(self.modeVar[i].id) + "_" + str(j))
                         if self.modeVar[i].type == 'bool':
@@ -209,19 +186,16 @@ class Api:
                         if self.modeVar[i].type == 'bool':
                             var_value = str(var_val[var])
                         else:
-                            var_value = float(var_val[var]) 
-                    elif self._solver == 'dreal4':
-                        raise ValueError("Can't support the given solver, please use z3 or yices solvers")
+                            var_value = float(var_val[var])
                     subResult.append((var_value, var_value))
                 result[str(self.modeVar[i].id)] = subResult
         return result
-
 
     # return list of variable point times
     def getTauValues(self):
         result = list()
         if self.model is not None:
-            for i in range(self.bound+1):
+            for i in range(self.bound + 1):
                 time_value = None
                 if self._solver == 'z3':
                     time_var = z3.Real("time" + str(i))
@@ -235,20 +209,12 @@ class Api:
                     time_id = "time" + str(i)
                     if time_id in var_val.keys():
                         time_value = var_val[time_id]
-                elif self._solver == 'dreal4':
-                    time_var = dreal.Variable("time" + str(i), dreal.Variable.Real)
-                    if self.model[time_var] is not None:
-                        # dreal4's variable returns box type and lb, ub are always same.
-                        # get lb as represented value.
-                        time_value = self.model[time_var].lb()
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
                 if time_value is not None:
                     result.append(time_value)
         return result
-
-
 
     # return list of time points
     def getNumpyGlobalTimeValues(self):
@@ -277,12 +243,11 @@ class Api:
             t.append(np.linspace(0, result[t_el]))
         return t
 
-
     # TODO : change function name to getModeIdList
     def getModeIdList(self):
         result = []
         if self.model is not None:
-            for i in range(self.bound+2):
+            for i in range(self.bound + 2):
                 modeId_value = None
                 if self._solver == 'z3':
                     modeId_var = z3.Real("currentMode_" + str(i))
@@ -327,13 +292,12 @@ class Api:
 
         return c_initial, m_initial, initial_val
 
-
     def getSol(self):
         ode_l = self.getModeIdList()
         initial_val, _, _ = self.getSolEqInitialValue()
         solutionBound = dict()
 
-        #return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
+        # return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
         '''
         for i in c_val.keys():
             solutionList = list()
@@ -359,80 +323,76 @@ class Api:
                         solutionList.append(subResult)
                         break
             solutionBound[i] = solutionList
-        #print("After replacement")
-        #print(solutionBound)
+        # print("After replacement")
+        # print(solutionBound)
         # solutionBound : Dict of variables and value of SolEq type object list
         # "x1": [sol_eq1, sol_eq2, ...]
         return solutionBound
 
-
-
-
     def getProposition(self):
-       result = []
-       if self.model is not None:
-           midList = []
-           formulaTerms = []
-           for termElem in self.stl.split():
-               formulaTerms.append(termElem.replace("(", "").replace(")", ""))
-           for modevar in self.modeVar:
-               if modevar.id in formulaTerms:
-                   midList.append(modevar)
+        result = []
+        if self.model is not None:
+            midList = []
+            formulaTerms = []
+            for termElem in self.stl.split():
+                formulaTerms.append(termElem.replace("(", "").replace(")", ""))
+            for modevar in self.modeVar:
+                if modevar.id in formulaTerms:
+                    midList.append(modevar)
 
-           if len(midList) > 0:
-               for mode in midList:
-                   subResult = []
-                   for j in range(self.bound+2):
-                       if self._solver == 'z3':
-                           propVar = z3.Bool(mode.id + "_" + str(j))
-                           if self.model[propVar] is not None:
-                               subResult.append(str(self.model[propVar]))
-                       elif self._solver == 'yices':
-                           var_val = self.getvarval()
-                           propVar = mode.id + "_" + str(j)
-                           if propVar in var_val.keys():
-                               subResult.append(str(var_val[propVar]))
-                       elif self._solver == 'dreal4':
-                           print("hello")
-                       else:
-                           raise ValueError("Can't support the given solver, please use z3 or yices solvers")
-                   resultVal = dict()
-                   resultVal["name"] = str(mode.id)
-                   resultVal["actual"] = str(mode)
-                   resultVal["data"] = subResult
-                   result.append(resultVal)
-           for i in range(len(self.props)):
-               subResult = []
-               propID = str(self.props[i].getId())
-               idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
-               for j in range(self.bound+2):
-                   if idCheck:
-                       if self._solver == 'z3':
-                           propVar = z3.Bool(propID + "_" + str(j))
-                           if self.model[propVar] is not None:
-                               subResult.append(str(self.model[propVar]))
+            if len(midList) > 0:
+                for mode in midList:
+                    subResult = []
+                    for j in range(self.bound + 2):
+                        if self._solver == 'z3':
+                            propVar = z3.Bool(mode.id + "_" + str(j))
+                            if self.model[propVar] is not None:
+                                subResult.append(str(self.model[propVar]))
+                        elif self._solver == 'yices':
+                            var_val = self.getvarval()
+                            propVar = mode.id + "_" + str(j)
+                            if propVar in var_val.keys():
+                                subResult.append(str(var_val[propVar]))
+                        elif self._solver == 'dreal4':
+                            print("hello")
+                        else:
+                            raise ValueError("Can't support the given solver, please use z3 or yices solvers")
+                    resultVal = dict()
+                    resultVal["name"] = str(mode.id)
+                    resultVal["actual"] = str(mode)
+                    resultVal["data"] = subResult
+                    result.append(resultVal)
+            for i in range(len(self.props)):
+                subResult = []
+                propID = str(self.props[i].getId())
+                idCheck = (propID in self.stl) or ("newPropDecl_" in propID)
+                for j in range(self.bound + 2):
+                    if idCheck:
+                        if self._solver == 'z3':
+                            propVar = z3.Bool(propID + "_" + str(j))
+                            if self.model[propVar] is not None:
+                                subResult.append(str(self.model[propVar]))
 
-                       elif self._solver == 'yices':
-                           var_val = self.getvarval()
-                           propVar = propID + "_" + str(j)
-                           if propVar in var_val.keys():
-                               subResult.append(str(var_val[propVar]))
-                       elif self._solver == 'dreal4':
-                           print("hello")
-                       else:
-                           raise ValueError("Can't support the given solver, please use z3 or yices solvers")
+                        elif self._solver == 'yices':
+                            var_val = self.getvarval()
+                            propVar = propID + "_" + str(j)
+                            if propVar in var_val.keys():
+                                subResult.append(str(var_val[propVar]))
+                        elif self._solver == 'dreal4':
+                            print("hello")
+                        else:
+                            raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
-               if idCheck and (len(subResult) > 0):
-                   # result is for { "prop": [values...] }
-                   # value is in form of { "Name": "disl10", "Actual": "x2-x1 < 10", "Data": ["True", "False"] }
-                   # value
-                   resultVal = dict()
-                   resultVal["name"] = str(self.props[i].getId())
-                   resultVal["actual"] = str(self.props[i].getExpStr())
-                   resultVal["data"] = subResult
-                   result.append(resultVal)
-       return result
-
+                if idCheck and (len(subResult) > 0):
+                    # result is for { "prop": [values...] }
+                    # value is in form of { "Name": "disl10", "Actual": "x2-x1 < 10", "Data": ["True", "False"] }
+                    # value
+                    resultVal = dict()
+                    resultVal["name"] = str(self.props[i].getId())
+                    resultVal["actual"] = str(self.props[i].getExpStr())
+                    resultVal["data"] = subResult
+                    result.append(resultVal)
+        return result
 
     # inner function of sol equation
     # generate list that correspond to indexed interval
@@ -445,8 +405,8 @@ class Api:
 
         sol_l_list = list(sol_l.keys())
 
-#         self.stlLogger.debug("sol_init_list: {}".format(sol_init_list))
-#         self.stlLogger.debug("sol_list: {}".format(sol_l))
+        #         self.stlLogger.debug("sol_init_list: {}".format(sol_init_list))
+        #         self.stlLogger.debug("sol_list: {}".format(sol_l))
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
@@ -457,9 +417,9 @@ class Api:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
 
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
-#             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
-#             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
-#             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
+            #             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
+            #             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
+            #             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
@@ -478,7 +438,7 @@ class Api:
                     self.stlLogger.debug("x is {}".format(local_newT[i]))
                     self.stlLogger.debug("y is {}".format(tmp["y"]))
                 tmp_res.append(tmp)
-                #self.stlLogger.debug(tmp)
+                # self.stlLogger.debug(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
@@ -497,7 +457,6 @@ class Api:
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
         interval_list = []
 
-
         i_val = []
         for var in range(len(var_list[index])):
             key = var_list[index][var]
@@ -510,8 +469,6 @@ class Api:
 
         res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
         global_newT = global_timeValues[index].tolist()
-
-
 
         # split by variables
 
@@ -563,16 +520,18 @@ class Api:
         time_list = []
 
         for elem in solEq_dict:
-            elem["data"], elem["time"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
+            elem["data"], elem["time"] = self._calcSolEq(global_timeValues, local_timeValues, elem["model_id"],
+                                                         elem["interval"])
 
         # TODO: need to add diffEq part..... down here!
 
         for elem in diffEq_dict:
-            elem["data"], elem["time"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"], elem["interval"])
+            elem["data"], elem["time"] = self._calcDiffEq(global_timeValues, local_timeValues, elem["model_id"],
+                                                          elem["interval"])
 
         for i in range(len(model_id)):
             for elem in solEq_dict:
-                if elem["interval"] == i :
+                if elem["interval"] == i:
                     if 'data' in elem.keys():
                         res += elem["data"]
                     if 'time' in elem.keys():
@@ -581,7 +540,7 @@ class Api:
 
                         elem_time_pair = []
                         elem_time_pair.append(elem["time"][0])
-                        elem_time_pair.append(elem["time"][len(elem["time"])-1])
+                        elem_time_pair.append(elem["time"][len(elem["time"]) - 1])
                         time_dict["range"] = elem_time_pair
                         time_dict["data"] = elem["time"]
                         time_list.append(time_dict)
@@ -595,7 +554,7 @@ class Api:
 
                         elem_time_pair = []
                         elem_time_pair.append(elem["time"][0])
-                        elem_time_pair.append(elem["time"][len(elem["time"])-1])
+                        elem_time_pair.append(elem["time"][len(elem["time"]) - 1])
                         time_dict["range"] = elem_time_pair
                         time_dict["data"] = elem["time"]
                         time_list.append(time_dict)
@@ -613,8 +572,6 @@ class Api:
                 var_list_tmp.append(j.var2str())
             var_list.append(var_list_tmp)
         return var_list
-
-
 
     def visualize(self):
         try:
@@ -636,34 +593,26 @@ class Api:
 
             gmid, _ = self.getModeDeclWithModelID()
 
-
             outer2['variable'] = self.getVarsId()
             outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
             outer2['prop'] = self.getProposition()
             outer2['mode'] = gmid
 
             try:
-                if not(os.path.isdir("./DataDir")):
+                if not (os.path.isdir("./DataDir")):
                     os.makedirs(os.path.join("./DataDir"))
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     self.stlLogger.error("Failed to create directory!!!!!")
                     raise ValueError("Failed to create directory!!!!!")
-            fp_dict = dict()
-            fp_dict["vkvk"] = str(self.model)
-            f1 = open(("./DataDir/meymey.txt"), "w")
-            import json
-            json.dump(fp_dict, f1)
-            f1.close()
-
 
             if self._result == "False":
                 import json
-                f = open(("./DataDir/"+self._stackID+"_"+self._solver+".json"), "w")
+                f = open(("./DataDir/" + self._stackID + "_" + self._solver + ".json"), "w")
                 json.dump(outer2, f)
                 f.close()
-                print("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
-                self.stlLogger.info("New filename: " + "./DataDir/"+self._stackID+"_"+self._solver+".json")
+                print("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".json")
+                self.stlLogger.info("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".json")
 
         except Exception as ex:
             self.stlLogger.error("Error occured, {}".format(ex))

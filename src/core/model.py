@@ -1,9 +1,8 @@
 import core.partition as PART
 import core.separation as SEP
 import time
-from .z3Handler import * 
+from .z3Handler import *
 from .yicesHandler import *
-from .dreal4Handler import *
 from .formula import *
 from .modelConsts import *
 
@@ -103,7 +102,7 @@ class InitVal(Variable):
     def getType(self):
         return Type.Real
 
-    #def getInitValue(self, step):
+    # def getInitValue(self, step):
     #    return Real(str(self.__varId) + "_" + str(step))
 
     def getVars(self):
@@ -112,6 +111,7 @@ class InitVal(Variable):
     def substitution(self, subDict):
         return self.getExpression().substitution(subDict)
 
+
 class VarVal(Variable):
     def __init__(self, varType, varID, value):
         super().__init__(varType, varID)
@@ -119,15 +119,17 @@ class VarVal(Variable):
         self.value = None
         if varType.lower == 'bool':
             if not (value.lower() in ['true', 'false']):
-                raise "boolean type variable can be only true or flase"
+                raise Exception("boolean type variable can be only true or flase")
             self.value = BoolVal(True) if value.lower() == 'true' else BoolVal(False)
         else:
             if value.lower() in ['true', 'fasle']:
-                raise "int or real type variable can't be true or false"
+                raise Exception("int or real type variable can't be true or false")
             self.value = RealVal(float(value)) if varType.lower() == 'real' else \
-                        IntVal(int(value))
+                IntVal(int(value))
+
     def getElement(self):
         return (self.varid, self.value)
+
 
 class ContVar(Variable):
     def __init__(self, interval, varId):
@@ -139,7 +141,7 @@ class ContVar(Variable):
         self.rightend = interval[3]
 
     def __repr__(self):
-        return super(ContVar, self).id + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(
+        return super(ContVar, self).getVarString() + (' [' if self.leftend else ' (') + repr(self.left) + ',' + repr(
             self.right) + (']' if self.rightend else ')')
 
     def getConstraint(self):
@@ -168,7 +170,6 @@ class UnaryFunc:
         return str(self.func) + "(" + str(self.val) + ")"
 
     def getExpression(self, varDict):
-        #print(varDict)
         if str(self.val) in varDict.keys():
             degree = varDict[str(self.val)]
         elif str(self.val).isdigit():
@@ -176,15 +177,15 @@ class UnaryFunc:
         else:
             degree = Real(str(self.val))
         if self.func == 'sin':
-            return Sin(degree)
+            return degree - degree * degree * degree / RealVal(6)
         elif self.func == 'cos':
-            return Cos(degree)
+            return degree - degree * degree / RealVal(2)
         elif self.func == 'tan':
-            return Tan(degree)
+            return degree + degree * degree * degree
         elif self.func == '-':
-            return Neg(degree)
+            return (RealVal(0) - degree)
         else:
-            raise "Not yet in Unary function"
+            raise Exception("Not yet in Unary function")
 
     @property
     def value(self):
@@ -194,7 +195,6 @@ class UnaryFunc:
             degree = RealVal(str(self.val)).value
 
         if self.func == 'sin':
-            print("value")
             return degree - degree * degree * degree / RealVal(6).value
         elif self.func == 'cos':
             return degree - degree * degree / RealVal(2).value
@@ -203,7 +203,7 @@ class UnaryFunc:
         elif self.func == '-':
             return (RealVal(0).value - degree)
         else:
-            raise "Not yet in Unary function"
+            raise Exception("Not yet in Unary function")
 
 
 class BinaryExp:
@@ -244,7 +244,7 @@ class BinaryExp:
         elif self.op == '**':
             return (left ** right)
         else:
-            raise "Not yet in Binary Expression"
+            raise Exception("Not yet in Binary Expression")
 
     def substitution(self, subDict):
         opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
@@ -283,8 +283,7 @@ class BinaryExp:
                 raise ("unsupported power evaluation:" + str(vright.value))
             return pow(vleft.value, vright.value)
         else:
-            raise "unsupported calcuation"
-
+            raise Exception("unsupported calcuation")
 
     def getType(self):
         return Type.Real
@@ -333,7 +332,7 @@ class CompCond:
         elif self.op == '!=':
             return (left != right)
         else:
-            raise "Not yet in Compare Condition"
+            raise Exception("Not yet in Compare Condition")
 
     @property
     def type(self):
@@ -455,7 +454,7 @@ class DiffEq:
     def getFlow(self, varDict):
         if type(self.flow) in [RealVal, IntVal, BoolVal]:
             return self.flow
-        if type(self.flow) in [Real, Int, Bool] :
+        if type(self.flow) in [Real, Int, Bool]:
             if str(self.flow) in varDict.keys():
                 return varDict[str(self.flow)]
             else:
@@ -491,7 +490,7 @@ class SolEq:
     def getFlow(self, varDict):
         if type(self.flow) in [RealVal, IntVal, BoolVal]:
             return self.flow
-        if type(self.flow) in [Real, Int, Bool] :
+        if type(self.flow) in [Real, Int, Bool]:
             if str(self.flow) in varDict.keys():
                 return varDict[str(self.flow)]
             else:
@@ -562,7 +561,7 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
-        #print(self.__var_dict)
+        # print(self.__var_dict)
         for elem in self.exps:
             if isinstance(elem.flow, RealVal):
                 ode_list.append(elem.flow.value)
@@ -573,8 +572,8 @@ class flowDecl:
                 # elem.flow is BinaryExp type
                 elem.flow.var_dic = self.__var_dict
                 ode_list.append(elem.flow.value)
-        #print("return")
-        #print(ode_list)
+        # print("return")
+        # print(ode_list)
         return ode_list
 
     @property
@@ -629,11 +628,11 @@ class jumpMod:
             left = NextVar(varDict[self.nextVarId])
         if isinstance(self.exp, Constant):
             right = self.exp
-        elif type(self.exp) in [Real, Int, Bool]: 
+        elif type(self.exp) in [Real, Int, Bool]:
             right = self.exp
         elif self.exp in varDict.keys():
             right = varDict[self.exp]
-        else: 
+        else:
             right = self.exp.getExpression(varDict)
         if self.op == '<':
             return left < right
@@ -695,7 +694,8 @@ class StlMC:
         self.prop = prop  # list type
         self.goal = goal
         self.subvars = self.makeVariablesDict()
-        self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop, self.subvars)
+        self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop,
+                                  self.subvars)
 
     @property
     def cont_id_dict(self):
@@ -752,19 +752,15 @@ class StlMC:
             formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
 
             # constraints from the model
-            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst], solver)
+            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
             etime1 = time.process_time()
 
             # check the satisfiability
             if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(partitionConsts + [formulaConst] + modelConsts, logic)
+                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
-            elif solver == 'dreal4':
-                d4h = dreal4Handler()
-                #partitionConsts + [formulaConst] + modelConsts
-                (result, cSize, self.model) = d4h.dreal4CheckSat(partitionConsts + modelConsts, logic)
             stime2 = time.process_time()
 
             # calculate size
@@ -775,29 +771,24 @@ class StlMC:
             solvingTime = round((stime2 - etime1), 4)
             totalTime = round((stime2 - stime1), 4)
 
-
-        printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize, str(generationTime), str(solvingTime),
+        printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize,
+                    str(generationTime), str(solvingTime),
                     str(totalTime))
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
 
+    def reach(self, bound, timeBound, goal):
+        self.bound = bound
+        self.strStlFormula = str(goal)
+        consts = []
+        combine = self.consts.combineDict(self.consts.makeSubMode(0), self.consts.makeSubVars(0, '0'))
+        consts.append(self.consts.makeVarRangeConsts(bound))
+        consts.append(self.init.getExpression(self.subvars).substitution(combine))
+        consts.append(self.consts.flowConstraints(bound))
+        consts.append(self.consts.jumpConstraints(bound))
+        consts.append(self.consts.goalConstraints(bound, goal))
 
+        consts = consts + self.consts.timeBoundConsts(consts, timeBound)
 
-
-
-    # def reach(self, bound, timeBound, goal):
-    #     self.bound = bound
-    #     self.strStlFormula = str(goal)
-    #     consts = []
-    #     combine = self.consts.combineDict(self.consts.makeSubMode(0), self.consts.makeSubVars(0, '0'))
-    #     consts.append(self.consts.makeVarRangeConsts(bound))
-    #     consts.append(self.init.getExpression(self.subvars).substitution(combine))
-    #     consts.append(self.consts.flowConstraints(bound))
-    #     consts.append(self.consts.jumpConstraints(bound))
-    #     consts.append(self.consts.goalConstraints(bound, goal))
-    #
-    #
-    #     consts = consts + self.consts.timeBoundConsts(consts, timeBound)
-    #
-    #     (result, cSize, self.model) = checkSat(consts)
-    #     return result
+        (result, cSize, self.model) = checkSat(consts)
+        return result
