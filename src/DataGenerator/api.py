@@ -2,7 +2,6 @@ import z3
 import os
 import logging
 import logging.handlers
-from yices import *
 from core.node import *
 import numpy as np
 from scipy.integrate import odeint
@@ -119,7 +118,8 @@ class Api:
                 if self._solver == 'z3':
                     op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
                 elif self._solver == 'yices':
-                    op = {'bool': Types.bool_type(), 'int': Types.int_type(), 'real': Types.real_type()}
+                    import yices
+                    op = {'bool': yices.Types.bool_type(), 'int': yices.Types.int_type(), 'real': yices.Types.real_type()}
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
@@ -167,7 +167,8 @@ class Api:
                 if self._solver == 'z3':
                     op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
                 elif self._solver == 'yices':
-                    op = {'bool': Types.bool_type(), 'int': Types.int_type(), 'real': Types.real_type()}
+                    import yices
+                    op = {'bool': yices.Types.bool_type(), 'int': yices.Types.int_type(), 'real': yices.Types.real_type()}
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
@@ -293,23 +294,6 @@ class Api:
         ode_l = self.getModeIdList()
         initial_val, _, _ = self.getSolEqInitialValue()
         solutionBound = dict()
-
-        # return string type {'continous id' : [sol_1, sol_2,sol_3,..,sol_bound], ...}
-        '''
-        for i in c_val.keys():
-            solutionList = list()
-            for j in range(len(ode_l)):
-                modexps = self.mode_module[ode_l[j]].getFlow().exp()
-                for k in range(len(modexps)):
-                    if modexps[k].getVarId() == i:
-                        subResult = modexps[k].getSolStr()
-                        for l in initial_val.keys():
-                            if l in subResult:
-                                subResult = subResult.replace(l, str(initial_val[l][j]))
-                        solutionList.append(subResult)
-                        break
-            solutionBound[i] = solutionList
-        '''
         for i in initial_val.keys():
             solutionList = list()
             for j in range(len(ode_l)):
@@ -320,8 +304,6 @@ class Api:
                         solutionList.append(subResult)
                         break
             solutionBound[i] = solutionList
-        # print("After replacement")
-        # print(solutionBound)
         # solutionBound : Dict of variables and value of SolEq type object list
         # "x1": [sol_eq1, sol_eq2, ...]
         return solutionBound
@@ -599,8 +581,6 @@ class Api:
                     self.stlLogger.error("Failed to create directory!!!!!")
                     raise ValueError("Failed to create directory!!!!!")
 
-            print("print result")
-            print(self._result)
             if self._result == "False":
                 import json
                 f = open(("./DataDir/" + self._stackID + "_" + self._solver + ".json"), "w")

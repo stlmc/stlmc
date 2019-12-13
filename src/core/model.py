@@ -1,19 +1,14 @@
-#import os
-#import sys
-#import importlib
+import importlib
 import core.partition as PART
 import core.separation as SEP
 import time
 from .z3Handler import *
-from .yicesHandler import *
 from .formula import *
 from .modelConsts import *
 
-'''
-def import_from(module, name):
-    module = __import__(module, fromlist=[name])
-    return getattr(module, name)
-'''
+
+def import_from(module):
+    return importlib.import_module(module, 'core')
 
 def isNumber(s):
     try:
@@ -555,7 +550,6 @@ class flowDecl:
     def exp2exp(self):
 
         ode_list = []
-        # print(self.__var_dict)
         for elem in self.exps:
             if isinstance(elem.flow, RealVal):
                 ode_list.append(elem.flow.value)
@@ -566,8 +560,6 @@ class flowDecl:
                 # elem.flow is BinaryExp type
                 elem.flow.var_dic = self.__var_dict
                 ode_list.append(elem.flow.value)
-        # print("return")
-        # print(ode_list)
         return ode_list
 
     @property
@@ -729,6 +721,7 @@ class StlMC:
         (stim1, etime1, stime2) = (0, 0, 0)
         isUnknown = False
         negFormula = NotFormula(stlFormula)  # negate the formula
+        isError = False
 
         for i in range(0 if iterative else bound, bound + 1):
             stime1 = time.process_time()
@@ -749,16 +742,18 @@ class StlMC:
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
             etime1 = time.process_time()
-
             # check the satisfiability
             if solver == 'z3':
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
-                #path = os.path.dirname(__file__)
-                #sys.path.insert(0, path)
-                #mod = import_from('yicesHandler','yicescheckSat')
-                #(result, cSize, self.model) = mod(modelConsts + partitionConsts + [formulaConst], logic)
-                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+                try:
+                    mod = import_from('.yicesHandler')
+                    (result, cSize, self.model) = mod.yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+                except ModuleNotFoundError:
+                    print("Sorry, you should install yices2 first by using following commands.\n\tpip install yices")
+                    isError = True
+                    break
+
             stime2 = time.process_time()
 
             # calculate size
@@ -768,6 +763,9 @@ class StlMC:
             generationTime = round((etime1 - stime1), 4)
             solvingTime = round((stime2 - etime1), 4)
             totalTime = round((stime2 - stime1), 4)
+
+        if isError:
+            return (True, True, True, True, True, True)
 
         printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize,
                     str(generationTime), str(solvingTime),

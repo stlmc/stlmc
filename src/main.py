@@ -23,7 +23,9 @@ def str2bool(v):
 def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSave, solver, logic):
     modelName = os.path.splitext(os.path.basename(title))[0] 
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k, timeBound, solver, logic, False)
-   
+    if isinstance(solvingTime, bool):
+        return False
+
     if json:
         dataGenerator.data = stlModel.data
         dataGenerator.stackID = modelName
@@ -37,6 +39,7 @@ def module(title, stlModel, formula, k ,timeBound, dataGenerator, json, resultSa
         with open(rel_path, 'a+') as fle:
              print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]), file=fle)
 
+    return True
 
 def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave, solver, logic, stlLogger):
 
@@ -49,7 +52,7 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
     dataGenerator = Api(stlLogger)
     title = fileName
     filename = ""
-
+    isNormal = True
     if (isTri and solver == "dreal4") or (not isTri and solver != "dreal4") or solver == "dreal4":
         for i in range(len(stlMC.getStlFormsList())):
             for k in range(lower, upper+1, step):
@@ -64,7 +67,11 @@ def modelCheck(fileName, lower, upper, step, timeBound, json, multy, resultSave,
                     p = multiprocessing.Process(target = module, args=(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic))
                     p.start()
                 else:
-                    module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
+                    isNormal=module(title, stlMC, formula, k, timeBound, dataGenerator, json, resultSave, solver, logic)
+                    if not isNormal:
+                        break
+            if not isNormal:
+                break
             if resultSave:
                 print("New filename: ./reports/" + str(filename))
     else:
@@ -88,7 +95,7 @@ def main(args, stlLogger):
         lower = 1 if args.lower is None else args.lower
         upper = lower if args.upper is None else args.upper
         visualize = False if args.visualize is None else args.visualize
-        solver = 'z3' if args.solver is None else args.solver
+        solver = 'z3' if args.solver is None else (args.solver.lower() if args.solver.lower() in ['yices', z3] else 'z3')
         logic = 'None'
         if args.logic == 'linear':
             logic = 'LRA' if solver == 'z3' else 'qf_lra'

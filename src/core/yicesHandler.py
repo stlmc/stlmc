@@ -1,11 +1,10 @@
 from yices import *
 import yices_api as yapi
 import itertools
+import importlib
 from functools import singledispatch
-#import sys, os
-#sys.path.append(os.path.dirname(__file__))
-from .error import *
 from .node import *
+from .error import *
 
 def getvarval(self):
     all_terms = self.model.collect_defined_terms()
@@ -35,7 +34,7 @@ def yicescheckSat(consts, logic):
         result = False
     else:
         m = None
-        result = True if Status.UNSAT else "Unknown" 
+        result = True if Status.UNSAT else "Unknown"
 
     cfg.dispose()
     ctx.dispose()
@@ -130,11 +129,11 @@ def _(const):
         model = Model.from_context(ctx, 1)
         yval = str(model.get_value(red_val))
     else:
-        raise("something wrong in divisor of power")
+        raise error.Exception("something wrong in divisor of power")
     cfg.dispose()
     ctx.dispose()
     result = '(^ ' + x + ' ' + yval + ')'
-    return result 
+    return result
 
 @yicesObj.register(Mul)
 def _(const):
@@ -165,7 +164,7 @@ def _(const):
         return yicesargs[0]
     else:
         result = '(and ' + ' '.join(yicesargs) + ')'
-        return result 
+        return result
 
 @yicesObj.register(Or)
 def _(const):
@@ -215,16 +214,16 @@ def _(const):
                         pass
                     else:
                         print(str(const.ode[subvariables[j]]))
-                        raise yicesconstODEerror()
+                        raise error.yicesconstODEerror()
         substitutionExp = {}
         for i in const.ode.keys():
             substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
         for i in range(len(const.endList)):
-            keyIndex = str(const.endList[i]).find('_') 
+            keyIndex = str(const.endList[i]).find('_')
             keyValue = str(const.endList[i])[0:keyIndex]
             if keyValue in substitutionExp.keys():
                 result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
-  
+
     elif const.flowType == 'sol':
         subDict['time'] = const.time
         substitutionExp = {}
@@ -236,12 +235,12 @@ def _(const):
             if keyValue in substitutionExp.keys():
                 result.append(const.endList[i] == substitutionExp[keyValue])
     else:
-        raise FlowTypeEerror() 
+        raise error.FlowTypeEerror()
 
 
     yicesresult = [yicesObj(c) for c in result]
     result = '(and ' + ' '.join(yicesresult) + ')'
-    return result  
+    return result
 
 @yicesObj.register(Forall)
 def _(const):
@@ -253,7 +252,7 @@ def _(const):
         endCond = yicesObj(const.condition.substitution(const.endDict))
         startCond = yicesObj(const.condition.substitution(const.startDict))
         result = '(and ' + endCond + ' ' + startCond + ')'
-        return result 
+        return result
 
 @yicesObj.register(Solution)
 def _(const):
@@ -269,9 +268,9 @@ def _(const):
                 if str(const.ode[subvariables[j]]) == str(RealVal(0)):
                     pass
                 else:
-                    raise yicesconstODEerror()
+                    raise error.yicesconstODEerror()
             else:
-                raise yicesconstODEerror()
+                raise error.yicesconstODEerror()
     substitutionExp = {}
     for i in const.ode.keys():
         substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
