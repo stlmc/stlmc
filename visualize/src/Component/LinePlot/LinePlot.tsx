@@ -39,6 +39,8 @@ interface ServerError {
 // State contains many useful
 interface State {
     model: WorkspaceData[];
+    isOptionAlive: Boolean;
+    selectedValue: string;
     propState: PropState;
     modeState: ModeState;
 
@@ -87,6 +89,8 @@ class LinePlot extends React.Component<Props, State> {
 
     state: State = {
         isCounterExm: false,
+        selectedValue: "",
+        isOptionAlive: false,
         graphNum: 0,
         model: [],
 
@@ -219,6 +223,7 @@ class LinePlot extends React.Component<Props, State> {
     async onModelListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
 
         let titleVal = (value2 as { value: string; label: string; })["value"];
+        console.log(titleVal);
         let ws = this.state.model.find((value, index) => value.title == titleVal);
 
         // if id exists.
@@ -279,6 +284,8 @@ class LinePlot extends React.Component<Props, State> {
                 }
 
                 this.setState({
+                    selectedValue: titleVal,
+                    isOptionAlive: true,
                     isCounterExm: true,
                     toggle: isRedBool,
                     graphNum: this.njson.GetGraphSize(),
@@ -321,6 +328,7 @@ class LinePlot extends React.Component<Props, State> {
         let response = await this.instance.get(`/file_list`);
         this.njson.clearAll();
         this.setState({
+            isOptionAlive: false,
             isCounterExm: false,
             model:
                 response.data.file_list.map((v: string) => {
@@ -540,6 +548,8 @@ class LinePlot extends React.Component<Props, State> {
     }
 
     render() {
+        let selected = this.state.selectedValue;
+        let select = this.state.isOptionAlive ? {value: selected, label: selected} : null;
         // TODO: Update precision of graph after update.
         return (
             <div>
@@ -553,11 +563,11 @@ class LinePlot extends React.Component<Props, State> {
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Models</label>
-                        <Select isSearchable={true} options={this.state.model.map(
+                        <Select isSearchable={true} value={select} options={this.state.model.map(
                             (v) => {
                                 return ({value: v.title, label: v.title});
                             }
-                        )} onChange={this.onModelListSelect}/>
+                        )} onChange={this.onModelListSelect} />
                     </div>
                     <div className="col-md-1">
                     </div>

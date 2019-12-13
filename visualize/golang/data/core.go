@@ -312,7 +312,7 @@ type Proposition struct {
 type Mode struct {
 	Name string		`json:"name"`
 	Type string		`json:"type"`
-	Data []string	`json:"data"`
+	Data []float64	`json:"data"`
 }
 
 // IntervalInfo implements interval's range info

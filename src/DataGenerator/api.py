@@ -231,7 +231,6 @@ class Api:
                 t.append(np.linspace(0, sum))
             else:
                 t.append(np.linspace(sum_pre, sum))
-        print(t)
         return t
 
     # return list of interval's time points
@@ -258,8 +257,6 @@ class Api:
                     modeId_var = "currentMode_" + str(i)
                     if modeId_var in var_val.keys():
                         modeId_value = int(var_val[modeId_var])
-                elif self._solver == 'dreal4':
-                    print("hello")
                 else:
                     raise ValueError("Can't support the given solver, please use z3 or yices solvers")
                 if modeId_value is not None:
@@ -353,8 +350,6 @@ class Api:
                             propVar = mode.id + "_" + str(j)
                             if propVar in var_val.keys():
                                 subResult.append(str(var_val[propVar]))
-                        elif self._solver == 'dreal4':
-                            print("hello")
                         else:
                             raise ValueError("Can't support the given solver, please use z3 or yices solvers")
                     resultVal = dict()
@@ -378,8 +373,6 @@ class Api:
                             propVar = propID + "_" + str(j)
                             if propVar in var_val.keys():
                                 subResult.append(str(var_val[propVar]))
-                        elif self._solver == 'dreal4':
-                            print("hello")
                         else:
                             raise ValueError("Can't support the given solver, please use z3 or yices solvers")
 
@@ -606,6 +599,8 @@ class Api:
                     self.stlLogger.error("Failed to create directory!!!!!")
                     raise ValueError("Failed to create directory!!!!!")
 
+            print("print result")
+            print(self._result)
             if self._result == "False":
                 import json
                 f = open(("./DataDir/" + self._stackID + "_" + self._solver + ".json"), "w")
