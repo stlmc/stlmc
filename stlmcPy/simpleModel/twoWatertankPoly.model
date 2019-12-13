@@ -82,7 +82,7 @@ bool b;
         d/dt[constx1] = 0;
         d/dt[constx2] = 0;
         d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * constx1) / (2 * 8) ;
-        d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (constx1 - constx2)) / (2 * 9)
+        d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (constx1 - constx2)) / (2 * 9);
     jump:
         (and (x1 >= 5) (x2 >= 5)) =>
           (and (not a') (b' = false) (x1' = x1) (x2' = x2) (constx1' = x1) (constx2' = x2));

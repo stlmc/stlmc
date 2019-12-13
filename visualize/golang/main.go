@@ -36,7 +36,8 @@ func updateWorkspace(w http.ResponseWriter, r *http.Request){
 	encodingErr := json.NewEncoder(w).Encode(newEvent)
 
 	if encodingErr != nil {
-		log.Fatal(encodingErr)
+		logger.Logger.Error(encodingErr)
+		return
 	}
 
 }
@@ -64,8 +65,11 @@ func test(w http.ResponseWriter, r *http.Request){
 func main() {
 
 	var dir string
+	var webDir string
 	logFlag := flag.Bool("v", false, "a string?")
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
+	// with out specifying web dir, the server finds ./web directory
+	flag.StringVar(&webDir, "webdir", "./web", "the web site directory in absolute path")
 	flag.Parse()
 
 	logger.Logger.IsDebug = *logFlag
@@ -82,7 +86,7 @@ func main() {
 	defer cancel()
 
 
-	ss.Init(cancel)
+	ss.Init(cancel, webDir)
 	go ss.Start()
 	select{
 	case <-ctx.Done():

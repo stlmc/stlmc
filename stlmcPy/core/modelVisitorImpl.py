@@ -1,7 +1,7 @@
 from antlr4 import *
-from core.syntax.modelParser import modelParser
-from core.syntax.modelVisitor import modelVisitor
-from core.model import *
+from stlmcPy.core.syntax.modelParser import modelParser
+from stlmcPy.core.syntax.modelVisitor import modelVisitor
+from stlmcPy.core.model import *
 
 class VisitorException(Exception):
     def __init__(self, expression, message):

@@ -1,4 +1,4 @@
-import core.encoding as ENC
+import stlmcPy.core.encoding as ENC
 from .node import *
 from .differentiation import *
 

@@ -1,5 +1,5 @@
 import enum
-import core.formula as FORM
+import stlmcPy.core.formula as FORM
 
 
 @enum.unique

@@ -1,6 +1,6 @@
 import importlib
-import core.partition as PART
-import core.separation as SEP
+import stlmcPy.core.partition as PART
+import stlmcPy.core.separation as SEP
 import time
 from .z3Handler import *
 from .formula import *

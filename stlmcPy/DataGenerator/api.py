@@ -2,7 +2,7 @@ import z3
 import os
 import logging
 import logging.handlers
-from core.node import *
+from stlmcPy.core.node import *
 import numpy as np
 from scipy.integrate import odeint
 

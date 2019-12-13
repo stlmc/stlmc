@@ -3,7 +3,6 @@ package data
 import (
 	"golang/logger"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -70,7 +69,8 @@ func (ws *workspace) getFileList(dirName string) {
 	files, err := ioutil.ReadDir(dirName)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Logger.Error(err)
+		return
 	}
 
 	for _, file := range files {
@@ -111,7 +111,8 @@ func (ws *workspace) getFileListWithOutId(dirName string) {
 	files, err := ioutil.ReadDir(dirName)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Logger.Error(err)
+		return
 	}
 
 	for _, file := range files {
