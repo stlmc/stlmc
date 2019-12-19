@@ -8,7 +8,7 @@ from .modelConsts import *
 
 
 def import_from(module):
-    return importlib.import_module(module, 'core')
+    return importlib.import_module(module, 'stlmcPy.core')
 
 def isNumber(s):
     try:

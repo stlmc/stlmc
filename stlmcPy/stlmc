@@ -199,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('-step', '-s', type=int,
                         help='model checking at intervals of step in (lower, upper) (default: 1)')
     parser.add_argument('-timebound', '-tb', type=int,
-                        help='set time bound of model checking (default: 60)') 
+                        help='set time bound of model checking (default: 60)')
     parser.add_argument('-multithread', '-multy', type=str2bool,
                         help='run the given model using multithread (default: false)')
 

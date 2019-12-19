@@ -308,11 +308,11 @@ type Proposition struct {
 	Data []string		`json:"data"`
 }
 
-// TODO: Fill this part
+// TODO: error
 type Mode struct {
 	Name string		`json:"name"`
 	Type string		`json:"type"`
-	Data []float64	`json:"data"`
+	Data interface{}`json:"data"`
 }
 
 // IntervalInfo implements interval's range info
