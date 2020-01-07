@@ -138,7 +138,7 @@ def main(args, stlLogger):
                 if e.errno != errno.EEXIST:
                     stlLogger.error("Failed to create directory!!!!!")
                     raise
-            subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
+            subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-web-dir=" + stlmcPyPath + "/visualize/web"])
     except Exception as ex:
         if args.visualize:
             if not all(argi is None for argi in
@@ -154,7 +154,7 @@ def main(args, stlLogger):
                 if e.errno != errno.EEXIST:
                     stlLogger.error("Failed to create directory!!!!!")
                     raise
-            subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
+            subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-web-dir=" + stlmcPyPath + "/visualize/web"])
         else:
             print(ex)
 

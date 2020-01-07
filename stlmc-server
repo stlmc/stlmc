@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import os
+import sys
+import subprocess
+import stlmcPy
+
+if __name__ == '__main__':
+    stlmcPyPath = os.path.dirname(os.path.realpath(stlmcPy.__file__))
+    subprocess.call([stlmcPyPath + "/visualize/main", "-web-dir=" + stlmcPyPath + "/visualize/web"] + sys.argv[1:])
