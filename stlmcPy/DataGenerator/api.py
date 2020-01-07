@@ -72,12 +72,15 @@ class Api:
             self.IDmodeModule[k] = self.mode_module[k]
 
         self.stl = strStlFormula
+        self.visualize_contVar = []
 
     # return continuous variables id
     def getVarsId(self):
         result = []
         for i in range(len(self.contVar)):
-            result.append(str(self.contVar[i].id))
+            item = str(self.contVar[i].id)
+            if not self.isStrInList(item, self.visualize_contVar):
+                result.append(item)
         #         for i in range(len(self.modeVar)):
         #            result.append(str(self.modeVar[i].id))
         return result
@@ -450,6 +453,8 @@ class Api:
             key = var_list[index][var]
             if self.isStrInList(str(key), var_only_contVar[index]):
                 i_val.append(c_val[str(key)][index][0])
+            else:
+                self.insertInList(self.visualize_contVar, str(key))
             for vv in only_mod:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
@@ -623,8 +628,9 @@ class Api:
 
             gmid, _ = self.getModeDeclWithModelID()
 
+            intervals, intervalsInfo = self.calcEq(global_t, local_t)
             outer2['variable'] = self.getVarsId()
-            outer2['interval'], outer2["intervalInfo"] = self.calcEq(global_t, local_t)
+            outer2['interval'], outer2["intervalInfo"] = intervals, intervalsInfo
             outer2['prop'] = self.getProposition()
             outer2['mode'] = gmid
 
