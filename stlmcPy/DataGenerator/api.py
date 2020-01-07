@@ -1,8 +1,10 @@
+import importlib
 import z3
 import os
 import logging
 import logging.handlers
 from stlmcPy.core.node import *
+from stlmcPy.core.model import *
 import numpy as np
 from scipy.integrate import odeint
 
@@ -10,6 +12,7 @@ from scipy.integrate import odeint
 class Api:
     def __init__(self, stlLogger=logging.getLogger("DefaultStlMC")):
         self.stlLogger = stlLogger
+        self.mod = None
 
     @property
     def stackID(self):
@@ -32,14 +35,17 @@ class Api:
 
     @property
     def data(self):
+        # why??
+        self.mod = importlib.import_module('yices', 'yices')
         return self._data
 
     # return {'var_id' : value ,...} dictionary, for yices solver
     def getvarval(self):
         all_terms = self.model.collect_defined_terms()
         var_val = dict()
+        self.mod = importlib.import_module('yices', 'yices')
         for term in all_terms:
-            var_val[str(Terms.get_name(term))] = self.model.get_value(term)
+            var_val[str(self.mod.Terms.get_name(term))] = self.model.get_value(term)
         return var_val
 
     @property
@@ -206,7 +212,7 @@ class Api:
                     all_terms = self.model.collect_defined_terms()
                     var_val = dict()
                     for term in all_terms:
-                        var_val[str(Terms.get_name(term))] = self.model.get_value(term)
+                        var_val[str(self.mod.Terms.get_name(term))] = self.model.get_value(term)
                     time_id = "time" + str(i)
                     if time_id in var_val.keys():
                         time_value = var_val[time_id]
@@ -421,6 +427,13 @@ class Api:
         self.stlLogger.debug("SOL EQ: end of calculation")
         return interval_list, global_newT
 
+    # check if a given elem
+    # of type str is in the list or not
+    def isStrInList(self, elem, vlist):
+        for el in vlist:
+            if el == elem:
+                return True
+        return False
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
@@ -428,14 +441,15 @@ class Api:
         c_val = self.getContValues()
         m_val = self.getModeValues()
 
-        var_list = self.intervalsVariables()
+        var_list, var_only_contVar = self.intervalsVariables()
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
         interval_list = []
 
         i_val = []
         for var in range(len(var_list[index])):
             key = var_list[index][var]
-            i_val.append(c_val[str(key)][index][0])
+            if self.isStrInList(str(key), var_only_contVar[index]):
+                i_val.append(c_val[str(key)][index][0])
             for vv in only_mod:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
@@ -447,7 +461,7 @@ class Api:
 
         # split by variables
 
-        for el in range(len(var_list[index])):
+        for el in range(len(var_only_contVar[index])):
             interval_dict = dict()
             tmp_res = []
             for i, e in enumerate(res):
@@ -458,7 +472,7 @@ class Api:
                 pair["x"] = global_newT[i]
                 pair["y"] = e[el]
                 tmp_res.append(pair)
-            interval_dict["name"] = var_list[index][el]
+            interval_dict["name"] = var_only_contVar[index][el]
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
@@ -536,17 +550,58 @@ class Api:
         self.stlLogger.debug("end of main calculation")
         return res, time_list
 
+    # Append a given item to list if not already
+    # exists in the list
+    def insertInList(self, var_list, item):
+        isExist = False
+        for elem in var_list:
+            if str(elem) == str(item):
+                isExist = True
+                break
+        if not isExist:
+            var_list.append(str(item))
+
+    # eq is diff_eq's flow or sol_eq's flow
+    # A flow can be one of 6 types
+    #   BinaryExp
+    #   InitVar
+    #   VarVal
+    #   ContVar
+    #   Real
+    #   Mode
+    #
+    # var_list is list of variables
+    # of the flow
+    def searchVarInFlow(self, eq, var_list):
+        if isinstance(eq, BinaryExp):
+            self.searchVarInFlow(eq.left, var_list)
+            self.searchVarInFlow(eq.right, var_list)
+        elif isinstance(eq, InitVal):
+            self.insertInList(var_list, eq)
+        elif isinstance(eq, VarVal):
+            self.insertInList(var_list, eq)
+        elif isinstance(eq, ContVar):
+            self.insertInList(var_list, eq)
+        elif isinstance(eq, Real):
+            self.insertInList(var_list, eq)
+
     # get intervals variable list
+    # only gets contVar that is LHS of an equation
     def intervalsVariables(self):
         model_id = self.getModeIdList()
         var_list = []
+        var_only_contVar = []
         for i in range(len(model_id)):
             var_list_tmp = []
+            var_only_contVar_tmp = []
             modexps = self.mode_module[model_id[i]].getFlow().exp()
             for j in modexps:
                 var_list_tmp.append(j.var2str())
+                var_only_contVar_tmp.append(j.var2str())
+                self.searchVarInFlow(j.flow, var_list_tmp)
             var_list.append(var_list_tmp)
-        return var_list
+            var_only_contVar.append(var_only_contVar_tmp)
+        return var_list, var_only_contVar
 
     def visualize(self):
         try:

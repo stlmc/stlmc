@@ -33,6 +33,9 @@ class Variable:
     def __repr__(self):
         return str(self.__type) + " " + str(self.__varId)
 
+    def getVarString(self):
+        return str(self.__type) + " " + str(self.__varId)
+
     @property
     def type(self):
         return str(self.__type)
