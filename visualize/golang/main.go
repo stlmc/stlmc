@@ -64,12 +64,16 @@ func test(w http.ResponseWriter, r *http.Request){
 
 func main() {
 
-	var dir string
 	var webDir string
-	logFlag := flag.Bool("v", false, "a string?")
-	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
+	var port string
+	var ip string
+	var dir string
+	flag.StringVar(&dir, "dir", "./DataDir", "Sets a location (directory) of counter examples. Default location is \"DataDir\" directory.")
+	logFlag := flag.Bool("v", false, "Sets verbose option. If this flag is set, a server will show the debug messages.")
 	// with out specifying web dir, the server finds ./web directory
-	flag.StringVar(&webDir, "webdir", "./web", "the web site directory in absolute path")
+	flag.StringVar(&webDir, "web-dir", "./web", "Sets a location (directory) of visualization static web pages. Default location is \"web\" directory.")
+	flag.StringVar(&port, "port", "3000", "Sets a server's port number. If you change this you have to rebuild static web pages. This option is for developers.")
+	flag.StringVar(&ip, "ip", "0.0.0.0", "Sets a server's ip address. If you change this you have to rebuild static web pages. This option is for developers.")
 	flag.Parse()
 
 	logger.Logger.IsDebug = *logFlag
@@ -80,13 +84,14 @@ func main() {
 
 	var ss http2.StlSever
 	//var wait time.Duration
+	data.Workspace.Init(dir)
 
 	//ctx, cancel := context.WithTimeout(context.Background(), wait)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 
-	ss.Init(cancel, webDir)
+	ss.Init(cancel, webDir, ip, port)
 	go ss.Start()
 	select{
 	case <-ctx.Done():

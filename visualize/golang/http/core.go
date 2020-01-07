@@ -129,13 +129,12 @@ func (ss *StlSever) handleData(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-
 func (ss *StlSever) handleShutdown(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("Shutdown called"))
 	ss.cancel()
 }
 
-func (ss *StlSever) Init(cancel context.CancelFunc, webDir string) {
+func (ss *StlSever) Init(cancel context.CancelFunc, webDir string, ip string, port string) {
 	ss.router = mux.NewRouter().StrictSlash(true)
 	ss.spaHandler = spaHandler{staticPath:webDir, indexPath:"index.html"}
 	ss.router.HandleFunc("/file_list", ss.handleFileList)
@@ -144,14 +143,15 @@ func (ss *StlSever) Init(cancel context.CancelFunc, webDir string) {
 	ss.router.HandleFunc("/shutdown", ss.handleShutdown)
 	ss.router.PathPrefix("/").Handler(&ss.spaHandler)
 	ss.server = &http.Server{
-		Addr:              "0.0.0.0:3000",
+		Addr:              ip+":"+port,
 		Handler:           handlers.CORS()(ss.router),
 	}
 	ss.cancel = cancel
 }
 
 func (ss *StlSever) Start() {
-	logger.Logger.Debug("Welcome to visualize server!")
+	logger.Logger.Print("Welcome to visualize server!")
+	logger.Logger.Print("server starts at " + ss.server.Addr)
 	if err := ss.server.ListenAndServe(); err != nil {
 		logger.Logger.Debug("error occured...")
 		log.Fatal(err)
@@ -160,5 +160,5 @@ func (ss *StlSever) Start() {
 
 func (ss *StlSever) Shutdown(ctx context.Context){
 	_ = ss.server.Shutdown(ctx)
-	logger.Logger.Debug("Shutting down server...")
+	logger.Logger.Print("Shutting down server...")
 }

@@ -35,9 +35,9 @@ type FileDesc struct {
 }
 
 
-func (ws *workspace) Init() {
+func (ws *workspace) Init(dir string) {
 	ws.reset()
-	ws.DirName = "."
+	ws.DirName = dir
 }
 
 func (ws *workspace) reset() {
