@@ -6,4 +6,9 @@ import stlmcPy
 
 if __name__ == '__main__':
     stlmcPyPath = os.path.dirname(os.path.realpath(stlmcPy.__file__))
-    subprocess.call([stlmcPyPath + "/visualize/main", "-web-dir=" + stlmcPyPath + "/visualize/web"] + sys.argv[1:])
+    if 'linux' in sys.platform:
+        subprocess.call([stlmcPyPath + "/visualize/main-linux", "-web-dir=" + stlmcPyPath + "/visualize/web"] + sys.argv[1:])
+    elif 'darwin' in sys.platform:
+        subprocess.call([stlmcPyPath + "/visualize/main-mac", "-web-dir=" + stlmcPyPath + "/visualize/web"] + sys.argv[1:])
+    else:
+        raise RuntimeError("Unsupported operating system: {}".format(sys.platform))

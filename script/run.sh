@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CORE_PATH=../src/core/syntax
+CORE_PATH=../stlmcPy/core/syntax
 model=../src/$CORE_PATH/model
 PY_DIR=../src
 TEST_DIR=../src/simpleModel
