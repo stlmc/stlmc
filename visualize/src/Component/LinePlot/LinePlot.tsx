@@ -12,7 +12,7 @@ import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
 import "react-tabs/style/react-tabs.css";
 import Axios, {AxiosInstance} from "axios";
-import {Button, Form} from 'react-bootstrap';
+import {Button, Form, Modal, Spinner} from 'react-bootstrap';
 import $ from 'jquery';
 import {ModeState, PropState} from "../Core/Data";
 
@@ -39,7 +39,7 @@ interface ServerError {
 // State contains many useful
 interface State {
     model: WorkspaceData[];
-    isOptionAlive: Boolean;
+    isOptionAlive: boolean;
     selectedValue: string;
     propState: PropState;
     modeState: ModeState;
@@ -54,6 +54,8 @@ interface State {
     isToggleChanged: boolean;
 
     serverError: ServerError;
+    isShutDown: boolean;
+    isLoadingReset: boolean;
 }
 
 /*
@@ -84,7 +86,7 @@ class LinePlot extends React.Component<Props, State> {
         this.margin_viewer_right,
         this.margin_viewer_bottom,
         this.margin_viewer_left
-    )
+    );
 
 
     state: State = {
@@ -116,6 +118,8 @@ class LinePlot extends React.Component<Props, State> {
             message: "",
             error: false,
         },
+        isShutDown: false,
+        isLoadingReset: false,
     };
 
     constructor(props: Props) {
@@ -129,6 +133,8 @@ class LinePlot extends React.Component<Props, State> {
         this.Item = this.Item.bind(this);
         this.ItemList = this.ItemList.bind(this);
         this.Main = this.Main.bind(this);
+        this.ShutDown = this.ShutDown.bind(this);
+        this.LoadingBtn = this.LoadingBtn.bind(this);
     }
 
     async componentDidMount() {
@@ -321,10 +327,12 @@ class LinePlot extends React.Component<Props, State> {
         let response = await this.instance.get(`/shutdown`);
         if (response.data == "Shutdown called"){
             console.log("server shutdown.. you need to restart server for progress!");
+            this.setState({isShutDown: true,});
         }
     }
 
     async onResetButtonClick() {
+        this.setState({isLoadingReset: true});
         let response = await this.instance.get(`/file_list`);
         this.njson.clearAll();
         this.setState({
@@ -339,6 +347,7 @@ class LinePlot extends React.Component<Props, State> {
                     };
                     return workspace;
                 }),
+            isLoadingReset: false,
         });
 
     }
@@ -547,6 +556,42 @@ class LinePlot extends React.Component<Props, State> {
         )
     }
 
+    ShutDown(){
+        return (
+            <Modal
+                show={this.state.isShutDown}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+                keyboard={false}
+                backdrop={'static'}
+            >
+                <Modal.Header>
+                    <Modal.Title id="contained-modal-title-vcenter">
+                        Visualize Server shutdown
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>
+                        Visualize server has been successfully shutdowned. Restart the server to use visualization.
+                    </p>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+
+    LoadingBtn(){
+        return(
+            <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+            />
+        )
+    }
+
     render() {
         let selected = this.state.selectedValue;
         let select = this.state.isOptionAlive ? {value: selected, label: selected} : null;
@@ -575,13 +620,13 @@ class LinePlot extends React.Component<Props, State> {
                 <div className="row items-7">
                     <div className="col-md-10"/>
                     <div className="col-md-1 text-right">
-                        <Button variant="outline-dark" onClick={this.onResetButtonClick} id="non-outline">reset</Button>
+                        <Button variant="outline-dark" onClick={this.onResetButtonClick} id="non-outline">
+                            {this.state.isLoadingReset ? <this.LoadingBtn/> : "reset"}
+                        </Button>
                     </div>
                     <div className="col-md-1"/>
                 </div>
-                <this.Main/>
-
-
+                {this.state.isShutDown ? <this.ShutDown/> : <this.Main/>}
             </div>);
     }
 }
