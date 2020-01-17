@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="example-pkg-rgyenr2", # Replace with your own username
-    version="0.0.6a16-rev4",
+    version="0.0.6a17",
     include_package_data=True,
     scripts=['./stlmc', './stlmc-server'],
     author="Example Author",
