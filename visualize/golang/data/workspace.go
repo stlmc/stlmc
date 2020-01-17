@@ -4,6 +4,7 @@ import (
 	"golang/logger"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 
@@ -74,7 +75,7 @@ func (ws *workspace) getFileList(dirName string) {
 	}
 
 	for _, file := range files {
-		if file.Name() != ".workspace_info.json" {
+		if file.Name() != ".workspace_info.json" && filepath.Ext(file.Name()) == ".cep" {
 			if file.IsDir() {
 				ws.isDir = true
 				ws.getFileList(dirName + "/" + file.Name())
@@ -116,7 +117,7 @@ func (ws *workspace) getFileListWithOutId(dirName string) {
 	}
 
 	for _, file := range files {
-		if file.Name() != ".workspace_info.json" {
+		if file.Name() != ".workspace_info.json" && filepath.Ext(file.Name()) == ".cep" {
 			if file.IsDir() {
 				ws.isDir = true
 				ws.getFileListWithOutId(dirName + file.Name())
