@@ -398,6 +398,8 @@ class Api:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
 
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
+            for const in self.subvars:
+                self.mode_module[model_id].getFlow().var_dict[const] = float(str(self.subvars[const]))
             #             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
             #             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
             #             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
@@ -445,6 +447,8 @@ class Api:
             for vv in only_mod:
                 self.mode_module[model_id].getFlow().var_dict[vv] = sol_init_list[vv][index]
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
+            for k in self.subvars:
+                self.mode_module[model_id].getFlow().var_dict[k] = float(str(self.subvars[k]))
 
         self.stlLogger.debug("variable dictionary: {}".format(self.mode_module[model_id].getFlow().var_dict))
 
@@ -591,11 +595,11 @@ class Api:
 
             if self._result == "False":
                 import json
-                f = open(("./DataDir/" + self._stackID + "_" + self._solver + ".json"), "w")
+                f = open(("./DataDir/" + self._stackID + "_" + self._solver + ".cep"), "w")
                 json.dump(outer2, f)
                 f.close()
-                print("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".json")
-                self.stlLogger.info("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".json")
+                print("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".cep")
+                self.stlLogger.info("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".cep")
 
         except Exception as ex:
             self.stlLogger.error("Error occured, {}".format(ex))

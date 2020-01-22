@@ -713,7 +713,10 @@ class StlMC:
 
     @property
     def data(self):
-        return (self.model, self.modeVar, self.contVar, self.subvars, self.prop, self.bound, self.modeModule,
+        result = dict()
+        for i in self.varVal.keys():
+            result[str(i)] = self.varVal[i]
+        return (self.model, self.modeVar, self.contVar, result, self.prop, self.bound, self.modeModule,
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
