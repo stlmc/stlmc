@@ -1,8 +1,6 @@
-import importlib
+from yices import *
 import z3
 import os
-import logging
-import logging.handlers
 from stlmcPy.core.node import *
 from stlmcPy.core.model import *
 import numpy as np
@@ -10,9 +8,6 @@ from scipy.integrate import odeint
 
 
 class Api:
-    def __init__(self, stlLogger=logging.getLogger("DefaultStlMC")):
-        self.stlLogger = stlLogger
-        self.mod = None
 
     @property
     def stackID(self):
@@ -23,7 +18,6 @@ class Api:
     @stackID.setter
     def stackID(self, stackID):
         self._stackID = stackID + "_" + self.stl + "_" + str(self.bound)
-        self.stlLogger.debug("Set id as: " + self.stackID)
 
     @property
     def solver(self):
@@ -35,17 +29,14 @@ class Api:
 
     @property
     def data(self):
-        # why??
-        self.mod = importlib.import_module('yices', 'yices')
         return self._data
 
     # return {'var_id' : value ,...} dictionary, for yices solver
     def getvarval(self):
         all_terms = self.model.collect_defined_terms()
         var_val = dict()
-        self.mod = importlib.import_module('yices', 'yices')
         for term in all_terms:
-            var_val[str(self.mod.Terms.get_name(term))] = self.model.get_value(term)
+            var_val[str(Terms.get_name(term))] = self.model.get_value(term)
         return var_val
 
     @property
@@ -212,7 +203,7 @@ class Api:
                     all_terms = self.model.collect_defined_terms()
                     var_val = dict()
                     for term in all_terms:
-                        var_val[str(self.mod.Terms.get_name(term))] = self.model.get_value(term)
+                        var_val[str(Terms.get_name(term))] = self.model.get_value(term)
                     time_id = "time" + str(i)
                     if time_id in var_val.keys():
                         time_value = var_val[time_id]
@@ -378,7 +369,6 @@ class Api:
     # inner function of sol equation
     # generate list that correspond to indexed interval
     def _calcSolEq(self, global_timeValues, local_timeValues, model_id, index):
-        self.stlLogger.debug("SOL EQ: calculation start")
         # TODO : Add new functions
         _, only_mod, sol_init_list = self.getSolEqInitialValue()
         sol_l = self.getSol()
@@ -386,8 +376,6 @@ class Api:
 
         sol_l_list = list(sol_l.keys())
 
-        #         self.stlLogger.debug("sol_init_list: {}".format(sol_init_list))
-        #         self.stlLogger.debug("sol_list: {}".format(sol_l))
         # k is variable name of dic
         # { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }
         for k in sol_l:
@@ -400,9 +388,7 @@ class Api:
             self.mode_module[model_id].getFlow().var_dict[k] = sol_init_list[k][index]
             for const in self.subvars:
                 self.mode_module[model_id].getFlow().var_dict[const] = float(str(self.subvars[const]))
-            #             self.stlLogger.debug("SOL EQ flow {}".format(self.mode_module[model_id].getFlow().var_dict))
-            #             self.stlLogger.debug("sol_list with k={}: {}".format(k, sol_init_list[k]))
-            #             self.stlLogger.debug("SOL EQ initial" + str(sol_init_list[k][index]))
+
             global_newT = global_timeValues[index].tolist()
             local_newT = local_timeValues[index].tolist()
             # modify this to use given initial value and time pairs
@@ -417,22 +403,16 @@ class Api:
                 tmp = dict()
                 tmp["x"] = global_newT[i]
                 tmp["y"] = self.mode_module[model_id].getFlow().exp2exp()[sol_l_list.index(k)]
-                if k == "gateHeight":
-                    self.stlLogger.debug("x is {}".format(local_newT[i]))
-                    self.stlLogger.debug("y is {}".format(tmp["y"]))
                 tmp_res.append(tmp)
-                # self.stlLogger.debug(tmp)
             interval_dict["name"] = k
             interval_dict["intIndex"] = index
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
-        self.stlLogger.debug("SOL EQ: end of calculation")
         return interval_list, global_newT
 
     # buggy
     # TODO: Possible to merge both diffeq and soleq logic.
     def _calcDiffEq(self, global_timeValues, local_timeValues, model_id, index):
-        self.stlLogger.debug("calculation start")
         c_val = self.getContValues()
         m_val = self.getModeValues()
 
@@ -449,8 +429,6 @@ class Api:
             self.mode_module[model_id].getFlow().var_dict[key] = c_val[str(key)][index][0]
             for k in self.subvars:
                 self.mode_module[model_id].getFlow().var_dict[k] = float(str(self.subvars[k]))
-
-        self.stlLogger.debug("variable dictionary: {}".format(self.mode_module[model_id].getFlow().var_dict))
 
         res = odeint(lambda z, t: self.mode_module[model_id].getFlow().exp2exp(), i_val, local_timeValues[index])
         global_newT = global_timeValues[index].tolist()
@@ -473,11 +451,9 @@ class Api:
             interval_dict["points"] = tmp_res
             interval_list.append(interval_dict)
 
-        self.stlLogger.debug("end of calculation")
         return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
-        self.stlLogger.debug("main calculation start")
         # get total model id
         model_id = self.getModeIdList()
 
@@ -497,9 +473,6 @@ class Api:
                 tmp["interval"] = i
                 tmp["model_id"] = ids
                 diffEq_dict.append(tmp)
-
-        self.stlLogger.debug("Sol eq dict: {}".format(solEq_dict))
-        self.stlLogger.debug("Diff eq dict: {}".format(diffEq_dict))
 
         res = []
         time_list = []
@@ -543,7 +516,7 @@ class Api:
                         time_dict["range"] = elem_time_pair
                         time_dict["data"] = elem["time"]
                         time_list.append(time_dict)
-        self.stlLogger.debug("end of main calculation")
+
         return res, time_list
 
 
@@ -562,7 +535,6 @@ class Api:
 
     def visualize(self):
         try:
-            self.stlLogger.debug("Json file generator with modelId list: {}".format(self.getModeIdList()))
 
             '''
                 if solution equation exists: 
@@ -590,7 +562,6 @@ class Api:
                     os.makedirs(os.path.join("./DataDir"))
             except OSError as e:
                 if e.errno != errno.EEXIST:
-                    self.stlLogger.error("Failed to create directory!!!!!")
                     raise ValueError("Failed to create directory!!!!!")
 
             if self._result == "False":
@@ -599,7 +570,6 @@ class Api:
                 json.dump(outer2, f)
                 f.close()
                 print("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".cep")
-                self.stlLogger.info("New filename: " + "./DataDir/" + self._stackID + "_" + self._solver + ".cep")
 
         except Exception as ex:
-            self.stlLogger.error("Error occured, {}".format(ex))
+            print("Error occured, {}".format(ex))

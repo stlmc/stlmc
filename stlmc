@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 import sys
-import logging
-import logging.handlers
 import subprocess
+import concurrent.futures
 from antlr4 import *
 import stlmcPy
 from stlmcPy.core.syntax.modelLexer import modelLexer
@@ -45,47 +44,51 @@ def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, res
     return True
 
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic, stlLogger):
+def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic):
     handlingModel = FileStream(fileName)
     lexer = modelLexer(handlingModel)
     stream = CommonTokenStream(lexer)
     parser = modelParser(stream)
     tree = parser.stlMC()
     stlMC, isTri = modelVisitorImpl().visit(tree)
-    dataGenerator = Api(stlLogger)
+    dataGenerator = Api()
     title = fileName
     filename = ""
     isNormal = True
     if (isTri and solver == "dreal4") or (not isTri and solver != "dreal4") or solver == "dreal4":
-        for i in range(len(stlMC.getStlFormsList())):
-            for k in range(lower, upper + 1, step):
-                formula = stlMC.getStlFormsList()[i]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            for i in range(len(stlMC.getStlFormsList())):
+                for k in range(lower, upper + 1, step):
+                    formula = stlMC.getStlFormsList()[i]
+                    if resultSave:
+                        modelName = os.path.splitext(os.path.basename(title))[0]
+                        filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+                        rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
+                        if not os.path.isfile(rel_path):
+                            with open(rel_path, 'w+') as fle:
+                                print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime",
+                                      file=fle)
+                    if multy:
+                        executor.submit(module,
+                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
+                        # p = multiprocessing.Process(target=module, args=(
+                        #     title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
+                        # p.start()
+
+                    else:
+                        isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
+                                          logic)
+                        if not isNormal:
+                            break
+                if not isNormal:
+                    break
                 if resultSave:
-                    modelName = os.path.splitext(os.path.basename(title))[0]
-                    filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
-                    rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
-                    if not os.path.isfile(rel_path):
-                        with open(rel_path, 'w+') as fle:
-                            print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime",
-                                  file=fle)
-                if multy:
-                    p = multiprocessing.Process(target=module, args=(
-                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
-                    p.start()
-                else:
-                    isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
-                                      logic)
-                    if not isNormal:
-                        break
-            if not isNormal:
-                break
-            if resultSave:
-                print("New filename: ./reports/" + str(filename))
+                    print("New filename: ./reports/" + str(filename))
     else:
         print("does not support trigonometric function without dreal4!")
 
 
-def main(args, stlLogger):
+def main(args):
     modelList = list()
     try:
         if os.path.isdir(args.file):
@@ -96,9 +99,8 @@ def main(args, stlLogger):
         elif os.path.isfile(args.file):
             modelList.append(args.file)
         else:
-            stlLogger.error("file name is wrong")
             raise Exception("file name is wrong")
-        save = False if args.save is None else args.save
+        save = False if args.log is None else args.log
         lower = 1 if args.lower is None else args.lower
         upper = lower if args.upper is None else args.upper
         solver = 'z3' if args.solver is None else (
@@ -118,12 +120,11 @@ def main(args, stlLogger):
             if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
                 os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
         for m in modelList:
-            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper(),
-                       stlLogger)
+            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper())
     except Exception as ex:
         if args.visualize:
             if not all(argi is None for argi in
-                       [args.lower, args.upper, args.step, args.multithread, args.timebound, args.save, args.visualize,
+                       [args.lower, args.upper, args.step, args.multithread, args.timebound, args.log, args.visualize,
                         args.solver, args.logic]):
                 print("\nNeed to provide file name!")
                 print("Type [-h] to see help.")
@@ -133,7 +134,7 @@ def main(args, stlLogger):
                     os.makedirs(os.path.join("./DataDir"))
             except OSError as e:
                 if e.errno != errno.EEXIST:
-                    stlLogger.error("Failed to create directory!!!!!")
+                    print("Failed to create directory!!!!!")
                     raise
             subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
         else:
@@ -141,26 +142,7 @@ def main(args, stlLogger):
 
 
 if __name__ == '__main__':
-    # setting logger
-    stlLogger = logging.getLogger("StlMC")
-    stlLogger.setLevel(logging.NOTSET)
-    formatter = logging.Formatter('[%(levelname)s ==> %(filename)s:%(lineno)s] %(asctime)s >> %(message)s')
-    try:
-        if not (os.path.isdir("./log")):
-            os.makedirs(os.path.join("./log"))
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            stlLogger.error("Failed to create directory!!!!!")
-            raise
-    log_file_count = 2000
-    fileHandler = logging.handlers.TimedRotatingFileHandler(filename="./log/main.log"
-                                                            , when='m', interval=10, backupCount=log_file_count)
-    streamHandler = logging.StreamHandler()
-    fileHandler.setFormatter(formatter)
-    streamHandler.setFormatter(formatter)
-    stlLogger.addHandler(fileHandler)
-    stlLogger.addHandler(streamHandler)
-    stlLogger.info("StlMC main start")
+
     parser = argparse.ArgumentParser(description='For more information. See below:')
     parser.add_argument('file', nargs='?', type=str, help="Type file or directory to process")
     parser.add_argument('-lower', '-l', type=int,
@@ -179,14 +161,10 @@ if __name__ == '__main__':
                         help='run the SMT solver using given given logic (default: QF-NRA)')
     parser.add_argument('-visualize', type=str2bool,
                         help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
-    parser.add_argument('-save', type=str2bool,
+    parser.add_argument('-log', type=str2bool,
                         help='save results of execution in report.txt (default: false)')
-    parser.add_argument('-log', type=str2bool, default="False",
-                        help='show logging information (default: false)')
     try:
         args = parser.parse_args()
-        if args.log:
-            stlLogger.setLevel(logging.DEBUG)
-        main(args, stlLogger)
+        main(args)
     except SystemExit:
-        stlLogger.debug("System error")
+        print("System error")

@@ -1,14 +1,12 @@
-import importlib
+from func_timeout import func_timeout, FunctionTimedOut
 import stlmcPy.core.partition as PART
 import stlmcPy.core.separation as SEP
 import time
 from .z3Handler import *
+from .yicesHandler import *
 from .formula import *
 from .modelConsts import *
 
-
-def import_from(module):
-    return importlib.import_module(module, 'stlmcPy.core')
 
 def isNumber(s):
     try:
@@ -19,9 +17,11 @@ def isNumber(s):
 
 
 def printResult(modelName, formula, result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
-    print("Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
-    print("Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
-    print("Execution Time(sec) : " + totalTime + "\n")
+    print("\n")
+    print("---------------------------------------------------------------------------\n")
+    print("\t Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
+    print("\t Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
+    print("\tExecution Time(sec) : " + totalTime + "\n")
     print("---------------------------------------------------------------------------\n")
 
 
@@ -753,12 +753,10 @@ class StlMC:
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
                 try:
-                    mod = import_from('.yicesHandler')
-                    (result, cSize, self.model) = mod.yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
-                except ModuleNotFoundError:
-                    print("Sorry, you should install yices2 first by using following commands.\n\tpip install yices")
-                    isError = True
-                    break
+                    (result, cSize, self.model) = ("Unknown", 0, None)
+                    (result, cSize, self.model) = func_timeout(30, yicescheckSat, args=(modelConsts + partitionConsts + [formulaConst], logic))
+                except FunctionTimedOut:
+                    print("Timeout")
 
             stime2 = time.process_time()
 

@@ -26,6 +26,7 @@ def yicescheckSat(consts, logic):
     ctx = Context(cfg)
 
     yicesConsts = [Terms.parse_term(c) for c in strConsts]
+
     ctx.assert_formulas(yicesConsts)
 
     result = ctx.check_context()
@@ -39,8 +40,17 @@ def yicescheckSat(consts, logic):
     cfg.dispose()
     ctx.dispose()
 
-    #return (result, sizeAst(yices.yand(*yicesConsts)), m)
-    return (result, -1, m)
+    return (result, sizeAst(Terms.yand(yicesConsts)), m)
+
+# return the size of the Z3 constraint
+def sizeAst(node:Terms):
+    if node == Terms.NULL_TERM:
+        return 0
+    retval = yapi.yices_term_num_children(node)
+    if retval == -1:
+        return 0
+    else:
+        return 1 + sum([sizeAst(yapi.yices_term_child(node, c)) for c in range(retval)])
 
 
 @singledispatch

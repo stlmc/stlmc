@@ -16,11 +16,11 @@ bool b;
         (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
         (and (x1 >= (1 - x2)) (x2 < 1)) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (not a') b' (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 >= 1)) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and a' (not b') (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 < 1)) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+          (and a' b' (x1' = x1) (x2' = x2));
 }
 {
     mode:
@@ -36,11 +36,11 @@ bool b;
         (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
         (and (x1 >= (1 - x2)) (x2 < 1)) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (not a') b' (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 >= 1)) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and a' (not b') (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 < 1)) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+          (and a' b' (x1' = x1) (x2' = x2));
 }
 {
     mode:
@@ -56,11 +56,11 @@ bool b;
         (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
         (and (x1 >= (1 - x2)) (x2 < 1)) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (not a') b' (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 >= 1)) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and a' (not b') (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 < 1)) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+          (and a' b' (x1' = x1) (x2' = x2));
 }
 {
     mode:
@@ -76,25 +76,24 @@ bool b;
         (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2));
         (and (x1 >= (1 - x2)) (x2 < 1)) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+          (and (not a') b' (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 >= 1)) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+          (and a' (not b') (x1' = x1) (x2' = x2));
         (and (x1 < 1) (x2 < 1)) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+          (and a' b' (x1' = x1) (x2' = x2));
 }
 init:
 (and (not(a)) not(b) ((x1 <= 5 + 0.1) and (x1 >= 5 - 0.1)) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1));
 
 propositions:
-reachability = x1 > 5.1 ;
+reachability = x1 >= 5.6 ;
 x1T = a ;
-x1g5 = x1 > 5.5 ;
 x1l4 = x1 < 4.9 ;
 x2T = b;
 
 goal:
-([] [0.0, 50.0] (and (x1 > 0) (x1 <= 9) (x2 > 0) (x2 <= 9))) ;
-(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1T and x1g5))) ;
-([] [0.0, 10.0] (x1l4 -> <> [0.0, 10.0] reachability)) ;
-([] [0.0, 20.0] ((x1T and x2T) -> <>[0.0, 5.0] ~(x1T and x2T))) ;
+([] [0.0, 50.0] reachability) ; 
+(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1 < 3))) ;
+([] [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
+([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
 
