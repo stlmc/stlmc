@@ -753,8 +753,10 @@ class StlMC:
                 (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
             elif solver == 'yices':
                 try:
-                    (result, cSize, self.model) = ("Unknown", 0, None)
-                    (result, cSize, self.model) = func_timeout(30, yicescheckSat, args=(modelConsts + partitionConsts + [formulaConst], logic))
+                    #(result, cSize, self.model) = ("Unknown", 0, None)
+                    #(result, cSize, self.model) = func_timeout(30, yicescheckSat, args=(modelConsts + partitionConsts + [formulaConst], logic))
+                    (result, cSize, self.model) = yicescheckSat(
+                    modelConsts + partitionConsts + [formulaConst], logic)
                 except FunctionTimedOut:
                     print("Timeout")
 

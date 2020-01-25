@@ -56,34 +56,33 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
     filename = ""
     isNormal = True
     if (isTri and solver == "dreal4") or (not isTri and solver != "dreal4") or solver == "dreal4":
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            for i in range(len(stlMC.getStlFormsList())):
-                for k in range(lower, upper + 1, step):
-                    formula = stlMC.getStlFormsList()[i]
-                    if resultSave:
-                        modelName = os.path.splitext(os.path.basename(title))[0]
-                        filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
-                        rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
-                        if not os.path.isfile(rel_path):
-                            with open(rel_path, 'w+') as fle:
-                                print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime",
-                                      file=fle)
-                    if multy:
-                        executor.submit(module,
-                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
-                        # p = multiprocessing.Process(target=module, args=(
-                        #     title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
-                        # p.start()
-
-                    else:
-                        isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
-                                          logic)
-                        if not isNormal:
-                            break
-                if not isNormal:
-                    break
+        for i in range(len(stlMC.getStlFormsList())):
+            for k in range(lower, upper + 1, step):
+                formula = stlMC.getStlFormsList()[i]
                 if resultSave:
-                    print("New filename: ./reports/" + str(filename))
+                    modelName = os.path.splitext(os.path.basename(title))[0]
+                    filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+                    rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
+                    if not os.path.isfile(rel_path):
+                        with open(rel_path, 'w+') as fle:
+                            print("k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime",
+                                  file=fle)
+                if multy:
+                    # executor.submit(module,
+                    # title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
+                    p = multiprocessing.Process(target=module, args=(
+                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
+                    p.start()
+
+                else:
+                    isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
+                                      logic)
+                    if not isNormal:
+                        break
+            if not isNormal:
+                break
+            if resultSave:
+                print("New filename: ./reports/" + str(filename))
     else:
         print("does not support trigonometric function without dreal4!")
 
