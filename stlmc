@@ -113,7 +113,7 @@ def main(args):
         visualize = False if args.visualize is None else args.visualize
         multithread = False if args.multithread is None else args.multithread
         timebound = 60 if args.timebound is None else args.timebound
-        timeout = 36000 if args.timeout is None else args.timeout
+        timeout = 18000 if args.timeout is None else args.timeout
         step = 1 if args.step is None else args.step
         # create data directory for storing report files
         if save:
