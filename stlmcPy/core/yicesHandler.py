@@ -14,16 +14,16 @@ def getvarval(self):
     return var_val
 
 # return a check result and the Z3 constraint size
-def yicescheckSat(consts, logic):
+def yicescheckSat(consts, logic, cfg, ctx, return_dict):
     strConsts = [yicesObj(c) for c in consts]
-    cfg = Config()
+    #cfg = Config()
 
     if logic != "NONE":
         cfg.default_config_for_logic(logic)
     else:
         cfg.default_config_for_logic('QF_NRA')
 
-    ctx = Context(cfg)
+    #ctx = Context(cfg)
 
     yicesConsts = [Terms.parse_term(c) for c in strConsts]
 
@@ -37,10 +37,13 @@ def yicescheckSat(consts, logic):
         m = None
         result = True if Status.UNSAT else "Unknown"
 
-    cfg.dispose()
-    ctx.dispose()
+    #cfg.dispose()
+    #ctx.dispose()
 
-    return (result, sizeAst(Terms.yand(yicesConsts)), m)
+    #return (result, sizeAst(Terms.yand(yicesConsts)), m)
+    return_dict["result"] = result
+    return_dict["cSize"] = sizeAst(Terms.yand(yicesConsts))
+    return_dict["model"] = m
 
 # return the size of the Z3 constraint
 def sizeAst(node:Terms):

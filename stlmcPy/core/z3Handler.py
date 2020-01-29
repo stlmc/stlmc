@@ -6,7 +6,7 @@ from .node import *
 
 
 # return a check result and the Z3 constraint size
-def z3checkSat(consts, logic):
+def z3checkSat(consts, logic, return_dict):
     z3Consts=[z3Obj(c) for c in consts]
 
     if logic != "NONE":
@@ -25,7 +25,10 @@ def z3checkSat(consts, logic):
     else:
         m = None
         result = True if str_result == "unsat" else "Unknown"
-    return (result, sizeAst(z3.And(*z3Consts)), m)
+    #return (result, sizeAst(z3.And(*z3Consts)), m)
+    return_dict["result"] = result
+    return_dict["cSize"] = sizeAst(z3.And(*z3Consts))
+    return_dict["model"] = m
 
 # return the size of the Z3 constraint
 def sizeAst(node:z3.AstRef):

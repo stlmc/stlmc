@@ -1,3 +1,9 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+
 bool a;
 [0, 10] x1;
 bool b;

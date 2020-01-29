@@ -1,3 +1,10 @@
+# model description:
+#
+# There are two fully charged batteries, and a control
+# system that switches load between these batteries.
+# The goal of the control system is to achieve longer
+# battery lifetime.
+
 real startd1;
 real startd2;
 int b1;

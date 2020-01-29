@@ -1,4 +1,4 @@
-from func_timeout import func_timeout, FunctionTimedOut
+from multiprocessing import Process, Manager
 import stlmcPy.core.partition as PART
 import stlmcPy.core.separation as SEP
 import time
@@ -17,11 +17,10 @@ def isNumber(s):
 
 
 def printResult(modelName, formula, result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
-    print("\n")
     print("---------------------------------------------------------------------------\n")
-    print("\t Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
-    print("\t Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
-    print("\tExecution Time(sec) : " + totalTime + "\n")
+    print("Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
+    print("Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
+    print("Execution Time(sec) : " + totalTime + "\n")
     print("---------------------------------------------------------------------------\n")
 
 
@@ -720,7 +719,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, timeout, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -748,17 +747,41 @@ class StlMC:
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
             etime1 = time.process_time()
+
+            manager = Manager()
+            return_dict = manager.dict()
+            isTerminate = False
+
             # check the satisfiability
             if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
+                p = Process(target=z3checkSat, args=(
+                    modelConsts + partitionConsts + [formulaConst], logic, return_dict))
+                p.start()
+                p.join(timeout)
+                if p.is_alive():
+                    isTerminate = True
+                    p.terminate()
+                    p.join()
+
             elif solver == 'yices':
-                try:
-                    #(result, cSize, self.model) = ("Unknown", 0, None)
-                    #(result, cSize, self.model) = func_timeout(30, yicescheckSat, args=(modelConsts + partitionConsts + [formulaConst], logic))
-                    (result, cSize, self.model) = yicescheckSat(
-                    modelConsts + partitionConsts + [formulaConst], logic)
-                except FunctionTimedOut:
-                    print("Timeout")
+                cfg = Config()
+                ctx = Context(cfg)
+                p = Process(target=yicescheckSat, args=(
+                    modelConsts + partitionConsts + [formulaConst], logic, cfg, ctx, return_dict))
+                p.start()
+                p.join(timeout)
+                ctx.dispose()
+                cfg.dispose()
+                if p.is_alive():
+                    isTerminate = True
+                    p.terminate()
+                    p.join()
+
+            if not isTerminate:
+                result, cSize, self.model = return_dict["result"], return_dict["cSize"], return_dict["model"]
+            else:
+                result, cSize, self.model = "Timeout", 0, None
+
 
             stime2 = time.process_time()
 

@@ -1,3 +1,9 @@
+# model description:
+#
+# Two cars are running in a straight road. One car
+# follows another. The following car changes its speed
+# according to the distance to the leading car.
+
 real v1;
 real v2;
 [0, 1000] x1;

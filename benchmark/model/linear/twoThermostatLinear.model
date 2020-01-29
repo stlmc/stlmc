@@ -1,3 +1,11 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
 bool a;
 [-20, 100] x1;
 bool b;
