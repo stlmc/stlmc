@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="stlmc",  # Replace with your own username
-    version="0.1.0.dev3",
+    version="0.1.0.dev4",
     include_package_data=True,
     scripts=['./stlmc', './stlmc-server'],
     author="Geunyeol Yu",

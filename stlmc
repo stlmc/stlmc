@@ -22,10 +22,10 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, timeout):
+def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic):
     modelName = os.path.splitext(os.path.basename(title))[0]
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k,
-                                                                                         timeBound, solver, logic, timeout,
+                                                                                         timeBound, solver, logic,
                                                                                          False)
     if isinstance(solvingTime, bool):
         return False
@@ -44,7 +44,7 @@ def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, res
     return True
 
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic, timeout):
+def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic):
     handlingModel = FileStream(fileName)
     lexer = modelLexer(handlingModel)
     stream = CommonTokenStream(lexer)
@@ -71,12 +71,12 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
                     # executor.submit(module,
                     # title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
                     p = multiprocessing.Process(target=module, args=(
-                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, timeout))
+                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
                     p.start()
 
                 else:
                     isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
-                                      logic, timeout)
+                                      logic)
                     if not isNormal:
                         break
             if not isNormal:
@@ -113,14 +113,13 @@ def main(args):
         visualize = False if args.visualize is None else args.visualize
         multithread = False if args.multithread is None else args.multithread
         timebound = 60 if args.timebound is None else args.timebound
-        timeout = 18000 if args.timeout is None else args.timeout
         step = 1 if args.step is None else args.step
         # create data directory for storing report files
         if save:
             if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
                 os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
         for m in modelList:
-            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper(), timeout)
+            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper())
     except Exception as ex:
         if args.visualize:
             if not all(argi is None for argi in
@@ -155,9 +154,6 @@ if __name__ == '__main__':
                         help='set time bound of model checking (default: 60)')
     parser.add_argument('-multithread', '-multy', type=str2bool,
                         help='run the given model using multithread (default: false)')
-    # 10h timeout
-    parser.add_argument('-timeout', type=int,
-                        help='set timeout for model checking (default: 36000s)')
     parser.add_argument('-solver', type=str,
                         help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
     parser.add_argument('-logic', type=str,

@@ -67,7 +67,7 @@ runAll() {
 command="$1" ; shift
 case "$command" in
 
-    run) runAll                                     "$@" ;;
+    benchmark) runAll                               "$@" ;;
     railroadLinear) runLinear railroad              "$@" ;;
     railroadPoly) runPoly railroad                  "$@" ;;
     twoBatteryLinear) runLinear twoBattery          "$@" ;;
@@ -81,17 +81,28 @@ case "$command" in
     *)      echo "
     usage:
 
-    $0 run : run all benchmark model with bound 1 to 10 using z3 and yices solver.
-    $0 railroadLinear <solver> :   run railroadLinear benchmark model with bound 1 to 10 using a <solver> option.
-    $0 railroadPoly <solver> :   run railroadPoly benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoBatteryLinear <solver> :   run twoBatteryLinear benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoBatteryPoly <solver> :   run twoBatteryPoly benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoCarLinear <solver> :   run twoCarLinear benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoCarPoly <solver> :   run twoCarPoly benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoThermostatLinear <solver> :   run twoThermostatLinear benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoThermostatPoly <solver> :   run twoThermostatPoly benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoWatertankLinear <solver> :   run twoWatertankLinear benchmark model with bound 1 to 10 using a <solver> option.
-    $0 twoWatertankPoly <solver> :   run twoWatertankPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 benchmark :
+      run all benchmark model with bound 1 to 10 using z3 and yices solver.
+    $0 railroadLinear <solver> :
+      run railroadLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 railroadPoly <solver> :
+      run railroadPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoBatteryLinear <solver> :
+      run twoBatteryLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoBatteryPoly <solver> :
+      run twoBatteryPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoCarLinear <solver> :
+      run twoCarLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoCarPoly <solver> :
+      run twoCarPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoThermostatLinear <solver> :
+      run twoThermostatLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoThermostatPoly <solver> :
+      run twoThermostatPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoWatertankLinear <solver> :
+      run twoWatertankLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoWatertankPoly <solver> :
+      run twoWatertankPoly benchmark model with bound 1 to 10 using a <solver> option.
 
 " ;;
 esac
