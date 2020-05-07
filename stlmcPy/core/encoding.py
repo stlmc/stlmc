@@ -28,10 +28,11 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     subFormulaFOL = dict()
     for k in sub.keys():
         subFormulaFOL[k] = _subformulaMap(sub[k], sub, j, base, genPr, fMap, subFormula)
-
+       
     vf    = _value(f, sub, j, base, genPr, fMap, subFormulaFOL)
-    
-    return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
+
+    return (And(vf, *[pf[0] == pf[1] for pf in fMap.values()]), fMap)
+
 
 @singledispatch
 def _subformulaMap(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
@@ -60,7 +61,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
         if str(f) == str(k):
             return subFormula[k]
     subFormula[f] = Not(_subformulaMap(f.child,sub,j,base,genPr,fMap, subFormula))
-    return subFormula[f]
+    return subFormula[f] 
 
 @_subformulaMap.register(Multiary)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
@@ -85,7 +86,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
     subFormula[f] = Implies(_subformulaMap(f.left,sub,j,base,genPr,fMap, subFormula), _subformulaMap(f.right,sub,j,base,genPr,fMap, subFormula))
     subFormula[f.left] = _subformulaMap(f.left,sub,j,base,genPr,fMap, subFormula)
     subFormula[f.right] = _subformulaMap(f.right,sub,j,base,genPr,fMap, subFormula)
-    return subFormula[f]
+    return subFormula[f] 
 
 @_subformulaMap.register(FinallyFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
@@ -101,7 +102,7 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
     for k in subFormula.keys():
         if str(f) == str(k):
             return subFormula[k]
-    subFormula[f] = Implies(intervalConst(j,f.gtime,f.ltime), _subformulaMap(f.child,sub,f.gtime,base,genPr,fMap, subFormula))
+    subFormula[f] = Implies(intervalConst(j,f.gtime,f.ltime), _subformulaMap(f.child,sub,f.gtime,base,genPr,fMap, subFormula)) 
     return subFormula[f]
 
 @_subformulaMap.register(UntilFormula)
@@ -125,7 +126,7 @@ def _value(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
     raise NotImplementedError('Something wrong')
 
 @_value.register(ConstantFormula)
-def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula): 
     return BoolVal(f.getValue())
 
 @_value.register(PropositionFormula)
@@ -184,8 +185,6 @@ def _atomEncoding(f:PropositionFormula, j:Interval, base:dict):
     for (basePartition,prop) in base[f]:
         const.append(Implies(subInterval(j,basePartition),prop))
     return And(*const)
-
-
 
 @singledispatch
 def _substitution(f:Formula, sub:dict):

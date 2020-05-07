@@ -1,6 +1,6 @@
 import enum
 import stlmcPy.core.formula as FORM
-
+from .error import *
 
 @enum.unique
 class Type(enum.Enum):
@@ -531,6 +531,45 @@ class Integral(Node):
         result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_))\n'
         return result
 
+    def getConstraints(self):
+        result = []
+        subDict = {}
+        for i in range(len(self.endList)):
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            subDict[keyValue] = self.startList[i]
+        if self.flowType == 'diff':
+            for i in self.ode.values():
+                subvariables = list(i.getVars())
+                for j in range(len(subvariables)):
+                    if subvariables[j] in self.ode.keys():
+                        if str(self.ode[subvariables[j]]) == str(RealVal(0)):
+                            pass
+                        else:
+                            print(str(self.ode[subvariables[j]]))
+                            raise constODEerror()
+            substitutionExp = {}
+            for i in self.ode.keys():
+                substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
+            for i in range(len(self.endList)):
+                keyIndex = str(self.endList[i]).find('_')
+                keyValue = str(self.endList[i])[0:keyIndex]
+                if keyValue in substitutionExp.keys():
+                    result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
+        elif self.flowType == 'sol':
+            subDict['time'] = Real('tau_' + str(self.time.id)[4:])
+            substitutionExp = {}
+            for i in self.ode.keys():
+                substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
+            for i in range(len(self.endList)):
+                keyIndex = str(self.endList[i]).find('_')
+                keyValue = str(self.endList[i])[0:keyIndex]
+                if keyValue in substitutionExp.keys():
+                    result.append(self.endList[i] == substitutionExp[keyValue])
+        else:
+            raise FlowTypeEerror()
+        return result    
+
     def getVars(self):
         return set(self.startList + self.endList + [self.time])
 
@@ -561,6 +600,33 @@ class Solution(Node):
         result = '(= ' + end + '\n  (solution flow_' + self.flowIndex + '))\n'
         return result
 
+    def getConstraints(self):
+        subDict = {}
+        for i in range(len(self.endList)):
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            subDict[keyValue] = self.startList[i]
+        for i in self.ode.values():
+            subvariables = list(i.getVars())
+            for j in range(len(subvariables)):
+                if subvariables[j] in self.ode.keys():
+                    if str(self.ode[subvariables[j]]) == str(RealVal(0)):
+                        pass
+                    else:
+                        raise constODEerror()
+                else:
+                    raise constODEerror()
+        substitutionExp = {}
+        for i in self.ode.keys():
+            substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
+        result = []
+        for i in range(len(self.endList)):
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            result.append(self.endList[i] == substitutionExp[keyValue])
+
+        return result
+
     def getVars(self):
         return set(self.startList + self.endList)
 
@@ -575,28 +641,16 @@ class Solution(Node):
 
 
 class Forall(Node):
-    def __init__(self, time, condition, start, end, mode):
-        #        self.flowIndex = str(flowIndex)
-        self.time = time
-        self.condition = condition
-        self.startDict = start
-        self.endDict = end
-        self.modeDict = mode
+    def __init__(self, exp, modePropDict, startDict, endDict, ode):
+        self.exp = exp
+        self.modePropDict = modePropDict
+        self.startDict = startDict
+        self.endDict = endDict
+        self.ode = ode
         super().__init__(Type.Bool)
 
     def __repr__(self):
-        if not self.condition.getVars():
-            result = ""
-        elif str(list(self.condition.getVars())[0]) in self.modeDict.keys():
-            subCondition = self.condition.substitution(self.modeDict)
-            result = str(subCondition)
-        else:
-            endCond = self.condition.substitution(self.endDict)
-            startCond = self.condition.substitution(self.startDict)
-            constraint = And(endCond, startCond).substitution(self.modeDict)
-            #            result = '(and ' + str(constraint) + ' (forall_t ' + self.flowIndex + ' [0. ' + str(self.time) + '] ' + str(endCond.substitution(self.modeDict)) + '))'
-            result = '(and ' + str(constraint) + ' (forall_t ' + ' [0. ' + str(self.time) + '] ' + str(
-                endCond.substitution(self.modeDict)) + '))'
+        result = '(forall ' +  str(exp) + ')'
         return result
 
     def getVars(self):

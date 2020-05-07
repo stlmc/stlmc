@@ -2,7 +2,6 @@ import stlmcPy.core.encoding as ENC
 from .node import *
 from .differentiation import *
 
-
 class modelConsts:
     def __init__(self, modeVar, contVar, varVal, modeModule, init, propositions, substitutionVars):
         self.modeVar = modeVar
@@ -179,7 +178,8 @@ class modelConsts:
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curInv = self.modeModule[i].getInv().getExpression(self.subvars)
                 (propIdDict, formula) = (self.makeAtomicDict(curInv, len(propIdDict), propIdDict, k))
-                invConsts.append(And(curMode.substitution(self.makeSubMode(k)), formula))
+                # invConsts.append(And(curMode.substitution(self.makeSubMode(k)), formula))
+                invConsts.append(And(curMode, formula))
                 curFlow = self.modeModule[i].getFlow()
             for prop in propIdDict.keys():
                 result.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
@@ -204,6 +204,8 @@ class modelConsts:
             result.extend(self.propInformula(i))
         return result
 
+
+    # For reachbility check, need to check!!!!
     def goalConstraints(self, bound, goal):
         result = list()
         for k in range(bound + 1):
@@ -211,15 +213,13 @@ class modelConsts:
             combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
             combine.update(self.varVal)
             const.append(goal.substitution(combine))
-            for prop in self.propInformula(goal):
-                time = Real('time' + str(k))
-                const.append(
-                    self.makeSubProps(k)[str(prop)] == Forall(time, self.makePropDict()[prop], self.makeSubVars(k, '0'),
-                                                              self.makeSubVars(k, 't'), self.makeSubMode(k)))
-                const.append(Not(self.makeSubProps(k)[str(prop)]) == Forall(time, Not(self.makePropDict()[prop]),
-                                                                            self.makeSubVars(k, '0'),
-                                                                            self.makeSubVars(k, 't'),
-                                                                            self.makeSubMode(k)))
+
+            for prop in propIdDict.keys():
+                for m in range(len(self.modeModule)):
+                    curMode = self.modeModule[m].getMode().getExpression(self.subvars)
+                    curFlow = self.modeModule[m].getFlow()
+                    const.append(Implies(curMode.substitution(self.makeSubMode(k)),
+                                            self.propForall(self.makePropDict()[prop], k, curFlow)))
             result.append(And(*const))
         return Or(*result)
 
@@ -369,20 +369,18 @@ class modelConsts:
         result.append(self.flowConstraints(bound))
         # make jump constraints
         result.append(self.jumpConstraints(bound))
+        ts = [Real("tau_%s" % i) for i in range(0, bound + 2)]
 
-        ts = [Real("tau_%s" % i) for i in range(0, bound + 1)]
-
-        result.append(ts[0] >= RealVal(0))
-        result.append(Real('time0') == ts[0])
+        result.append(ts[0] == RealVal(0))
 
         propSet = set()
         for f in partition.keys():
             if isinstance(f, ENC.PropositionFormula):
                 propSet.add(str(f))
 
-        for i in range(bound):
-            result.append(Real('time' + str(i + 1)) == (ts[i + 1] - ts[i]))
-            result.append(ts[i] < ts[i + 1])
+        for i in range(0, bound+1):
+            result.append(Real('time' + str(i)) == (ts[i + 1] - ts[i]))
+            result.append(ts[i] <= ts[i + 1])
 
         result.append(self.propConstraints(propSet, bound))
 

@@ -1,9 +1,8 @@
 import z3
 import itertools
 from functools import singledispatch
-from .error import *
 from .node import *
-
+from .makeForallConsts import *
 
 # return a check result and the Z3 constraint size
 def z3checkSat(consts, logic):
@@ -14,9 +13,13 @@ def z3checkSat(consts, logic):
     else:
         solver = z3.Solver()
 
+    # solver.set("timeout", timeout * 1000)
     target_z3_simplify = z3.simplify(z3.And(*z3Consts))
     solver.add(target_z3_simplify)
-    solver.set('solver2_timeout', 3600000)
+    #solver.add(z3Consts)
+    #with open("thermoLinear.smt2", 'w') as fle:
+    #    print(solver.to_smt2(), file=fle)
+
 
     result = solver.check()
     str_result = str(result)
@@ -157,85 +160,19 @@ def _(const):
 
 @z3Obj.register(Integral)
 def _(const):
-    result = []
-    subDict = {}
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        subDict[keyValue] = const.startList[i]
-    if const.flowType == 'diff':
-        for i in const.ode.values():
-            subvariables = list(i.getVars())
-            for j in range(len(subvariables)):
-                if subvariables[j] in const.ode.keys():
-                    if str(const.ode[subvariables[j]]) == str(RealVal(0)):
-                        pass
-                    else:
-                        print(str(const.ode[subvariables[j]]))
-                        raise z3constODEerror()
-        substitutionExp = {}
-        for i in const.ode.keys():
-            substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-        for i in range(len(const.endList)):
-            keyIndex = str(const.endList[i]).find('_') 
-            keyValue = str(const.endList[i])[0:keyIndex]
-            if keyValue in substitutionExp.keys():
-                result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
-  
-    elif const.flowType == 'sol':
-        subDict['time'] = Real('tau_' + str(const.time.id)[4:])
-        substitutionExp = {}
-        for i in const.ode.keys():
-            substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-        for i in range(len(const.endList)):
-            keyIndex = str(const.endList[i]).find('_')
-            keyValue = str(const.endList[i])[0:keyIndex]
-            if keyValue in substitutionExp.keys():
-                result.append(const.endList[i] == substitutionExp[keyValue])
-    else:
-        raise FlowTypeEerror() 
-
-
+    result = const.getConstraints()
     z3result = [z3Obj(c) for c in result]
     return z3.And(z3result) 
 
 @z3Obj.register(Forall)
 def _(const):
-    typeList = [i.getType() for i in const.condition.getVars()]
-    if not(Type.Real in typeList):
-        subCondition = z3Obj(const.condition.substitution(const.modeDict))
-        return subCondition
-    else:
-        endCond = z3Obj(const.condition.substitution(const.endDict))
-        startCond = z3Obj(const.condition.substitution(const.startDict))
-        return z3.And(endCond, startCond)
+    result = getForallConsts(const)
+    z3result = [z3Obj(c) for c in result]
+    return z3.And(z3result)
 
 @z3Obj.register(Solution)
 def _(const):
-    subDict = {}
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        subDict[keyValue] = const.startList[i]
-    for i in const.ode.values():
-        subvariables = list(i.getVars())
-        for j in range(len(subvariables)):
-            if subvariables[j] in const.ode.keys():
-                if str(const.ode[subvariables[j]]) == str(RealVal(0)):
-                    pass
-                else:
-                    raise z3constODEerror()
-            else:
-                raise z3constODEerror()
-    substitutionExp = {}
-    for i in const.ode.keys():
-        substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-    result = []
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        result.append(const.endList[i] == substitutionExp[keyValue])
-
+    result = const.getConstraints()
     z3result = [z3Obj(c) for c in result]
     return z3.And(z3result)
 

@@ -29,7 +29,7 @@ def _(f:Formula, sepMap, gen, fMap):
 @_separation.register(UnaryTemporalFormula)
 def _(f:Formula, sepMap, gen, fMap):
     np = PropositionFormula(next(gen))
-    fMap[np] = _separation(f.child,sepMap,gen,fMap)
+    fMap[(np, f.ltime)] = _separation(f.child,sepMap,gen,fMap)
     tf = f.__class__(f.ltime, f.gtime, np)
     return _separateUnary(tf, 0, sepMap[f])
 
@@ -37,8 +37,8 @@ def _(f:Formula, sepMap, gen, fMap):
 def _(f:Formula, sepMap, gen, fMap):
     np1 = PropositionFormula(next(gen))
     np2 = PropositionFormula(next(gen))
-    fMap[np1] = _separation(f.left,sepMap,gen,fMap)
-    fMap[np2] = _separation(f.right,sepMap,gen,fMap)
+    fMap[(np1, f.ltime)] = _separation(f.left,sepMap,gen,fMap)
+    fMap[(np2, f.ltime)] = _separation(f.right,sepMap,gen,fMap)
     tf = f.__class__(f.ltime, f.gtime, np1, np2)
     return _separateBinary(tf, 0, sepMap[f])
 

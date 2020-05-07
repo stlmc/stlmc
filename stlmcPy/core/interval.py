@@ -64,27 +64,32 @@ def subInterval(i:Interval, j:Interval):
 
 def intervalConst(j:Interval, k:Interval, i:Interval):
     const = []
+    if not isinstance(j.right, float) or math.isfinite(j.right):
+        mid = (_real(j.left) + _real(j.right)) / RealVal(2)
+    else:
+        mid = (_real(j.left) + RealVal(1))
 
     if isinstance(j.left, ArithRef):
         const.append(_real(j.left) >= RealVal(0))
 
     if math.isfinite(i.right):
         if j.leftend and not (k.leftend and i.rightend):
-            const.append(_real(j.left) >  (_real(k.left) - _real(i.right)))
+            const.append(mid >  (_real(k.left) - _real(i.right)))
         else:
-            const.append(_real(j.left) >= (_real(k.left) - _real(i.right)))
+            const.append(mid >= (_real(k.left) - _real(i.right)))
 
     if not isinstance(j.right, float) or math.isfinite(j.right):
         if not isinstance(k.right, float) or math.isfinite(k.right):
             if j.rightend and not (k.rightend and i.leftend):
-                const.append(_real(j.right) <  (_real(k.right) - _real(i.left)))
+                const.append(mid <  (_real(k.right) - _real(i.left)))
             else:
-                const.append(_real(j.right) <= (_real(k.right) - _real(i.left)))
+                const.append(mid <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
             return BoolVal(False)
-
+    
     return And(*const)
+
 
 
 def _real(x):
@@ -92,9 +97,12 @@ def _real(x):
         return x
     elif isinstance(x, float):
         return RealVal(x)
+    elif isinstance(x, int):
+        return IntVal(x)
     elif type(x) is str:
         return Real(x)
     else:
+        print(type(x))
         raise RuntimeError("Invalid partition : " + str(x)) 
 
 

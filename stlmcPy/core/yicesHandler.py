@@ -4,7 +4,7 @@ import itertools
 import importlib
 from functools import singledispatch
 from .node import *
-from .error import *
+from .makeForallConsts import *
 
 def getvarval(self):
     all_terms = self.model.collect_defined_terms()
@@ -209,87 +209,21 @@ def _(const):
 
 @yicesObj.register(Integral)
 def _(const):
-    result = []
-    subDict = {}
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        subDict[keyValue] = const.startList[i]
-    if const.flowType == 'diff':
-        for i in const.ode.values():
-            subvariables = list(i.getVars())
-            for j in range(len(subvariables)):
-                if subvariables[j] in const.ode.keys():
-                    if str(const.ode[subvariables[j]]) == str(RealVal(0)):
-                        pass
-                    else:
-                        print(str(const.ode[subvariables[j]]))
-                        raise error.yicesconstODEerror()
-        substitutionExp = {}
-        for i in const.ode.keys():
-            substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-        for i in range(len(const.endList)):
-            keyIndex = str(const.endList[i]).find('_')
-            keyValue = str(const.endList[i])[0:keyIndex]
-            if keyValue in substitutionExp.keys():
-                result.append(const.endList[i] == const.startList[i] + substitutionExp[keyValue] * const.time)
-
-    elif const.flowType == 'sol':
-        subDict['time'] = const.time
-        substitutionExp = {}
-        for i in const.ode.keys():
-            substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-        for i in range(len(const.endList)):
-            keyIndex = str(const.endList[i]).find('_')
-            keyValue = str(const.endList[i])[0:keyIndex]
-            if keyValue in substitutionExp.keys():
-                result.append(const.endList[i] == substitutionExp[keyValue])
-    else:
-        raise error.FlowTypeEerror()
-
-
+    result = const.getConstraints()
     yicesresult = [yicesObj(c) for c in result]
     result = '(and ' + ' '.join(yicesresult) + ')'
     return result
 
 @yicesObj.register(Forall)
 def _(const):
-    typeList = [i.getType() for i in const.condition.getVars()]
-    if not(Type.Real in typeList):
-        subCondition = yicesObj(const.condition.substitution(const.modeDict))
-        return subCondition
-    else:
-        endCond = yicesObj(const.condition.substitution(const.endDict))
-        startCond = yicesObj(const.condition.substitution(const.startDict))
-        result = '(and ' + endCond + ' ' + startCond + ')'
-        return result
+    result = getForallConsts(const)
+    yicesresult = [yicesObj(c) for c in result]
+    result = '(and ' + ' '.join(yicesresult) + ')'
+    return result
 
 @yicesObj.register(Solution)
 def _(const):
-    subDict = {}
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        subDict[keyValue] = const.startList[i]
-    for i in const.ode.values():
-        subvariables = list(i.getVars())
-        for j in range(len(subvariables)):
-            if subvariables[j] in const.ode.keys():
-                if str(const.ode[subvariables[j]]) == str(RealVal(0)):
-                    pass
-                else:
-                    raise error.yicesconstODEerror()
-            else:
-                raise error.yicesconstODEerror()
-    substitutionExp = {}
-    for i in const.ode.keys():
-        substitutionExp[str(i.id)] = const.ode[i].substitution(subDict)
-    result = []
-    for i in range(len(const.endList)):
-        keyIndex = str(const.endList[i]).find('_')
-        keyValue = str(const.endList[i])[0:keyIndex]
-        result.append(const.endList[i] == substitutionExp[keyValue])
-
+    result = const.getConstraints()
     yicesresult = [yicesObj(c) for c in result]
     result = '(and ' + ' '.join(yicesresult) + ')'
     return result

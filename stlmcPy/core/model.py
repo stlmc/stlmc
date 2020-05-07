@@ -4,6 +4,7 @@ import stlmcPy.core.separation as SEP
 import time
 from .z3Handler import *
 from .yicesHandler import *
+#from .drealHandler import *
 from .formula import *
 from .modelConsts import *
 
@@ -719,7 +720,7 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, onlySTL, iterative=True):
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -733,28 +734,45 @@ class StlMC:
 
             baseP = PART.baseCase(i)
 
-            # partition constraint
-            (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+            # generate (subformula, time index) map
+            (partition, sepMap) = PART.guessPartition(negFormula, baseP)
 
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
+           
+
+            originalFS = dict()
+            for (m,n) in fs[1].keys():
+                originalFS[m] = fs[1][(m,n)] 
+
             # FOL translation
             baseV = ENC.baseEncoding(partition, baseP)
+            (formulaConst, subFormulaMap) = ENC.valuation(fs[0], originalFS, ENC.Interval(True, 0.0, True, 0.0), baseV)
 
-            formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
+            # partition constraints
+            partitionConsts = PART.genPartition(baseP, fs[1], subFormulaMap)
 
             # constraints from the model
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
-
+            #modelConsts = []
             etime1 = time.process_time()
-            allConsts = modelConsts + partitionConsts + [formulaConst]
- 
 
+
+            if onlySTL:
+                print("only STL is true")
+                allConsts = partitionConsts + [formulaConst]    
+            else:
+                allConsts = modelConsts + partitionConsts + [formulaConst]
+            
             # check the satisfiability
             if solver == 'z3':
                 (result, cSize, self.model) = z3checkSat(allConsts, logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
+            '''
+            elif solver == 'dreal':
+                (result, cSize, self.model) = drealcheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+            '''
 
             stime2 = time.process_time()
 

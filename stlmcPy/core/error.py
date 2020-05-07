@@ -11,10 +11,13 @@ class ToolError(Exception):
 class Z3OpError(Exception):
     pass
 
-class z3constODEerror(Exception):
+class constODEerror(Exception):
     pass
 
-class yicesconstODEerror(Exception):
+class drealconstODEerror(Exception):
+    pass
+
+class drealDeclTermError(Exception):
     pass
 
 class FlowTypeEerror(Exception):
