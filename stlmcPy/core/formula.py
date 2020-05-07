@@ -35,6 +35,8 @@ class UnaryTemporalFormula(Unary, Formula):
         self.gtime = gtime
     def __str__(self):
         return '(' + self.op+ '_' + str(self.ltime) + '^' + str(self.gtime) + ' ' + str(self.child) + ')'
+    def temporalHeight(self):
+        return 1 + self.child.temporalHeight()
 
 class GloballyFormula(UnaryTemporalFormula):
     op = '[]'
@@ -51,6 +53,8 @@ class BinaryTemporalFormula(Binary, Formula):
         self.gtime = gtime
     def __str__(self):
         return '(' + str(self.left) + ' ' + self.op + '_' + str(self.ltime) + '^' + str(self.gtime) + ' ' + str(self.right) + ')'
+    def temporalHeight(self):
+        return 1 + max(self.left.temporalHeight(), self.right.temporalHeight())
 
 class UntilFormula(BinaryTemporalFormula):
     op = 'U'
@@ -59,3 +63,28 @@ class UntilFormula(BinaryTemporalFormula):
 class ReleaseFormula(BinaryTemporalFormula):
     op = 'R'
 
+
+def numTemp(tree):
+    stack = [tree]
+    fs = 0
+    while (stack):
+        curr = stack.pop()
+        if isinstance(curr,Atomic):
+            pass
+        elif isinstance(curr,UnaryTemporalFormula):
+            fs = fs + 1
+            stack.append(curr.child)
+        elif isinstance(curr,BinaryTemporalFormula):
+            fs = fs + 1
+            stack.append(curr.left)
+            stack.append(curr.right)
+        elif isinstance(curr,Unary):
+            stack.append(curr.child)
+        elif isinstance(curr,Binary):
+            stack.append(curr.left)
+            stack.append(curr.right)
+        elif isinstance(curr,Multiary):
+            stack.extend(curr.children)
+        else:
+            raise NotImplementedError('Something wrong')
+    return fs

@@ -15,7 +15,6 @@ class Interval:
     def __repr__(self):
         return ('[' if self.leftend else '(') + repr(self.left) + ',' + repr(self.right) + (']' if self.rightend else ')')
 
-
 universeInterval = Interval(True, 0.0, False, float('inf'))
 
 
@@ -28,6 +27,8 @@ class Atomic:
         return str(self.id)
     def height(self):
         return 0
+    def temporalHeight(self):
+        return 0
 
 
 class Unary:
@@ -37,6 +38,8 @@ class Unary:
         return '(' + self.op + ' ' + str(self.child) + ')'
     def height(self):
         return 1 + self.child.height()
+    def temporalHeight(self):
+        return self.child.temporalHeight()
 
 
 class Binary:
@@ -47,6 +50,8 @@ class Binary:
         return '(' + str(self.left) + ' ' + self.op+ ' ' + str(self.right) + ')'
     def height(self):
         return 1 + max(self.left.height(),self.right.height())
+    def temporalHeight(self):
+        return max(self.left.temporalHeight(), self.right.temporalHeight())
 
 
 class Multiary:
@@ -61,7 +66,26 @@ class Multiary:
         return '(' + (' ' + self.op + ' ').join([str(c) for c in self.children]) + ')'
     def height(self):
         return 1 + max([c.height() for c in self.children])
+    def temporalHeight(self):
+        return max([c.temporalHeight() for c in self.children])
 
+def numTemp(tree):
+    stack = [tree]
+    fs = 0
+    while (stack):
+        curr = stack.pop()
+        fs += 1
+        if isinstance(curr,Atomic):
+            pass
+        elif isinstance(curr,Unary):
+            stack.append(curr.child)
+        elif isinstance(curr,Binary):
+            stack.append(curr.left)
+            stack.append(curr.right)
+        elif isinstance(curr,Multiary):
+            stack.extend(curr.children)
+        else:
+            raise NotImplementedError('Something wrong')
 
 def size(tree):
     stack = [tree]

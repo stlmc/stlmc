@@ -747,12 +747,14 @@ class StlMC:
             modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
 
             etime1 = time.process_time()
+            allConsts = modelConsts + partitionConsts + [formulaConst]
+ 
 
             # check the satisfiability
             if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(modelConsts + partitionConsts + [formulaConst], logic)
+                (result, cSize, self.model) = z3checkSat(allConsts, logic)
             elif solver == 'yices':
-                (result, cSize, self.model) = yicescheckSat(modelConsts + partitionConsts + [formulaConst], logic)
+                (result, cSize, self.model) = yicescheckSat(allConsts, logic)
 
             stime2 = time.process_time()
 

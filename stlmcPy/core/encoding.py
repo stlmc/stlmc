@@ -25,27 +25,114 @@ def valuation(f:Formula, sub:dict, j:Interval, base:dict):
     genPr = genId(0, 'chi')
     fMap  = {}
     subFormula = {}
-    vf    = _value(f, sub, j, base, genPr, fMap, subFormula)
-    '''
-    print("vf")
-    print(vf)
-    print("valuation fMap")
-    print(fMap)
-    print("subFomula")
-    print(subFormula)
-    for pid in subFormula.keys():
-        print(str(pid))
-        print(subFormula[pid])
-        print("")
-    '''
+    subFormulaFOL = dict()
+    for k in sub.keys():
+        subFormulaFOL[k] = _subformulaMap(sub[k], sub, j, base, genPr, fMap, subFormula)
+
+    vf    = _value(f, sub, j, base, genPr, fMap, subFormulaFOL)
+    
     return And(vf, *[pf[0] == pf[1] for pf in fMap.values()])
+
+@singledispatch
+def _subformulaMap(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    raise NotImplementedError('Something wrong')
+
+@_subformulaMap.register(ConstantFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    return BoolVal(f.getValue())
+
+@_subformulaMap.register(PropositionFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    if f in sub:
+        if not (f,j) in fMap:
+            np = Bool(next(genPr))
+            fMap[(f,j)] = (np, _value(sub[f], sub, j, base, genPr, fMap, subFormula))
+        return fMap[(f,j)][0]
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    else:
+        return _atomEncoding(f,j,base)
+
+@_subformulaMap.register(NotFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    subFormula[f] = Not(_subformulaMap(f.child,sub,j,base,genPr,fMap, subFormula))
+    return subFormula[f]
+
+@_subformulaMap.register(Multiary)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    op = {AndFormula: And, OrFormula: Or}
+    formulas = []
+    for c in f.children:
+        enter = False
+        for k in subFormula.keys():
+            if str(c) == str(k):
+                enter = True
+                formulas.append(k)
+        if not enter:
+            subFormula[c] = _subformulaMap(c,sub,j,base,genPr,fMap, subFormula)
+            formulas.append(subFormula[c])
+    return op[f.__class__](*formulas)
+
+@_subformulaMap.register(ImpliesFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    subFormula[f] = Implies(_subformulaMap(f.left,sub,j,base,genPr,fMap, subFormula), _subformulaMap(f.right,sub,j,base,genPr,fMap, subFormula))
+    subFormula[f.left] = _subformulaMap(f.left,sub,j,base,genPr,fMap, subFormula)
+    subFormula[f.right] = _subformulaMap(f.right,sub,j,base,genPr,fMap, subFormula)
+    return subFormula[f]
+
+@_subformulaMap.register(FinallyFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    args = [intervalConst(j,f.gtime,f.ltime), _subformulaMap(f.child,sub,f.gtime,base,genPr,fMap, subFormula)]
+    subFormula[f] = And(*args)
+    return subFormula[f]
+
+@_subformulaMap.register(GloballyFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    subFormula[f] = Implies(intervalConst(j,f.gtime,f.ltime), _subformulaMap(f.child,sub,f.gtime,base,genPr,fMap, subFormula))
+    return subFormula[f]
+
+@_subformulaMap.register(UntilFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    subFormula[f] = And(*[intervalConst(j,f.gtime,f.ltime), _subformulaMap(f.left,sub,f.gtime,base,genPr,fMap, subFormula), _subformulaMap(f.right,sub,f.gtime,base,genPr,fMap, subFormula)])
+    return subFormula[f]
+
+@_subformulaMap.register(ReleaseFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
+    subFormula[f] = Or(*[Not(intervalConst(j,f.gtime,f.ltime)), _subformulaMap(f.left,sub,f.gtime,base,genPr,fMap, subFormula), _subformulaMap(f.right,sub,f.gtime,base,genPr,fMap, subFormula)])
+    return subFormula[f]
 
 @singledispatch
 def _value(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
     raise NotImplementedError('Something wrong')
 
+@_value.register(ConstantFormula)
+def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    return BoolVal(f.getValue())
+
 @_value.register(PropositionFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
+    for k in subFormula.keys():
+        if str(f) == str(k):
+            return subFormula[k]
     if f in sub:
         if not (f,j) in fMap:
             np = Bool(next(genPr))
@@ -56,20 +143,20 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
 
 @_value.register(NotFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
-    subFormula[f.child] = Not(_value(f.child,sub,j,base,genPr,fMap, subFormula))
+    #subFormula[f.child] = Not(_value(f.child,sub,j,base,genPr,fMap, subFormula))
     return Not(_value(f.child,sub,j,base,genPr,fMap, subFormula))
 
 @_value.register(Multiary)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
     op = {AndFormula: And, OrFormula: Or}
-    for c in f.children:
-        subFormula[c] = _value(c,sub,j,base,genPr,fMap, subFormula)
+    #for c in f.children:
+    #    subFormula[c] = _value(c,sub,j,base,genPr,fMap, subFormula)
     return op[f.__class__](*[_value(c,sub,j,base,genPr,fMap, subFormula) for c in f.children])
 
 @_value.register(ImpliesFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
-    subFormula[f.left] = _value(f.left,sub,j,base,genPr,fMap, subFormula)
-    subFormula[f.right] = _value(f.right,sub,j,base,genPr,fMap, subFormula)
+    #subFormula[f.left] = _value(f.left,sub,j,base,genPr,fMap, subFormula)
+    #subFormula[f.right] = _value(f.right,sub,j,base,genPr,fMap, subFormula)
     return Implies(_value(f.left,sub,j,base,genPr,fMap, subFormula), _value(f.right,sub,j,base,genPr,fMap, subFormula))
 
 @_value.register(FinallyFormula)
@@ -85,15 +172,11 @@ def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
 
 @_value.register(UntilFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
-#    subFormula[f.left] = _value(f.left,sub,f.gtime,base,genPr,fMap, subFormula)
-#    subFormula[f.right] = _value(f.right,sub,f.gtime,base,genPr,fMap, subFormula)
     return And(*[intervalConst(j,f.gtime,f.ltime), _value(f.left,sub,f.gtime,base,genPr,fMap, subFormula), _value(f.right,sub,f.gtime,base,genPr,fMap, subFormula)])
 
 @_value.register(ReleaseFormula)
 def _(f:Formula, sub:dict, j:Interval, base, genPr, fMap, subFormula):
-#    subFormula[f.left] = _value(f.left,sub,f.gtime,base,genPr,fMap, subFormula)
-#    subFormula[f.right] = _value(f.right,sub,f.gtime,base,genPr,fMap, subFormula)
-    return Or([Not(intervalConst(j,f.gtime,f.ltime)), _value(f.left,sub,f.gtime,base,genPr,fMap, subFormula), _value(f.right,sub,f.gtime,base,genPr,fMap, subFormula)])
+    return Or(*[Not(intervalConst(j,f.gtime,f.ltime)), _value(f.left,sub,f.gtime,base,genPr,fMap, subFormula), _value(f.right,sub,f.gtime,base,genPr,fMap, subFormula)])
 
 
 def _atomEncoding(f:PropositionFormula, j:Interval, base:dict):
@@ -101,6 +184,8 @@ def _atomEncoding(f:PropositionFormula, j:Interval, base:dict):
     for (basePartition,prop) in base[f]:
         const.append(Implies(subInterval(j,basePartition),prop))
     return And(*const)
+
+
 
 @singledispatch
 def _substitution(f:Formula, sub:dict):

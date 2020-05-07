@@ -29,11 +29,11 @@ def _(const):
     x = const.left()
     y = const.right()
 
-    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+    if len(const.getVars()) == 0 :
         return RealVal(0)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+    if len(x.getVars()) == 0:
         return diff(y)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+    if len(y.getVars()) == 0:
         return diff(x)
 
     return diff(x) + diff(y)
@@ -43,11 +43,11 @@ def _(const):
     x = const.left()
     y = const.right()
 
-    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+    if len(const.getVars()) == 0 :
         return RealVal(0)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
-        return RealVal(0) - diff(y)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+    if len(x.getVars()) == 0:
+        return diff(y)
+    if len(y.getVars()) == 0:
         return diff(x)
 
     return diff(x) - diff(y)
@@ -56,10 +56,9 @@ def _(const):
 def _(const):
     x = const.left()
     y = const.right()
-    if z3.is_rational_value(z3.simplify(z3Obj(x))) and z3.is_rational_value(z3.simplify(z3Obj(y))):
-        return RealVal(0)
-    if isinstance(x, Variable) and z3.is_rational_value(z3.simplify(z3Obj(y))) :
-        if z3.simplify(z3Obj(y)) == 0:
+
+    if isinstance(x, Variable) and (len(y.getVars()) == 0): 
+        if eval(str(y)) == 0: 
             return RealVal(0)
         elif str(x.id[0:4] == 'time'):
             return (y * (x ** (y - RealVal(1))))
@@ -75,11 +74,12 @@ def _(const):
 def _(const):
     x = const.left()
     y = const.right()
-    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+
+    if len(const.getVars()) == 0 :
         return RealVal(0)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+    if len(x.getVars()) == 0:
         return x * diff(y)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+    if len(y.getVars()) == 0:
         return diff(x) * y
 
     return diff(x) * y + x * diff(y)
@@ -88,13 +88,12 @@ def _(const):
 def _(const):
     x = const.left()
     y = const.right()
-    if z3.is_rational_value(z3.simplify(z3Obj(const))):
+    if len(const.getVars()) == 0 :
         return RealVal(0)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.left()))):
+    if len(x.getVars()) == 0:
         return RealVal(0) - diff(y) * x / (y * y)
-    if z3.is_rational_value(z3.simplify(z3Obj(const.right()))):
+    if len(y.getVars()) == 0:
         return diff(x) / y
-
 
     return diff(x) / y - diff(y) * x / (y * y) 
 

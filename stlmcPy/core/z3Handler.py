@@ -14,9 +14,9 @@ def z3checkSat(consts, logic):
     else:
         solver = z3.Solver()
 
-    # solver.set("timeout", timeout * 1000)
     target_z3_simplify = z3.simplify(z3.And(*z3Consts))
     solver.add(target_z3_simplify)
+    solver.set('solver2_timeout', 3600000)
 
     result = solver.check()
     str_result = str(result)

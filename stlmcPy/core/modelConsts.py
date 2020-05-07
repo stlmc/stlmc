@@ -224,6 +224,10 @@ class modelConsts:
         return Or(*result)
 
     def propForall(self, exp, bound, curFlow):
+        # just compare constants
+        if len(exp.getVars()) == 0:
+            return exp
+
         # Change proposition formula type to Gt or Ge
         if isinstance(exp, Lt):
             exp = Gt((exp.right() - exp.left()), RealVal(0))
@@ -345,10 +349,7 @@ class modelConsts:
         for i in range(len(variables)):
             keyIndex = str(variables[i]).find('_')
             key = str(variables[i])[:keyIndex]
-            if (key.find('time') != -1):
-                result.append(variables[i] > RealVal(0))
-                result.append(variables[i] <= RealVal(timeBound))
-            if (key.find('tau') != -1 or key.find('TauIndex') != -1):
+            if (key.find('time') != -1 or key.find('tau') != -1 or key.find('TauIndex') != -1):
                 result.append(variables[i] >= RealVal(0))
                 result.append(variables[i] <= RealVal(timeBound))
         return result
