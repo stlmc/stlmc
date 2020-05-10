@@ -1,0 +1,99 @@
+bool mf;
+bool ms;
+[-20, 100] tx;
+[0, 90] bx;
+# state
+# 00: Past and Far(more than 85)
+# 01: Past and Approach
+# 10: Past and Near
+# 11: Past and Past
+{
+    mode:
+        mf = false;
+ 	ms = false; 
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 0;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (~ mf') (ms' = true) (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (mf' = true) (~ ms') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx <= 0)) =>
+          (and (mf' = true) (ms' = true) (bx' = bx) (tx' = tx));
+        (and (tx < -5) (tx >= -10)) =>
+          (and (~ mf') (~ ms') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        mf = false;
+	ms = true; 
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 5;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (~ mf') (ms' = true) (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (mf' = true) (~ ms') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx <= 0)) =>
+          (and (mf' = true) (ms' = true) (bx' = bx) (tx' = tx));
+        (and (tx < -5) (tx >= -10)) =>
+          (and (~ mf') (~ ms') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        mf = true;
+	ms = false;
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 10;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (~ mf') (ms' = true) (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (mf' = true) (~ ms') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx <= 0)) =>
+          (and (mf' = true) (ms' = true) (bx' = bx) (tx' = tx));
+        (and (tx < -5) (tx >= -10)) =>
+          (and (~ mf') (~ ms') (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        mf = true;
+	ms = true; 
+    inv:
+	(bx > 80);
+        (bx < 90);
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = -5;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (~ mf') (ms' = true) (bx' = bx) (tx' = tx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (mf' = true) (~ ms') (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx <= 0)) =>
+          (and (mf' = true) (ms' = true) (bx' = bx) (tx' = tx));
+        (and (tx < -5) (tx >= -10)) =>
+          (and (~ mf') (~ ms') (bx' = bx) (tx' = (100 + tx)));
+}
+
+init:
+(and (not(mf)) not(ms) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70)) ;
+
+propositions:
+reachability = tx < 0 ;
+bfonel = bx >= 80;
+foneq = bx < 60;
+
+goal:
+#(<> (0.0,50.0) reachability);
+([] [20.0,40.0] (bfonel -> (<>[1.0,20.0] reachability)));
+#([] [3.0,50.0] (<>[5.0, 20.0] bfonel));
+#([] [10.0,60.0] (bfonel -> ([][20.0,40.0] foneq)));
+
+

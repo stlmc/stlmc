@@ -1,0 +1,2 @@
+k,ConstraintSize,TranslationSize,Result,generationTime,solvingTime, totalTime
+5,-1,84,False,0.4293,5362.7037,5363.1329

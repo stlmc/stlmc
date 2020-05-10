@@ -1,0 +1,93 @@
+New filename: ./reports/report_writing_([]_[0.0,100.0]^[0.0,inf) newPropDecl_0)_z3.txt
+New filename: ./reports/report_writing_((<>_[0.0,20.0]^[0.0,inf) newPropDecl_1) -> modeMH)_z3.txt
+New filename: ./reports/report_writing_(<>_[12.0,50.0]^[0.0,inf) (modeMH -> (<>_[3.0,40.0]^[0.0,inf) (~ modeMH))))_z3.txt
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "([]_[0.0,100.0]^[0.0,inf) newPropDecl_0)"
+	 Result : False, Variable point bound : 5, Time bound : 30
+	Execution Time(sec) : 0.2321
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "((<>_[0.0,20.0]^[0.0,inf) newPropDecl_1) -> modeMH)"
+	 Result : False, Variable point bound : 5, Time bound : 30
+	Execution Time(sec) : 0.258
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "([]_[0.0,100.0]^[0.0,inf) newPropDecl_0)"
+	 Result : False, Variable point bound : 10, Time bound : 30
+	Execution Time(sec) : 0.6237
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "((<>_[0.0,20.0]^[0.0,inf) newPropDecl_1) -> modeMH)"
+	 Result : False, Variable point bound : 10, Time bound : 30
+	Execution Time(sec) : 0.6749
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "([]_[0.0,100.0]^[0.0,inf) newPropDecl_0)"
+	 Result : False, Variable point bound : 15, Time bound : 30
+	Execution Time(sec) : 1.1721
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "((<>_[0.0,20.0]^[0.0,inf) newPropDecl_1) -> modeMH)"
+	 Result : False, Variable point bound : 15, Time bound : 30
+	Execution Time(sec) : 1.2317
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "(<>_[12.0,50.0]^[0.0,inf) (modeMH -> (<>_[3.0,40.0]^[0.0,inf) (~ modeMH))))"
+	 Result : False, Variable point bound : 5, Time bound : 30
+	Execution Time(sec) : 1.7377
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "(<>_[12.0,50.0]^[0.0,inf) (modeMH -> (<>_[3.0,40.0]^[0.0,inf) (~ modeMH))))"
+	 Result : False, Variable point bound : 10, Time bound : 30
+	Execution Time(sec) : 5.3384
+
+---------------------------------------------------------------------------
+
+
+
+---------------------------------------------------------------------------
+
+	 Model : "writing", STL formula : "(<>_[12.0,50.0]^[0.0,inf) (modeMH -> (<>_[3.0,40.0]^[0.0,inf) (~ modeMH))))"
+	 Result : False, Variable point bound : 15, Time bound : 30
+	Execution Time(sec) : 11.3536
+
+---------------------------------------------------------------------------
+
