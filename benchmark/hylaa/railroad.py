@@ -84,6 +84,15 @@ def make_automaton():
     guard_rhs = [-5, -85]
     t.set_guard(guard_mat, guard_rhs)
 
+    # bx' = bx, tx' = tx + 100
+    reset_csr = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+    minkowski_csr = [[1], [0], [0]]
+    constraints_csr = [[1], [-1]]
+    constraints_rhs = [100, -100]
+    t.set_reset(reset_csr, minkowski_csr, constraints_csr, constraints_rhs)
+
+
     # mode2
     t = ha.new_transition(m2, m4)
     # -5 <= tx < 5, bx <= 80
@@ -117,6 +126,14 @@ def make_automaton():
             [-0, -1, -0]]
     guard_rhs = [-5, -85]
     t.set_guard(guard_mat, guard_rhs)
+
+    # bx' = bx, tx' = tx + 100
+    reset_csr = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+    minkowski_csr = [[1], [0], [0]]
+    constraints_csr = [[1], [-1]]
+    constraints_rhs = [100, -100]
+    t.set_reset(reset_csr, minkowski_csr, constraints_csr, constraints_rhs)
 
     # mode3
 
@@ -153,6 +170,14 @@ def make_automaton():
     guard_rhs = [-5, -85]
     t.set_guard(guard_mat, guard_rhs)
 
+    # bx' = bx, tx' = tx + 100
+    reset_csr = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+    minkowski_csr = [[1], [0], [0]]
+    constraints_csr = [[1], [-1]]
+    constraints_rhs = [100, -100]
+    t.set_reset(reset_csr, minkowski_csr, constraints_csr, constraints_rhs)
+
     # mode 4
 
     t = ha.new_transition(m4, m4)
@@ -187,6 +212,14 @@ def make_automaton():
             [-0, -1, -0]]
     guard_rhs = [-5, -85]
     t.set_guard(guard_mat, guard_rhs)
+
+    # bx' = bx, tx' = tx + 100
+    reset_csr = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+    minkowski_csr = [[1], [0], [0]]
+    constraints_csr = [[1], [-1]]
+    constraints_rhs = [100, -100]
+    t.set_reset(reset_csr, minkowski_csr, constraints_csr, constraints_rhs)
 
     '''
     t = ha.new_transition(m2, m3)
