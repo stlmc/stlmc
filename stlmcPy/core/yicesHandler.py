@@ -214,6 +214,13 @@ def _(const):
     result = '(and ' + ' '.join(yicesresult) + ')'
     return result
 
+@yicesObj.register(Trans)
+def _(const):
+    result = const.getConstraints()
+    yicesresult = [yicesObj(c) for c in result]
+    result = '(and ' + ' '.join(yicesresult) + ')'
+    return result
+
 @yicesObj.register(Forall)
 def _(const):
     result = getForallConsts(const)

@@ -512,7 +512,8 @@ class Not(Logical, _UnaryOp):
         return self
 
 class Integral(Node):
-    def __init__(self, endList, startList, time, ode, flowType):
+    def __init__(self, curMode, endList, startList, time, ode, flowType):
+        self.curMode = curMode
         self.startList = []
         self.endList = []
         for i in endList.keys():
@@ -568,6 +569,7 @@ class Integral(Node):
                     result.append(self.endList[i] == substitutionExp[keyValue])
         else:
             raise FlowTypeEerror()
+        result.append(self.curMode)
         return result    
 
     def getVars(self):
@@ -639,9 +641,80 @@ class Solution(Node):
     def size(self):
         return 1
 
+class Trans(Node):
+    def __init__(self, curMode, transList, bound, varVal, modeVars, contVars): 
+        self.curMode = curMode
+        # list of tuple (guard, next_state)
+        self.transList = transList
+        self.modeVar = modeVars
+        self.contVar = contVars
+        self.varVal = varVal
+        self.bound = bound
+        super().__init__(Type.Bool)
+
+    def __repr__(self):
+        result = '(and ' +  str(self.curMode) + ' (or '
+        for i in self.transList:
+            result = reulst + '(=> ' + str(i[0]) + ' ' + str(i[1]) + ') '
+        result = result + '))'
+        return result
+
+    def getConstraints(self):
+        jumpConsts = list()
+        jumpConsts.append(self.curMode)
+        subresult = list()
+        for i in self.transList:
+            subresult.append(And(i[0], i[1]))
+        jumpConsts.append(Or(*subresult))
+
+        result = []
+        for k in range(self.bound + 1):
+            op = {'bool': Bool, 'int': Int, 'real': Real}
+            modeDictPre = {}
+            modeDictPost = {}
+
+            for i in range(len(self.modeVar)):
+                modeDictPre[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id + '_' + str(k))
+                modeDictPost[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id + '_' + str(k + 1))
+
+            varDictPre = {}
+            varDictPost = {}
+            for i in range(len(self.contVar)):
+                varDictPre[str(self.contVar[i].id)] = op[self.contVar[i].type](self.contVar[i].id + '_' + str(k) + '_t')
+                varDictPost[str(self.contVar[i].id)] = op[self.contVar[i].type](self.contVar[i].id + '_' + str(k+1) + '_0')
+
+            time = Real('time' + str(k))
+
+            combineSub = dict(modeDictPre, **varDictPre) 
+            combineSub.update(self.varVal)
+            nextSub = dict(modeDictPost, **varDictPost)
+            nextSub.update(self.varVal)
+
+            const = [i.substitution(combineSub) for i in jumpConsts]
+            combineJump = [i.nextSub(nextSub) for i in const]
+            result.append(Or(*combineJump))
+
+
+        return result
+
+
+
+    def getVars(self):
+        return set()
+
+    def substitution(self, subDict):
+        return self
+
+    def nextSub(self, subDict):
+        return self
+
+    def size(self):
+        return 1
 
 class Forall(Node):
-    def __init__(self, exp, modePropDict, startDict, endDict, ode):
+    def __init__(self, curMode, usingPropDict, exp, modePropDict, startDict, endDict, ode):
+        self.curMode = curMode
+        self.usingPropDict = usingPropDict
         self.exp = exp
         self.modePropDict = modePropDict
         self.startDict = startDict
