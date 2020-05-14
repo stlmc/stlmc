@@ -54,8 +54,7 @@ class modelConsts:
         for i in range(len(self.modeModule)):
             subresult = list()
             for j in range(len(self.modeModule[i].getJump().getRedeclList())):
-                (condition, redecl) = self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars)
-            subresult.append((condition, redecl))
+                subresult.append(self.modeModule[i].getJump().getRedeclList()[j].getExpression(self.subvars))
 
             # add steady state jump constraints
 
@@ -67,11 +66,24 @@ class modelConsts:
             for k in range(len(self.contVar)):
                 var = op[self.contVar[k].type](self.contVar[k].id)
                 steadyStateConsts.append(NextVar(var) == var)
-            subresult.append((BoolVal(True), And(*steadyStateConsts)))
+            subresult.append(And(*steadyStateConsts))
 
-            jumpConsts.append(Trans(self.modeModule[i].getMode().getExpression(self.subvars), subresult, bound, self.varVal, self.modeVar, self.contVar)) 
+            jumpConsts.append(And(self.modeModule[i].getMode().getExpression(self.subvars), Or(*subresult)))
 
-        return And(*jumpConsts)
+        result = []
+        for k in range(bound + 1):
+            time = Real('time' + str(k))
+
+            combineSub = self.combineDict(self.makeSubMode(k), self.makeSubVars(k, 't'))
+            combineSub.update(self.varVal)
+            nextSub = self.combineDict(self.makeSubMode(k + 1), self.makeSubVars(k + 1, '0'))
+            nextSub.update(self.varVal)
+
+            const = [i.substitution(combineSub) for i in jumpConsts]
+            combineJump = [i.nextSub(nextSub) for i in const]
+            result.append(Or(*combineJump))
+
+        return And(*result)
 
     def flowConstraints(self, bound):
         result = list()
@@ -102,8 +114,9 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_' + str(k)) < IntVal(len(self.modeModule)))
                 modeConsts.append(Real('currentMode_' + str(k)) >= IntVal(0))
 
-                modeConsts.append(Integral(curMode.substitution(self.makeSubMode(k)), self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule,
-                                               self.modeModule[i].getFlow().getFlowType()))
+                modeConsts.append(And(curMode.substitution(self.makeSubMode(k)),
+                                      Integral(self.makeSubVars(k, 't'), self.makeSubVars(k, '0'), time, flowModule,
+                                               self.modeModule[i].getFlow().getFlowType())))
                 flowConsts.append(And(*modeConsts))
             result.append(Or(*flowConsts))
         return And(*result)
@@ -159,31 +172,17 @@ class modelConsts:
     def invConstraints(self, bound):
         result = list()
         for k in range(bound + 1):
-            combine = self.combineDict(self.makeSubMode(k), self.makeSubProps(k))
-            combine.update(self.varVal)
             propIdDict = dict()
             invConsts = list()
             for i in range(len(self.modeModule)):
                 curMode = self.modeModule[i].getMode().getExpression(self.subvars)
                 curInv = self.modeModule[i].getInv().getExpression(self.subvars)
                 (propIdDict, formula) = (self.makeAtomicDict(curInv, len(propIdDict), propIdDict, k))
-                #invConsts.append(And(curMode, formula))
-                curProp = list()
-                if not isinstance(formula, Bool):
-                    objct = formula.getListElem()
-                    for o in objct:
-                        curProp.extend([prop for prop, propId in propIdDict.items() if propId == str(o)[0:-2]])
-                else:
-                    curProp.extend([prop for prop, propId in propIdDict.items() if propId == str(formula)[0:-2]])
-
+                # invConsts.append(And(curMode.substitution(self.makeSubMode(k)), formula))
+                invConsts.append(And(curMode, formula))
                 curFlow = self.modeModule[i].getFlow()
-                usingProp = dict()
-                for cp in curProp:
-                    usingProp[cp] = propIdDict[cp]
-                for up in usingProp:
-                    invConsts.append(self.propForall(curMode.substitution(self.makeSubMode(k)), usingProp, up, k, curFlow)) 
-                # ex) {(> x1 0): 'invAtomicID_0', (> x2 0): 'invAtomicID_1', (< x2 50)}
-                # Forall(curMode.substitution(self.makeSubMode(k)), formula, usingProp, k, curFlow) 
+            for prop in propIdDict.keys():
+                result.append(Bool(propIdDict[prop] + "_" + str(k)) == self.propForall(prop, k, curFlow))
             result.append(Or(*invConsts))
         return And(*result)
 
@@ -207,7 +206,6 @@ class modelConsts:
 
 
     # For reachbility check, need to check!!!!
-    '''
     def goalConstraints(self, bound, goal):
         result = list()
         for k in range(bound + 1):
@@ -224,11 +222,37 @@ class modelConsts:
                                             self.propForall(self.makePropDict()[prop], k, curFlow)))
             result.append(And(*const))
         return Or(*result)
-    '''
 
-    def propForall(self, curMode, usingPropDict, exp, bound, curFlow):
+    def propForall(self, exp, bound, curFlow):
+        # just compare constants
+        if len(exp.getVars()) == 0:
+            return exp
+
+        # Change proposition formula type to Gt or Ge
+        if isinstance(exp, Lt):
+            exp = Gt((exp.right() - exp.left()), RealVal(0))
+        if isinstance(exp, Le):
+            exp = Ge((exp.right() - exp.left()), RealVal(0))
+
+        # If proposition is just boolean variable, return original expression
+        if not (isinstance(exp, Gt) or isinstance(exp, Numeq) or isinstance(exp, Numneq) or isinstance(exp, Ge)):
+            if exp.getType() == Type.Bool:
+                return exp.substitution(self.makeSubMode(bound))
+            else:
+                print(exp)
+                print(exp.getType())
+                raise ("Proposition constraints something wrong")
+
+        # Case Real value >(or >=) 0
+        if len(exp.getVars()) == 0:
+            return exp
+
+        const = list()
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
         combine.update(self.varVal)
+        handlingExp = exp.left() - exp.right()
+
+        handlingExp = handlingExp.substitution(combine)
 
         curFlowExp = curFlow.getExpression(self.subvars)
         curFlowType = curFlow.getFlowType()
@@ -250,9 +274,48 @@ class modelConsts:
         subContVar = dict()
         for contVar in flowModule.keys():
             subContVar[str(contVar.id)] = flowModule[contVar]
+        substitutionExp = handlingExp.substitution(subContVar)
+        diffExp = diff(substitutionExp)
 
-        return Forall(curMode, usingPropDict, exp, combine, self.makeSubVars(bound, '0'), self.makeSubVars(bound, 't'), subContVar) 
+        # monotone increase or decrease
+        const.append(Or(Ge(diffExp, RealVal(0)), Le(diffExp, RealVal(0))))
 
+        # Special case : a == b
+        if isinstance(exp, Numeq):
+            const.append(Numeq(handlingExp.substitution(self.makeSubVars(bound, '0')), RealVal(0)))
+            const.append(Numeq(handlingExp.substitution(self.makeSubVars(bound, 't')), RealVal(0)))
+            const.append(Numeq(diffExp, RealVal(0)))
+            return And(*const)
+
+        # Special case : a =/= b
+        if isinstance(exp, Numneq):
+            subconst = list()
+            subconst.append(self.propForall(Gt(handlingExp, RealVal(0)), bound, curFlow))
+            subconst.append(self.propForall(Lt(handlingExp, RealVal(0)), bound, curFlow))
+            return And(*const, Or(*subconst))
+
+        # f(t') >= 0
+        const.append(Ge(handlingExp.substitution(self.makeSubVars(bound, 't')), RealVal(0)))
+
+        if isinstance(exp, Gt):
+            # Check a start point of interval satisfies the proposition
+            const.append(Gt(handlingExp.substitution(self.makeSubVars(bound, '0')), RealVal(0)))
+            # Case : f(t) = 0 -> dot(f(T)) > 0, forall T in (t, t')
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound, '0')) == RealVal(0),
+                                 self.propForall(Gt(diffExp, RealVal(0)), bound, curFlow)))
+            # Case : f(t') = 0 -> dot(f(T)) < 0, forall T in (t, t')
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound, 't')) == RealVal(0),
+                                 self.propForall(Lt(diffExp, RealVal(0)), bound, curFlow)))
+        elif isinstance(exp, Ge):
+            const.append(Ge(handlingExp.substitution(self.makeSubVars(bound, '0')), RealVal(0)))
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound, '0')) == RealVal(0),
+                                 self.propForall(Ge(diffExp, RealVal(0)), bound, curFlow)))
+            const.append(Implies(handlingExp.substitution(self.makeSubVars(bound, 't')) == RealVal(0),
+                                 self.propForall(Le(diffExp, RealVal(0)), bound, curFlow)))
+        else:
+            raise ("proposition constraint case mismatched")
+
+        return And(*const)
 
     def propConstraints(self, propSet, bound):
         result = list()
@@ -265,14 +328,10 @@ class modelConsts:
                     for m in range(len(self.modeModule)):
                         curMode = self.modeModule[m].getMode().getExpression(self.subvars)
                         curFlow = self.modeModule[m].getFlow()
-                        print("propConstraints")
-                        print(i)
-                        const.append(self.propForall(curMode.substitution(combine), dict(), self.makePropDict()[i], k, curFlow))
-                        #const.append(Implies(And(i, curMode).substitution(combine),
-                        #                     self.propForall(self.makePropDict()[i], k, curFlow)))
-                        const.append(self.propForall(curMode.substitution(combine), dict(), Not(self.makePropDict()[i]).reduce(), k, curFlow))
-                        #const.append(Implies(And(Not(i), curMode).substitution(combine),
-                        #                     self.propForall(Not(self.makePropDict()[i]).reduce(), k, curFlow)))
+                        const.append(Implies(And(i, curMode).substitution(combine),
+                                             self.propForall(self.makePropDict()[i], k, curFlow)))
+                        const.append(Implies(And(Not(i), curMode).substitution(combine),
+                                             self.propForall(Not(self.makePropDict()[i]).reduce(), k, curFlow)))
             result.append(And(*const))
         return And(*result)
 

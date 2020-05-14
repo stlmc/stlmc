@@ -164,13 +164,6 @@ def _(const):
     z3result = [z3Obj(c) for c in result]
     return z3.And(z3result) 
 
-@z3Obj.register(Trans)
-def _(const):
-    result = const.getConstraints()
-    z3result = [z3Obj(c) for c in result]
-    return z3.And(z3result)
-
-
 @z3Obj.register(Forall)
 def _(const):
     result = getForallConsts(const)

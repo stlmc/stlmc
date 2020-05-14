@@ -7,7 +7,6 @@ from .yicesHandler import *
 #from .drealHandler import *
 from .formula import *
 from .modelConsts import *
-#from .hylaaHandler import *
 
 
 def isNumber(s):
@@ -587,7 +586,7 @@ class jumpRedeclModule:
     def getExpression(self, varDict):
         condition = self.cond.getExpression(varDict)
         redecl = self.jumpRedecl.getExpression(varDict)
-        return (condition, redecl)
+        return And(condition, redecl)
 
     def getJumpRedecl(self):
         return self.jumpRedecl
@@ -791,10 +790,6 @@ class StlMC:
         printResult(modelName, self.strStlFormula, str(result), bound, timeBound, constSize, fsSize,
                     str(generationTime), str(solvingTime),
                     str(totalTime))
-
-        result = False
-        constSize = 0
-        fsSize = 0
 
         return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
 

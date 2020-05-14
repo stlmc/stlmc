@@ -38,8 +38,8 @@ def getForallConsts(const):
     # Special case : a =/= b
     elif isinstance(exp, Numneq):
         subresult = list()
-        subresult.append(Forall(const.curMode, const.usingPropDict, Gt(handlingExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode))
-        subresult.append(Forall(const.curMode, const.usingPropDict, Lt(handlingExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode))
+        subresult.append(Forall(Gt(handlingExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode))
+        subresult.append(Forall(Lt(handlingExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode))
         result.append(Or(*subresult))
     else:
         # f(t') >= 0
@@ -49,15 +49,15 @@ def getForallConsts(const):
             result.append(Gt(handlingExp.substitution(const.startDict), RealVal(0)))
             # Case : f(t) = 0 -> dot(f(T)) > 0, forall T in (t, t')
             result.append(Implies(handlingExp.substitution(const.startDict) == RealVal(0),
-                             Forall(const.curMode, const.usingPropDict, Gt(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
+                             Forall(Gt(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
             # Case : f(t') = 0 -> dot(f(T)) < 0, forall T in (t, t')
             result.append(Implies(handlingExp.substitution(const.endDict) == RealVal(0),
-                             Forall(const.curMode, const.usingPropDict, Lt(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
+                             Forall(Lt(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
         elif isinstance(exp, Ge):
             result.append(Ge(handlingExp.substitution(const.startDict), RealVal(0)))
             result.append(Implies(handlingExp.substitution(const.startDict) == RealVal(0),
-                             Forall(const.curMode, const.usingPropDict, Ge(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
+                             Forall(Ge(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
             result.append(Implies(handlingExp.substitution(const.endDict) == RealVal(0),
-                             Forall(const.curMode, const.usingPropDict, Le(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
+                             Forall(Le(diffExp, RealVal(0)), const.modePropDict, const.startDict, const.endDict, const.ode)))
     return result
 
