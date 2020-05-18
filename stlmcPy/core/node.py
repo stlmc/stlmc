@@ -81,6 +81,9 @@ class Constant(Leaf):
     def __repr__(self):
         return str(self.__value)
 
+    def infix(self):
+        return str(self.__value)
+
     def substitution(self, subDict):
         return self
 
@@ -149,6 +152,9 @@ class Variable(Leaf):
         return hash(str(self.id))
 
     def __repr__(self):
+        return str(self.id)
+
+    def infix(self):
         return str(self.id)
 
     def substitution(self, subDict):
@@ -512,7 +518,8 @@ class Not(Logical, _UnaryOp):
         return self
 
 class Integral(Node):
-    def __init__(self, endList, startList, time, ode, flowType):
+    def __init__(self, curMode, endList, startList, time, ode, flowType):
+        self.curMode = curMode
         self.startList = []
         self.endList = []
         for i in endList.keys():
@@ -541,6 +548,7 @@ class Integral(Node):
         if self.flowType == 'diff':
             for i in self.ode.values():
                 subvariables = list(i.getVars())
+                '''
                 for j in range(len(subvariables)):
                     if subvariables[j] in self.ode.keys():
                         if str(self.ode[subvariables[j]]) == str(RealVal(0)):
@@ -548,6 +556,7 @@ class Integral(Node):
                         else:
                             print(str(self.ode[subvariables[j]]))
                             raise constODEerror()
+                '''
             substitutionExp = {}
             for i in self.ode.keys():
                 substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
@@ -568,6 +577,9 @@ class Integral(Node):
                     result.append(self.endList[i] == substitutionExp[keyValue])
         else:
             raise FlowTypeEerror()
+
+        result.append(self.curMode)
+
         return result    
 
     def getVars(self):
@@ -639,9 +651,10 @@ class Solution(Node):
     def size(self):
         return 1
 
-
 class Forall(Node):
-    def __init__(self, exp, modePropDict, startDict, endDict, ode):
+    def __init__(self, curMode, propID, exp, modePropDict, startDict, endDict, ode):
+        self.curMode = curMode
+        self.propID = propID
         self.exp = exp
         self.modePropDict = modePropDict
         self.startDict = startDict
@@ -650,8 +663,11 @@ class Forall(Node):
         super().__init__(Type.Bool)
 
     def __repr__(self):
-        result = '(forall ' +  str(exp) + ')'
+        result = '(forall ' +  str(self.exp) + ')'
         return result
+
+    def getCurMode(self):
+        return self.curMode
 
     def getVars(self):
         return set()
@@ -664,3 +680,4 @@ class Forall(Node):
 
     def size(self):
         return 1
+

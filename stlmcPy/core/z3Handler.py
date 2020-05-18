@@ -13,12 +13,12 @@ def z3checkSat(consts, logic):
     else:
         solver = z3.Solver()
 
-    # solver.set("timeout", timeout * 1000)
-    target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-    solver.add(target_z3_simplify)
-    #solver.add(z3Consts)
-    #with open("thermoLinear.smt2", 'w') as fle:
-    #    print(solver.to_smt2(), file=fle)
+    #solver.set("timeout", timeout * 1000)
+   # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+    #solver.add(target_z3_simplify)
+    solver.add(z3Consts)
+    with open("thermoLinear.smt2", 'w') as fle:
+        print(solver.to_smt2(), file=fle)
 
 
     result = solver.check()
@@ -166,7 +166,9 @@ def _(const):
 
 @z3Obj.register(Forall)
 def _(const):
-    result = getForallConsts(const)
+    result = list()
+    result.append(And(const.getCurMode(), const.propID))
+    result.append(const.propID == getForallConsts(const))
     z3result = [z3Obj(c) for c in result]
     return z3.And(z3result)
 

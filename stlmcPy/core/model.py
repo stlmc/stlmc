@@ -7,6 +7,7 @@ from .yicesHandler import *
 #from .drealHandler import *
 from .formula import *
 from .modelConsts import *
+from .hylaaHandler import *
 
 
 def isNumber(s):
@@ -210,6 +211,9 @@ class BinaryExp:
 
     def __repr__(self):
         return "(" + str(self.op) + " " + str(self.left) + " " + str(self.right) + ")"
+
+    def infix(self):
+        return "(" + str(self.left.infix()) + " " + str(self.op) + " " + str(self.right.infix()) + ")"
 
     def getExpression(self, varDict):
         left = self.left
@@ -753,7 +757,8 @@ class StlMC:
             partitionConsts = PART.genPartition(baseP, fs[1], subFormulaMap)
 
             # constraints from the model
-            modelConsts = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
+            # (list, attribute, attribute, list)
+            (transConsts, invConsts, flowConsts, stlConsts) = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
             #modelConsts = []
             etime1 = time.process_time()
 
@@ -761,14 +766,23 @@ class StlMC:
             if onlySTL:
                 print("only STL is true")
                 allConsts = partitionConsts + [formulaConst]    
+            elif solver == 'hylaa':
+                allConsts = transConsts
             else:
-                allConsts = modelConsts + partitionConsts + [formulaConst]
-            
+                allConsts = transConsts + [invConsts, flowConsts] + stlConsts + partitionConsts + [formulaConst]
+                #allConsts = stlConsts
+                #allConsts = [invConsts]
+
+
             # check the satisfiability
             if solver == 'z3':
                 (result, cSize, self.model) = z3checkSat(allConsts, logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
+            elif solver == 'hylaa':
+                (result, cSize) = hylaaModel(allConsts, self.contVar, self.bound, self.modeModule)
+                self.model = None
+
             '''
             elif solver == 'dreal':
                 (result, cSize, self.model) = drealcheckSat(modelConsts + partitionConsts + [formulaConst], logic)

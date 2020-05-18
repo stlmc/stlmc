@@ -216,7 +216,9 @@ def _(const):
 
 @yicesObj.register(Forall)
 def _(const):
-    result = getForallConsts(const)
+    result = list()
+    result.append(And(const.getCurMode(), const.propID))
+    result.append(const.propID == getForallConsts(const))
     yicesresult = [yicesObj(c) for c in result]
     result = '(and ' + ' '.join(yicesresult) + ')'
     return result
