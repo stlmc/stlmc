@@ -286,6 +286,15 @@ class Relational(nonLeaf, _BinaryOp):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
         return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
+    def infix(self):
+        left = self.left().infix()
+        right = self.right().infix()
+        if self.op == '>' or self.op == '>=':
+            exp = '(' + right + ' - ' + left + ')'
+        elif self.op == '<' or self.op == '<=' or exp.op == '=':
+            exp = '(' + left + ' - ' + right + ')'
+
+        return exp
 
 class Ge(Relational):
     def __init__(self, left, right):
@@ -333,6 +342,8 @@ class BinaryArithmetic(nonLeaf, _BinaryOp):
         opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
         return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
+    def infix(self):
+        return "(" + str(self.left().infix()) + " " + str(self.op) + " " + str(self.right().infix()) + ")"
 
 class Plus(BinaryArithmetic):
     def __init__(self, left, right):

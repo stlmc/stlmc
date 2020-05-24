@@ -17,6 +17,10 @@ def z3checkSat(consts, logic):
    # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
     #solver.add(target_z3_simplify)
     solver.add(z3Consts)
+    for c in range(len(z3Consts)):
+        print(c)
+        print(z3Consts[c])
+
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
 

@@ -88,6 +88,7 @@ class modelConsts:
                 modeConsts.append(Real('currentMode_' + str(k)) < IntVal(len(self.modeModule)))
                 modeConsts.append(Real('currentMode_' + str(k)) >= IntVal(0))
 
+
                 jumpConsts.append(And(*[self.modeModule[i].getMode().getExpression(self.subvars), And(*modeConsts), Or(*subresult)]))
 
     
