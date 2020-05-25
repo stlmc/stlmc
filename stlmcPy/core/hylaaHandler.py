@@ -56,7 +56,6 @@ def isGuard(form):
 
 def hylaaModel(consts, contVars, bound, modeModules):
     strContVars = [c.id for c in contVars]
-
     # Only consider jump constraints
     clist = clause(consts[-1])
 
@@ -76,8 +75,10 @@ def hylaaModel(consts, contVars, bound, modeModules):
 
     result = solver.check()
     z3Jump = list()
+    initValList = list()
     if str(result) == "sat":
         m = solver.model()
+
         strContVars = [c.id for c in contVars]
 
         # Only consider jump constraints
@@ -93,23 +94,40 @@ def hylaaModel(consts, contVars, bound, modeModules):
         creset = [x for x in clist if not isGuard(x)]
         cguard = [x for x in cguard if m.eval(z3Obj(x))]
         creset= [x for x in creset if m.eval(z3Obj(x))]
+        print("enter")
+
+        numModes = list()
+        for i in range(bound + 1):
+            modeVar = z3.Real('currentMode_' + str(i))
+            numModes.append(m[modeVar])
+    
+        contVarList = list()
+        for j in range(bound + 1):
+            for i in range(len(contVars)):
+                contVarList.append(str(contVars[i].id) + "_" + str(j))
+        contVarList.append('constant_value')
+    
+        for contIndex in range(len(contVars)):
+            print("enter")
+            op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
+            curCont = contVars[contIndex]
+            initial_var = op[curCont.type](str(curCont.id) + "_" + str(0) + "_0")
+            initVal = float(m[initial_var].as_decimal(6).replace("?", ""))
+            initValList.append((initVal, initVal))
+        for i in range(len(contVars), len(contVarList) - 1):
+            initValList.append((0,0))
+        initValList.append((1,1))
+        print("initial")
+        print(initValList)
+    
+        ha = make_automaton(numModes, modeModules, len(contVars), contVarList, cguard, creset)
+        init_states = make_init(ha, initValList)
+        settings = make_settings()
+
+        Core(ha, settings).run(init_states)
     else:
         m = None
         raise ("No transition exists")
-
-    numModes = list()
-    for i in range(bound + 1):
-        modeVar = z3.Real('currentMode_' + str(i))
-        numModes.append(m[modeVar])
-
-    contVarList = list()
-    for j in range(bound + 1):
-        for i in range(len(contVars)):
-            contVarList.append(str(contVars[i].id) + "_" + str(j))
-    contVarList.append('constant_value')
-
-    ha = make_automaton(numModes, modeModules, len(contVars), contVarList, cguard, creset)
-
     result = False
     cSize = -1
     return (result, cSize)
@@ -285,4 +303,23 @@ def make_automaton(numModes, modeModules, numContVars, contVarList, guard, reset
         t.set_reset(reset_csr, m_csr, c_csr, c_rhs)
     return ha
 
+def make_init(ha, initVal):
+    mode = ha.modes['Mode_' + str(0)]
 
+    init_lpi = lputil.from_box(initVal, mode)
+
+    init_list = [StateSet(init_lpi, mode)]
+
+    return init_list
+
+def make_settings():
+    'make the reachability settings object'
+
+    # see hylaa.settings for a list of reachability settings
+    # step_size = 0.1, max_time = 10
+    settings = HylaaSettings(0.1, 10)
+    settings.plot.plot_mode = PlotSettings.PLOT_IMAGE
+    settings.stdout = HylaaSettings.STDOUT_VERBOSE
+    settings.plot.filename = "demo_reset.png"
+
+    return settings
