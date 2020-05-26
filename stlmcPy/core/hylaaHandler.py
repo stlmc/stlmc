@@ -76,6 +76,7 @@ def hylaaModel(consts, contVars, bound, modeModules):
     result = solver.check()
     z3Jump = list()
     initValList = list()
+    print(result)
     if str(result) == "sat":
         m = solver.model()
 
@@ -94,7 +95,6 @@ def hylaaModel(consts, contVars, bound, modeModules):
         creset = [x for x in clist if not isGuard(x)]
         cguard = [x for x in cguard if m.eval(z3Obj(x))]
         creset= [x for x in creset if m.eval(z3Obj(x))]
-        print("enter")
 
         numModes = list()
         for i in range(bound + 1):
@@ -108,7 +108,6 @@ def hylaaModel(consts, contVars, bound, modeModules):
         contVarList.append('constant_value')
     
         for contIndex in range(len(contVars)):
-            print("enter")
             op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
             curCont = contVars[contIndex]
             initial_var = op[curCont.type](str(curCont.id) + "_" + str(0) + "_0")
@@ -117,14 +116,13 @@ def hylaaModel(consts, contVars, bound, modeModules):
         for i in range(len(contVars), len(contVarList) - 1):
             initValList.append((0,0))
         initValList.append((1,1))
-        print("initial")
-        print(initValList)
     
         ha = make_automaton(numModes, modeModules, len(contVars), contVarList, cguard, creset)
         init_states = make_init(ha, initValList)
         settings = make_settings()
 
         Core(ha, settings).run(init_states)
+        print("after")
     else:
         m = None
         raise ("No transition exists")
@@ -162,8 +160,8 @@ def make_automaton(numModes, modeModules, numContVars, contVarList, guard, reset
     # i is the current bound
     for i in range(len(numModes)):
         m = ha.new_mode('Mode_' + str(i))
-        print("current Mode")
-        print(numModes[i])
+        #print("current Mode")
+        ##print(numModes[i])
         flowExp = modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getFlow().exp()
         # Assume no mode variables in invariant
         invExp = modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getInv()
@@ -299,8 +297,16 @@ def make_automaton(numModes, modeModules, numContVars, contVarList, guard, reset
         for ci in range(numDeclConsts):
             c_csr[ci * 2][ci] = 1
             c_csr[ci * 2 + 1][ci] = -1
+        if not (numDeclConsts == 0):
 
-        t.set_reset(reset_csr, m_csr, c_csr, c_rhs)
+            t.set_reset(reset_csr, m_csr, c_csr, c_rhs)
+
+        print("reset_csr")
+        print(reset_csr)
+        print(m_csr)
+        print(c_csr)
+        print(c_rhs)
+
     return ha
 
 def make_init(ha, initVal):
@@ -317,7 +323,7 @@ def make_settings():
 
     # see hylaa.settings for a list of reachability settings
     # step_size = 0.1, max_time = 10
-    settings = HylaaSettings(0.1, 10)
+    settings = HylaaSettings(0.1, 20)
     settings.plot.plot_mode = PlotSettings.PLOT_IMAGE
     settings.stdout = HylaaSettings.STDOUT_VERBOSE
     settings.plot.filename = "demo_reset.png"
