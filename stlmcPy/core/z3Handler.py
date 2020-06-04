@@ -6,7 +6,7 @@ from .makeForallConsts import *
 
 # return a check result and the Z3 constraint size
 def z3checkSat(consts, logic):
-    z3Consts=[z3Obj(c) for c in consts]
+    z3Consts=[z3Obj(c, False) for c in consts]
 
     if logic != "NONE":
         solver = z3.SolverFor(logic)
@@ -41,13 +41,13 @@ def sizeAst(node:z3.AstRef):
 
 
 @singledispatch
-def z3Obj(const:Node):
+def z3Obj(const:Node, hylaa = False):
     print(type(const))
     print(const)
     raise NotImplementedError('Something wrong')
 
 @z3Obj.register(Constant)
-def _(const):
+def _(const, hylaa = False):
     op = {Type.Bool: z3.BoolVal, Type.Real: z3.RealVal, Type.Int: z3.IntVal}
     if const.getType() == Type.Bool:
         value = True if const.value else False
@@ -56,78 +56,78 @@ def _(const):
     return op[const.getType()](value)
 
 @z3Obj.register(Variable)
-def _(const):
+def _(const, hylaa = False):
     op = {Type.Bool: z3.Bool, Type.Real: z3.Real, Type.Int: z3.Int}
     return  op[const.getType()](str(const.id))
 
 @z3Obj.register(Ge)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x >= y
 
 @z3Obj.register(Gt)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x > y
 
 @z3Obj.register(Le)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x <= y
 
 @z3Obj.register(Lt)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x < y
 
 @z3Obj.register(Numeq)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x == y
 
 @z3Obj.register(Plus)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x + y
 
 @z3Obj.register(Minus)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x - y
 
 @z3Obj.register(Pow)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x**y
 
 @z3Obj.register(Mul)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x * y
 
 @z3Obj.register(Div)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x / y
 
 @z3Obj.register(Neg)
-def _(const):
-    x = z3Obj(const.child())
+def _(const, hylaa = False):
+    x = z3Obj(const.child(), hylaa)
     return -x
 
 @z3Obj.register(And)
-def _(const):
-    z3args = [z3Obj(c) for c in const.children]
+def _(const, hylaa = False):
+    z3args = [z3Obj(c, hylaa) for c in const.children]
     if len(z3args) < 1:
         return True
     elif len(z3args) < 2:
@@ -136,8 +136,8 @@ def _(const):
         return z3.And(z3args)
 
 @z3Obj.register(Or)
-def _(const):
-    z3args = [z3Obj(c) for c in const.children]
+def _(const, hylaa = False):
+    z3args = [z3Obj(c, hylaa) for c in const.children]
     if len(z3args) < 1:
         return True
     elif len(z3args) < 2:
@@ -146,39 +146,41 @@ def _(const):
         return z3.Or(z3args)
 
 @z3Obj.register(Implies)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return z3.Implies(x, y)
 
 @z3Obj.register(Beq)
-def _(const):
-    x = z3Obj(const.left())
-    y = z3Obj(const.right())
+def _(const, hylaa = False):
+    x = z3Obj(const.left(), hylaa)
+    y = z3Obj(const.right(), hylaa)
     return x == y
 
 @z3Obj.register(Not)
-def _(const):
-    x = z3Obj(const.child())
+def _(const, hylaa = False):
+    x = z3Obj(const.child(), hylaa)
     return z3.Not(x)
 
 @z3Obj.register(Integral)
-def _(const):
+def _(const, hylaa = False):
     result = const.getConstraints()
-    z3result = [z3Obj(c) for c in result]
+    z3result = [z3Obj(c, hylaa) for c in result]
     return z3.And(z3result) 
 
 @z3Obj.register(Forall)
-def _(const):
+def _(const, hylaa = False):
+    if hylaa:
+        return z3.BoolVal(True) 
     result = list()
     result.append(And(const.getCurMode(), const.propID))
     result.append(const.propID == getForallConsts(const))
-    z3result = [z3Obj(c) for c in result]
+    z3result = [z3Obj(c, hylaa) for c in result]
     return z3.And(z3result)
 
 @z3Obj.register(Solution)
-def _(const):
+def _(const, hylaa = False):
     result = const.getConstraints()
-    z3result = [z3Obj(c) for c in result]
+    z3result = [z3Obj(c, hylaa) for c in result]
     return z3.And(z3result)
 
