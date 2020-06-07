@@ -62,10 +62,12 @@ class modelVisitorImpl(modelVisitor):
         if ctx.props():
             propDecl = self.visit(ctx.props())
 
+        reachList = self.visit(ctx.reach())
+
         goal = self.visit(ctx.goal_decl())
 
 
-        return (StlMC(modesDecl, varsDecl, varvalDict, modeModuleDecl, init, (propDecl + self.newPropDecl), goal, self.formulaText), self.isTri)
+        return (StlMC(modesDecl, varsDecl, varvalDict, modeModuleDecl, init, (propDecl + self.newPropDecl), reachList, goal, self.formulaText), self.isTri)
 
     '''
     mode_var_decl
@@ -438,6 +440,11 @@ class modelVisitorImpl(modelVisitor):
     def visitProp(self, ctx:modelParser.PropContext):
         return propDecl(ctx.VARIABLE().getText(), self.visit(ctx.condition()))
 
+    def visitReach(self, ctx:modelParser.ReachContext):
+        reachCond = list()
+        for i in range(len(ctx.condition())):
+            reachCond.append(self.visit(ctx.condition()[i]))
+        return reachCond 
     '''
     goal declaration
     '''

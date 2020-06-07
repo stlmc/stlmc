@@ -30,6 +30,7 @@ MODE : 'mode' ;
 INVT : 'inv' ;
 FLOW : 'flow' ;
 JUMP : 'jump' ;
+REACH : 'reach';
 GOAL : 'goal' ;
 INIT : 'init' ;
 PROP : 'propositions' ;
@@ -88,7 +89,7 @@ fragment COMMENT :
  * Parser Rules
  */
 
-stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
+stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? reach goal_decl EOF ;
 
 var_val_decl      : CONST var_type VARIABLE EQUAL val=(VALUE | TRUE| FALSE) SEMICOLON;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
@@ -181,6 +182,7 @@ formula
 props : PROP COLON (prop)* ;
 prop : VARIABLE EQUAL condition SEMICOLON ;
 
+reach : REACH COLON (condition SEMICOLON)* ;
 goal_decl : GOAL COLON (formula SEMICOLON)* ;
 
  

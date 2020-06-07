@@ -663,7 +663,8 @@ class Solution(Node):
         return 1
 
 class Forall(Node):
-    def __init__(self, curMode, propID, exp, modePropDict, startDict, endDict, ode):
+    def __init__(self, curMode, propID, exp, modePropDict, startDict, endDict, ode, delta):
+        self.delta = delta
         self.curMode = curMode
         self.propID = propID
         self.exp = exp

@@ -678,13 +678,14 @@ class formulaDecl:
 
 
 class StlMC:
-    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, goal, formulaText):
+    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, reachList, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
         self.varVal = varVal
         self.modeModule = modeModule
         self.init = init
         self.prop = prop  # list type
+        self.reachList = reachList
         self.goal = goal
         self.subvars = self.makeVariablesDict()
         self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop,
@@ -706,7 +707,7 @@ class StlMC:
         op = {'bool': Bool, 'int': Int, 'real': Real}
         result = dict()
         for i in self.varVal.keys():
-            result[str(i)] = self.varVal[i]
+            result[str(i)] = self.varVal[i] + [invConsts]
         for i in range(len(self.modeVar)):
             result[str(self.modeVar[i].id)] = op[self.modeVar[i].type](self.modeVar[i].id)
         for i in range(len(self.contVar)):
@@ -724,7 +725,8 @@ class StlMC:
                 self.strStlFormula)
 
     # an implementation of Algorithm 1 in the paper
-    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, onlySTL, iterative=True):
+    def modelCheck(self, modelName, stlFormula, bound, timeBound, solver, logic, onlySTL, delta, iterative=True):
+        self.delta = delta
         self.bound = bound
         self.strStlFormula = str(stlFormula)
         (constSize, fsSize) = (0, 0)
@@ -758,7 +760,7 @@ class StlMC:
 
             # constraints from the model
             # (list, attribute, attribute, list)
-            (transConsts, invConsts, flowConsts, stlConsts) = self.consts.modelConstraints(i, timeBound, partition, partitionConsts, [formulaConst])
+            (transConsts, invConsts, flowConsts, stlConsts) = self.consts.modelConstraints(i, timeBound, delta, partition, partitionConsts, [formulaConst])
             #modelConsts = []
             etime1 = time.process_time()
 
@@ -767,10 +769,11 @@ class StlMC:
                 print("only STL is true")
                 allConsts = partitionConsts + [formulaConst]    
             elif solver == 'hylaa':
-                allConsts = transConsts
+                #allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
+                allConsts = [invConsts] + transConsts
             else:
                 allConsts = transConsts + [invConsts, flowConsts] + stlConsts + partitionConsts + [formulaConst]
-                #allConsts = stlConsts
+                #allConsts = stlConsts + partitionConsts + [formulaConst]
                 #allConsts = [invConsts]
 
 
@@ -780,7 +783,8 @@ class StlMC:
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
             elif solver == 'hylaa':
-                (result, cSize) = hylaaModel(allConsts, self.contVar, self.bound, self.modeModule)
+                for numReach in range(len(self.reachList)):
+                    (result, cSize) = hylaaModel(allConsts, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
                 self.model = None
 
             '''
