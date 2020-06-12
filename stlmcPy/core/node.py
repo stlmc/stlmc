@@ -286,6 +286,16 @@ class Relational(nonLeaf, _BinaryOp):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
         return opdict[self.op](self.left().nextSub(subDict), self.right().nextSub(subDict))
 
+    def infixExp(self, delta):
+        left = self.left().infix()
+        right = self.right().infix()
+        if self.op == '>' or self.op == '>=':
+            exp = left + ' >= '  + right + ' - ' + str(delta)
+        else:
+            exp = left + ' <= '  + right + ' + ' + str(delta)
+
+        return exp
+
     def infix(self):
         left = self.left().infix()
         right = self.right().infix()

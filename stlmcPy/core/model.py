@@ -627,6 +627,7 @@ class jumpMod:
             right = varDict[self.exp]
         else:
             right = self.exp.getExpression(varDict)
+       
         if self.op == '<':
             return left < right
         elif self.op == '<=':
@@ -770,6 +771,7 @@ class StlMC:
                 allConsts = partitionConsts + [formulaConst]    
             elif solver == 'hylaa':
                 #allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
+
                 allConsts = [invConsts] + transConsts
             else:
                 allConsts = transConsts + [invConsts, flowConsts] + stlConsts + partitionConsts + [formulaConst]
@@ -784,7 +786,7 @@ class StlMC:
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
             elif solver == 'hylaa':
                 for numReach in range(len(self.reachList)):
-                    (result, cSize) = hylaaModel(allConsts, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
+                    (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
                 self.model = None
 
             '''
