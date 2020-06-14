@@ -34,6 +34,72 @@ def _(const):
         result.extend(orClause(c))
     return result
 
+@orClause.register(Not)
+def _(const):
+    result = list()
+    result.extend(const.child())
+    return result
+
+@singledispatch
+def timeClause(const:Node):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        return [const]
+    return result
+
+@timeClause.register(And)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        for x in const.children:
+            result.extend(timeClause(x))
+    contVarList = ['tau']
+    tlist = [x for x in result if determine(x, contVarList)]
+    return tlist
+
+@timeClause.register(Implies)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        result = timeClause(const.left())
+        result.extend(timeClause(const.right()))
+    return result
+
+@timeClause.register(Or)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        for x in const.children:
+            result.extend(timeClause(x))
+        contVarList = ['tau']
+        tlist = [x for x in result if determine(x, contVarList)]
+        #result = [tlist[0]]
+        result = tlist
+    return result
+
+@timeClause.register(Not)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+
+        result.extend(timeClause(const.child()))
+    return result
+
 
 @singledispatch
 def clause(const:Node):
@@ -53,6 +119,12 @@ def _(const):
         result.extend(clause(c))
     return result
 
+@clause.register(Not)
+def _(const):
+    result = list()
+    result.extend(clause(const.child()))
+    return result
+
 def determine(form, strContVars):
     subVars = list(form.getVars())
     for sv in subVars:
@@ -60,10 +132,11 @@ def determine(form, strContVars):
             return False
         else:
             strv = str(sv.id)
+            
             vid = strv[0:strv.find('_')]
-            v0 = strv[0:strv.find('_0')]
-            vt = strv[0:strv.find('_t')]
-            if not ((vid in strContVars) or (v0 in strContVars) or (vt in strContVars)) :
+            v0 = strv[0:-2]
+            
+            if not (vid in strContVars) and not (v0 in strContVars):
                 return False
     return True
 
@@ -76,19 +149,36 @@ def isGuard(form):
             return False
     return True
 
+def coreConsts(allConsts, contVarList, model):
+    literals = list()
+    for c in allConsts:
+        literals.extend(clause(c))
+    
+    clist = [x for x in literals if determine(x, contVarList)]
+    #clist = [x for x in clist if not isinstance(x, Forall)]
+    tl = [x for x in literals if model.eval(z3Obj(x))]
+    fl = [Not(x) for x in literals if not model.eval(z3Obj(x))]
+    total = tl + fl
+    z3Consts=[z3Obj(c) for c in total]
+    z3allConsts = [z3Obj(c) for c in allConsts]
+     
+    #print(z3.simplify(z3.Implies(z3.And(*z3Consts), z3.And(*z3allConsts))))
+    print(z3.simplify(z3.Implies(z3.simplify(z3.And(*z3Consts)), z3.simplify(z3.And(*z3allConsts)))))
 
-def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, bound, delta):
+
+
+def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, usedProp, timeConstraints, bound, delta):
     initValList = list()
     m = solver.model()
     allConsts = list()
     
-    for i in consts[0:-1]:
+    for i in consts:
         allConsts.extend(clause(i))
   
-    strContVars = [c.id for c in contVars]
-    
     allConsts = [x for x in allConsts if not isinstance(x, Forall)]
     allConsts = [x if m.eval(z3Obj(x)) else Not(x) for x in allConsts]
+
+    timeConsts = [x for x in timeConstraints if m.eval(z3Obj(x))]
 
     numModes = list()
     for i in range(bound + 1):
@@ -114,11 +204,15 @@ def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, bo
         initial_var = op[curCont.type](str(curCont.id) + "_" + str(0) + "_0")
         initVal = float(m[initial_var].as_decimal(6).replace("?", ""))
         initValList.append((initVal, initVal))
+
+    # For time variables (tau_0, ...) which represent global time points
     for i in range(len(contVars), len(contVarList)):
         initValList.append((0,0))
+
+    # For constant
     initValList.append((1,1))
     
-    (jumpScenario, ha) = make_automaton(m, numModes, modeModules, len(contVars), modeVars, contVarList, transReaches, delta)
+    (jumpScenario, ha) = make_automaton(m, numModes, modeModules, len(contVars), modeVars, contVarList, transReaches, usedProp, timeConsts, delta)
 
     allConsts.extend(jumpScenario)
 
@@ -126,51 +220,57 @@ def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, bo
     
     settings = make_settings()
 
-
+    #coreConsts(consts, contVarList, m)
     ce = Core(ha, settings).run(init_states)
 
-    result = ce.last_cur_state.mode.name
-    #result = 'error'
-
+    #result = ce.last_cur_state.mode.name
+    result = 'error'
+    
 
     return (result, allConsts)
 
 
 
-def hylaaModel(consts, modeVars, contVars, bound, modeModules, reach, delta, propList):
+def hylaaModel(allconsts, modeVars, contVars, bound, modeModules, reach, delta, propList):
+    (timeConsts, hybridconsts) = allconsts
     transReaches = list()
     for i in range(0, bound + 1):
         varDict = dict()
         for j in range(len(contVars)):
             varDict[str(contVars[j].id)] = Real(contVars[j].id + '_' + str(i))
         transReaches.append(clause(reach.getExpression(varDict)))
-  
-    strContVars = [c.id for c in contVars]
-    # Only consider jump constraints
-    clist = clause(consts[-1])
+    #print("allConsts")
+    #print(consts) 
 
-    # Delete duplicate items
-    clist = list(dict.fromkeys(clist))
-
-    # Delete conditions of mode variables 
-    # (Only consider jump conditions of continuous variables)
-    clist = [x for x in clist if determine(x, strContVars)]
-
+    consts = hybridconsts + timeConsts
     z3Consts = [z3Obj(c, True) for c in consts]
 
     solver = z3.Solver()
     solver.add(z3Consts)
-
+    '''
     with open("thermoLinear.smt2", 'w') as fle:
         print(solver.to_smt2(), file=fle)
 
+    '''
+    tc = list() 
+    for x in timeConsts:
+        tc = tc + timeClause(x)
+
     result = solver.check()
-
+    usedProp = dict()
     if str(result) == "sat":
-        (reachable, allConsts) = checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, bound, delta)
-        out = 0
+        m = solver.model()
+        for pid in propList:
+            propVar = z3.Bool(pid.id + "_0")
+            if m[propVar] is not None:
+                subresult = list()
+                for b in range(bound + 1):
+                    subresult.append(m[z3.Bool(pid.id + "_" + str(b))])
+                usedProp[pid] = subresult
 
-        while not (reachable == 'error') and out < 10:
+        (reachable, allConsts) = checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
+        out = 0
+        while not (reachable == 'error') and out < 2:
             newScenario = list()
             newScenario.append(Not(And(*allConsts)))
             newScenario.extend(consts)
@@ -183,7 +283,7 @@ def hylaaModel(consts, modeVars, contVars, bound, modeModules, reach, delta, pro
 
             if not str(result) == "sat":
                 break
-            (reachable, allConsts) = checkHylaa(solver, newScenario, modeModules, modeVars, contVars, transReaches, bound, delta)
+            (reachable, allConsts) = checkHylaa(solver, newScenario, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
             consts = newScenario
             out = out + 1
 
@@ -201,7 +301,8 @@ def makeSubMode(modeVars, k):
         result[str(modeVars[i].id)] = op[modeVars[i].type](modeVars[i].id + '_' + str(k))
     return result
 
-def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contVarList, reaches, delta):
+def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contVarList, reaches, usedProp, timeConstraints, delta):
+    timeConstraints = list(dict.fromkeys(timeConstraints))
     ha = HybridAutomaton('Hybrid automata')
     # i is the current bound
     for i in range(len(numModes)):
@@ -209,28 +310,6 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
         #print("current Mode")
         ##print(numModes[i])
         flowExp = modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getFlow().exp()
-
-        '''       
-        subleft = [0] * len(contVarList)
-        timeInd = contVarList.index('tau_' + str(i))
-        
-        if i == 0:
-            tauInd = contVarList.index('tau_' + str(i))
-            subleft[timeInd] = 1
-            subleft[tauInd] = -1
-            leftside.append(subleft)
-            rightside.append(0)
-        
-        else:
-            tauPost = contVarList.index('tau_' + str(i))
-            tauPre = contVarList.index('tau_' + str(i-1))
-            subleft[timeInd] = 1
-            subleft[tauPost] = -1
-            subleft[tauPre] = 1
-            leftside.append(subleft)
-            rightside.append(delta)
-        '''
-       
 
         flowList = list()
         flowList = ['0'] * len(contVarList)
@@ -242,7 +321,7 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
                     flowList[j] = flowExp[k].flow.infix()
 
         curTauInd = contVarList.index('tau_' + str(i))
-        for j in range((i+1) * numContVars, len(contVarList) - 1):
+        for j in range((i+1) * numContVars, len(contVarList) - numContVars):
             if j >= curTauInd:
                 flowList[j] = '1'
 
@@ -265,12 +344,34 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
             subvars[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex])
             subJump[contVarList[q][0:sliceIndex]] = Real(contVarList[q] + "_t")
             nextDict[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex] + "_" + str(i+1) + "_0") 
+
         invExp = invExp.getExpression(subDict)
         invariants = [x.infixExp(delta) for x in clause(invExp)]
-        invariants = ' & '.join(invariants)
-        mat, rhs = symbolic.make_condition(contVarList, invariants.split('&'), constant_dict, has_affine_variable=True)
+        for up in usedProp.keys():
+            curVal = usedProp[up][i]
+            curExp = up.cond.getExpression(subDict)
+            propExp = curExp if curVal else Not(curExp).reduce()
+            strProp = propExp.infixExp(delta)
+            invariants.append(strProp)
         
-        m.set_invariant(mat, rhs)
+        cptimeConsts = list()
+        for tn in range(len(timeConstraints)):
+            tc = timeConstraints[tn]
+            variables = list(tc.getVars())
+            maxVal = 0
+            for vt in variables:
+                sliceIndex = str(vt).find("_")
+                newVal = int(str(vt)[sliceIndex+1:])
+                maxVal = newVal if newVal > maxVal else maxVal
+            if str(maxVal + 1) == str(i):
+                invariants.append(tc.infixExp(delta))
+                cptimeConsts.append(tc)
+
+        invariants = ' & '.join(invariants)
+
+        if len(invariants) > 0:
+            mat, rhs = symbolic.make_condition(contVarList, invariants.split('&'), constant_dict, has_affine_variable=True)
+            m.set_invariant(mat, rhs)
 
         jumpList = jumpExp.getRedeclList()
         

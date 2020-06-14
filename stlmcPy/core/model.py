@@ -761,7 +761,7 @@ class StlMC:
 
             # constraints from the model
             # (list, attribute, attribute, list)
-            (transConsts, invConsts, flowConsts, stlConsts) = self.consts.modelConstraints(i, timeBound, delta, partition, partitionConsts, [formulaConst])
+            (transConsts, invConsts, flowConsts, stlConsts, timeConsts) = self.consts.modelConstraints(i, timeBound, delta, partition, partitionConsts, [formulaConst])
             #modelConsts = []
             etime1 = time.process_time()
 
@@ -772,9 +772,9 @@ class StlMC:
             elif solver == 'hylaa':
                 #allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
 
-                allConsts = [invConsts] + transConsts
+                allConsts = (partitionConsts + [formulaConst], stlConsts + transConsts)
             else:
-                allConsts = transConsts + [invConsts, flowConsts] + stlConsts + partitionConsts + [formulaConst]
+                allConsts = transConsts + [invConsts, flowConsts] + stlConsts +  timeConsts + partitionConsts + [formulaConst]
                 #allConsts = stlConsts + partitionConsts + [formulaConst]
                 #allConsts = [invConsts]
 

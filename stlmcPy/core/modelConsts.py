@@ -183,7 +183,7 @@ class modelConsts:
                 (propIdDict, formula) = (self.makeAtomicDict(curInv, len(propIdDict), propIdDict, k))
                 #invConsts.append(And(curMode, formula))
                 curProp = list()
-                if not isinstance(formula, Bool):
+                if not isinstance(formula, Bool) and not isinstance(formula, Constant):
                     objct = formula.getListElem()
                     for o in objct:
                         curProp.extend([prop for prop, propId in propIdDict.items() if propId == str(o)[0:-2]])
@@ -338,10 +338,11 @@ class modelConsts:
         # make jump constraints
         jumpConsts = self.jumpConstraints(bound)
         stlConsts = list()
+        timeConsts = list()
         ts = [Real("tau_%s" % i) for i in range(0, bound + 2)]
 
-        stlConsts.append(ts[0] >= RealVal(0))
-        stlConsts.append(Real('time0') == ts[0])
+        timeConsts.append(ts[0] >= RealVal(0))
+        timeConsts.append(Real('time0') == ts[0])
 
         propSet = set()
         for f in partition.keys():
@@ -355,13 +356,13 @@ class modelConsts:
         '''
         # time is duration
         for i in range(bound):
-            stlConsts.append(Real('time' + str(i + 1)) == (ts[i + 1] - ts[i]))
-            stlConsts.append(ts[i] <= ts[i + 1])
+            timeConsts.append(Real('time' + str(i + 1)) == (ts[i + 1] - ts[i]))
+            timeConsts.append(ts[i] <= ts[i + 1])
 
         stlConsts.append(self.propConstraints(propSet, bound, delta))
 
         addTimeBound = stlConsts + partitionConsts + formula
 
-        stlConsts = stlConsts + self.timeBoundConsts(addTimeBound, timeBound)
+        timeConsts.extend(self.timeBoundConsts(addTimeBound, timeBound))
 
-        return ([rangeConsts, initConst, jumpConsts], invConsts, flowConsts, stlConsts)
+        return ([rangeConsts, initConst, jumpConsts], invConsts, flowConsts, stlConsts, timeConsts)
