@@ -41,7 +41,7 @@ def _(const):
     result.extend(orClause(const.child()))
     return result
 
-@clause.register(Implies)
+@orClause.register(Implies)
 def _(const):
     result = list()
     result.extend(orClause(const.left()))
@@ -202,7 +202,19 @@ def coreConsts(allConsts, contVarList, model):
     #print(z3.simplify(z3.Implies(z3.And(*z3Consts), z3.And(*z3allConsts))))
     print(z3.simplify(z3.Implies(z3.simplify(z3.And(*z3Consts)), z3.simplify(z3.And(*z3allConsts)))))
 
+def makeContVarList(contVars, bound):
+    contVarList = list()
+    for j in range(bound + 1):
+        for i in range(len(contVars)):
+            contVarList.append(str(contVars[i].id) + "_" + str(j))
 
+    for j in range(bound + 1):
+        contVarList.append("tau_" + str(j))
+
+    for i in range(len(contVars)):
+        contVarList.append(str(contVars[i].id) + "_" + str(bound + 1))
+
+    return contVarList
 
 def checkHylaa(m, consts, modeModules, modeVars, contVars, transReaches, usedProp, timeConstraints, bound, delta):
     initValList = list()
@@ -216,25 +228,23 @@ def checkHylaa(m, consts, modeModules, modeVars, contVars, transReaches, usedPro
 
     timeConsts = [x if m.eval(z3Obj(x)) else Not(x).reduce() for x in timeConstraints]
 
+    # numModes is a list of mode ids for each interval
     numModes = list()
     for i in range(bound + 1):
         modeVar = z3.Real('currentMode_' + str(i))
         numModes.append(m[modeVar])
         allConsts.append(Real('currentMode_' + str(i)) == RealVal(int(str(m[modeVar]))))
 
-    contVarList = list()
-    for j in range(bound + 1):
-        for i in range(len(contVars)):
-            contVarList.append(str(contVars[i].id) + "_" + str(j))
-
-    for j in range(bound + 1):
-        contVarList.append("tau_" + str(j))
-    
-    for i in range(len(contVars)):
-        contVarList.append(str(contVars[i].id) + "_" + str(bound + 1))
+    # make a list of continuous variables for hylaa encoding
+    contVarList = makeContVarList(contVars, bound)
 
     # setting intial range for each variables
+    # current is set initial value as a specific value that is obtained from model 
+    # Should be revised, 
     for contIndex in range(len(contVars)):
+        # Get only initial conditions
+        # Ex) we can have x_0 > 0 and x_0 > 10 
+        # We should get range of x_0 is (10, inf) based on upper conditions
         initConsts = list()
         for x in allConsts:
             add = True
@@ -350,8 +360,8 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
     # i is the current bound
     for i in range(len(numModes)):
         m = ha.new_mode('Mode_' + str(i))
-        #print("current Mode")
-        ##print(numModes[i])
+
+        # get flow information of the current matched mode
         flowExp = modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getFlow().exp()
 
         flowList = list()
@@ -360,9 +370,14 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
         for k in range(len(flowExp)):
             for j in range(i * numContVars, (i + 1) * numContVars): 
                 sliceIndex = contVarList[j].find("_")
+                # Get infix string representation of the matched flow expression
+                # ex) d/dt[x] = x + y, flowExp[k].flow.infix() is x + y
                 if contVarList[j][0:sliceIndex] == flowExp[k].getVarId():
                     flowList[j] = flowExp[k].flow.infix()
 
+        # flow of global time variable is 1, 
+        # flow of tau_0, tau_1, ..., tau_(i-1) is 0
+        # flow of tau_i, tau_(i+1), ... is 1
         curTauInd = contVarList.index('tau_' + str(i))
         for j in range((i+1) * numContVars, len(contVarList) - numContVars):
             if j >= curTauInd:
@@ -374,25 +389,23 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
 
         m.set_dynamics(a_mat)
 
+        # For invariant 
         invExp = modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getInv()
-        jumpExp =  modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getJump()
-
         subDict = dict()
-        nextDict = dict()
-        subvars = dict()
-        subJump = dict()
         for q in range(i * numContVars, (i + 1) * numContVars):
             sliceIndex = contVarList[q].find("_")
             subDict[contVarList[q][0:sliceIndex]] = Real(contVarList[q])
-            subvars[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex])
-            subJump[contVarList[q][0:sliceIndex]] = Real(contVarList[q] + "_t")
-            nextDict[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex] + "_" + str(i+1) + "_0") 
 
         invExp = invExp.getExpression(subDict)
         invariants = [x.infixExp(delta) for x in clause(invExp)]
         for up in usedProp.keys():
             curVal = usedProp[up][i]
             curExp = up.cond.getExpression(subDict)
+            # if the truth value of the proposition is false,
+            # the proposition should be negated 
+            # ex) prop = x >0 , Not(prop) = Not(x > 0)
+            # Not expression can be reduce using reduce()
+            # Not(prop).reduce() = x <= 0
             propExp = curExp if curVal else Not(curExp).reduce()
             strProp = propExp.infixExp(delta)
             invariants.append(strProp)
@@ -416,6 +429,21 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
             mat, rhs = symbolic.make_condition(contVarList, invariants.split('&'), constant_dict, has_affine_variable=True)
             m.set_invariant(mat, rhs)
 
+        # For transition of the matched mode module
+        jumpExp =  modeModules[int(numModes[i].as_decimal(6).replace("?", ""))].getJump()
+
+        # for substitution x' = x, primed value 
+        nextDict = dict()
+        # for substitution x_0_t, x_0_0 to x_0
+        subvars = dict()
+        # for substitution guard condition x > 0 to x_0_t > 0 at 1st interval
+        subJump = dict()
+        for q in range(i * numContVars, (i + 1) * numContVars):
+            sliceIndex = contVarList[q].find("_")
+            subvars[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex])
+            subJump[contVarList[q][0:sliceIndex]] = Real(contVarList[q] + "_t")
+            nextDict[contVarList[q][0:sliceIndex]] = Real(contVarList[q][0:sliceIndex] + "_" + str(i+1) + "_0")
+
         jumpList = jumpExp.getRedeclList()
         
         op = {'bool': Bool, 'int': Int, 'real': Real}
@@ -436,9 +464,18 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
             jl = jl.getExpression(subvars)
             jump = jl.substitution(subJump)
             curJump.append(jump.nextSub(nextDict))
+        # jumpScenario will be used for negation scenario,
+        # it stores selected transition information
+        # First, add unsatifty transition information among several possilbe transitions, 
         jumpScenario = [Not(x) for x in curJump if not model.eval(z3Obj(x))]
+        # Get sat transtion
         satJump = [x for x in curJump if model.eval(z3Obj(x))]
         
+        # if the number of satisfiable transition is greater than 0, 
+        # choose the fisrt satisfiable transition
+        # ex) x > 0 => x' = x + 3, x > 2 => x' = x + 3, 
+        # if x > 0 and x > 2 are sat in the model, 
+        # select x > 0 scenario, and add Not(x>2) to jumpScenario
         if len(satJump) >= 1:
             if len(satJump) > 1:
                 jumpScenario.extend([Not(x) for x in satJump[1:]])
@@ -472,6 +509,7 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
             guard = list()
             reset = list()
 
+    # For checking reachabiliy of hylaa 
     m = ha.new_mode('error')
     flowList = [[0 for x in range(len(contVarList))] for y in range(len(contVarList))]
     m.set_dynamics(flowList)
