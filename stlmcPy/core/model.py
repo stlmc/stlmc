@@ -770,9 +770,9 @@ class StlMC:
                 print("only STL is true")
                 allConsts = partitionConsts + [formulaConst]    
             elif solver == 'hylaa':
-                #allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
+                allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
 
-                allConsts = (partitionConsts + [formulaConst], stlConsts + transConsts)
+                #allConsts = (partitionConsts + [formulaConst], stlConsts + [invConsts] + transConsts)
             else:
                 allConsts = transConsts + [invConsts, flowConsts] + stlConsts +  timeConsts + partitionConsts + [formulaConst]
                 #allConsts = stlConsts + partitionConsts + [formulaConst]
@@ -785,8 +785,11 @@ class StlMC:
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
             elif solver == 'hylaa':
-                for numReach in range(len(self.reachList)):
-                    (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
+                if len(self.reachList) == 0:
+                    (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, list(), delta, self.prop)
+                else:
+                    for numReach in range(len(self.reachList)):
+                        (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
                 self.model = None
 
             '''

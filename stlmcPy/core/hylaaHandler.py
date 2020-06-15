@@ -1,8 +1,9 @@
 import itertools
-from functools import singledispatch
+from functools import singledispatch, reduce
 from .model import *
 from .node import *
 from .z3Handler import *
+import operator
 
 from matplotlib import collections
 
@@ -74,6 +75,28 @@ def _(const):
         result.extend(timeClause(const.right()))
     return result
 
+@timeClause.register(Numeq)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        result.append(Ge(const.left(), const.right()))
+        result.append(Le(const.left(), const.right()))
+    return result
+
+@timeClause.register(Numneq)
+def _(const):
+    subVars = list(const.getVars())
+    timeList = [s for s in subVars if 'tau_' in str(s)]
+    tc = True if len(timeList) > 0 else 0
+    result = list()
+    if tc:
+        result.append(Gt(const.left(), const.right()))
+        result.append(Lt(const.left(), const.right()))
+    return result
+
 @timeClause.register(Or)
 def _(const):
     subVars = list(const.getVars())
@@ -125,6 +148,13 @@ def _(const):
     result.extend(clause(const.child()))
     return result
 
+@clause.register(Implies)
+def _(const):
+    result = list()
+    result.extend(clause(const.left()))
+    result.extend(clause(const.right()))
+    return result
+
 def determine(form, strContVars):
     subVars = list(form.getVars())
     for sv in subVars:
@@ -154,22 +184,21 @@ def coreConsts(allConsts, contVarList, model):
     for c in allConsts:
         literals.extend(clause(c))
     
-    clist = [x for x in literals if determine(x, contVarList)]
-    #clist = [x for x in clist if not isinstance(x, Forall)]
-    tl = [x for x in literals if model.eval(z3Obj(x))]
-    fl = [Not(x) for x in literals if not model.eval(z3Obj(x))]
+    #clist = [x for x in literals if determine(x, contVarList)]
+    clist = [x for x in literals if not isinstance(x, Forall)]
+    tl = [x for x in clist if model.eval(z3Obj(x, True))]
+    fl = [Not(x) for x in clist if not model.eval(z3Obj(x, True))]
     total = tl + fl
-    z3Consts=[z3Obj(c) for c in total]
-    z3allConsts = [z3Obj(c) for c in allConsts]
+    z3Consts=[z3Obj(c, True) for c in total]
+    z3allConsts = [z3Obj(c, True) for c in allConsts]
      
     #print(z3.simplify(z3.Implies(z3.And(*z3Consts), z3.And(*z3allConsts))))
     print(z3.simplify(z3.Implies(z3.simplify(z3.And(*z3Consts)), z3.simplify(z3.And(*z3allConsts)))))
 
 
 
-def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, usedProp, timeConstraints, bound, delta):
+def checkHylaa(m, consts, modeModules, modeVars, contVars, transReaches, usedProp, timeConstraints, bound, delta):
     initValList = list()
-    m = solver.model()
     allConsts = list()
     
     for i in consts:
@@ -178,7 +207,7 @@ def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, us
     allConsts = [x for x in allConsts if not isinstance(x, Forall)]
     allConsts = [x if m.eval(z3Obj(x)) else Not(x) for x in allConsts]
 
-    timeConsts = [x for x in timeConstraints if m.eval(z3Obj(x))]
+    timeConsts = [x if m.eval(z3Obj(x)) else Not(x).reduce() for x in timeConstraints]
 
     numModes = list()
     for i in range(bound + 1):
@@ -196,9 +225,21 @@ def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, us
     
     for i in range(len(contVars)):
         contVarList.append(str(contVars[i].id) + "_" + str(bound + 1))
-    #contVarList.append('constant_value')
 
+    # setting intial range for each variables
     for contIndex in range(len(contVars)):
+        initConsts = list()
+        for x in allConsts:
+            add = True
+            subVars = x.getVars()
+            initVars = [str(iv) + '_0' for iv in contVarList[0:len(contVars)]]
+            for sv in subVars:
+                if not str(sv) in initVars:
+                    add = False
+                    break
+            if add:
+                initConsts.append(x)
+        
         op = {'bool': z3.Bool, 'int': z3.Int, 'real': z3.Real}
         curCont = contVars[contIndex]
         initial_var = op[curCont.type](str(curCont.id) + "_" + str(0) + "_0")
@@ -223,43 +264,38 @@ def checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, us
     #coreConsts(consts, contVarList, m)
     ce = Core(ha, settings).run(init_states)
 
-    #result = ce.last_cur_state.mode.name
-    result = 'error'
+    result = ce.last_cur_state.mode.name
+    #result = 'error'
     
 
     return (result, allConsts)
 
 
 
-def hylaaModel(allconsts, modeVars, contVars, bound, modeModules, reach, delta, propList):
-    (timeConsts, hybridconsts) = allconsts
+def hylaaModel(consts, modeVars, contVars, bound, modeModules, reach, delta, propList):
     transReaches = list()
-    for i in range(0, bound + 1):
-        varDict = dict()
-        for j in range(len(contVars)):
-            varDict[str(contVars[j].id)] = Real(contVars[j].id + '_' + str(i))
-        transReaches.append(clause(reach.getExpression(varDict)))
-    #print("allConsts")
-    #print(consts) 
+    if reach is not None:
+        for i in range(0, bound + 1):
+            varDict = dict()
+            for j in range(len(contVars)):
+                varDict[str(contVars[j].id)] = Real(contVars[j].id + '_' + str(i))
+            transReaches.append(clause(reach.getExpression(varDict)))
 
-    consts = hybridconsts + timeConsts
     z3Consts = [z3Obj(c, True) for c in consts]
 
     solver = z3.Solver()
     solver.add(z3Consts)
-    '''
-    with open("thermoLinear.smt2", 'w') as fle:
-        print(solver.to_smt2(), file=fle)
 
-    '''
-    tc = list() 
-    for x in timeConsts:
-        tc = tc + timeClause(x)
+    # get literals of time constraints
+    tc = [timeClause(x) for x in consts]
+    tc = reduce(operator.add, tc)
 
     result = solver.check()
     usedProp = dict()
     if str(result) == "sat":
         m = solver.model()
+
+        # get used proposition
         for pid in propList:
             propVar = z3.Bool(pid.id + "_0")
             if m[propVar] is not None:
@@ -268,9 +304,9 @@ def hylaaModel(allconsts, modeVars, contVars, bound, modeModules, reach, delta, 
                     subresult.append(m[z3.Bool(pid.id + "_" + str(b))])
                 usedProp[pid] = subresult
 
-        (reachable, allConsts) = checkHylaa(solver, consts, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
-        out = 0
-        while not (reachable == 'error') and out < 2:
+        (reachable, allConsts) = checkHylaa(m, consts, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
+
+        while not (reachable == 'error'):
             newScenario = list()
             newScenario.append(Not(And(*allConsts)))
             newScenario.extend(consts)
@@ -280,12 +316,12 @@ def hylaaModel(allconsts, modeVars, contVars, bound, modeModules, reach, delta, 
             solver = z3.Solver()
             solver.add(z3Consts)
             result = solver.check()
+            m = solver.model()
 
             if not str(result) == "sat":
                 break
-            (reachable, allConsts) = checkHylaa(solver, newScenario, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
+            (reachable, allConsts) = checkHylaa(m, newScenario, modeModules, modeVars, contVars, transReaches, usedProp, tc, bound, delta)
             consts = newScenario
-            out = out + 1
 
     else:
         m = None
@@ -439,17 +475,18 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
         t = ha.new_transition(pre, post)
         guardConds = [x.infixExp(delta) for x in reaches[i]]
         guardConds = ' & '.join(guardConds)
-        mat, rhs = symbolic.make_condition(contVarList, guardConds.split('&'), constant_dict, has_affine_variable=True)
+        if len(guardConds) > 0:
+            mat, rhs = symbolic.make_condition(contVarList, guardConds.split('&'), constant_dict, has_affine_variable=True)
 
-        t.set_guard(mat, rhs)
-        resetList = ['0'] * (len(contVarList) - 1)
+            t.set_guard(mat, rhs)
+            resetList = ['0'] * (len(contVarList) - 1)
         
-        for ri in range(len(contVarList) - 1):
-            resetList[ri] = contVarList[ri]
+            for ri in range(len(contVarList) - 1):
+                resetList[ri] = contVarList[ri]
         
-        reset_mat = symbolic.make_reset_mat(contVarList, resetList, constant_dict, has_affine_variable=True)
+            reset_mat = symbolic.make_reset_mat(contVarList, resetList, constant_dict, has_affine_variable=True)
         
-        t.set_reset(reset_mat)
+            t.set_reset(reset_mat)
 
     subDict = dict()
     for q in range(0, len(numModes) * numContVars) :
@@ -462,23 +499,23 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
         guard = [x.substitution(subDict) for x in guard]
         guardConds = [x.infixExp(delta) for x in guard]
         guardConds = ' & '.join(guardConds)
-        mat, rhs = symbolic.make_condition(contVarList, guardConds.split('&'), constant_dict, has_affine_variable=True)
-        t.set_guard(mat, rhs)            
+        if len(guardConds) > 0:
+            mat, rhs = symbolic.make_condition(contVarList, guardConds.split('&'), constant_dict, has_affine_variable=True)
+            t.set_guard(mat, rhs)            
+    
+            resetList = list()
+            resetList = ['0'] * len(contVarList) 
+           
+            for ri in range(len(reset) - numContVars):
+                r = reset[ri]
+                resetList[ri] = r.substitution(subDict).right().infix()
+    
+            for ri in range(len(numModes) * numContVars, len(contVarList)):
+                resetList[ri] = contVarList[ri]
+            
+            reset_mat = symbolic.make_reset_mat(contVarList, resetList, constant_dict, has_affine_variable=True)
 
-
-        resetList = list()
-        resetList = ['0'] * len(contVarList) 
-       
-        for ri in range(len(reset) - numContVars):
-            r = reset[ri]
-            resetList[ri] = r.substitution(subDict).right().infix()
-
-        for ri in range(len(numModes) * numContVars, len(contVarList)):
-            resetList[ri] = contVarList[ri]
-        
-        reset_mat = symbolic.make_reset_mat(contVarList, resetList, constant_dict, has_affine_variable=True)
-     
-        t.set_reset(reset_mat)
+            t.set_reset(reset_mat)
 
 
 
