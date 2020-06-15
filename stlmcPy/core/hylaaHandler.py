@@ -38,7 +38,14 @@ def _(const):
 @orClause.register(Not)
 def _(const):
     result = list()
-    result.extend(const.child())
+    result.extend(orClause(const.child()))
+    return result
+
+@clause.register(Implies)
+def _(const):
+    result = list()
+    result.extend(orClause(const.left()))
+    result.extend(orClause(const.right()))
     return result
 
 @singledispatch
