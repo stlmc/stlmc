@@ -679,14 +679,13 @@ class formulaDecl:
 
 
 class StlMC:
-    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, reachList, goal, formulaText):
+    def __init__(self, modeVar, contVar, varVal, modeModule, init, prop, goal, formulaText):
         self.modeVar = modeVar
         self.contVar = contVar
         self.varVal = varVal
         self.modeModule = modeModule
         self.init = init
         self.prop = prop  # list type
-        self.reachList = reachList
         self.goal = goal
         self.subvars = self.makeVariablesDict()
         self.consts = modelConsts(self.modeVar, self.contVar, self.varVal, self.modeModule, self.init, self.prop,
@@ -784,6 +783,7 @@ class StlMC:
                 (result, cSize, self.model) = z3checkSat(allConsts, logic)
             elif solver == 'yices':
                 (result, cSize, self.model) = yicescheckSat(allConsts, logic)
+            '''
             elif solver == 'hylaa':
                 if len(self.reachList) == 0:
                     (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, list(), delta, self.prop)
@@ -791,6 +791,7 @@ class StlMC:
                     for numReach in range(len(self.reachList)):
                         (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
                 self.model = None
+            '''
 
             '''
             elif solver == 'dreal':
