@@ -1,3 +1,5 @@
+*.csv
+*.sh
 *.interp
 *.tokens
 *Parser.py

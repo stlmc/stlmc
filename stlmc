@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/leejia/venv/bin/python3
 import sys
 import subprocess
 import concurrent.futures
@@ -22,11 +22,11 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic):
+def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta, onlySTL):
     modelName = os.path.splitext(os.path.basename(title))[0]
     (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k,
-                                                                                         timeBound, solver, logic,
-                                                                                         False)
+                                                                                         timeBound, solver, logic, onlySTL,
+                                                                                         delta, False)
     if isinstance(solvingTime, bool):
         return False
     if visualize:
@@ -36,7 +36,7 @@ def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, res
         dataGenerator.result = result
         dataGenerator.visualize()
     if resultSave:
-        filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+        filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".csv"
         rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
         with open(rel_path, 'a+') as fle:
             print(",".join([str(k), str(cSize), str(fSize), str(result), generationTime, solvingTime, totalTime]),
@@ -44,7 +44,7 @@ def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, res
     return True
 
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic):
+def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic, delta, onlySTL):
     handlingModel = FileStream(fileName)
     lexer = modelLexer(handlingModel)
     stream = CommonTokenStream(lexer)
@@ -61,7 +61,7 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
                 formula = stlMC.getStlFormsList()[i]
                 if resultSave:
                     modelName = os.path.splitext(os.path.basename(title))[0]
-                    filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".txt"
+                    filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".csv"
                     rel_path = str(os.path.abspath(os.curdir)) + "/reports/" + filename
                     if not os.path.isfile(rel_path):
                         with open(rel_path, 'w+') as fle:
@@ -71,12 +71,12 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
                     # executor.submit(module,
                     # title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
                     p = multiprocessing.Process(target=module, args=(
-                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic))
+                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta, onlySTL))
                     p.start()
 
                 else:
                     isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
-                                      logic)
+                                      logic, delta, onlySTL)
                     if not isNormal:
                         break
             if not isNormal:
@@ -103,7 +103,7 @@ def main(args):
         lower = 1 if args.lower is None else args.lower
         upper = lower if args.upper is None else args.upper
         solver = 'z3' if args.solver is None else (
-            args.solver.lower() if args.solver.lower() in ['yices', z3] else 'z3')
+            args.solver.lower() if args.solver.lower() in ['hylaa', 'yices', z3] else 'z3')
         logic = 'None'
         stlmcPyPath = os.path.dirname(os.path.realpath(stlmcPy.__file__))
         if args.logic == 'linear':
@@ -114,12 +114,15 @@ def main(args):
         multithread = False if args.multithread is None else args.multithread
         timebound = 60 if args.timebound is None else args.timebound
         step = 1 if args.step is None else args.step
+        onlySTL = False if args.onlySTL is None else args.onlySTL
+        delta = 0 if args.delta is None else args.delta
+
         # create data directory for storing report files
         if save:
             if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
                 os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
         for m in modelList:
-            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper())
+            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper(), delta, onlySTL)
     except Exception as ex:
         if args.visualize:
             if not all(argi is None for argi in
@@ -162,6 +165,10 @@ if __name__ == '__main__':
                         help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
     parser.add_argument('-log', type=str2bool,
                         help='save results of execution in report.txt (default: false)')
+    parser.add_argument('-onlySTL', type=str2bool,
+                        help='consider only STL constraints (default: false)')
+    parser.add_argument('-delta', type=float,
+                        help='delta for invariant condition (default: 0)')
     try:
         args = parser.parse_args()
         main(args)
