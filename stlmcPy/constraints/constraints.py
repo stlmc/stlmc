@@ -473,15 +473,15 @@ class SolEq(Dynamics):
     def getSolStr(self):
         return str(self.flow)
 
-    def getFlow(self, varDict):
-        if type(self.flow) in [RealVal, IntVal, BoolVal]:
-            return self.flow
-        if type(self.flow) in [Real, Int, Bool]:
-            if str(self.flow) in varDict.keys():
-                return varDict[str(self.flow)]
-            else:
-                return self.flow
-        return self.flow.getExpression(varDict)
+    # def getFlow(self, varDict):
+    #     if type(self.flow) in [RealVal, IntVal, BoolVal]:
+    #         return self.flow
+    #     if type(self.flow) in [Real, Int, Bool]:
+    #         if str(self.flow) in varDict.keys():
+    #             return varDict[str(self.flow)]
+    #         else:
+    #             return self.flow
+    #     return self.flow.getExpression(varDict)
 
     # def getExpression(self, varDict):
     #     result = dict()

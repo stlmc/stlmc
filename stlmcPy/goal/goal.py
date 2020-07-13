@@ -1,5 +1,6 @@
 import stlmcPy.core.partition as PART
 import stlmcPy.core.separation as SEP
+from stlmcPy.constraints.constraints import Dynamics
 from stlmcPy.constraints.node import *
 from stlmcPy.constraints.operations import get_expression
 from stlmcPy.core.formula import Formula, NotFormula
@@ -80,6 +81,16 @@ class StlGoal(Goal):
                 self.contVar[i].id + '_' + str(k) + '_' + sOe)
         return result
 
+    def getFlow(self, dyna: Dynamics, var_dict: dict):
+        if type(dyna.flow) in [RealVal, IntVal, BoolVal]:
+            return dyna.flow
+        if type(dyna.flow) in [Real, Int, Bool]:
+            if str(dyna.flow) in var_dict.keys():
+                return var_dict[str(dyna.flow)]
+            else:
+                return dyna.flow
+        return get_expression(dyna.flow, var_dict)
+
     def propForall(self, curMode, propID, exp, bound, curFlow, delta):
 
         combine = self.combineDict(self.makeSubMode(bound), self.makeSubProps(bound))
@@ -94,7 +105,7 @@ class StlGoal(Goal):
                 substitutionDict = self.combineDict(self.subvars, self.makeSubMode(bound))
                 substitutionDict['time'] = Real('time' + str(bound))
                 substitutionDict.update(self.varVal)
-                flowModule[self.subvars[curFlowExp[j].getVarId()]] = curFlowExp[j].getFlow(substitutionDict)
+                flowModule[self.subvars[curFlowExp[j].getVarId()]] = self.getFlow(curFlowExp[j], substitutionDict)
 
             else:
                 raise ("Flow id is not declared")

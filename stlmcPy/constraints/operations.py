@@ -35,13 +35,13 @@ def _(exp: BinaryExp, var_dict):
     left = exp.left
     right = exp.right
     if isinstance(left, BinaryExp) or isinstance(left, UnaryFunc):
-        left = get_expression(left, var_dict)
+        left = get_expression(exp.left, var_dict)
     if isinstance(right, BinaryExp) or isinstance(right, UnaryFunc):
-        right = get_expression(right, var_dict)
+        right = get_expression(exp.right, var_dict)
     if str(exp.left) in var_dict.keys():
-        left = var_dict[str(var_dict.left)]
+        left = var_dict[str(exp.left)]
     if str(exp.right) in var_dict.keys():
-        right = var_dict[str(var_dict.right)]
+        right = var_dict[str(exp.right)]
     else:
         pass
 
@@ -170,7 +170,7 @@ def _(exp: jumpMod, var_dict):
     elif exp.exp in var_dict.keys():
         right = var_dict[exp.exp]
     else:
-        right = exp.exp.getExpression(var_dict)
+        right = get_expression(exp.exp, var_dict)
 
     if exp.op == '<':
         return left < right

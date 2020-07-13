@@ -264,7 +264,7 @@ class Driver:
                 subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
             else:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+                traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(ex))
                 print(ex)
 

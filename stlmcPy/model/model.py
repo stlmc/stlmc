@@ -193,15 +193,15 @@ class StlMC:
 
         return And(*result)
 
-    def getFlow(self, diffeq: Dynamics, var_dict: dict):
-        if type(diffeq.flow) in [RealVal, IntVal, BoolVal]:
-            return diffeq.flow
-        if type(diffeq.flow) in [Real, Int, Bool]:
-            if str(diffeq.flow) in var_dict.keys():
-                return var_dict[str(diffeq.flow)]
+    def getFlow(self, dyna: Dynamics, var_dict: dict):
+        if type(dyna.flow) in [RealVal, IntVal, BoolVal]:
+            return dyna.flow
+        if type(dyna.flow) in [Real, Int, Bool]:
+            if str(dyna.flow) in var_dict.keys():
+                return var_dict[str(dyna.flow)]
             else:
-                return diffeq.flow
-        return get_expression(diffeq.flow, var_dict)
+                return dyna.flow
+        return get_expression(dyna.flow, var_dict)
 
     def flowConstraints(self, bound):
         result = list()
