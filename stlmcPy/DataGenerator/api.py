@@ -1,8 +1,12 @@
+import errno
+
 from yices import *
 import z3
 import os
-from stlmcPy.core.node import *
-from stlmcPy.core.model import *
+# from stlmcPy.core.node import *
+# from stlmcPy.core.model import *
+from stlmcPy.constraints.node import *
+from stlmcPy.constraints.constraints import *
 import numpy as np
 from scipy.integrate import odeint
 
@@ -537,7 +541,7 @@ class Api:
         try:
 
             '''
-                if solution equation exists: 
+                if solution equation exists:
                 checking it via sol_l's length,
                 first, it is parsing sol_l by key and value. (for k in sol_l line)
                 second, k is variable name of dic and { 'x1' : [ x1 = ..., x1 = .... , ... ] , 'x2' : ... }

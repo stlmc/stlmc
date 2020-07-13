@@ -1,7 +1,8 @@
 import math
 from .base import Interval
-from .node import *
-import z3
+from stlmcPy.constraints.node import *
+# from .node import *
+# import z3
 
 def inIntervalC(x:float, j:Interval):
     return (x >= j.left  if j.leftend  else x > j.left) and (x <= j.right if j.rightend else x < j.right)

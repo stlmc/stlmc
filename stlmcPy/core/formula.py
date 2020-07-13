@@ -1,8 +1,11 @@
 from .base import *
+from stlmcPy.constraints.node import Type
+
 
 class Formula:
     def getType(self):
         return Type.Bool
+        # return Type.Bool
 
 
 class NotFormula(Unary, Formula):

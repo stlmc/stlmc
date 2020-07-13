@@ -1,5 +1,6 @@
 import math, itertools
 from .base import genId
+from stlmcPy.constraints.node import *
 from .formula import *
 from .interval import *
 from functools import singledispatch

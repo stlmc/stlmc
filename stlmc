@@ -1,16 +1,20 @@
-#!/home/leejia/venv/bin/python3
-import sys
+#!/usr/local/bin/python3
+import errno
 import subprocess
-import concurrent.futures
-from antlr4 import *
+import sys
+import time
+import traceback
+
 import stlmcPy
-from stlmcPy.core.syntax.modelLexer import modelLexer
-from stlmcPy.core.syntax.modelParser import modelParser
-from stlmcPy.core.modelVisitorImpl import modelVisitorImpl
 from stlmcPy.DataGenerator import *
-import io, os, sys
+import os
 import multiprocessing
 import argparse
+
+from stlmcPy.core.formula import NotFormula
+from stlmcPy.goal.goal import Goal
+from stlmcPy.parser.model_visitor import ModelVisitor
+from stlmcPy.solver.solver_factory import SolverFactory
 
 
 def str2bool(v):
@@ -22,11 +26,69 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta, onlySTL):
+# an implementation of Algorithm 1 in the paper
+def model_check1(stlModel, modelName, stlFormula, bound, timeBound, solver, logic, onlySTL, delta, goal: Goal,
+                 iterative=True):
+    stlModel.strStlFormula = str(stlFormula)
+    (constSize, fsSize) = (0, 0)
+    (stim1, etime1, stime2) = (0, 0, 0)
+    isUnknown = False
+    negFormula = NotFormula(stlFormula)  # negate the formula
+    isError = False
+    solver2 = SolverFactory(solver).generate_solver()
+    goal.prepare(stlModel.modeVar, stlModel.contVar, stlModel.varVal, stlModel.modeModule, stlModel.init, stlModel.prop)
+    for i in range(0 if iterative else bound, bound + 1):
+        stime1 = time.process_time()
+        transConsts, invConsts, flowConsts = stlModel.make_consts(i, delta)
+        stlConsts, timeConsts, partitionConsts, formulaConst, sizeFromModel = goal.make_consts(i, timeBound, delta)
+
+        etime1 = time.process_time()
+        if onlySTL:
+            print("only STL is true")
+            allConsts = partitionConsts + [formulaConst]
+        elif solver == 'hylaa':
+            allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
+
+            # allConsts = (partitionConsts + [formulaConst], stlConsts + [invConsts] + transConsts)
+        else:
+            allConsts = transConsts + [invConsts, flowConsts] + stlConsts + timeConsts + partitionConsts + [
+                formulaConst]
+            # allConsts = stlConsts + partitionConsts + [formulaConst]
+            # allConsts = [invConsts]
+        (result, cSize, model) = solver2.solve(allConsts)
+
+        stime2 = time.process_time()
+
+        # calculate size
+        # fsSize += sum([ENC.size(f) for f in [fs[0]] + list(fs[1].values())])
+        fsSize += sizeFromModel
+        constSize += cSize
+
+        generationTime = round((etime1 - stime1), 4)
+        solvingTime = round((stime2 - etime1), 4)
+        totalTime = round((stime2 - stime1), 4)
+    if isError:
+        return (True, True, True, True, True, True)
+    printResult(modelName, str(stlFormula), str(result), bound, timeBound, constSize, fsSize,
+                str(generationTime), str(solvingTime),
+                str(totalTime))
+    return (result, constSize, fsSize, str(generationTime), str(solvingTime), str(totalTime))
+
+
+def printResult(modelName, formula, result, k, tauMax, cSize, fSize, generationTime, solvingTime, totalTime):
+    print("---------------------------------------------------------------------------\n")
+    print("Model : \"" + str(modelName) + "\", STL formula : \"" + formula + "\"")
+    print("Result : " + result + ", Variable point bound : " + str(k) + ", Time bound : " + str(tauMax))
+    print("Execution Time(sec) : " + totalTime + "\n")
+    print("---------------------------------------------------------------------------\n")
+
+def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta, onlySTL,
+           goal: Goal):
     modelName = os.path.splitext(os.path.basename(title))[0]
-    (result, cSize, fSize, generationTime, solvingTime, totalTime) = stlModel.modelCheck(modelName, formula, k,
-                                                                                         timeBound, solver, logic, onlySTL,
-                                                                                         delta, False)
+    (result, cSize, fSize, generationTime, solvingTime, totalTime) = model_check1(stlModel, modelName, formula, k,
+                                                                                         timeBound, solver, logic,
+                                                                                         onlySTL,
+                                                                                         delta, goal, False)
     if isinstance(solvingTime, bool):
         return False
     if visualize:
@@ -44,21 +106,33 @@ def module(title, stlModel, formula, k, timeBound, dataGenerator, visualize, res
     return True
 
 
-def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, resultSave, solver, logic, delta, onlySTL):
-    handlingModel = FileStream(fileName)
-    lexer = modelLexer(handlingModel)
-    stream = CommonTokenStream(lexer)
-    parser = modelParser(stream)
-    tree = parser.stlMC()
-    stlMC, isTri = modelVisitorImpl().visit(tree)
+def modelCheck(params):
+    fileName = params["model_name"]
+    lower = params["lower_bound"]
+    upper = params["upper_bound"]
+    step = params["step"]
+    timeBound = params["time_bound"]
+    visualize = params["is_visualize"]
+    multy = params["is_multithread"]
+    resultSave = params["is_save"]
+    solver = params["solver_type"]
+    logic = params["logic_type"]
+    delta = params["delta"]
+    onlySTL = params["only_stl"]
+    modelVisitor = ModelVisitor()
+
+    stlMC, goals = modelVisitor.get_parse_tree(fileName)
+    # stlMC =
     dataGenerator = Api()
     title = fileName
     filename = ""
     isNormal = True
+    isTri = False
+
     if (isTri and solver == "dreal4") or (not isTri and solver != "dreal4") or solver == "dreal4":
-        for i in range(len(stlMC.getStlFormsList())):
+        for i in range(len(goals)):
             for k in range(lower, upper + 1, step):
-                formula = stlMC.getStlFormsList()[i]
+                formula = goals[i].formula
                 if resultSave:
                     modelName = os.path.splitext(os.path.basename(title))[0]
                     filename = "report" + "_" + modelName + "_" + str(formula) + "_" + solver + ".csv"
@@ -71,12 +145,13 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
                     # executor.submit(module,
                     # title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic)
                     p = multiprocessing.Process(target=module, args=(
-                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta, onlySTL))
+                        title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver, logic, delta,
+                        onlySTL, goals[i]))
                     p.start()
 
                 else:
                     isNormal = module(title, stlMC, formula, k, timeBound, dataGenerator, visualize, resultSave, solver,
-                                      logic, delta, onlySTL)
+                                      logic, delta, onlySTL, goals[i])
                     if not isNormal:
                         break
             if not isNormal:
@@ -87,90 +162,118 @@ def modelCheck(fileName, lower, upper, step, timeBound, visualize, multy, result
         print("does not support trigonometric function without dreal4!")
 
 
-def main(args):
-    modelList = list()
-    try:
-        if os.path.isdir(args.file):
-            fileList = os.listdir(args.file)
-            for item in fileList:
-                if os.path.splitext(item)[-1].lower() == ".model":
-                    modelList.append(os.path.abspath(args.file) + "/" + item)
-        elif os.path.isfile(args.file):
-            modelList.append(args.file)
-        else:
-            raise Exception("file name is wrong")
-        save = False if args.log is None else args.log
-        lower = 1 if args.lower is None else args.lower
-        upper = lower if args.upper is None else args.upper
-        solver = 'z3' if args.solver is None else (
-            args.solver.lower() if args.solver.lower() in ['hylaa', 'yices', z3] else 'z3')
-        logic = 'None'
-        stlmcPyPath = os.path.dirname(os.path.realpath(stlmcPy.__file__))
-        if args.logic == 'linear':
-            logic = 'LRA' if solver == 'z3' else 'qf_lra'
-        elif args.logic == 'nonlinear':
-            logic = 'NRA' if solver == 'z3' else 'qf_nra'
-        visualize = False if args.visualize is None else args.visualize
-        multithread = False if args.multithread is None else args.multithread
-        timebound = 60 if args.timebound is None else args.timebound
-        step = 1 if args.step is None else args.step
-        onlySTL = False if args.onlySTL is None else args.onlySTL
-        delta = 0 if args.delta is None else args.delta
+class Driver:
+    def __init__(self):
+        self.parser = argparse.ArgumentParser(description='For more information. See below:')
+        self.parser.add_argument('file', nargs='?', type=str, help="Type file or directory to process")
+        self.parser.add_argument('-lower', '-l', type=int,
+                                 help='model checking from the given lower bound (default: 1)')
+        self.parser.add_argument('-upper', '-u', type=int,
+                                 help='model checking upto given upper bound (default: lower_bound)')
+        self.parser.add_argument('-step', '-s', type=int,
+                                 help='model checking at intervals of step in (lower, upper) (default: 1)')
+        self.parser.add_argument('-timebound', '-tb', type=int,
+                                 help='set time bound of model checking (default: 60)')
+        self.parser.add_argument('-multithread', '-multy', type=str2bool,
+                                 help='run the given model using multithread (default: false)')
+        self.parser.add_argument('-solver', type=str,
+                                 help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
+        self.parser.add_argument('-logic', type=str,
+                                 help='run the SMT solver using given given logic (default: QF-NRA)')
+        self.parser.add_argument('-visualize', type=str2bool,
+                                 help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
+        self.parser.add_argument('-log', type=str2bool,
+                                 help='save results of execution in report.txt (default: false)')
+        self.parser.add_argument('-onlySTL', type=str2bool,
+                                 help='consider only STL constraints (default: false)')
+        self.parser.add_argument('-delta', type=float,
+                                 help='delta for invariant condition (default: 0)')
 
-        # create data directory for storing report files
-        if save:
-            if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
-                os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
-        for m in modelList:
-            modelCheck(m, lower, upper, step, timebound, visualize, multithread, save, solver.lower(), logic.upper(), delta, onlySTL)
-    except Exception as ex:
-        if args.visualize:
-            if not all(argi is None for argi in
-                       [args.lower, args.upper, args.step, args.multithread, args.timebound, args.log, args.visualize,
-                        args.solver, args.logic]):
-                print("\nNeed to provide file name!")
-                print("Type [-h] to see help.")
-                raise
-            try:
-                if not (os.path.isdir("./DataDir")):
-                    os.makedirs(os.path.join("./DataDir"))
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    print("Failed to create directory!!!!!")
+        self.args = None
+
+    def parse(self):
+        self.args = self.parser.parse_args()
+
+    def run(self):
+        args = self.args
+        modelList = list()
+        try:
+            if os.path.isdir(args.file):
+                fileList = os.listdir(args.file)
+                for item in fileList:
+                    if os.path.splitext(item)[-1].lower() == ".model":
+                        modelList.append(os.path.abspath(args.file) + "/" + item)
+            elif os.path.isfile(args.file):
+                modelList.append(args.file)
+            else:
+                raise Exception("file name is wrong")
+            save = False if args.log is None else args.log
+            lower = 1 if args.lower is None else args.lower
+            upper = lower if args.upper is None else args.upper
+            solver = 'z3' if args.solver is None else (
+                args.solver.lower() if args.solver.lower() in ['hylaa', 'yices', z3] else 'z3')
+            logic = 'None'
+            stlmcPyPath = os.path.dirname(os.path.realpath(stlmcPy.__file__))
+            if args.logic == 'linear':
+                logic = 'LRA' if solver == 'z3' else 'qf_lra'
+            elif args.logic == 'nonlinear':
+                logic = 'NRA' if solver == 'z3' else 'qf_nra'
+            visualize = False if args.visualize is None else args.visualize
+            multithread = False if args.multithread is None else args.multithread
+            timebound = 60 if args.timebound is None else args.timebound
+            step = 1 if args.step is None else args.step
+            onlySTL = False if args.onlySTL is None else args.onlySTL
+            delta = 0 if args.delta is None else args.delta
+
+            # create data directory for storing report files
+            if save:
+                if not os.path.exists(str(os.path.abspath(os.curdir)) + "/reports/"):
+                    os.makedirs(str(os.path.abspath(os.curdir)) + "/reports/")
+            for m in modelList:
+                params = dict()
+                params["model_name"] = m
+                params["lower_bound"] = lower
+                params["upper_bound"] = upper
+                params["step"] = step
+                params["time_bound"] = timebound
+                params["is_visualize"] = visualize
+                params["is_multithread"] = multithread
+                params["is_save"] = save
+                params["solver_type"] = solver.lower()
+                params["logic_type"] = logic.upper()
+                params["delta"] = delta
+                params["only_stl"] = onlySTL
+
+                modelCheck(params)
+        except Exception as ex:
+            if args.visualize:
+                if not all(argi is None for argi in
+                           [args.lower, args.upper, args.step, args.multithread, args.timebound, args.log,
+                            args.visualize,
+                            args.solver, args.logic]):
+                    print("\nNeed to provide file name!")
+                    print("Type [-h] to see help.")
                     raise
-            subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
-        else:
-            print(ex)
+                try:
+                    if not (os.path.isdir("./DataDir")):
+                        os.makedirs(os.path.join("./DataDir"))
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        print("Failed to create directory!!!!!")
+                        raise
+                subprocess.call([stlmcPyPath + "/visualize/main", "-v", "-webdir=" + stlmcPyPath + "/visualize/web"])
+            else:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+                print(repr(ex))
+                print(ex)
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='For more information. See below:')
-    parser.add_argument('file', nargs='?', type=str, help="Type file or directory to process")
-    parser.add_argument('-lower', '-l', type=int,
-                        help='model checking from the given lower bound (default: 1)')
-    parser.add_argument('-upper', '-u', type=int,
-                        help='model checking upto given upper bound (default: lower_bound)')
-    parser.add_argument('-step', '-s', type=int,
-                        help='model checking at intervals of step in (lower, upper) (default: 1)')
-    parser.add_argument('-timebound', '-tb', type=int,
-                        help='set time bound of model checking (default: 60)')
-    parser.add_argument('-multithread', '-multy', type=str2bool,
-                        help='run the given model using multithread (default: false)')
-    parser.add_argument('-solver', type=str,
-                        help='run the model using given smt solver, support \" {Yices, Z3} \" (default: z3)')
-    parser.add_argument('-logic', type=str,
-                        help='run the SMT solver using given given logic (default: QF-NRA)')
-    parser.add_argument('-visualize', type=str2bool,
-                        help='if a model have a counterexample, generate json format file for the trace of the counterexample (default: false)')
-    parser.add_argument('-log', type=str2bool,
-                        help='save results of execution in report.txt (default: false)')
-    parser.add_argument('-onlySTL', type=str2bool,
-                        help='consider only STL constraints (default: false)')
-    parser.add_argument('-delta', type=float,
-                        help='delta for invariant condition (default: 0)')
     try:
-        args = parser.parse_args()
-        main(args)
+        driver = Driver()
+        driver.parse()
+        driver.run()
     except SystemExit:
         print("System error")

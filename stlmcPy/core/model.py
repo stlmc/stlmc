@@ -4,10 +4,11 @@ import stlmcPy.core.separation as SEP
 import time
 from .z3Handler import *
 from .yicesHandler import *
-#from .drealHandler import *
+# from .drealHandler import *
 from .formula import *
 from .modelConsts import *
 from .hylaaHandler import *
+from ..solver.solver_factory import SolverFactory
 
 
 def isNumber(s):
@@ -627,7 +628,7 @@ class jumpMod:
             right = varDict[self.exp]
         else:
             right = self.exp.getExpression(varDict)
-       
+
         if self.op == '<':
             return left < right
         elif self.op == '<=':
@@ -735,6 +736,8 @@ class StlMC:
         negFormula = NotFormula(stlFormula)  # negate the formula
         isError = False
 
+        solver2 = SolverFactory(solver).generate_solver()
+
         for i in range(0 if iterative else bound, bound + 1):
             stime1 = time.process_time()
 
@@ -745,13 +748,12 @@ class StlMC:
 
             # full separation
             fs = SEP.fullSeparation(negFormula, sepMap)
-           
 
             originalFS = dict()
-            for (m,n) in fs[1].keys():
-                originalFS[m] = fs[1][(m,n)] 
+            for (m, n) in fs[1].keys():
+                originalFS[m] = fs[1][(m, n)]
 
-            # FOL translation
+                # FOL translation
             baseV = ENC.baseEncoding(partition, baseP)
             (formulaConst, subFormulaMap) = ENC.valuation(fs[0], originalFS, ENC.Interval(True, 0.0, True, 0.0), baseV)
 
@@ -760,43 +762,33 @@ class StlMC:
 
             # constraints from the model
             # (list, attribute, attribute, list)
-            (transConsts, invConsts, flowConsts, stlConsts, timeConsts) = self.consts.modelConstraints(i, timeBound, delta, partition, partitionConsts, [formulaConst])
-            #modelConsts = []
+            (transConsts, invConsts, flowConsts, stlConsts, timeConsts) = self.consts.modelConstraints(i, timeBound,
+                                                                                                       delta, partition,
+                                                                                                       partitionConsts,
+                                                                                                       [formulaConst])
+            # modelConsts = []
             etime1 = time.process_time()
-
 
             if onlySTL:
                 print("only STL is true")
-                allConsts = partitionConsts + [formulaConst]    
+                allConsts = partitionConsts + [formulaConst]
             elif solver == 'hylaa':
                 allConsts = [invConsts, formulaConst] + stlConsts + partitionConsts + transConsts
 
-                #allConsts = (partitionConsts + [formulaConst], stlConsts + [invConsts] + transConsts)
+                # allConsts = (partitionConsts + [formulaConst], stlConsts + [invConsts] + transConsts)
             else:
-                allConsts = transConsts + [invConsts, flowConsts] + stlConsts +  timeConsts + partitionConsts + [formulaConst]
-                #allConsts = stlConsts + partitionConsts + [formulaConst]
-                #allConsts = [invConsts]
+                allConsts = transConsts + [invConsts, flowConsts] + stlConsts + timeConsts + partitionConsts + [
+                    formulaConst]
+                # allConsts = stlConsts + partitionConsts + [formulaConst]
+                # allConsts = [invConsts]
 
+            (result, cSize, self.model) = solver2.solve(allConsts)
 
             # check the satisfiability
-            if solver == 'z3':
-                (result, cSize, self.model) = z3checkSat(allConsts, logic)
-            elif solver == 'yices':
-                (result, cSize, self.model) = yicescheckSat(allConsts, logic)
-            '''
-            elif solver == 'hylaa':
-                if len(self.reachList) == 0:
-                    (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, list(), delta, self.prop)
-                else:
-                    for numReach in range(len(self.reachList)):
-                        (result, cSize) = hylaaModel(allConsts, self.modeVar, self.contVar, self.bound, self.modeModule, self.reachList[numReach], delta, self.prop)
-                self.model = None
-            '''
-
-            '''
-            elif solver == 'dreal':
-                (result, cSize, self.model) = drealcheckSat(modelConsts + partitionConsts + [formulaConst], logic)
-            '''
+            # if solver == 'z3':
+            #     (result, cSize, self.model) = z3checkSat(allConsts, logic)
+            # elif solver == 'yices':
+            #     (result, cSize, self.model) = yicescheckSat(allConsts, logic)
 
             stime2 = time.process_time()
 
