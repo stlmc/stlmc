@@ -85,9 +85,9 @@ class InitVal(Variable):
         return {{'bool': Bool, 'int': Int, 'real': Real}[self.__type](self.__id)}
     #     return self.getExpression().getVars()
 
-    def substitution(self, subDict):
-        return ({'bool': Bool, 'int': Int, 'real': Real}[self.__type](self.__id)).substitution(subDict)
-        # return self.getExpression().substitution(subDict)
+    # def substitution(self, subDict):
+    #     return ({'bool': Bool, 'int': Int, 'real': Real}[self.__type](self.__id)).substitution(subDict)
+    # return self.getExpression().substitution(subDict)
 
 
 class VarVal(Variable):
@@ -227,9 +227,9 @@ class BinaryExp:
     #     else:
     #         raise Exception("Not yet in Binary Expression")
 
-    def substitution(self, subDict):
-        opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
-        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
+    # def substitution(self, subDict):
+    #     opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
+    #     return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
 
     @property
     def var_dic(self):

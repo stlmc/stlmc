@@ -1,5 +1,7 @@
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_expression
+from stlmcPy.constraints.operations import get_expression, substitution
+
+
 # TODO: why attribute error occured here?
 
 class StlMC:
@@ -20,7 +22,7 @@ class StlMC:
         # make range constraints
         rangeConsts = self.makeVarRangeConsts(bound)
         # make initial constraints
-        initConst = get_expression(self.init, self.subvars).substitution(combine)
+        initConst = substitution(get_expression(self.init, self.subvars), combine)
         # make invariant constraints
         invConsts = self.invConstraints(bound, delta)
         # make flow constraints
@@ -135,8 +137,8 @@ class StlMC:
         result = list()
         for k in range(bound + 1):
             for i in range(len(self.contVar)):
-                result.append(self.contVar[i].getConstraint().substitution(self.makeSubVars(k, '0')))
-                result.append(self.contVar[i].getConstraint().substitution(self.makeSubVars(k, 't')))
+                result.append(substitution(self.contVar[i].getConstraint(), self.makeSubVars(k, '0')))
+                result.append(substitution(self.contVar[i].getConstraint(), self.makeSubVars(k, 't')))
         return And(*result)
 
     def combineDict(self, dict1, dict2):
@@ -187,7 +189,7 @@ class StlMC:
                 jumpConsts.append(And(
                     *[get_expression(self.modeModule[i].getMode(), self.subvars), And(*modeConsts), Or(*subresult)]))
 
-            const = [i.substitution(combineSub) for i in jumpConsts]
+            const = [substitution(i, combineSub) for i in jumpConsts]
             combineJump = [i.nextSub(nextSub) for i in const]
             result.append(Or(*combineJump))
 
@@ -220,7 +222,7 @@ class StlMC:
                     else:
                         raise ("Flow id is not declared")
 
-                flowConsts.append(Integral(curMode.substitution(self.makeSubMode(k)), self.makeSubVars(k, 't'),
+                flowConsts.append(Integral(substitution(curMode, self.makeSubMode(k)), self.makeSubVars(k, 't'),
                                            self.makeSubVars(k, '0'), time, flowModule,
                                            self.modeModule[i].getFlow().getFlowType()))
 

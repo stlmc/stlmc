@@ -86,8 +86,8 @@ class Constant(Leaf):
     def infix(self):
         return str(self.__value)
 
-    def substitution(self, subDict):
-        return self
+    # def substitution(self, subDict):
+    #     return self
 
     def getVars(self):
         return set()
@@ -159,15 +159,15 @@ class Variable(Leaf):
     def infix(self):
         return str(self.id)
 
-    def substitution(self, subDict):
-        op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
-        strid = str(self.id)
-        if strid in subDict.keys():
-            if isinstance(subDict[strid], BinaryArithmetic):
-                return subDict[strid]
-            return op[self.getType()](subDict[strid])
-        else:
-            return self
+    # def substitution(self, subDict):
+    #     op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
+    #     strid = str(self.id)
+    #     if strid in subDict.keys():
+    #         if isinstance(subDict[strid], BinaryArithmetic):
+    #             return subDict[strid]
+    #         return op[self.getType()](subDict[strid])
+    #     else:
+    #         return self
 
     def nextSub(self, subDict):
         return self
@@ -184,11 +184,12 @@ class NextVar(Variable):
         self.var = var
         super().__init__(self.var.getType(), var.id)
 
-    def substitution(self, subDict):
-        return self
+    # def substitution(self, subDict):
+    #     return self
 
     def nextSub(self, subDict):
-        return super().substitution(subDict)
+        return self
+        # return substitution(super(), subDict)
 
     def __repr__(self):
         return str(self.var.id) + "'"
@@ -281,9 +282,9 @@ class Relational(nonLeaf, _BinaryOp):
             raise TypeError("Relational error")
         super().__init__(op, Type.Bool, [left, right])
 
-    def substitution(self, subDict):
-        opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
-        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
+    # def substitution(self, subDict):
+    #     opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
+    #     return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
 
     def nextSub(self, subDict):
         opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
@@ -348,9 +349,9 @@ class BinaryArithmetic(nonLeaf, _BinaryOp):
             raise TypeError("binary arithmetic error")
         super().__init__(op, left.getType(), [left, right])
 
-    def substitution(self, subDict):
-        opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
-        return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
+    # def substitution(self, subDict):
+    #     opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
+    #     return opdict[self.op](self.left().substitution(subDict), self.right().substitution(subDict))
 
     def nextSub(self, subDict):
         opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
@@ -420,8 +421,8 @@ class Neg(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('-', num)
 
-    def substitution(self, subDict):
-        return Neg(self.child().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Neg(self.child().substitution(subDict))
 
     def nextSub(self, subDict):
         return Neg(self.child().nextSub(subDict))
@@ -431,8 +432,8 @@ class Sin(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('sin', num)
 
-    def substitution(self, subDict):
-        return Sin(self.child().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Sin(self.child().substitution(subDict))
 
     def nextSub(self, subDict):
         return Sin(self.child().nextSub(subDict))
@@ -442,8 +443,8 @@ class Cos(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('cos', num)
 
-    def substitution(self, subDict):
-        return Cos(self.child().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Cos(self.child().substitution(subDict))
 
     def nextSub(self, subDict):
         return Cos(self.child().nextSub(subDict))
@@ -453,8 +454,8 @@ class Tan(UnaryArithmetic):
     def __init__(self, num):
         super().__init__('tan', num)
 
-    def substitution(self, subDict):
-        return Tan(self.child().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Tan(self.child().substitution(subDict))
 
     def nextSub(self, subDict):
         return Tan(self.child().nextSub(subDict))
@@ -477,9 +478,9 @@ class And(Logical):
     def __init__(self, *args):
         super().__init__('and', args)
 
-    def substitution(self, subDict):
-        subargs = [element.substitution(subDict) for element in self.children]
-        return And(*subargs)
+    # def substitution(self, subDict):
+    #     subargs = [element.substitution(subDict) for element in self.children]
+    #     return And(*subargs)
 
     def nextSub(self, subDict):
         subargs = [element.nextSub(subDict) for element in self.children]
@@ -490,9 +491,9 @@ class Or(Logical):
     def __init__(self, *args):
         super().__init__('or', args)
 
-    def substitution(self, subDict):
-        subargs = [element.substitution(subDict) for element in self.children]
-        return Or(*subargs)
+    # def substitution(self, subDict):
+    #     subargs = [element.substitution(subDict) for element in self.children]
+    #     return Or(*subargs)
 
     def nextSub(self, subDict):
         subargs = [element.nextSub(subDict) for element in self.children]
@@ -503,8 +504,8 @@ class Implies(Logical, _BinaryOp):
     def __init__(self, left, right):
         super().__init__('=>', [left, right])
 
-    def substitution(self, subDict):
-        return Implies(self.left().substitution(subDict), self.right().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Implies(self.left().substitution(subDict), self.right().substitution(subDict))
 
     def nextSub(self, subDict):
         return Implies(self.left().nextSub(subDict), self.right().nextSub(subDict))
@@ -514,8 +515,8 @@ class Beq(Logical, _BinaryOp):
     def __init__(self, left, right):
         super().__init__('=', [left, right])
 
-    def substitution(self, subDict):
-        return Beq(self.left().substitution(subDict), self.right().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Beq(self.left().substitution(subDict), self.right().substitution(subDict))
 
     def nextSub(self, subDict):
         return Beq(self.left().nextSub(subDict), self.right().nextSub(subDict))
@@ -525,8 +526,8 @@ class Not(Logical, _UnaryOp):
     def __init__(self, prop):
         super().__init__('not', [prop])
 
-    def substitution(self, subDict):
-        return Not(self.child().substitution(subDict))
+    # def substitution(self, subDict):
+    #     return Not(self.child().substitution(subDict))
 
     def nextSub(self, subDict):
         return Not(self.child().nextSub(subDict))
@@ -568,55 +569,55 @@ class Integral(Node):
         result = '(= ' + end + '\n  (integral 0. ' + str(self.time) + ' ' + start + ' flow_))\n'
         return result
 
-    def getConstraints(self):
-        result = []
-        subDict = {}
-        for i in range(len(self.endList)):
-            keyIndex = str(self.endList[i]).find('_')
-            keyValue = str(self.endList[i])[0:keyIndex]
-            subDict[keyValue] = self.startList[i]
-        if self.flowType == 'diff':
-            for i in self.ode.values():
-                subvariables = list(i.getVars())
-                '''
-                for j in range(len(subvariables)):
-                    if subvariables[j] in self.ode.keys():
-                        if str(self.ode[subvariables[j]]) == str(RealVal(0)):
-                            pass
-                        else:
-                            print(str(self.ode[subvariables[j]]))
-                            raise constODEerror()
-                '''
-            substitutionExp = {}
-            for i in self.ode.keys():
-                substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
-            for i in range(len(self.endList)):
-                keyIndex = str(self.endList[i]).find('_')
-                keyValue = str(self.endList[i])[0:keyIndex]
-                if keyValue in substitutionExp.keys():
-                    result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
-        elif self.flowType == 'sol':
-            subDict['time'] = Real('tau_' + str(self.time.id)[4:])
-            substitutionExp = {}
-            for i in self.ode.keys():
-                substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
-            for i in range(len(self.endList)):
-                keyIndex = str(self.endList[i]).find('_')
-                keyValue = str(self.endList[i])[0:keyIndex]
-                if keyValue in substitutionExp.keys():
-                    result.append(self.endList[i] == substitutionExp[keyValue])
-        else:
-            raise FlowTypeEerror()
-
-        result.append(self.curMode)
-
-        return result
+    # def getConstraints(self):
+    #     result = []
+    #     subDict = {}
+    #     for i in range(len(self.endList)):
+    #         keyIndex = str(self.endList[i]).find('_')
+    #         keyValue = str(self.endList[i])[0:keyIndex]
+    #         subDict[keyValue] = self.startList[i]
+    #     if self.flowType == 'diff':
+    #         for i in self.ode.values():
+    #             subvariables = list(i.getVars())
+    #             '''
+    #             for j in range(len(subvariables)):
+    #                 if subvariables[j] in self.ode.keys():
+    #                     if str(self.ode[subvariables[j]]) == str(RealVal(0)):
+    #                         pass
+    #                     else:
+    #                         print(str(self.ode[subvariables[j]]))
+    #                         raise constODEerror()
+    #             '''
+    #         substitutionExp = {}
+    #         for i in self.ode.keys():
+    #             substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
+    #         for i in range(len(self.endList)):
+    #             keyIndex = str(self.endList[i]).find('_')
+    #             keyValue = str(self.endList[i])[0:keyIndex]
+    #             if keyValue in substitutionExp.keys():
+    #                 result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
+    #     elif self.flowType == 'sol':
+    #         subDict['time'] = Real('tau_' + str(self.time.id)[4:])
+    #         substitutionExp = {}
+    #         for i in self.ode.keys():
+    #             substitutionExp[str(i.id)] = self.ode[i].substitution(subDict)
+    #         for i in range(len(self.endList)):
+    #             keyIndex = str(self.endList[i]).find('_')
+    #             keyValue = str(self.endList[i])[0:keyIndex]
+    #             if keyValue in substitutionExp.keys():
+    #                 result.append(self.endList[i] == substitutionExp[keyValue])
+    #     else:
+    #         raise FlowTypeEerror()
+    #
+    #     result.append(self.curMode)
+    #
+    #     return result
 
     def getVars(self):
         return set(self.startList + self.endList + [self.time])
 
-    def substitution(self, subDict):
-        return self
+    # def substitution(self, subDict):
+    #     return self
 
     def nextSub(self, subDict):
         return self
@@ -672,8 +673,8 @@ class Solution(Node):
     def getVars(self):
         return set(self.startList + self.endList)
 
-    def substitution(self, subDict):
-        return self
+    # def substitution(self, subDict):
+    #     return self
 
     def nextSub(self, subDict):
         return self
@@ -704,8 +705,8 @@ class Forall(Node):
     def getVars(self):
         return set()
 
-    def substitution(self, subDict):
-        return self
+    # def substitution(self, subDict):
+    #     return self
 
     def nextSub(self, subDict):
         return self

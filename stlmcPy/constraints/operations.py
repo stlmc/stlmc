@@ -202,3 +202,115 @@ def _(exp: Constant, sub_dict):
     return op[exp.type](str(exp.cvalue))
 
 
+# op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
+#         strid = str(self.id)
+#         if strid in subDict.keys():
+#             if isinstance(subDict[strid], BinaryArithmetic):
+#                 return subDict[strid]
+#             return op[self.getType()](subDict[strid])
+#         else:
+#             return self
+
+
+@singledispatch
+def substitution(const: Variable, dic: dict):
+    op = {Type.Bool: Bool, Type.Real: Real, Type.Int: Int}
+    strid = str(const.id)
+    if strid in dic.keys():
+        if isinstance(dic[strid], BinaryArithmetic):
+            return dic[strid]
+        return op[const.getType()](dic[strid])
+    else:
+        return const
+    # return ({'bool': Bool, 'int': Int, 'real': Real}[const.type](const.id)).substitution(dic)
+
+
+@substitution.register(NextVar)
+def _(const: NextVar, dic: dict):
+    return const
+
+
+@substitution.register(Constant)
+def _(const: Constant, dic: dict):
+    return const
+
+
+@substitution.register(BinaryExp)
+def _(const: BinaryExp, dic: dict):
+    opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
+    return opdict[const.op](substitution(const.left(), dic), substitution(const.right(), dic))
+
+
+@substitution.register(BinaryArithmetic)
+def _(const: BinaryArithmetic, dic: dict):
+    opdict = {'^': Pow, '+': Plus, '-': Minus, '*': Mul, '/': Div}
+    return opdict[const.op](substitution(const.left(), dic), substitution(const.right(), dic))
+
+
+@substitution.register(Neg)
+def _(const: Neg, dic: dict):
+    return Neg(substitution(const.child(), dic))
+
+
+@substitution.register(Sin)
+def _(const: Sin, dic: dict):
+    return Sin(substitution(const.child(), dic))
+
+
+@substitution.register(Cos)
+def _(const: Sin, dic: dict):
+    return Cos(substitution(const.child(), dic))
+
+
+@substitution.register(Tan)
+def _(const: Sin, dic: dict):
+    return Tan(substitution(const.child(), dic))
+
+
+@substitution.register(Relational)
+def _(const: Relational, dic: dict):
+    opdict = {'>=': Ge, '>': Gt, '<=': Le, '<': Lt, '=': Numeq}
+    return opdict[const.op](substitution(const.left(), dic), substitution(const.right(), dic))
+
+
+@substitution.register(And)
+def _(const: And, dic: dict):
+    subargs = [substitution(element, dic) for element in const.children]
+    return And(*subargs)
+
+
+@substitution.register(Or)
+def _(const: Or, dic: dict):
+    subargs = [substitution(element, dic) for element in const.children]
+    return Or(*subargs)
+
+
+@substitution.register(Implies)
+def _(const: Implies, dic: dict):
+    return Implies(substitution(const.left(), dic), substitution(const.right(), dic))
+
+
+@substitution.register(Beq)
+def _(const: Beq, dic: dict):
+    return Beq(substitution(const.left(), dic), substitution(const.right(), dic))
+
+
+@substitution.register(Not)
+def _(const: Not, dic: dict):
+    return Not(substitution(const.child(), dic))
+
+
+# integral solution forall
+@substitution.register(Integral)
+def _(const: Integral, dic: dict):
+    return const
+
+
+@substitution.register(Solution)
+def _(const: Solution, dic: dict):
+    return const
+
+
+@substitution.register(Forall)
+def _(const: Forall, dic: dict):
+    return const

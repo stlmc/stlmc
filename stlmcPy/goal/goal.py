@@ -2,7 +2,7 @@ import stlmcPy.core.partition as PART
 import stlmcPy.core.separation as SEP
 from stlmcPy.constraints.constraints import Dynamics
 from stlmcPy.constraints.node import *
-from stlmcPy.constraints.operations import get_expression
+from stlmcPy.constraints.operations import get_expression, substitution
 from stlmcPy.core.formula import Formula, NotFormula
 import stlmcPy.core.encoding as ENC
 import abc
@@ -127,7 +127,7 @@ class StlGoal(Goal):
         elif isinstance(exp, Ge):
             exp = Ge(exp.left(), exp.right() - RealVal(delta))
 
-        initPointCond = exp.substitution(self.makeSubVars(bound, '0'))
+        initPointCond = substitution(exp, self.makeSubVars(bound, '0'))
 
         return And(initPointCond,
                    Forall(curMode, propID, exp, combine, self.makeSubVars(bound, '0'), self.makeSubVars(bound, 't'),
@@ -151,13 +151,13 @@ class StlGoal(Goal):
                         curMode = get_expression(self.modeModule[m].getMode(), self.subvars)
                         curFlow = self.modeModule[m].getFlow()
                         # const.append(self.propForall(curMode.substitution(combine), i.substitution(combine), self.makePropDict()[i], k, curFlow))
-                        const.append(Implies(And(i, curMode).substitution(combine),
-                                             self.propForall(curMode.substitution(combine), i.substitution(combine),
+                        const.append(Implies(substitution(And(i, curMode), combine),
+                                             self.propForall(substitution(curMode, combine), substitution(i, combine),
                                                              self.makePropDict()[i], k, curFlow, delta)))
                         # const.append(self.propForall(curMode.substitution(combine), Not(i).substitution(combine), Not(self.makePropDict()[i]).reduce(), k, curFlow))
-                        const.append(Implies(And(Not(i), curMode).substitution(combine),
-                                             self.propForall(curMode.substitution(combine),
-                                                             Not(i).substitution(combine),
+                        const.append(Implies(substitution(And(Not(i), curMode), combine),
+                                             self.propForall(substitution(curMode, combine),
+                                                             substitution(Not(i), combine),
                                                              Not(self.makePropDict()[i]).reduce(), k, curFlow,
                                                              delta)))
 

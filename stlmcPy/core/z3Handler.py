@@ -1,7 +1,53 @@
 from stlmcPy.constraints.node import *
+from stlmcPy.constraints.operations import substitution
 from stlmcPy.core.differentiation import diff
 from functools import singledispatch
 import z3
+
+
+def getConstraints(self: Integral):
+    result = []
+    subDict = {}
+    for i in range(len(self.endList)):
+        keyIndex = str(self.endList[i]).find('_')
+        keyValue = str(self.endList[i])[0:keyIndex]
+        subDict[keyValue] = self.startList[i]
+    if self.flowType == 'diff':
+        for i in self.ode.values():
+            subvariables = list(i.getVars())
+            '''
+            for j in range(len(subvariables)):
+                if subvariables[j] in self.ode.keys():
+                    if str(self.ode[subvariables[j]]) == str(RealVal(0)):
+                        pass
+                    else:
+                        print(str(self.ode[subvariables[j]]))
+                        raise constODEerror()
+            '''
+        substitutionExp = {}
+        for i in self.ode.keys():
+            substitutionExp[str(i.id)] = substitution(self.ode[i], subDict)
+        for i in range(len(self.endList)):
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            if keyValue in substitutionExp.keys():
+                result.append(self.endList[i] == self.startList[i] + substitutionExp[keyValue] * self.time)
+    elif self.flowType == 'sol':
+        subDict['time'] = Real('tau_' + str(self.time.id)[4:])
+        substitutionExp = {}
+        for i in self.ode.keys():
+            substitutionExp[str(i.id)] = substitution(self.ode[i], subDict)
+        for i in range(len(self.endList)):
+            keyIndex = str(self.endList[i]).find('_')
+            keyValue = str(self.endList[i])[0:keyIndex]
+            if keyValue in substitutionExp.keys():
+                result.append(self.endList[i] == substitutionExp[keyValue])
+    else:
+        raise FlowTypeEerror()
+
+    result.append(self.curMode)
+
+    return result
 
 
 def getForallConsts(const):
@@ -21,8 +67,8 @@ def getForallConsts(const):
 
     result = list()
     handlingExp = exp.left() - exp.right()
-    handlingExp = handlingExp.substitution(const.modePropDict)
-    substitutionExp = handlingExp.substitution(const.ode)
+    handlingExp = substitution(handlingExp, const.modePropDict)
+    substitutionExp = substitution(handlingExp, const.ode)
     diffExp = diff(substitutionExp)
 
     # monotone increase or decrease
@@ -45,24 +91,24 @@ def getForallConsts(const):
         result.append(Or(*subresult))
     else:
         # f(t') >= 0
-        result.append(Ge(handlingExp.substitution(const.endDict), RealVal(0)))
+        result.append(Ge(substitution(handlingExp, const.endDict), RealVal(0)))
         if isinstance(exp, Gt):
             # Check a start point of interval satisfies the proposition
-            result.append(Gt(handlingExp.substitution(const.startDict), RealVal(0)))
+            result.append(Gt(substitution(handlingExp, const.startDict), RealVal(0)))
             # Case : f(t) = 0 -> dot(f(T)) > 0, forall T in (t, t')
-            result.append(Implies(handlingExp.substitution(const.startDict) == RealVal(0),
+            result.append(Implies(substitution(handlingExp, const.startDict) == RealVal(0),
                                   Forall(const.curMode, const.propID, Gt(diffExp, RealVal(0)), const.modePropDict,
                                          const.startDict, const.endDict, const.ode, const.delta)))
             # Case : f(t') = 0 -> dot(f(T)) < 0, forall T in (t, t')
-            result.append(Implies(handlingExp.substitution(const.endDict) == RealVal(0),
+            result.append(Implies(substitution(handlingExp, const.endDict) == RealVal(0),
                                   Forall(const.curMode, const.propID, Lt(diffExp, RealVal(0)), const.modePropDict,
                                          const.startDict, const.endDict, const.ode, const.delta)))
         elif isinstance(exp, Ge):
-            result.append(Ge(handlingExp.substitution(const.startDict), RealVal(0)))
-            result.append(Implies(handlingExp.substitution(const.startDict) == RealVal(0),
+            result.append(Ge(substitution(handlingExp, const.startDict), RealVal(0)))
+            result.append(Implies(substitution(handlingExp, const.startDict) == RealVal(0),
                                   Forall(const.curMode, const.propID, Ge(diffExp, RealVal(0)), const.modePropDict,
                                          const.startDict, const.endDict, const.ode, const.delta)))
-            result.append(Implies(handlingExp.substitution(const.endDict) == RealVal(0),
+            result.append(Implies(substitution(handlingExp, const.endDict) == RealVal(0),
                                   Forall(const.curMode, const.propID, Le(diffExp, RealVal(0)), const.modePropDict,
                                          const.startDict, const.endDict, const.ode, const.delta)))
 
@@ -223,7 +269,7 @@ def _(const, hylaa = False):
 
 @z3Obj.register(Integral)
 def _(const, hylaa = False):
-    result = const.getConstraints()
+    result = getConstraints(const)
     z3result = [z3Obj(c, hylaa) for c in result]
     return z3.And(z3result) 
 
