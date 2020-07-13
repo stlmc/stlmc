@@ -96,7 +96,7 @@ def _(exp: Multy, var_dict):
         elif exp.props[i] in var_dict.keys():
             expr = var_dict[exp.props[i]]
         else:
-            expr = exp.props[i].getExpression(var_dict)
+            expr = get_expression(exp.props[i], var_dict)
         result.append(expr)
     return {'and': And, 'or': Or}[exp.op](*result)
 
@@ -111,7 +111,7 @@ def _(exp: Binary, var_dict):
     if str(exp.right) in var_dict.keys():
         right = var_dict[str(exp.right)]
     else:
-        right = exp.right.getExpression(var_dict)
+        right = get_expression(exp.right, var_dict)
     return {'and': And, 'or': Or}[exp.op](left, right)
 
 
@@ -129,7 +129,7 @@ def _(exp: UnaryJump, var_dict):
     if isinstance(exp.prop, NextVar):
         prop = exp.prop
     else:
-        prop = exp.prop.getExpression(var_dict)
+        prop = get_expression(exp.prop, var_dict)
     return {'not': Not, 'Not': Not, '~': Not}[exp.op](prop)
 
 
@@ -154,7 +154,7 @@ def _(exp: flowDecl, var_dict):
 
 @get_expression.register(jumpRedeclModule)
 def _(exp: jumpRedeclModule, var_dict):
-    condition = exp.cond.getExpression(var_dict)
+    condition = get_expression(exp.cond, var_dict)
     redecl = get_expression(exp.jumpRedecl, var_dict)
     return And(condition, redecl)
 
