@@ -760,7 +760,7 @@ class StlMC:
             # partition constraints
             partitionConsts = PART.genPartition(baseP, fs[1], subFormulaMap)
 
-            # constraints from the model
+            # constraints from the objects
             # (list, attribute, attribute, list)
             (transConsts, invConsts, flowConsts, stlConsts, timeConsts) = self.consts.modelConstraints(i, timeBound,
                                                                                                        delta, partition,
@@ -786,9 +786,9 @@ class StlMC:
 
             # check the satisfiability
             # if solver == 'z3':
-            #     (result, cSize, self.model) = z3checkSat(allConsts, logic)
+            #     (result, cSize, self.objects) = z3checkSat(allConsts, logic)
             # elif solver == 'yices':
-            #     (result, cSize, self.model) = yicescheckSat(allConsts, logic)
+            #     (result, cSize, self.objects) = yicescheckSat(allConsts, logic)
 
             stime2 = time.process_time()
 

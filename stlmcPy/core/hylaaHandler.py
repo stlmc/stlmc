@@ -239,7 +239,7 @@ def checkHylaa(m, consts, modeModules, modeVars, contVars, transReaches, usedPro
     contVarList = makeContVarList(contVars, bound)
 
     # setting intial range for each variables
-    # current is set initial value as a specific value that is obtained from model 
+    # current is set initial value as a specific value that is obtained from objects
     # Should be revised, 
     for contIndex in range(len(contVars)):
         # Get only initial conditions
@@ -474,7 +474,7 @@ def make_automaton(model, numModes, modeModules, numContVars, modeVarList, contV
         # if the number of satisfiable transition is greater than 0, 
         # choose the fisrt satisfiable transition
         # ex) x > 0 => x' = x + 3, x > 2 => x' = x + 3, 
-        # if x > 0 and x > 2 are sat in the model, 
+        # if x > 0 and x > 2 are sat in the objects,
         # select x > 0 scenario, and add Not(x>2) to jumpScenario
         if len(satJump) >= 1:
             if len(satJump) > 1:

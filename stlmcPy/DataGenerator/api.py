@@ -3,9 +3,6 @@ import errno
 from yices import *
 import z3
 import os
-# from stlmcPy.core.node import *
-# from stlmcPy.core.model import *
-from stlmcPy.constraints.node import *
 from stlmcPy.constraints.constraints import *
 import numpy as np
 from scipy.integrate import odeint
@@ -458,10 +455,10 @@ class Api:
         return interval_list, global_newT
 
     def calcEq(self, global_timeValues, local_timeValues):
-        # get total model id
+        # get total objects id
         model_id = self.getModeIdList()
 
-        # Get unique solEq model id list
+        # Get unique solEq objects id list
         solEq_dict = []
         diffEq_dict = []
         for i, ids in enumerate(model_id):

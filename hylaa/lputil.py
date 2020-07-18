@@ -225,7 +225,7 @@ def add_input_effects_matrix(lpi, input_mat, mode, lgg_beta=None):
     num_inputs = mode.b_csr.shape[1]
     num_constraints = len(mode.u_constraints_rhs)
 
-    # if lgg approximation model is used, then input effects will also bloat in every dimension by beta
+    # if lgg approximation objects is used, then input effects will also bloat in every dimension by beta
     # this makes the input effects matrix wider
     if lgg_beta is None:
         assert input_mat.shape[1] == num_inputs

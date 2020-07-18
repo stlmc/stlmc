@@ -378,7 +378,7 @@ class Core(Freezable):
         Timers.toc('setup')
 
     def run_to_completion(self):
-        'run the model to completion (called by run() if not plot is desired)'
+        'run the objects to completion (called by run() if not plot is desired)'
 
         if self.settings.plot.store_plot_result and self.result.plot_data is None:
             self.result.plot_data = PlotData(self.plotman.num_subplots)

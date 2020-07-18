@@ -1,0 +1,109 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+
+bool a;
+[0, 10] x1;
+bool b;
+real startX1;
+real startX2;
+[0, 10] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 > 0;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = -0.025 * 2 * 9.806 / 2 * startX1 / (2 * 8) ; 
+        d/dt[x2] = (0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ;
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 > 0;
+        (x2 < 9);
+    flow:
+        d/dt[x1] = -0.025 * 2 * 9.806 / 2 * startX1 / (2 * 8) ;
+        d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ;
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 < 8;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * startX1) / (2 * 8) ; 
+        d/dt[x2] = (0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ; 
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 < 9;
+        (x2 < 8);
+    flow:
+        d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * startX1) / (2 * 8) ;
+        d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9);
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+}
+init:
+(and (a = false) (b = false) (x1 <= 5 + 0.1) (x1 >= 5 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1) ((startX1 = x1) and (startX2 = x2)));
+
+propositions:
+reachability = x1 >= 5.6 ;
+x1T = a ;
+x1l4 = x1 < 4.9 ;
+x2T = b;
+
+goal:
+([] [0.0, 50.0] reachability) ;
+(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1 < 3))) ;
+([] [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
+([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
+
+

@@ -1,0 +1,119 @@
+# model description:
+#
+# Two cars are running in a straight road. One car
+# follows another. The following car changes its speed
+# according to the distance to the leading car.
+
+# state
+# 00: stay
+# 01: accelerate
+# 10: deaccelerate
+
+bool a;
+bool b;
+[0, 100] x1;
+[0, 100] x2;
+[0, 100] y1;
+[0, 100] y2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+    flow:
+	
+	x1(t) = (25 * t + 5) * (0.2 * t + 1 - 0.02 * t ** 2);
+	y1(t) = (25 * t + 5) * (0.2 * t - 1 + 0.02 * t ** 2);
+
+	# assume that its rotation is fixed with 45 degrees
+	x2(t) = (t ** 3 / 6 + t ** 2 / 2 - t) / 1.414;
+	y2(t) = (t ** 3 / 6 + t ** 2 / 2 - t) / 1.414;
+
+	# v1(t) = 2 * t;
+	# v2(t) = t ** 2 / 2 + t - 1;
+
+	# theta(t) = 0.2 * t;
+
+
+    jump: 
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) => 
+	(and (not a') (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));        
+	(((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) => 
+                (and a' (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));  
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
+                (and (not a') b' (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+    flow:
+
+	x1(t) = (25 * t + 5) * (0.2 * t + 1 - 0.02 * t ** 2);
+        y1(t) = (25 * t + 5) * (0.2 * t - 1 + 0.02 * t ** 2);
+
+        # assume that its rotation is fixed with 45 degrees
+        x2(t) = (5 * t) / 1.414;
+        y2(t) = (5 * t) / 1.414;
+
+        # v1(t) = 2 * t;
+        # v2(t) = 5 * t;
+
+        # theta(t) = 0.2 * t; 
+
+    jump:
+
+	(((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) =>
+        (and (not a') (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) =>
+                (and a' (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
+                (and (not a') b' (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+    flow:
+
+	x1(t) = (25 * t + 5) * (0.2 * t + 1 - 0.02 * t ** 2);
+        y1(t) = (25 * t + 5) * (0.2 * t - 1 + 0.02 * t ** 2);
+
+        # assume that its rotation is fixed with 45 degrees
+        x2(t) = (-5 * t) / 1.414;
+        y2(t) = (-5 * t) / 1.414;
+
+        # v1(t) = 2 * t;
+        # v2(t) = -5 * t;
+
+        # theta(t) = 0.2 * t;
+
+    jump:
+	(((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) >= 36) and (((x2 - x1) * (x2 - x1) - (y2 - y1) * (y2 - y1)) <= 81) =>
+        (and (not a') (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) < 36) =>
+                (and a' (not b') (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+        (((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 81) =>
+                (and (not a') b' (x1' = x1) (x2' = x2) (y1' = y1) (y2' = y2));
+}
+
+init:
+and (~ a) (~ b) (x1 > 0) (x1 < 3) (x2 > 5) (x2 < 10) (y1 < 10) (y1 > 3) (y2 > 3) (y2 < 10);
+
+propositions:
+disgzero = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) > 0.01 ;
+disl6 = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) <= 36 ;
+modeFT = (not a) and b ;
+modeTF = and a (not b);
+
+goal:
+([] [0.0,100.0] disgzero);
+([] [0.0,20.0] (disl6 -> (<> [0.0,15.0] modeFT)));
+(<> [12.0,20.0] (modeTF -> <>[3.0, 18.0] modeFT));
+(<> [4.0,40.0] (modeTF U[10.0, 20.0] (and ((x2 - x1) >= -0.5) ((x2 - x1) <= 0.5) ((y2 - y1) >= -0.5) ((y2 - y1) <= 0.5))));
+
+
+

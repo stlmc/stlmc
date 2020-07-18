@@ -24,11 +24,11 @@ model = s.model()
 print(model.eval(Or(x + y > 0, y < 0)))
 
 '''
-for mi in s.model():
-    el.append(mi == model[mi])
+for mi in s.objects():
+    el.append(mi == objects[mi])
     print(type(mi))
-    if not (str(model[mi]) == "False"):
-        print(type(float(str(model[mi]))))
+    if not (str(objects[mi]) == "False"):
+        print(type(float(str(objects[mi]))))
 
 print(type(0.4))
 print(type(x))
@@ -36,8 +36,8 @@ print(type(x))
 for sc in soft_constraints:
     ms = Solver()
     ms.add(sc)
-    print(ms.check([mi == model[mi] for mi in s.model()]))
-    #nm = ms.model()
+    print(ms.check([mi == objects[mi] for mi in s.objects()]))
+    #nm = ms.objects()
     #print(nm.eval(x))
 
 '''

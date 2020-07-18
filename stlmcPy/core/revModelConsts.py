@@ -343,7 +343,7 @@
 #                 result.append(variables[i] <= RealVal(timeBound))
 #         return result
 #
-#     # Make constraints of the model
+#     # Make constraints of the objects
 #     def modelConstraints(self, bound, timeBound, partition, partitionConsts, formula):
 #         result = list()
 #         combine = self.combineDict(self.makeSubMode(0), self.makeSubVars(0, '0'))

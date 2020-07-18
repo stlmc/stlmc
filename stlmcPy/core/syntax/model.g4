@@ -89,7 +89,7 @@ fragment COMMENT :
  * Parser Rules
  */
 
-stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? (reach)? goal_decl EOF ;
+stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
 var_val_decl      : CONST var_type VARIABLE EQUAL val=(VALUE | TRUE| FALSE) SEMICOLON;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
@@ -115,14 +115,12 @@ condition   :
             | VARIABLE # constantCond
             | op=NOT condition  # unaryCond
             | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
-            | condition op=(COMPARE_OP | EQUAL |NEQ) condition    # compCond
-            | condition op=(BOOL_AND | BOOL_OR) condition   # binaryCond
+            | condition op=(EQUAL | NEQ) condition    # compCond
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
               ;
 
 jump_redecl : LPAREN jump_redecl RPAREN   # parenthesisJump
-            | jump_redecl op=(BOOL_AND | BOOL_OR) jump_redecl   # binaryJump
-            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump 
+            | op=(BOOL_AND | BOOL_OR) jump_redecl jump_redecl+  # multyJump
             | op=NOT jump_redecl  # unaryJump
             | NEXT_VAR # boolVar
             | NEXT_VAR op=EQUAL TRUE # jumpMod
@@ -182,7 +180,9 @@ formula
 props : PROP COLON (prop)* ;
 prop : VARIABLE EQUAL condition SEMICOLON ;
 
-reach : REACH COLON (condition SEMICOLON)* ;
-goal_decl : GOAL COLON (formula SEMICOLON)* ;
+goal_unit : formula # stlGoal
+            | REACH condition # reachGoal
+            ;
+goal_decl : GOAL COLON (goal_unit SEMICOLON)* ;
 
  

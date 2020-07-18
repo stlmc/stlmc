@@ -62,7 +62,7 @@ class StateSet(Freezable):
 
         self.aggstring = None # aggstring that led to this state, like 'full', or '010'
 
-        # approximation model variables
+        # approximation objects variables
         self.lgg_beta = None
 
         #### plotting variables below ####
@@ -237,7 +237,7 @@ class StateSet(Freezable):
 
     def apply_approx_chull(self):
         '''
-        apply convex hull approximation model
+        apply convex hull approximation objects
         '''
 
         lpi_one_step = self.lpi.clone()
@@ -260,7 +260,7 @@ class StateSet(Freezable):
 
     def apply_approx_lgg(self):
         '''
-        apply lgg approximation model from equation (2) in Lemma 1 of:
+        apply lgg approximation objects from equation (2) in Lemma 1 of:
         "Reachability analysis of linear systems using support functions",
         Le Guernic, C., Girard, A., Nonlinear Analysis: Hybrid Systems, 2010
         '''
@@ -301,7 +301,7 @@ class StateSet(Freezable):
 
         if a_norm < tol:
             print(f"Warning: norm of dynamics A matrix was small ({a_norm}), using alpha = 0 and " +
-                                  "beta = 0 in LGG approximation model")
+                                  "beta = 0 in LGG approximation objects")
             alpha = 0
         else:
             alpha = (math.exp(tau * a_norm) - 1 - tau * a_norm) * (r_x0 + r_v/a_norm)
@@ -319,8 +319,8 @@ class StateSet(Freezable):
             self.lgg_beta = (math.exp(tau * a_norm) - 1 - tau * a_norm) * (r_v/a_norm)
             #print(f".ss beta={self.lgg_beta}")
 
-            assert self.lgg_beta > tol, f"lgg approx model beta was too close to zero: {self.lgg_beta}"
-            assert self.lgg_beta < 1e5, f"lgg approx model beta was too large (use a smaller step): {self.lgg_beta}"
+            assert self.lgg_beta > tol, f"lgg approx objects beta was too close to zero: {self.lgg_beta}"
+            assert self.lgg_beta < 1e5, f"lgg approx objects beta was too large (use a smaller step): {self.lgg_beta}"
 
             self.lpi.set_minimize_direction([-1] * self.lpi.dims)
 
@@ -328,12 +328,12 @@ class StateSet(Freezable):
 
     def apply_approx_model(self, approx_model):
         '''
-        apply the approximation model to bloat the current (initial) set of states
+        apply the approximation objects to bloat the current (initial) set of states
 
         approx_model - one of the APPROX_ values defined in HylaaSettings
         '''
 
-        assert self.cur_step_in_mode == 0, "approximation model should be applied before any continuous post operations"
+        assert self.cur_step_in_mode == 0, "approximation objects should be applied before any continuous post operations"
         assert self.mode.time_elapse is not None, "init_time_elapse() must be called before apply_approx_model()"
 
         if approx_model == HylaaSettings.APPROX_CHULL:

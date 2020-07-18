@@ -33,7 +33,7 @@ antlr_setting () {
 	cd $CORE_PATH
 	# create lexer using antlr 
 	# need to install java first if you don't have one
-	java -jar antlr-4.7.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor 
+	java -jar antlr-4.8-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
 }
 
 runModel () {

@@ -29,7 +29,7 @@ class TimeElapseExpmMult(Freezable):
         self.one_step_matrix_exp = None # one step matrix exponential
         self.one_step_input_effects_matrix = None # one step input effects matrix, if inputs exist
 
-        # lgg approximation model vars
+        # lgg approximation objects vars
         self.use_lgg = False
 
         self.freeze_attrs()
@@ -136,7 +136,7 @@ class TimeElapseExpmMult(Freezable):
 
     def use_lgg_approx(self):
         '''
-        set this time elapse object to use lgg approximation model
+        set this time elapse object to use lgg approximation objects
         '''
 
         self.use_lgg = True

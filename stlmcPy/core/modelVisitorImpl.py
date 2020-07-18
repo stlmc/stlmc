@@ -25,7 +25,7 @@ class modelVisitorImpl(modelVisitor):
         self.newPropDecl = list()
         self.formulaText = list()
         self.var_dic = list()
-        # check if model file contains
+        # check if objects file contains
         self.isTri = False
 
         # generate variable dictionary * number of mode module

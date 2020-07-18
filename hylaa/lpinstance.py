@@ -543,7 +543,7 @@ class LpInstance(Freezable): # pylint: disable=too-many-public-methods
         if direction_vec is not None, this will first assign the optimization direction (note: relative to cur_vars)
         if columns is not None, will only return the requested columns (default: all columns)
         if fail_on_unsat is True and the LP is infeasible, an UnsatError is raised
-        unsat (sometimes happens in GLPK due to likely bug, see space station model)
+        unsat (sometimes happens in GLPK due to likely bug, see space station objects)
 
         returns None if UNSAT, otherwise the optimization result. Use columns=[] if you're not interested in the result
         '''

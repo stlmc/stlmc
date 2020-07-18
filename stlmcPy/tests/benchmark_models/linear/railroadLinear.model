@@ -1,0 +1,100 @@
+# model description:
+#
+# There exist a train and a crossing barrier on a
+# circular track. The train is moving around the track.
+# The barrier closes or opens depending on the distance
+# to the train. The goal of the barrier is to prevent others
+# from entering the track when the train passes by.
+
+real vb;
+[-20, 100] tx;
+[0, 90] bx;
+# state
+# 00: Past and Far(more than 85)
+# 01: Past and Approach
+# 10: Past and Near
+# 11: Past and Past
+{
+    mode:
+        vb = 0;
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 0;
+    jump:
+        (and (35 <= tx) (tx < 50)) =>
+          (and (vb' = 5) (bx' = bx) (tx' = tx));
+        (and (5 <= tx) (tx < 35)) =>
+          (and (vb' = 10) (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 5) (bx <=80)) =>
+          (and (vb' = -5) (bx' = bx) (tx' = tx));
+        (and (bx > 85) (tx < -5)) =>
+          (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        vb = 5 ; 
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 5;
+    jump:
+        (and (35 <= tx) (tx < 50)) =>
+          (and (vb' = 5) (bx' = bx) (tx' = tx));
+        (and (5 <= tx) (tx < 35)) =>
+          (and (vb' = 10) (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 5) (bx <=80)) =>
+          (and (vb' = -5) (bx' = bx) (tx' = tx));
+        (and (bx > 85) (tx < -5)) =>
+          (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        vb = 10;
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 10;
+    jump:
+        (and (35 <= tx) (tx < 50)) =>
+          (and (vb' = 5) (bx' = bx) (tx' = tx));
+        (and (5 <= tx) (tx < 35)) =>
+          (and (vb' = 10) (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 5) (bx <=80)) =>
+          (and (vb' = -5) (bx' = bx) (tx' = tx));
+        (and (bx > 85) (tx < -5)) =>
+          (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
+}
+{
+    mode:
+        vb = -5 ; 
+    inv:
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = -5;
+    jump:
+        (and (35 <= tx) (tx < 50)) =>
+          (and (vb' = 5) (bx' = bx) (tx' = tx));
+        (and (5 <= tx) (tx < 35)) =>
+          (and (vb' = 10) (bx' = bx) (tx' = tx));
+        (and (-5 <= tx) (tx < 5) (bx <=80)) =>
+          (and (vb' = -5) (bx' = bx) (tx' = tx));
+        (and (bx > 85) (tx < -5)) =>
+          (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
+}
+
+init:
+(and (vb = 0) (bx >= 0) (bx < 1) (tx >= 85) (tx <= 90)) ;
+
+propositions:
+reachability = tx < 0 ;
+barg80 = bx >= 80;
+barl60 = bx < 40;
+
+goal:
+(<> (0.0,50.0) reachability);
+([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
+([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
+
+

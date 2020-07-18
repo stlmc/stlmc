@@ -61,7 +61,7 @@ class TimeElapser(Freezable):
 
     def use_lgg_approx(self):
         '''
-        set this time elapse object to use lgg approximation model
+        set this time elapse object to use lgg approximation objects
         '''
 
         self.time_elapse_obj.use_lgg_approx()
