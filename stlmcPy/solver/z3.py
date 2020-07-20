@@ -42,6 +42,9 @@ class Z3Assignment(Assignment):
             new_dict[new_var] = op_dict[var_type_str](str(z3_val))
         return new_dict
 
+    def eval(self, const):
+        return self._z3_model.eval(z3Obj(const))
+
     # def get_assignments(self):
     #     if self._z3_model is not None:
     #         substitute_dict = self.solver_model_to_generalized_model()
@@ -109,68 +112,45 @@ def _(dyn: Function):
     return And(dyn_const_children)
 
 
-def make_forall_consts(const: Constraint,
-                       current_mode_num,
-                       end_tau, start_tau,
-                       flow):
-    var_set = get_vars(const)
+def make_forall_consts_aux(forall: Forall):
+    start_forall_exp = forall.const.left
+    end_forall_exp = substitution_zero2t(forall.const.left)
+    op_dict = {Gt: Gt, Geq: Geq}
+    return And([forall.const,
+                substitution_zero2t(forall.const),
+                Implies(Eq(forall.const.left, RealVal('0')),
+                        Forall(forall.current_mode_number,
+                               forall.end_tau, forall.start_tau,
+                               op_dict[forall.const.__class__](diff(start_forall_exp, forall.integral), RealVal('0')),
+                               forall.integral)),
+                Implies(Eq(end_forall_exp, RealVal('0')),
+                        Forall(forall.current_mode_number,
+                               forall.end_tau, forall.start_tau,
+                               op_dict[forall.const.__class__](RealVal('0'), diff(start_forall_exp, forall.integral)),
+                               forall.integral))])
 
-    if len(var_set) == 0:
-        return const
 
-    # If proposition is just boolean variable, return original expression
-    if not (isinstance(const, Gt) or isinstance(const, Geq) or
-            isinstance(const, Lt) or isinstance(const, Leq) or
-            isinstance(const, Eq) or isinstance(const, Neq) or
-            isinstance(const, Bool)):
-        raise NotSupportedError("make for all consts type error")
-
-    if isinstance(const, Bool):
-        return const
-
-    new_const = reverse_inequality(const)
-
-    result = list()
-    exp = Sub(new_const.left, new_const.right)
-    diff_exp = diff(exp)
-    end_exp = substitution_zero2t(exp)
-
-    # monotone increase or decrease
-    result.append(Or([Geq(diff_exp, RealVal("0")), Leq(diff_exp, RealVal("0"))]))
-
-    # Special case : a == b
-    if isinstance(exp, Eq):
-        result.append(Neq(exp, RealVal("0")))
-        result.append(Neq(substitution_zero2t(exp), RealVal("0")))
-        result.append(Neq(diff_exp, RealVal("0")))
-    # Special case : a =/= b
-    elif isinstance(exp, Neq):
-        sub_result = list()
-        sub_result.append(
-            Forall(current_mode_num, end_tau, start_tau, Gt(exp, RealVal("0")), flow))
-        sub_result.append(
-            Forall(current_mode_num, end_tau, start_tau, Lt(exp, RealVal("0")), flow))
-        result.append(Or(sub_result))
+def make_forall_consts(forall: Forall):
+    if isinstance(forall.const, Bool) or len(get_vars(forall.const)) == 0:
+        return forall.const
+    if isinstance(forall.const, Eq):
+        return And([forall.const, substitution_zero2t(forall.const),
+                    Forall(forall.current_mode_number,
+                           forall.end_tau, forall.start_tau,
+                           Eq(diff(forall.const.left, forall.integral), RealVal('0')),
+                           forall.integral)])
+    elif isinstance(forall.const, Neq):
+        first_const = make_forall_consts(Forall(forall.current_mode_number,
+                                                forall.end_tau, forall.start_tau,
+                                                Gt(forall.const.left, RealVal('0')),
+                                                forall.integral))
+        second_const = make_forall_consts(Forall(forall.current_mode_number,
+                                                 forall.end_tau, forall.start_tau,
+                                                 Gt(RealVal('0'), forall.const.left),
+                                                 forall.integral))
+        return Or([first_const, second_const])
     else:
-        # f(t') >= 0
-        result.append(Geq(end_exp, RealVal("0")))
-        if isinstance(exp, Gt):
-            # Check a start point of interval satisfies the proposition
-            result.append(Gt(exp, RealVal("0")))
-            # Case : f(t) = 0 -> dot(f(T)) > 0, forall T in (t, t')
-            result.append(Implies(Eq(exp, RealVal("0")),
-                                  Forall(current_mode_num, end_tau, start_tau, Gt(diff_exp, RealVal("0")), flow)))
-            # Case : f(t') = 0 -> dot(f(T)) < 0, forall T in (t, t')
-            result.append(Implies(end_exp == RealVal(0),
-                                  Forall(current_mode_num, end_tau, start_tau, Lt(diff_exp, RealVal("0")), flow)))
-        elif isinstance(exp, Geq):
-            result.append(Geq(exp, RealVal("0")))
-            result.append(Implies(Eq(exp, RealVal("0")),
-                                  Forall(current_mode_num, end_tau, start_tau, Geq(diff_exp, RealVal("0")), flow)))
-            result.append(Implies(Eq(end_exp, RealVal("0")),
-                                  Forall(current_mode_num, end_tau, start_tau, Leq(diff_exp, RealVal("0")), flow)))
-
-    return And(result)
+        return make_forall_consts_aux(forall)
 
 
 def z3checkSat(consts, logic):
@@ -362,9 +342,14 @@ def _(const: Integral):
 @z3Obj.register(Forall)
 def _(const: Forall):
     bound_str = const.start_tau.id[3:]
+
+    new_forall_const = const.const
+    if not isinstance(const.const, Bool):
+        op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
+        exp = Sub(const.const.left, const.const.right)
+        new_forall_child_const = reverse_inequality(op_dict[const.const.__class__](exp, RealVal('0')))
+        new_forall_const = make_forall_consts(
+            Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
     new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
-                     make_forall_consts(const.const,
-                                        const.current_mode_number,
-                                        const.end_tau, const.start_tau,
-                                        const.integral)])
+                     new_forall_const])
     return z3.And(z3Obj(new_const))

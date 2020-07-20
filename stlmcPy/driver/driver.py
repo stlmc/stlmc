@@ -227,10 +227,10 @@ class Driver:
     def run(self, file_name, is_visualize):
         model, PD, goals = ObjectFactory(file_name).generate_object()
         model_const = model.make_consts(1)
-        solver = SolverFactory("z3").generate_solver()
+        solver = SolverFactory("hylaa").generate_solver()
         for goal in goals:
             goal_const = goal.make_consts(1, 60, 0, model, PD)
-            result, size = solver.solve(And([model_const, goal_const]))
+            result, size = solver.solve(And([model_const, goal_const]), model.range_dict)
 
             if is_visualize:
                 integrals_list = model.get_flow_for_assignment(1)

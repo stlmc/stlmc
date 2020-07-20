@@ -194,6 +194,9 @@ class Constant(Leaf, Expr):
         self.__value = value
         self.__type = var_type
 
+    def __hash__(self):
+        return hash(str(self.__value))
+
     @property
     def value(self):
         return self.__value

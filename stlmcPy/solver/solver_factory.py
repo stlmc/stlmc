@@ -1,3 +1,4 @@
+from stlmcPy.solver.hylaa import HylaaSolver
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 
@@ -11,3 +12,5 @@ class SolverFactory:
             return Z3Solver()
         elif self.solver_type == 'yices':
             return YicesSolver()
+        elif self.solver_type == 'hylaa':
+            return HylaaSolver()

@@ -1,11 +1,12 @@
 from functools import singledispatch
 
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_integrals_and_foralls, substitution, inverse_dict
+from stlmcPy.constraints.operations import get_integrals_and_foralls, inverse_dict, \
+    forall_integral_substitution, substitution, reduce_not
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.abstract_solver import BaseSolver
 from stlmcPy.solver.assignment import Assignment
-from stlmcPy.solver.solver_factory import SolverFactory
+from stlmcPy.solver.z3 import Z3Solver
 
 
 def hylaaCheckSat(all_consts, info_dict):
@@ -15,17 +16,39 @@ def hylaaCheckSat(all_consts, info_dict):
     # 1. Build \varphi_ABS and mapping_info
     integral_forall_set = get_integrals_and_foralls(all_consts)
     inverse_mapping_info = gen_fresh_new_var_map(integral_forall_set)
-    abstracted_consts = substitution(all_consts, inverse_mapping_info)
+    abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
     mapping_info = inverse_dict(inverse_mapping_info)
 
     # 2. Perform process #2 from note
-    # solver = SolverFactory("z3").generate_solver()
-    # result, size = solver.solve(abstracted_consts)
-    # assignment = solver.m
+    solver = Z3Solver()
+    result, size = solver.solve(abstracted_consts)
+
+    if result:
+        return True, 0, None
+    assignment = solver.make_assignment()
+    alpha = assignment.get_assignments()
+    new_alpha = gen_net_assignment(alpha, info_dict)
+    new_abstracted_consts = substitution(abstracted_consts, new_alpha)
+    c = clause(new_abstracted_consts)
+    c_sat = set()
+    c_unsat = set()
+    for c_elem in c:
+        if assignment.eval(c_elem):
+            c_sat.add(c_elem)
+        else:
+            c_unsat.add(reduce_not(Not(c_elem)))
+    s = c_sat.union(c_unsat)
+    return False, 0, None
 
 
-
-
+def gen_net_assignment(mapping: dict, range_dict: dict):
+    new_dict = dict()
+    for var in mapping:
+        search_index = var.id.find("_")
+        search_id = var.id[:search_index]
+        if not (Real(search_id) in range_dict or "tau" in var.id):
+            new_dict[var] = mapping[var]
+    return new_dict
 
 
 @singledispatch
@@ -34,21 +57,25 @@ def gen_fresh_new_var_map_aux(const: Constraint, id_str=None):
 
 
 @gen_fresh_new_var_map_aux.register(Integral)
-def _(const: Integral, id_str=None):
-    if id_str is None:
-        id_str = "newIntegral_"
+def _(const: Integral):
     new_map = dict()
     end_var_str = const.end_vector[0].id
     start_index = end_var_str.find('_')
-    bound_str = end_var_str[start_index:-3]
-    new_id = id_str + str(const.current_mode_number) + "_" + bound_str
+    bound_str = end_var_str[start_index + 1:-2]
+    new_id = "newIntegral_" + str(const.current_mode_number) + "_" + bound_str
     new_map[const] = Bool(new_id)
     return new_map
 
 
 @gen_fresh_new_var_map_aux.register(Forall)
 def _(const: Forall):
-    return gen_fresh_new_var_map_aux(const.integral, "newForall#"+str(id(const))+"_")
+    new_map = dict()
+    end_var_str = const.integral.end_vector[0].id
+    start_index = end_var_str.find('_')
+    bound_str = end_var_str[start_index + 1:-2]
+    new_id = "newForall#" + str(id(const)) + "_" + str(const.current_mode_number) + "_" + bound_str
+    new_map[const] = Bool(new_id)
+    return new_map
 
 
 def gen_fresh_new_var_map(if_set: set, id=None):
@@ -68,11 +95,14 @@ class HylaaSolver(BaseSolver):
         result, size, self._hylaa_model = hylaaCheckSat(all_consts, info_dict)
         return result, size
 
-    def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):
-        return HylaaAssignment(self._z3_model, integrals_list, mode_var_dict, cont_var_dict)
+    def make_assignment(self):
+        return HylaaAssignment(self._hylaa_model)
 
 
 class HylaaAssignment(Assignment):
+    def __init__(self, p):
+        pass
+
     def get_assignments(self):
         pass
 
@@ -90,37 +120,36 @@ def divide_dict(info_dict: dict):
 
 @singledispatch
 def clause(const: Constraint):
-    return [const]
+    return {const}
 
 
 @clause.register(And)
 def _(const: And):
-    result = list()
+    result = set()
     for c in list(const.children):
-        result.extend(clause(c))
+        result = result.union(clause(c))
     return result
 
 
 @clause.register(Or)
 def _(const: Or):
-    result = list()
+    result = set()
     for c in list(const.children):
-        result.extend(clause(c))
+        result = result.union(clause(c))
     return result
 
 
 @clause.register(Not)
 def _(const: Not):
-    result = list()
-    result.extend(clause(const.child))
-    return result
+    result = set()
+    return result.union(clause(const.child))
 
 
 @clause.register(Implies)
 def _(const):
-    result = list()
-    result.extend(clause(const.left))
-    result.extend(clause(const.right))
+    result = set()
+    result = result.union(clause(const.left))
+    result = result.union(clause(const.right))
     return result
 
 

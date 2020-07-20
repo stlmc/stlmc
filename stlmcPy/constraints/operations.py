@@ -287,11 +287,6 @@ def reverse_inequality(const: Constraint):
     return const
 
 
-@reverse_inequality.register(Geq)
-def _(const):
-    return const
-
-
 @reverse_inequality.register(Lt)
 def _(const):
     return Gt(Neg(const.left), Neg(const.right))
@@ -302,17 +297,34 @@ def _(const):
     return Geq(Neg(const.left), Neg(const.right))
 
 
+def diff(exp: Expr, integral: Integral):
+    alpha = make_diff_mapping(integral)
+    new_exp = substitution(exp, alpha)
+    return diff_aux(new_exp)
+
+
+def make_diff_mapping(integral: Integral):
+    new_dict = dict()
+    index = 0
+    for dyn_var in integral.start_vector:
+        if not isinstance(integral.dynamics, Ode):
+            new_dict[dyn_var] = integral.dynamics.exps[index]
+        else:
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real('tau'))
+    return new_dict
+
+
 @singledispatch
-def diff(const: Constraint):
+def diff_aux(const: Constraint):
     raise NotImplementedError('Something wrong')
 
 
-@diff.register(Constant)
+@diff_aux.register(Constant)
 def _(const):
     return RealVal("0")
 
 
-@diff.register(Variable)
+@diff_aux.register(Variable)
 def _(const):
     if str(const.id)[0:3] == 'tau':
         return RealVal("1")
@@ -320,7 +332,7 @@ def _(const):
         return RealVal("0")
 
 
-@diff.register(Add)
+@diff_aux.register(Add)
 def _(const):
     x = const.left
     y = const.right
@@ -328,14 +340,14 @@ def _(const):
     if len(get_vars(const)) == 0:
         return RealVal("0")
     if len(get_vars(x)) == 0:
-        return diff(y)
+        return diff_aux(y)
     if len(get_vars(y)) == 0:
-        return diff(x)
+        return diff_aux(x)
 
-    return Add(diff(x), diff(y))
+    return Add(diff_aux(x), diff_aux(y))
 
 
-@diff.register(Sub)
+@diff_aux.register(Sub)
 def _(const):
     x = const.left
     y = const.right
@@ -343,14 +355,14 @@ def _(const):
     if len(get_vars(const)) == 0:
         return RealVal("0")
     if len(get_vars(x)) == 0:
-        return diff(y)
+        return diff_aux(y)
     if len(get_vars(y)) == 0:
-        return diff(x)
+        return diff_aux(x)
 
-    return Sub(diff(x), diff(y))
+    return Sub(diff_aux(x), diff_aux(y))
 
 
-@diff.register(Pow)
+@diff_aux.register(Pow)
 def _(const):
     x = const.left
     y = const.right
@@ -368,7 +380,7 @@ def _(const):
         raise NotSupportedError('Cannot hanlindg polynomial yet')
 
 
-@diff.register(Mul)
+@diff_aux.register(Mul)
 def _(const):
     x = const.left
     y = const.right
@@ -376,30 +388,30 @@ def _(const):
     if len(get_vars(const)) == 0:
         return RealVal("0")
     if len(get_vars(x)) == 0:
-        return Mul(x, diff(y))
+        return Mul(x, diff_aux(y))
     if len(get_vars(y)) == 0:
-        return Mul(diff(x), y)
+        return Mul(diff_aux(x), y)
 
-    return Add(Mul(diff(x), y), Mul(x, diff(y)))
+    return Add(Mul(diff_aux(x), y), Mul(x, diff_aux(y)))
 
 
-@diff.register(Div)
+@diff_aux.register(Div)
 def _(const):
     x = const.left
     y = const.right
     if len(get_vars(const)) == 0:
         return RealVal("0")
     if len(get_vars(x)) == 0:
-        return Sub(RealVal("0"), Div(Mul(diff(y), x), Mul(y, y)))
+        return Sub(RealVal("0"), Div(Mul(diff_aux(y), x), Mul(y, y)))
     if len(get_vars(y)) == 0:
-        return Div(diff(x), y)
+        return Div(diff_aux(x), y)
 
-    return Sub(Div(diff(x), y), Div(Mul(diff(y), x), Mul(y, y)))
+    return Sub(Div(diff_aux(x), y), Div(Mul(diff_aux(y), x), Mul(y, y)))
 
 
-@diff.register(Neg)
+@diff_aux.register(Neg)
 def _(const):
-    x = diff(const.child)
+    x = diff_aux(const.child)
     return Neg(x)
 
 
@@ -458,6 +470,13 @@ def _(const: Not):
         return Neq(child.left, child.right)
     if isinstance(child, Neq):
         return Eq(child.left, child.right)
+    if isinstance(child, Constant):
+        if child.value == 'True':
+            return BoolVal('False')
+        elif child.value == 'False':
+            return BoolVal('True')
+        else:
+            raise NotSupportedError("think wise real or integer type cannot be negated")
     raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
 
@@ -494,6 +513,64 @@ def _(const: Multinary):
     for c in const.children:
         new_set = new_set.union(get_integrals_and_foralls(c))
     return new_set
+
+
+@singledispatch
+def forall_integral_substitution(const: Constraint, substitution_dict):
+    return const
+
+
+@forall_integral_substitution.register(And)
+def _(const: And, substitution_dict):
+    children = list()
+    for child in const.children:
+        children.append(forall_integral_substitution(child, substitution_dict))
+    return And(children)
+
+
+@forall_integral_substitution.register(Or)
+def _(const: Or, substitution_dict):
+    children = list()
+    for child in const.children:
+        children.append(forall_integral_substitution(child, substitution_dict))
+    return Or(children)
+
+
+@forall_integral_substitution.register(Not)
+def _(const: Not, substitution_dict):
+    return Not(forall_integral_substitution(const.child, substitution_dict))
+
+
+@forall_integral_substitution.register(Eq)
+def _(const: Eq, substitution_dict):
+    return Eq(forall_integral_substitution(const.left, substitution_dict),
+              forall_integral_substitution(const.right, substitution_dict))
+
+
+@forall_integral_substitution.register(Neq)
+def _(const: Neq, substitution_dict):
+    return Neq(forall_integral_substitution(const.left, substitution_dict),
+               forall_integral_substitution(const.right, substitution_dict))
+
+
+@forall_integral_substitution.register(Implies)
+def _(const: Implies, substitution_dict):
+    return Implies(forall_integral_substitution(const.left, substitution_dict),
+                   forall_integral_substitution(const.right, substitution_dict))
+
+
+@forall_integral_substitution.register(Forall)
+def _(const: Forall, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
+    return const
+
+
+@forall_integral_substitution.register(Integral)
+def _(const: Integral, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
+    return const
 
 
 def inverse_dict(original_dict: dict):

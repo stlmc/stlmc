@@ -1,0 +1,172 @@
+[<stlmcPy.objects.goal.NewStlGoal object at 0x7f7fa8d0c710>]
+make forall const
+(> real x1_0_0 0)
+=========
+(- real x1_0_0 0)
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x1_0_0 0) 0), (> (- real x1_0_0 0) 0), (implies (= (- real x1_0_0 0) 0) (forall 0 . (> 0 0))), (implies (= (- real x1_0_0 0) 0) (forall 0 . (< 0 0)))]
+make forall const
+(> 0 0)
+make forall const
+(< 0 0)
+make forall const
+(<= real x1_0_0 0)
+=========
+(- (- real x1_0_0) (- 0))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x1_0_0) (- 0)) 0), (>= (- (- real x1_0_0) (- 0)) 0), (implies (= (- (- real x1_0_0) (- 0)) 0) (forall 0 . (>= (- 0) 0))), (implies (= (- (- real x1_0_0) (- 0)) 0) (forall 0 . (<= (- 0) 0)))]
+make forall const
+(>= (- 0) 0)
+make forall const
+(<= (- 0) 0)
+make forall const
+(> real x2_0_0 0)
+=========
+(- real x2_0_0 0)
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x2_0_0 0) 0), (> (- real x2_0_0 0) 0), (implies (= (- real x2_0_0 0) 0) (forall 0 . (> 0 0))), (implies (= (- real x2_0_0 0) 0) (forall 0 . (< 0 0)))]
+make forall const
+(> 0 0)
+make forall const
+(< 0 0)
+make forall const
+(<= real x2_0_0 0)
+=========
+(- (- real x2_0_0) (- 0))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x2_0_0) (- 0)) 0), (>= (- (- real x2_0_0) (- 0)) 0), (implies (= (- (- real x2_0_0) (- 0)) 0) (forall 0 . (>= (- 0) 0))), (implies (= (- (- real x2_0_0) (- 0)) 0) (forall 0 . (<= (- 0) 0)))]
+make forall const
+(>= (- 0) 0)
+make forall const
+(<= (- 0) 0)
+make forall const
+(> real x1_1_0 0)
+=========
+(- real x1_1_0 0)
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x1_1_0 0) 0), (> (- real x1_1_0 0) 0), (implies (= (- real x1_1_0 0) 0) (forall 0 . (> 0 0))), (implies (= (- real x1_1_0 0) 0) (forall 0 . (< 0 0)))]
+make forall const
+(> 0 0)
+make forall const
+(< 0 0)
+make forall const
+(<= real x1_1_0 0)
+=========
+(- (- real x1_1_0) (- 0))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x1_1_0) (- 0)) 0), (>= (- (- real x1_1_0) (- 0)) 0), (implies (= (- (- real x1_1_0) (- 0)) 0) (forall 0 . (>= (- 0) 0))), (implies (= (- (- real x1_1_0) (- 0)) 0) (forall 0 . (<= (- 0) 0)))]
+make forall const
+(>= (- 0) 0)
+make forall const
+(<= (- 0) 0)
+make forall const
+(> real x2_1_0 0)
+=========
+(- real x2_1_0 0)
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x2_1_0 0) 0), (> (- real x2_1_0 0) 0), (implies (= (- real x2_1_0 0) 0) (forall 0 . (> 0 0))), (implies (= (- real x2_1_0 0) 0) (forall 0 . (< 0 0)))]
+make forall const
+(> 0 0)
+make forall const
+(< 0 0)
+make forall const
+(<= real x2_1_0 0)
+=========
+(- (- real x2_1_0) (- 0))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x2_1_0) (- 0)) 0), (>= (- (- real x2_1_0) (- 0)) 0), (implies (= (- (- real x2_1_0) (- 0)) 0) (forall 0 . (>= (- 0) 0))), (implies (= (- (- real x2_1_0) (- 0)) 0) (forall 0 . (<= (- 0) 0)))]
+make forall const
+(>= (- 0) 0)
+make forall const
+(<= (- 0) 0)
+make forall const
+(>= real x1_0_0 (- 22.5 0))
+=========
+(- real x1_0_0 (- 22.5 0))
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x1_0_0 (- 22.5 0)) 0), (>= (- real x1_0_0 (- 22.5 0)) 0), (implies (= (- real x1_0_0 (- 22.5 0)) 0) (forall 1 . (>= 0 0))), (implies (= (- real x1_0_0 (- 22.5 0)) 0) (forall 1 . (<= 0 0)))]
+make forall const
+(>= 0 0)
+make forall const
+(<= 0 0)
+make forall const
+(< real x1_0_0 (- 22.5 0))
+=========
+(- (- real x1_0_0) (- (- 22.5 0)))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x1_0_0) (- (- 22.5 0))) 0), (> (- (- real x1_0_0) (- (- 22.5 0))) 0), (implies (= (- (- real x1_0_0) (- (- 22.5 0))) 0) (forall 1 . (> (- 0) 0))), (implies (= (- (- real x1_0_0) (- (- 22.5 0))) 0) (forall 1 . (< (- 0) 0)))]
+make forall const
+(> (- 0) 0)
+make forall const
+(< (- 0) 0)
+make forall const
+(>= real x1_1_0 (- 22.5 0))
+=========
+(- real x1_1_0 (- 22.5 0))
+0
+=========
+rlkrk
+[(or (>= 0 0) (<= 0 0)), (>= (- real x1_1_0 (- 22.5 0)) 0), (>= (- real x1_1_0 (- 22.5 0)) 0), (implies (= (- real x1_1_0 (- 22.5 0)) 0) (forall 1 . (>= 0 0))), (implies (= (- real x1_1_0 (- 22.5 0)) 0) (forall 1 . (<= 0 0)))]
+make forall const
+(>= 0 0)
+make forall const
+(<= 0 0)
+make forall const
+(< real x1_1_0 (- 22.5 0))
+=========
+(- (- real x1_1_0) (- (- 22.5 0)))
+(- 0)
+=========
+rlkrk
+[(or (>= (- 0) 0) (<= (- 0) 0)), (>= (- (- real x1_1_0) (- (- 22.5 0))) 0), (> (- (- real x1_1_0) (- (- 22.5 0))) 0), (implies (= (- (- real x1_1_0) (- (- 22.5 0))) 0) (forall 1 . (> (- 0) 0))), (implies (= (- (- real x1_1_0) (- (- 22.5 0))) 0) (forall 1 . (< (- 0) 0)))]
+make forall const
+(> (- 0) 0)
+make forall const
+(< (- 0) 0)
+[tau_0 = 0,
+ tau_1 = 49/2,
+ x1_1_0 = 103/10,
+ x2_0_0 = 23,
+ tau_2 = 51/2,
+ x2_1_0 = 83/10,
+ x1_0_0 = 201/10,
+ x2_2_0 = 77/10,
+ x1_2_0 = 99/10,
+ b_2 = False,
+ a_2 = False,
+ currentMode_1 = 0,
+ b_1 = False,
+ a_1 = False,
+ invAtomicID_2_1 = True,
+ invAtomicID_1_1 = True,
+ x2_1_t = 77/10,
+ x1_1_t = 99/10,
+ currentMode_0 = 0,
+ invAtomicID_2_0 = True,
+ invAtomicID_1_0 = True,
+ x2_0_t = 83/10,
+ x1_0_t = 103/10,
+ b_0 = False,
+ a_0 = False]
+{real tau_0: 0, real tau_1: 49/2, real x1_1_0: 103/10, real x2_0_0: 23, real tau_2: 51/2, real x2_1_0: 83/10, real x1_0_0: 201/10, real x2_2_0: 77/10, real x1_2_0: 99/10, bool b_2: False, bool a_2: False, real currentMode_1: 0, bool b_1: False, bool a_1: False, bool invAtomicID_2_1: True, bool invAtomicID_1_1: True, real x2_1_t: 77/10, real x1_1_t: 99/10, real currentMode_0: 0, bool invAtomicID_2_0: True, bool invAtomicID_1_0: True, real x2_0_t: 83/10, real x1_0_t: 103/10, bool b_0: False, bool a_0: False}
+None
