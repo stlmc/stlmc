@@ -2,16 +2,67 @@ from functools import singledispatch
 
 import z3
 
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, reverse_inequality, diff, \
-    substitution_zero2t
+from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
+    substitution_zero2t, substitution
 from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
 from stlmcPy.solver.abstract_solver import BaseSolver
 from stlmcPy.constraints.constraints import *
 
 
 class Z3Solver(BaseSolver):
-    def solve(self, all_consts):
-        return z3checkSat(all_consts, 'LRA')
+    def __init__(self):
+        self._z3_model = None
+
+    def solve(self, all_consts, info_dict=None):
+        result, size, self._z3_model = z3checkSat(all_consts, 'LRA')
+        return result, size
+
+    # def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):
+    #     return Z3Assignment(self._z3_model, integrals_list, mode_var_dict, cont_var_dict)
+    def make_assignment(self):
+        return Z3Assignment(self._z3_model)
+
+
+class Z3Assignment(Assignment):
+    def __init__(self, z3_model):
+        self._z3_model = z3_model
+
+    # solver_model_to_generalized_model
+    def get_assignments(self):
+        new_dict = dict()
+        op_var_dict = {'bool': Bool, 'int': Int, 'real': Real}
+        op_dict = {'bool': BoolVal, 'int': IntVal, 'real': RealVal}
+        for d in self._z3_model.decls():
+            var_type_str = str(d.range()).lower()
+            # bound_index = d.name().find('_')
+            # var_str = d.name()[0:bound_index]
+            new_var = op_var_dict[var_type_str](d.name())
+            z3_val = self._z3_model[d]
+            new_dict[new_var] = op_dict[var_type_str](str(z3_val))
+        return new_dict
+
+    # def get_assignments(self):
+    #     if self._z3_model is not None:
+    #         substitute_dict = self.solver_model_to_generalized_model()
+    #
+    #         current_mode_var_list = list()
+    #         # find currentMode_i = k
+    #         # i: bound info, k: mode module number
+    #         for d in self._z3_model.decls():
+    #             if "currentMode" in d.name():
+    #                 bound_str = remove_prefix(d.name(), "currentMode_")
+    #                 i = int(bound_str)
+    #                 k = self._z3_model[d].as_long()
+    #                 specific_integral = get_integral(self.integrals_list, i, k)
+    #                 # print(specific_integral)
+    #                 for exp in specific_integral.dynamics.exps:
+    #                     new_exp = substitution(exp, substitute_dict)
+    #                     # print(new_exp)
+    #             # print("%s = %s" % (d.name(), self._z3_model[d]))
+    #         # print(self._z3_model)
+    #         return None
+    #     return None
 
 
 @singledispatch
@@ -64,7 +115,7 @@ def make_forall_consts(const: Constraint,
                        flow):
     var_set = get_vars(const)
 
-    if len(var_set):
+    if len(var_set) == 0:
         return const
 
     # If proposition is just boolean variable, return original expression

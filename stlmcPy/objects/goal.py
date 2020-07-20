@@ -1,7 +1,7 @@
 import stlmcPy.constraints.partition as PART
 import stlmcPy.constraints.separation as SEP
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing
+from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not
 import stlmcPy.constraints.encoding as ENC
 import abc
 
@@ -70,7 +70,7 @@ class PropHelper:
                                                                                         Real(
                                                                                             'tau_' + str(bound + 1)),
                                                                                         Real('tau_' + str(bound)),
-                                                                                        Not(relaxed_bound_const),
+                                                                                        reduce_not(Not(relaxed_bound_const)),
                                                                                         integral))]))
 
                     index += 1
@@ -93,7 +93,7 @@ class BaseStlGoal(Goal):
             time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
             time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
             if k < bound + 1:
-                time_const_children.append(Leq(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+                time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
         return And(time_const_children)
 
     def get_formula(self):

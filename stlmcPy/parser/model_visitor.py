@@ -326,13 +326,13 @@ class ModelVisitor(modelVisitor):
                 var, exp = self.visit(ctx.diff_eq()[i])
                 vars.append(var)
                 exps.append(exp)
-                return Ode(vars, exps)
+            return Ode(vars, exps)
         elif ctx.sol_eq():
             for i in range(len(ctx.sol_eq())):
                 var, exp = self.visit(ctx.sol_eq()[i])
                 vars.append(var)
                 exps.append(exp)
-                return Function(vars, exps)
+            return Function(vars, exps)
 
     '''
     jump declaration

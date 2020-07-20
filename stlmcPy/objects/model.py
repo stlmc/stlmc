@@ -3,7 +3,7 @@ from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 
 # TODO: why attribute error occured here?
-from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant
+from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not
 
 
 @singledispatch
@@ -95,7 +95,7 @@ class StlMC:
         return And(result)
 
     def make_flow_consts(self, bound):
-        mode_number = 1
+        mode_number = 0
         integral_children = list()
         for mode_module in self.modules:
             dynamics = mode_module["flow"]
@@ -143,7 +143,7 @@ class StlMC:
                                                   Eq(Not(bound_applied_inv_var), Forall(integral.current_mode_number,
                                                                                         Real('tau_' + str(bound + 1)),
                                                                                         Real('tau_' + str(bound)),
-                                                                                        Not(bound_applied_const),
+                                                                                        reduce_not(Not(bound_applied_const)),
                                                                                         integral))]))
             invariant_sub_children.append(result_inv_const)
             invariant_children.append(And(invariant_sub_children))
@@ -196,6 +196,27 @@ class StlMC:
         jump_const_before_subst = Or(jump_children)
         jump_const = substitution(jump_const_before_subst, substitute_dict)
         return jump_const
+
+    # assignment specific function
+    def get_flow_for_assignment(self, bound):
+        flows = list()
+        for k in range(bound + 1):
+            flow_consts = self.make_flow_consts(k)
+            flows.append(flow_consts.children)
+        return flows
+
+    # def get_bound_var_dict_list(self, bound):
+    #     total_dict_list = list()
+    #     for k in range(bound + 1):
+    #         total_dict = dict()
+    #         start_dict = make_dict(k, {}, self.range_dict, {}, "_0")
+    #         end_dict = make_dict(k, {}, self.range_dict, {}, "_t")
+    #         mode_dict = make_dict(k, self.mode_var_dict, {}, {})
+    #         total_dict.update(mode_dict)
+    #         total_dict.update(end_dict)
+    #         total_dict.update(start_dict)
+    #         total_dict_list.append(total_dict)
+    #     return total_dict_list
 
     def make_consts(self, bound):
         result_child = list()

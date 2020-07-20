@@ -433,9 +433,74 @@ def _(const: Or):
 @substitution_zero2t.register(Variable)
 def _(const: Variable):
     op_dict = {Bool: Bool, Real: Real, Int: Int}
-    if const.id[-2:] == "_0":
-        return op_dict[const.__class__](const.id[-2:] + "_t")
+    if const.id[:-2] == "_0":
+        return op_dict[const.__class__](const.id[:-2] + "_t")
     return const
+
+
+@singledispatch
+def reduce_not(const: Constraint):
+    return const
+
+
+@reduce_not.register(Not)
+def _(const: Not):
+    child = const.child
+    if isinstance(child, Lt):
+        return Geq(child.left, child.right)
+    if isinstance(const.child, Gt):
+        return Leq(child.left, child.right)
+    if isinstance(child, Leq):
+        return Gt(child.left, child.right)
+    if isinstance(child, Geq):
+        return Lt(child.left, child.right)
+    if isinstance(child, Eq):
+        return Neq(child.left, child.right)
+    if isinstance(child, Neq):
+        return Eq(child.left, child.right)
+    raise NotSupportedError("cannot reduce given constraint: " + str(const))
+
+
+@singledispatch
+def get_integrals_and_foralls(const: Constraint):
+    return set()
+
+
+@get_integrals_and_foralls.register(Forall)
+def _(const: Forall):
+    return {const}
+
+
+@get_integrals_and_foralls.register(Integral)
+def _(const: Integral):
+    return {const}
+
+
+@get_integrals_and_foralls.register(Unary)
+def _(const: Unary):
+    return get_integrals_and_foralls(const.child)
+
+
+@get_integrals_and_foralls.register(Binary)
+def _(const: Binary):
+    left_set = get_integrals_and_foralls(const.left)
+    right_set = get_integrals_and_foralls(const.right)
+    return left_set.union(right_set)
+
+
+@get_integrals_and_foralls.register(Multinary)
+def _(const: Multinary):
+    new_set = set()
+    for c in const.children:
+        new_set = new_set.union(get_integrals_and_foralls(c))
+    return new_set
+
+
+def inverse_dict(original_dict: dict):
+    new_dict = dict()
+    for key in original_dict:
+        new_dict[original_dict[key]] = key
+    return new_dict
 
 
 def generate_id(initial, gid='v'):

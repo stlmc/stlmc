@@ -1,4 +1,4 @@
-from stlmcPy.objects.objectFactory import ObjectFactory
+from stlmcPy.objects.object_factory import ObjectFactory
 import subprocess
 import sys
 import time
@@ -224,14 +224,19 @@ class Driver:
     # def parse(self):
     #     self.args = self.parser.parse_args()
 
-    def run(self, file_name):
+    def run(self, file_name, is_visualize):
         model, PD, goals = ObjectFactory(file_name).generate_object()
         model_const = model.make_consts(1)
         solver = SolverFactory("z3").generate_solver()
         for goal in goals:
             goal_const = goal.make_consts(1, 60, 0, model, PD)
-            result, size, m = solver.solve(And([model_const, goal_const]))
-            print(result)
+            result, size = solver.solve(And([model_const, goal_const]))
+
+            if is_visualize:
+                integrals_list = model.get_flow_for_assignment(1)
+                assignment = solver.make_assignment()
+                print(assignment.get_assignments())
+            # print(result)
 
         return model
 

@@ -315,23 +315,22 @@ class Dynamics:
     def __repr__(self):
         repr_str = "["
         comma = ", "
-        last_key = None
-        if len(self.vars) > 0:
-            last_key = self.vars[-1]
+        total_len = len(self.vars)
+        index = 0
         for c in self.vars:
-            if str(c) == str(last_key):
+            if index == total_len - 1:
                 repr_str += str(c)
             else:
                 repr_str += (str(c) + comma)
+            index += 1
         repr_str += "] = ["
-        last_key = None
-        if len(self.exps) > 0:
-            last_key = self.exps[-1]
+        index = 0
         for c in self.exps:
-            if str(c) == str(last_key):
+            if index == total_len - 1:
                 repr_str += str(c)
             else:
                 repr_str += (str(c) + comma)
+            index += 1
         repr_str += "]"
         return repr_str
 
