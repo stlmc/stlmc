@@ -272,6 +272,15 @@ def _(const: Variable):
     return {const}
 
 
+@get_vars.register(Integral)
+def _(const: Integral):
+    result = set()
+    for ev in const.end_vector:
+        result.add(ev)
+    for sv in const.start_vector:
+        result.add(sv)
+    return result
+
 @singledispatch
 def relaxing(const: Formula, delta):
     return const

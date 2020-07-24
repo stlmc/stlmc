@@ -6,17 +6,27 @@ from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
     substitution_zero2t, substitution
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
-from stlmcPy.solver.abstract_solver import BaseSolver
+from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
 
 
-class Z3Solver(BaseSolver):
+class Z3Solver(BaseSolver, SMTSolver):
     def __init__(self):
         self._z3_model = None
 
     def solve(self, all_consts, info_dict=None):
         result, size, self._z3_model = z3checkSat(all_consts, 'LRA')
         return result, size
+
+    def simplify(self, consts):
+        return z3.simplify(consts)
+
+    def substitution(self, const, *dicts):
+        total_dict = dict()
+        for i in range(len(dicts)):
+            total_dict.update(dicts[i])
+        substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
+        return z3.substitute(z3Obj(const), substitute_list)
 
     # def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):
     #     return Z3Assignment(self._z3_model, integrals_list, mode_var_dict, cont_var_dict)

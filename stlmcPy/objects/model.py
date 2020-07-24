@@ -107,6 +107,7 @@ class StlMC:
                 dyn_var_id = dynamics.vars[index].id
                 start_vector.append(Real(dyn_var_id + "_" + str(bound) + "_0"))
                 end_vector.append(Real(dyn_var_id + "_" + str(bound) + "_t"))
+                index += 1
             new_dynamics = make_new_dynamics(dynamics, bound, self.mode_var_dict, self.range_dict, self.const_dict)
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             integral_children.append(integral)
