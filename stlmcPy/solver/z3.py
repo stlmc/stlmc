@@ -23,6 +23,12 @@ class Z3Solver(BaseSolver):
     def make_assignment(self):
         return Z3Assignment(self._z3_model)
 
+    def unsat_core(self, const: Constraint, assertion: list):
+        solver = z3.SolverFor('LRA')
+        solver.add(z3Obj(const))
+        solver.check([z3Obj(c) for c in assertion])
+        return solver.unsat_core()
+
 
 class Z3Assignment(Assignment):
     def __init__(self, z3_model):

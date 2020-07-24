@@ -17,46 +17,64 @@ def _(const: Variable, substitution_dict):
 
 @substitution.register(Add)
 def _(const: Add, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Add(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Sub)
 def _(const: Sub, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Sub(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Mul)
 def _(const: Mul, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Mul(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Div)
 def _(const: Div, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Div(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Pow)
 def _(const: Pow, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Pow(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Neg)
 def _(const: Neg, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Neg(substitution(const.child, substitution_dict))
 
 
 @substitution.register(Function)
 def _(const: Function, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Function(substitution(const.var, substitution_dict), substitution(const.exp, substitution_dict))
 
 
 @substitution.register(Ode)
 def _(const: Ode, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Ode(substitution(const.var, substitution_dict), substitution(const.exp, substitution_dict))
 
 
 @substitution.register(And)
 def _(const: And, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     children = list()
     for child in const.children:
         children.append(substitution(child, substitution_dict))
@@ -65,6 +83,8 @@ def _(const: And, substitution_dict):
 
 @substitution.register(Or)
 def _(const: Or, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     children = list()
     for child in const.children:
         children.append(substitution(child, substitution_dict))
@@ -73,62 +93,86 @@ def _(const: Or, substitution_dict):
 
 @substitution.register(Not)
 def _(const: Not, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Not(substitution(const.child, substitution_dict))
 
 
 @substitution.register(Gt)
 def _(const: Gt, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Gt(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Geq)
 def _(const: Geq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Geq(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Lt)
 def _(const: Lt, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Lt(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Leq)
 def _(const: Leq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Leq(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Eq)
 def _(const: Eq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Eq(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Neq)
 def _(const: Neq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Neq(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Implies)
 def _(const: Implies, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Implies(substitution(const.left, substitution_dict), substitution(const.right, substitution_dict))
 
 
 @substitution.register(Forall)
 def _(const: Forall, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return Forall(const.current_mode_number, const.end_tau, const.start_tau,
                   substitution(const.const, substitution_dict), const.integral)
 
 
 @substitution.register(FinallyFormula)
 def _(const: FinallyFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return FinallyFormula(const.local_time, const.global_time, substitution(const.child, substitution_dict))
 
 
 @substitution.register(GloballyFormula)
 def _(const: GloballyFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return GloballyFormula(const.local_time, const.global_time, substitution(const.child, substitution_dict))
 
 
 @substitution.register(UntilFormula)
 def _(const: UntilFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return UntilFormula(const.local_time, const.global_time,
                         substitution(const.left, substitution_dict),
                         substitution(const.right, substitution_dict))
@@ -136,6 +180,8 @@ def _(const: UntilFormula, substitution_dict):
 
 @substitution.register(ReleaseFormula)
 def _(const: ReleaseFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
     return ReleaseFormula(const.local_time, const.global_time,
                           substitution(const.left, substitution_dict),
                           substitution(const.right, substitution_dict))

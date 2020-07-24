@@ -118,6 +118,9 @@ class UnaryExpr(Expr, Unary):
     def __repr__(self):
         return Unary.__repr__(self)
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class BinaryExpr(Expr, Binary):
     def __init__(self, left, right):
@@ -126,6 +129,9 @@ class BinaryExpr(Expr, Binary):
 
     def __repr__(self):
         return Binary.__repr__(self)
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class MultinaryExpr(Expr, Multinary):
@@ -136,11 +142,11 @@ class MultinaryExpr(Expr, Multinary):
     def __repr__(self):
         return Multinary.__repr__(self)
 
-
-class Formula(Constraint):
     def __hash__(self):
         return hash(str(self))
 
+
+class Formula(Constraint):
     def __eq__(self, num):
         return Eq(self, num)
 
@@ -168,6 +174,9 @@ class UnaryFormula(Formula, Unary):
     def __repr__(self):
         return Unary.__repr__(self)
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class BinaryFormula(Formula, Binary):
     def __init__(self, left, right):
@@ -177,6 +186,9 @@ class BinaryFormula(Formula, Binary):
     def __repr__(self):
         return Binary.__repr__(self)
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class MultinaryFormula(Formula, Multinary):
     def __init__(self, children):
@@ -185,6 +197,9 @@ class MultinaryFormula(Formula, Multinary):
 
     def __repr__(self):
         return Multinary.__repr__(self)
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Constant(Leaf, Expr):
@@ -378,6 +393,9 @@ class Not(UnaryFormula):
     def __repr__(self):
         return "(not " + UnaryFormula.__repr__(self) + ")"
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class Gt(BinaryFormula):
     def __init__(self, left, right):
@@ -385,6 +403,10 @@ class Gt(BinaryFormula):
 
     def __repr__(self):
         return "(> " + BinaryFormula.__repr__(self) + ")"
+
+    def __hash__(self):
+        return hash(str(self))
+
 
 
 class Geq(BinaryFormula):
@@ -394,6 +416,9 @@ class Geq(BinaryFormula):
     def __repr__(self):
         return "(>= " + BinaryFormula.__repr__(self) + ")"
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class Lt(BinaryFormula):
     def __init__(self, left, right):
@@ -401,6 +426,9 @@ class Lt(BinaryFormula):
 
     def __repr__(self):
         return "(< " + BinaryFormula.__repr__(self) + ")"
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Leq(BinaryFormula):
@@ -410,6 +438,9 @@ class Leq(BinaryFormula):
     def __repr__(self):
         return "(<= " + BinaryFormula.__repr__(self) + ")"
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class Eq(BinaryFormula):
     def __init__(self, left, right):
@@ -417,6 +448,9 @@ class Eq(BinaryFormula):
 
     def __repr__(self):
         return "(= " + BinaryFormula.__repr__(self) + ")"
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Neq(BinaryFormula):
@@ -426,6 +460,9 @@ class Neq(BinaryFormula):
     def __repr__(self):
         return "(!= " + BinaryFormula.__repr__(self) + ")"
 
+    def __hash__(self):
+        return hash(str(self))
+
 
 class Implies(BinaryFormula):
     def __init__(self, left, right):
@@ -433,6 +470,9 @@ class Implies(BinaryFormula):
 
     def __repr__(self):
         return "(implies " + BinaryFormula.__repr__(self) + ")"
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Integral(Formula):
@@ -445,6 +485,9 @@ class Integral(Formula):
         self.start_vector = start_vector
         # list of dynamics
         self.dynamics = dynamics
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         return "(integral " + str(self.current_mode_number) \
@@ -459,6 +502,9 @@ class Forall(Formula):
         self.start_tau = start_tau
         self.const = const
         self.integral = integral
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __repr__(self):
         return "(forall " + str(self.current_mode_number) + " . " + str(self.const) + ")"
