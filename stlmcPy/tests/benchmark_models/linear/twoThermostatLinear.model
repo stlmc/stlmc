@@ -34,7 +34,7 @@ bool b;
           '''
 
 }
-
+'''
 {
     mode:
         a = false;
@@ -98,7 +98,7 @@ bool b;
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
 
 }
-
+'''
 
 init:
 (and (not(a)) not(b) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 3.5) (x2 >= 20 + 3));

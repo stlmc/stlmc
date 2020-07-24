@@ -17,13 +17,13 @@ import abc
 class HylaaStrategy:
 
     @abc.abstractmethod
-    def solve_strategy(self, alpha_delta, psi_abs):
+    def solve_strategy(self, alpha_delta, psi_abs, bound):
         pass
 
 
-class BaseHylaaSolver(BaseSolver, HylaaStrategy, ABC):
+class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
     def __init__(self):
-        self._hylaa_model = None
+        self.hylaa_model = None
 
     def solve(self, all_consts, info_dict=None):
         if info_dict is None:
@@ -53,26 +53,47 @@ class BaseHylaaSolver(BaseSolver, HylaaStrategy, ABC):
         new_alpha = gen_net_assignment(alpha, net_dict)
         new_abstracted_consts = substitution(abstracted_consts, new_alpha)
         c = clause(new_abstracted_consts)
+
+        s_diff = set()
+        for elem in c:
+            if len(get_vars(elem)) == 0:
+                s_diff.add(elem)
+        c = c.difference(s_diff)
+
         c_sat = set()
         c_unsat = set()
         total = dict()
         for c_elem in c:
+            vs = get_vars(c_elem)
             if assignment.eval(c_elem):
                 c_sat.add(c_elem)
-                total[c_elem] = BoolVal("True")
+                for c_vs in vs:
+                    if 'newForall' in c_vs.id:
+                        total[c_vs] = alpha[c_vs]
+                    else:
+                        total[c_elem] = BoolVal("True")
+                        break
             else:
                 c_unsat.add(Not(c_elem))
-                total[c_elem] = BoolVal("False")
-
+                for c_vs in vs:
+                    if 'newForall' in c_vs.id:
+                        total[c_vs] = alpha[c_vs]
+                    else:
+                        total[c_elem] = BoolVal("False")
+                        break
 
         # S = c_sat.union(c_unsat)
-
 
         # solver = Z3Solver()
         # simplified_result = solver.simplify(solver.substitution(new_abstracted_consts, total))
         # print(simplified_result)
+        alpha_delta = total
+        max_literal_set_list = list()
         for i in range(max_bound + 1):
-            self.get_max_literal(new_abstracted_consts, i, c_sat, total)
+            max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat, alpha_delta)
+            max_literal_set_list.append(max_literal_set)
+
+        gen_hylaa_ha(max_literal_set_list, max_bound, mapping_info)
         return None, 0
         # return result, size
 
@@ -93,19 +114,38 @@ class BaseHylaaSolver(BaseSolver, HylaaStrategy, ABC):
             for reset in reset_pool:
                 for r in reset:
                     alpha_delta[r] = BoolVal("True")
-                max_literal_set = self.solve_strategy(alpha_delta, psi_abs)
-                if max_literal_set is not None:
-                    return max_literal_set
+                max_literal_set, alpha_delta = self.solve_strategy(alpha_delta, psi_abs, i)
+                if max_literal_set is not None and alpha_delta is not None:
+                    return max_literal_set, alpha_delta
 
     def make_assignment(self):
-        return HylaaAssignment(self._hylaa_model)
+        return HylaaAssignment(HylaaSolver().hylaa_model)
 
 
-class HylaaSolver(BaseHylaaSolver):
+class HylaaSolverNaive(HylaaSolver):
     def __init__(self):
         super(HylaaSolver, self).__init__()
 
-    def solve_strategy(self, alpha_delta, psi_abs):
+    def solve_strategy(self, alpha_delta, psi_abs, bound):
+        solver = Z3Solver()
+        simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
+        s_abs_set = set()
+        if str(simplified_result) == "True":
+            for c in alpha_delta:
+                b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
+                if alpha_delta[c].value == "True" and (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
+                                                       len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
+                    s_abs_set.add(c)
+            return s_abs_set, alpha_delta
+        else:
+            return None, None
+
+
+class HylaaSolverReduction(HylaaSolver):
+    def __init__(self):
+        super(HylaaSolver, self).__init__()
+
+    def solve_strategy(self, alpha_delta, psi_abs, bound):
         solver = Z3Solver()
         simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
         print(simplified_result)
@@ -119,120 +159,12 @@ class HylaaSolver(BaseHylaaSolver):
             return None
 
 
-
-
 class HylaaAssignment(Assignment):
     def __init__(self, p):
         pass
 
     def get_assignments(self):
         pass
-
-
-# def hylaaCheckSat(all_consts, info_dict):
-#     # pre-processing
-#     # mode_dict, else_dict = divide_dict(info_dict)
-#     # 1. Build \varphi_ABS and mapping_info
-#     integral_forall_set = get_integrals_and_foralls(all_consts)
-#     inverse_mapping_info = gen_fresh_new_var_map(integral_forall_set)
-#     abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
-#     mapping_info = inverse_dict(inverse_mapping_info)
-#     max_bound = get_bound(mapping_info)
-#
-#     # print(abstracted_consts)
-#     # 2. Perform process #2 from note
-#     solver = Z3Solver()
-#     result, size = solver.solve(abstracted_consts)
-#
-#     if result:
-#         return True, 0, None
-#     assignment = solver.make_assignment()
-#     alpha = assignment.get_assignments()
-#
-#     net_dict = info_dict.copy()
-#     net_dict.update(mapping_info)
-#     new_alpha = gen_net_assignment(alpha, net_dict)
-#     new_abstracted_consts = substitution(abstracted_consts, new_alpha)
-#     c = clause(new_abstracted_consts)
-#     # c_sat = set()
-#     # c_unsat = set()
-#     # for c_elem in c:
-#     #     if assignment.eval(c_elem):
-#     #         c_sat.add(c_elem)
-#     #     else:
-#     #         c_unsat.add(Not(c_elem))
-#     # S = c_sat.union(c_unsat)
-#
-#     # S = set()
-#     # for var in alpha:
-#     #     if var.type == 'bool' and alpha[var].value == 'True':
-#     #         S.add(var)
-#     #     elif var.type == 'bool' and alpha[var].value == 'False':
-#     #         S.add(Not(var))
-#     #     else:
-#     #         S.add(Eq(var, alpha[var]))
-#
-#     # print(alpha)
-#     # print(S)
-#
-#     # 3. Use algorithm2 in stlmc_algorithm.
-#     union_forall_set, union_integral_set, init_set, union_tau_set, union_reset_set, union_guard_set = split(c,
-#                                                                                                             max_bound)
-#     psi_consts = new_abstracted_consts
-#     c_sat = set()
-#     c_unsat = set()
-#     init_sigma = gen_sigma(init_set, "initCondition")
-#     inverse_sigma = inverse_dict(init_sigma)
-#     for i in range(max_bound + 1):
-#         sigma_guard = gen_sigma(union_guard_set[i], "sigmaGuard_" + str(i))
-#         sigma_reset = gen_sigma(union_reset_set[i], "sigmaReset_" + str(i))
-#         sigma_tau = gen_sigma(union_tau_set[i], "sigmaTau_" + str(i))
-#         if i == max_bound:
-#             sigma_tau.update(gen_sigma(union_tau_set[i + 1], "sigmaTau_" + str(i + 1)))
-#         new_sigma = dict()
-#         new_sigma.update(sigma_guard)
-#         new_sigma.update(sigma_reset)
-#         new_sigma.update(sigma_tau)
-#         inverse_sigma.update(inverse_dict(new_sigma))
-#         psi_consts = substitution(psi_consts, inverse_sigma)
-#         inverse_sigma.update(inverse_dict(new_sigma))
-#         for key in inverse_sigma:
-#             if assignment.eval(key):
-#                 c_sat.add(inverse_sigma[key])
-#             else:
-#                 c_unsat.add(Not(inverse_sigma[key]))
-#
-#     for var in alpha:
-#         if ("newIntegral" in var.id or "newForall" in var.id) and alpha[var] == BoolVal("True"):
-#             c_sat.add(var)
-#         elif ("newIntegral" in var.id or "newForall" in var.id) and alpha[var] == BoolVal("False"):
-#             c_unsat.add(Not(var))
-#
-#     c_total = c_sat.union(c_unsat)
-#     new_solver = Z3Solver()
-#     s_prime = new_solver.unsat_core(Not(psi_consts), list(c_total))
-#     s_f_prime = set()
-#     original_sigma = inverse_dict(inverse_sigma)
-#     for c in z3_bool_to_const_bool(s_prime):
-#         if not (c in original_sigma):
-#             s_f_prime.add(c)
-#         else:
-#             s_f_prime.add(original_sigma[c])
-#
-#     # print(s_f_prime)
-#     # # revert integral and forall from s_f_prime
-#     # revert_s_f_prime = set()
-#     # for c in s_f_prime:
-#     #     if c in mapping_info:
-#     #         revert_s_f_prime.add(mapping_info[c])
-#     #     else:
-#     #         revert_s_f_prime.add(c)
-#
-#     # print(revert_s_f_prime)
-#
-#     gen_hylaa_ha(s_f_prime, max_bound, mapping_info)
-#
-#     return False, 0, None
 
 
 # @singledispatch
@@ -316,7 +248,30 @@ def get_variable_vector(union_integral_set, max_bound, mapping_info):
     return var_set
 
 
-def gen_hylaa_ha(s_f_prime, max_bound, mapping_info):
+def gen_hylaa_ha(s_f_list, max_bound, mapping_info):
+    # print(s_f_list)
+    new_s_f_list = list()
+    for elem in s_f_list:
+        new_elem = set()
+        for e in elem:
+            new_e = substitution(e, mapping_info)
+            new_elem.add(new_e)
+            print(infix(new_e))
+        new_s_f_list.append(new_elem)
+
+    # print(new_s_f_list)
+    # for elem in s_f_list:
+    #     for e in elem:
+    #         vs = get_vars(e)
+    # print(var_set)
+    # integral_var_set = set()
+    # for v in var_set:
+    #     if "newIntegral" in v.id:
+    #         integral_var_set.add(v)
+
+    # print(integral_var_set)
+
+    # print(mapping_info)
     # union_forall_set, union_integral_set, init_set, union_tau_set, union_reset_set, union_guard_set = split(s_f_prime,max_bound)
 
     # revert integral and forall from s_f_prime
@@ -544,38 +499,73 @@ def _(const):
     result = result.union(clause(const.right))
     return result
 
-# # TODO : Should cover Yices and Z3 without notice
-# def make_c_sat_with_z3(z3_solver_model, clause_list: list):
-#     return [x for x in clause_list if z3_solver_model.eval(z3Obj(x, True))]
-#
-#
-# def make_c_unsat_with_z3(z3_solver_model, clause_list: list):
-#     return [Not(x) for x in clause_list if not z3_solver_model.eval(z3Obj(x, True))]
 
-# @singledispatch
-# def is_integral_forall(const: Constraint):
-#     return False
-#
-# @is_integral_forall.register(Integral)
-# def _(const: Integral):
-#     return True
-#
-# @is_integral_forall.register(Forall)
-# def _(const: Forall):
-#     return True
-#
-#
-#
-# @singledispatch
-# def remove_integral_forall(const: Constraint, result_list: list):
-#     return const, result_list
-#
-#
-# @remove_integral_forall.register(Unary)
-# def _(const: Unary, result_list: list):
-#     return
-#
-# @remove_integral_forall.register(Binary)
-#
-#
-# @remove_integral_forall.register(Multinary)
+@singledispatch
+def infix(const: Constraint):
+    return str(const)
+
+
+@infix.register(Variable)
+def _(const: Variable):
+    return const.id
+
+
+@infix.register(Geq)
+def _(const: Geq):
+    return "(" + infix(const.left) + " >= " + infix(const.right) + ")"
+
+
+@infix.register(Gt)
+def _(const: Geq):
+    return "(" + infix(const.left) + " > " + infix(const.right) + ")"
+
+
+@infix.register(Leq)
+def _(const: Geq):
+    return "(" + infix(const.left) + " <= " + infix(const.right) + ")"
+
+
+@infix.register(Lt)
+def _(const: Geq):
+    return "(" + infix(const.left) + " < " + infix(const.right) + ")"
+
+
+@infix.register(Eq)
+def _(const: Eq):
+    return "(" + infix(const.left) + " = " + infix(const.right) + ")"
+
+
+@infix.register(Neq)
+def _(const: Geq):
+    return "(" + infix(const.left) + " > " + infix(const.right) + ") & (" + infix(const.left) + " < " + infix(
+        const.right) + ")"
+
+
+@infix.register(Add)
+def _(const: Add):
+    return "(" + infix(const.left) + " + " + infix(const.right) + ")"
+
+
+@infix.register(Sub)
+def _(const: Sub):
+    return "(" + infix(const.left) + " - " + infix(const.right) + ")"
+
+
+@infix.register(Mul)
+def _(const: Mul):
+    return "(" + infix(const.left) + " * " + infix(const.right) + ")"
+
+
+@infix.register(Div)
+def _(const: Div):
+    return "(" + infix(const.left) + " / " + infix(const.right) + ")"
+
+
+@infix.register(Pow)
+def _(const: Pow):
+    return "(" + infix(const.left) + " ** " + infix(const.right) + ")"
+
+
+@infix.register(Forall)
+def _(const: Forall):
+    return infix(const.const)
