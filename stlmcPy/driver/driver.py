@@ -231,7 +231,7 @@ class Driver:
         for goal in goals:
             goal_const = goal.make_consts(1, 60, 0, model, PD)
             result, size = solver.solve(And([model_const, goal_const]), model.range_dict)
-
+            print("Driver: solver returns " + str(result))
             if is_visualize:
                 integrals_list = model.get_flow_for_assignment(1)
                 assignment = solver.make_assignment()

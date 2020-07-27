@@ -89,6 +89,7 @@ class BaseStlGoal(Goal):
 
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
+        #time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
         for k in range(bound + 2):
             time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
             time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))

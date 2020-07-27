@@ -137,15 +137,19 @@ class StlMC:
                 const = inv_prop_dict[invariant_var]
                 bound_applied_inv_var = substitution(invariant_var, new_substitute_dict)
                 bound_applied_const = substitution(const, new_substitute_dict)
-                invariant_sub_children.append(Or([Eq(bound_applied_inv_var, Forall(integral.current_mode_number,
+                invariant_sub_children.append(Eq(bound_applied_inv_var, Forall(integral.current_mode_number,
                                                                                    Real('tau_' + str(bound + 1)),
                                                                                    Real('tau_' + str(bound)),
-                                                                                   bound_applied_const, integral)),
-                                                  Eq(Not(bound_applied_inv_var), Forall(integral.current_mode_number,
-                                                                                        Real('tau_' + str(bound + 1)),
-                                                                                        Real('tau_' + str(bound)),
-                                                                                        reduce_not(Not(bound_applied_const)),
-                                                                                        integral))]))
+                                                                                   bound_applied_const, integral)))
+                # invariant_sub_children.append(Or([Eq(bound_applied_inv_var, Forall(integral.current_mode_number,
+                #                                                                    Real('tau_' + str(bound + 1)),
+                #                                                                    Real('tau_' + str(bound)),
+                #                                                                    bound_applied_const, integral)),
+                #                                   Eq(Not(bound_applied_inv_var), Forall(integral.current_mode_number,
+                #                                                                         Real('tau_' + str(bound + 1)),
+                #                                                                         Real('tau_' + str(bound)),
+                #                                                                         reduce_not(Not(bound_applied_const)),
+                #                                                                         integral))]))
             invariant_sub_children.append(result_inv_const)
             invariant_children.append(And(invariant_sub_children))
             index += 1

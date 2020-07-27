@@ -281,6 +281,12 @@ def _(const: Integral):
         result.add(sv)
     return result
 
+
+@get_vars.register(Forall)
+def _(const: Forall):
+    return get_vars(const.const)
+
+
 @singledispatch
 def relaxing(const: Formula, delta):
     return const
