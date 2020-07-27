@@ -51,7 +51,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         counter_consts = None
         while not hylaa_result:
             if counter_consts is not None:
-                abstracted_consts = And([abstracted_consts, And(counter_consts)])
+                abstracted_consts = And([abstracted_consts, Or(counter_consts)])
             # 2. Perform process #2 from note
             solver = Z3Solver()
             result, size = solver.solve(abstracted_consts)
@@ -88,40 +88,23 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                             total[c_elem] = BoolVal("True")
                             break
                 else:
-                    c_unsat.add(Not(c_elem))
+                    c_unsat.add((Not(c_elem)))
                     for c_vs in vs:
                         if 'newForall' in c_vs.id:
                             total[c_vs] = alpha[c_vs]
                         else:
-                            total[c_elem] = BoolVal("False")
+                            total[(Not(c_elem))] = BoolVal("True")
                             break
-            # print("c size : " + str(len(c_sat.union(c_unsat))))
-            # for c in c_sat.union(c_unsat):
-            #     print(c)
-            # print("c_sat size : " + str(len(c_sat)))
-            # print("c_unsat size : " + str(len(c_unsat)))
-            # if counter_consts is not None:
-            #    print("counter consts : " + str(len(counter_consts)))
 
-            # S = c_sat.union(c_unsat)
-
-            # solver = Z3Solver()
-            # simplified_result = solver.simplify(solver.substitution(new_abstracted_consts, total))
-            # print(simplified_result)
             alpha_delta = total
             max_literal_set_list = list()
+
             for i in range(max_bound + 1):
-                max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat, alpha_delta)
+                max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat.union(c_unsat),
+                                                                    alpha_delta)
                 max_literal_set_list.append(max_literal_set)
 
             try:
-                # test_set = set()
-                # for s in max_literal_set_list:
-                #    for c in s:
-                #        test_set.add(c)
-                # print("max literal set size : " + str(len(test_set)))
-                # for c in test_set:
-                #    print(c)
                 hylaa_result, counter_consts = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
                                                                     new_alpha)
 
@@ -133,23 +116,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 for s in max_literal_set_list:
                     for c in s:
                         counter_consts_set.add(Not(c))
-                ttt = set()
-                for c in c_sat:
-                    ttt.add(Not(c))
-                fffff = ttt.difference(counter_consts_set)
-                print("difference")
-                for f in fffff:
-                    print(f)
                 counter_consts = list(counter_consts_set)
-                # aa = (infix(And(counter_consts)).split("&"))
-                # for aaa in aa:
-                #     print(aaa)
                 import sys, traceback
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(re))
-                # print(ex)
-                # print(re)
 
         return False, 0
         # return result, size
@@ -157,6 +128,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
     def get_max_literal(self, psi_abs, i, c_sat, alpha_delta: dict):
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c_sat, i)
         reset_pool = make_reset_pool(reset_set)
+
         for c in alpha_delta:
             if c in integral_set:
                 for v in get_vars(c):
@@ -186,16 +158,17 @@ class HylaaSolverNaive(HylaaSolver):
         solver = Z3Solver()
         simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
         s_abs_set = set()
+
         if str(simplified_result) == "True":
             for c in alpha_delta:
                 b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
                 if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
-                                                       len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
+                        len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
                     s_abs_set.add(c)
 
             return s_abs_set, alpha_delta
         else:
-            return None, None
+            return None, alpha_delta
 
 
 class HylaaSolverReduction(HylaaSolver):
@@ -223,24 +196,8 @@ class HylaaAssignment(Assignment):
         pass
 
 
-# @singledispatch
-# def get_string(const: set):
-#     var_id_list = list()
-#     for e in const:
-#         var_id_list.extend(get_string(e))
-#     return var_id_list
-
-
-# @singledispatch
-# def get_string(const: set):
-#     var_id_list = list()
-#     for e in const:
-#         var_id_list.extend(get_string(e))
-#     return var_id_list
-
-
 def make_reset_pool(s_i_reset):
-    s_i_pool = set()
+    s_i_pool = list()
     s_v = set()
     for c in s_i_reset:
         s_v = s_v.union(get_vars(c.left))
@@ -255,10 +212,14 @@ def make_reset_pool(s_i_reset):
                 s_l.add(c)
                 s_diff.add(c)
         s_i_r = s_i_r.difference(s_diff)
-        if len(s_i_pool) == 0:
-            s_i_pool = s_l
-        else:
-            s_i_pool = set(product(s_i_pool, s_l))
+        s_i_pool.append(s_l)
+
+    tuple_to_set = list(product(*s_i_pool))
+    s_i_pool = list()
+    for i in tuple_to_set:
+        chi = [element for tupl in i for element in (tupl if isinstance(tupl, tuple) else (tupl,))]
+        s_i_pool.append(set(chi))
+
     return s_i_pool
 
 
@@ -273,14 +234,6 @@ def _(const: Variable):
     return {const.id[:start_index]}
 
 
-# @get_string.register(Integral)
-# def _(const: Integral):
-#
-#     for exp in const.dynamics.exps:
-#         exp_set.add(set(exp))
-#     return exp_set
-
-
 def revert_by_sigma(clauses: set, sigma: dict):
     revert_s = set()
     for c in clauses:
@@ -289,20 +242,6 @@ def revert_by_sigma(clauses: set, sigma: dict):
         else:
             revert_s.add(c)
     return revert_s
-
-
-#
-# def get_variable_vector(union_integral_set, max_bound, mapping_info):
-#     var_set = set()
-#     for i in range(max_bound):
-#         # since this is singleton set
-#         integrals = revert_by_sigma(union_integral_set[i], mapping_info)
-#         for integral in integrals:
-#             # print(get_vars(integral))
-#             for var in integral.vars:
-#                 var_set = var_set.union(get_string(var))
-#     # print(var_set)
-#     return var_set
 
 
 def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
@@ -332,7 +271,6 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], bound)
 
     # assumption: all boundaries should be number
-    print(l_v)
     sympy_expr_list = list()
 
     for cc in init_set:
@@ -386,7 +324,6 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
                 else:
                     if str(simplify(bound_box_list[index][0] >= expr.lhs)) == "True":
                         bound_box_list[index][0] = expr.lhs
-    print(bound_box_list)
     for e in bound_box_list:
         if e[0] is None:
             e[0] = -float("inf")
@@ -398,18 +335,13 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
             e[1] = float(e[1])
 
     # add affine variable
-    print(l_v)
     bound_box_list.append([1.0, 1.0])
-    print(bound_box_list)
     mode = ha.modes['mode0']
-    print(mode)
     init_lpi = lputil.from_box(bound_box_list, mode)
-    # print(init_lpi)
     init_list = [StateSet(init_lpi, mode)]
     settings = HylaaSettings(0.01, 100)
     ce = Core(ha, settings).run(init_list)
     result = ce.last_cur_state.mode.name
-    print(result)
     if result == 'error':
         return True, None
     else:
@@ -516,7 +448,6 @@ def _(v: Variable):
 
 @remove_index.register(BinaryExpr)
 def _(c: BinaryExpr):
-    print("????!?!?!?")
     op_dict = {Add: Add, Sub: Sub, Mul: Mul, Div: Div, Pow: Pow}
     return op_dict[c.__class__](remove_index(c.left), remove_index(c.right))
 
@@ -542,10 +473,6 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
     mode_i = ha.new_mode("mode" + str(i))
     s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
     l_integral = l_v.copy()
-    # for c in s_forall_i:
-    #     print(c)
-    #     print(substitution(c, sigma))
-    # print(s_psi_abs_i)
 
     for integral in s_integral_i:
         index = 0
@@ -575,17 +502,11 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
         new_dict = dict()
         for v in vs:
             new_dict[v] = remove_index(v)
-        phi_forall_children.append(substitution(new_c, new_dict))
+        phi_forall_children.append(reduce_not(substitution(new_c, new_dict)))
 
-    for tt in infix(And(phi_forall_children)).split('&'):
-        print(tt)
     if len(phi_forall_children) > 0:
         m_forall, m_forall_rhs = symbolic.make_condition(l_v, infix(And(phi_forall_children)).split('&'), {},
                                                          has_affine_variable=True)
-        print("forall")
-        print(m_forall)
-        print("forall rhs")
-        print(m_forall_rhs)
         mode_i.set_invariant(m_forall, m_forall_rhs)
     return mode_i
 
@@ -607,7 +528,7 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         new_dict = dict()
         for v in vs:
             new_dict[v] = remove_index(v)
-        phi_reset_children.append(substitution(c, new_dict))
+        phi_reset_children.append(reduce_not(substitution(c, new_dict)))
 
     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
                                                    has_affine_variable=True)
@@ -628,9 +549,6 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         k_t_j = find_index(l_v, Real("tau_" + str(j)))
         l_r[k_t_j] = "tau_" + str(j)
 
-    print("??")
-    print(l_v)
-    print(l_r)
     reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
     trans_i.set_reset(reset_mat)
 
