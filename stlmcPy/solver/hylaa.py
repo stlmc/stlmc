@@ -179,13 +179,39 @@ class HylaaSolverReduction(HylaaSolver):
         solver = Z3Solver()
         simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
         s_abs_set = set()
+
         if str(simplified_result) == "True":
             for c in alpha_delta:
-                if alpha_delta[c].value == "True":
+                b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
+                if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
+                        len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
                     s_abs_set.add(c)
-            return s_abs_set
+
+            return self.delta_debugging(s_abs_set, psi_abs), alpha_delta
         else:
-            return None
+            return None, alpha_delta
+
+    def delta_debugging_aux(self, c_max: set, psi: Constraint):
+        if len(c_max) == 0:
+            return set()
+        alpha = dict()
+        for c in c_max:
+            alpha[c] = BoolVal("True")
+
+        for c in c_max:
+            new_alpha = alpha.copy()
+            new_alpha[c] = BoolVal("False")
+            solver = Z3Solver()
+            simplified_result = solver.simplify(solver.substitution(psi, new_alpha))
+
+            if str(simplified_result) == "True":
+                return self.delta_debugging_aux(c_max.difference({c}), psi).union({c})
+
+        return set()
+
+    def delta_debugging(self, c_max, psi):
+        s = self.delta_debugging_aux(c_max, psi)
+        return c_max.difference(s)
 
 
 class HylaaAssignment(Assignment):

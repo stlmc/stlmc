@@ -1,4 +1,4 @@
-from stlmcPy.solver.hylaa import HylaaSolverNaive
+from stlmcPy.solver.hylaa import HylaaSolverNaive, HylaaSolverReduction
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 
@@ -14,3 +14,5 @@ class SolverFactory:
             return YicesSolver()
         elif self.solver_type == 'hylaa':
             return HylaaSolverNaive()
+        elif self.solver_type == 'hylaa-reduction':
+            return HylaaSolverReduction()
