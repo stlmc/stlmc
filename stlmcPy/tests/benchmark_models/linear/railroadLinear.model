@@ -20,16 +20,18 @@ real vb;
     inv:
     flow:
         d/dt[tx] = -5;
-        d/dt[bx] = vb;
+        d/dt[bx] = 0;
     jump:
         (and (35 <= tx) (tx < 50)) =>
           (and (vb' = 5) (bx' = bx) (tx' = tx));
+          '''
         (and (5 <= tx) (tx < 35)) =>
           (and (vb' = 10) (bx' = bx) (tx' = tx));
         (and (-5 <= tx) (tx < 5) (bx <=80)) =>
           (and (vb' = -5) (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) =>
           (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
+          '''
 }
 '''
 {
@@ -88,12 +90,13 @@ init:
 (and (vb = 0) (bx >= 0) (bx < 1) (tx >= 85) (tx <= 90)) ;
 
 propositions:
-reachability = tx < 0 ;
+reachability = tx < 17 ;
 barg80 = bx >= 80;
 barl60 = bx < 40;
 
 goal:
-(<> (0.0,50.0) reachability);
+  reach reachability;
+#(<> (0.0,50.0) reachability);
 #([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
 #([] [3.0,50.0] (<>[5.0, 20.0] barg80));
 #([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));

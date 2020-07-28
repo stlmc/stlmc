@@ -18,8 +18,6 @@ from stlmcPy.solver.abstract_solver import BaseSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.z3 import Z3Solver
 
-# from sympy import *
-
 import abc
 
 
@@ -79,25 +77,32 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             total = dict()
             for c_elem in c:
                 vs = get_vars(c_elem)
-                if assignment.eval(c_elem):
-                    c_sat.add(c_elem)
-                    for c_vs in vs:
-                        if 'newForall' in c_vs.id:
+                flag = True
+                for c_vs in vs:
+                    if "newForall" in c_vs.id:
+                        flag = False
+                        if str(alpha[c_vs]) == "True":
                             total[c_vs] = alpha[c_vs]
-                        else:
-                            total[c_elem] = BoolVal("True")
-                            break
-                else:
-                    c_unsat.add((Not(c_elem)))
-                    for c_vs in vs:
-                        if 'newForall' in c_vs.id:
+                            c_sat.add(c_vs)
+                        elif str(alpha[c_vs]) == "False":
                             total[c_vs] = alpha[c_vs]
+                            c_unsat.add(Not(c_vs))
                         else:
-                            total[(Not(c_elem))] = BoolVal("True")
-                            break
+                            raise NotSupportedError("Forall variable assignments problem")
+                        break
+                if flag:
+                    if assignment.eval(c_elem):
+                        total[c_elem] = BoolVal("True")
+                        c_sat.add(c_elem)
+                    else:
+                        total[Not(c_elem)] = BoolVal("True")
+                        c_unsat.add(Not(c_elem))
 
             alpha_delta = total
             max_literal_set_list = list()
+
+
+            # print(solver.simplify(solver.substitution(abstracted_consts, {})))
 
             for i in range(max_bound + 1):
                 max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat.union(c_unsat),
@@ -105,8 +110,16 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 max_literal_set_list.append(max_literal_set)
 
             try:
-                hylaa_result, counter_consts = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
+                hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
                                                                     new_alpha)
+                counter_consts_set = set()
+                for s in max_literal_set_list:
+                    for c in s:
+                        if str(alpha_delta[c]) == "True":
+                            counter_consts_set.add(Not(c))
+                        else:
+                            counter_consts_set.add(c)
+                counter_consts = list(counter_consts_set)
 
             except RuntimeError as re:
                 print("inside error")
@@ -115,7 +128,10 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 counter_consts_set = set()
                 for s in max_literal_set_list:
                     for c in s:
-                        counter_consts_set.add(Not(c))
+                        if str(alpha_delta[c]) == "True":
+                            counter_consts_set.add(Not(c))
+                        else:
+                            counter_consts_set.add(c)
                 counter_consts = list(counter_consts_set)
                 import sys, traceback
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -369,13 +385,9 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     ce = Core(ha, settings).run(init_list)
     result = ce.last_cur_state.mode.name
     if result == 'error':
-        return True, None
+        return True
     else:
-        counter_consts = set()
-        for s in s_f_list:
-            for c in s:
-                counter_consts.add(Not(c))
-        return False, list(counter_consts)
+        return False
 
 
 @singledispatch
@@ -511,13 +523,14 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
                 print(ne)
                 raise NotSupportedError("element should be found!")
 
-    for j in range(i + 1):
-        k_j = find_index(l_v, Real("tau_" + str(j)))
-        l_integral[k_j] = "0"
+    if "tau" in l_v:
+        for j in range(i + 1):
+            k_j = find_index(l_v, Real("tau_" + str(j)))
+            l_integral[k_j] = "0"
 
-    for j in range(i + 1, max_bound + 2):
-        k_j = find_index(l_v, Real("tau_" + str(j)))
-        l_integral[k_j] = "1"
+        for j in range(i + 1, max_bound + 2):
+            k_j = find_index(l_v, Real("tau_" + str(j)))
+            l_integral[k_j] = "1"
     m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
     mode_i.set_dynamics(m_integral)
 
@@ -571,9 +584,10 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         k = find_index(l_v, r.left)
         l_r[k] = infix(substitution(r.right, remove_var_dict))
 
-    for j in range(max_bound + 1):
-        k_t_j = find_index(l_v, Real("tau_" + str(j)))
-        l_r[k_t_j] = "tau_" + str(j)
+    if "tau" in l_v:
+        for j in range(max_bound + 1):
+            k_t_j = find_index(l_v, Real("tau_" + str(j)))
+            l_r[k_t_j] = "tau_" + str(j)
 
     reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
     trans_i.set_reset(reset_mat)

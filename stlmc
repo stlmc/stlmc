@@ -6,7 +6,7 @@ if __name__ == '__main__':
     try:
         driver = Driver()
         # driver.parse()
-        hehe = driver.run("./stlmcPy/tests/benchmark_models/linear/railroadLinear.model", True)
+        hehe = driver.run("./stlmcPy/tests/benchmark_models/linear/railroadLinearSimplify.model", True)
         # print(hehe)
     except SystemExit:
         print("System error")
