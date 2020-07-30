@@ -43,13 +43,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         inverse_mapping_info, inverse_mapping_info_without_and = gen_fresh_new_var_map(integral_forall_set)
         abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
         mapping_info = inverse_dict(inverse_mapping_info_without_and)
-        print(abstracted_consts)
-        print(mapping_info)
         max_bound = get_bound(mapping_info)
 
-        hylaa_result = False
+        hylaa_result = True
         counter_consts = None
-        while not hylaa_result:
+        while hylaa_result:
             if counter_consts is not None:
                 abstracted_consts = And([abstracted_consts, Or(counter_consts)])
             # 2. Perform process #2 from note
@@ -62,13 +60,12 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
 
+
             net_dict = info_dict.copy()
             net_dict.update(mapping_info)
             new_alpha = gen_net_assignment(alpha, net_dict)
             new_abstracted_consts = substitution(abstracted_consts, new_alpha)
             c = clause(new_abstracted_consts)
-            print("clause")
-            print(c)
             s_diff = set()
             for elem in c:
                 if len(get_vars(elem)) == 0:
@@ -81,8 +78,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             for c_elem in c:
                 vs = get_vars(c_elem)
                 flag = True
+
                 for c_vs in vs:
-                    if "newForall" in c_vs.id:
+                    if "newIntegral" in c_vs.id or (c_vs.id.count('_') == 1 and (not 'tau' in c_vs.id)) :
                         flag = False
                         if str(alpha[c_vs]) == "True":
                             total[c_vs] = alpha[c_vs]
@@ -104,6 +102,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
             alpha_delta = total
             max_literal_set_list = list()
+
+            '''
+
             print("+++++++++++++++")
             print("C_Sat")
             for cc in c_sat:
@@ -116,8 +117,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             print("alpha-delta")
             print(alpha_delta)
             print("+++++++++++++++")
+            '''
 
-            # print(solver.simplify(solver.substitution(abstracted_consts, {})))
+
 
             for i in range(max_bound + 1):
                 max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat.union(c_unsat),
@@ -127,18 +129,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 #     if str(alpha_delta[nm]) == "True":
                 #         new_max_literal_set.add(nm)
 
-                print("alpha-delta")
-                print(alpha_delta)
-
                 max_literal_set_list.append(max_literal_set)
 
             try:
-                print("max literal set")
-                print(max_literal_set_list)
-                print("mapping info")
-                print(mapping_info)
                 hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                                                    new_alpha)
+                                                     new_alpha)
 
                 counter_consts_set = set()
                 for s in max_literal_set_list:
@@ -166,8 +161,8 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(re))
 
-        return False, 0
-        # return result, size
+        #return False, 0
+        return hylaa_result, size
 
     def get_max_literal(self, psi_abs, i, c_sat, alpha_delta: dict):
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c_sat, i)
@@ -200,11 +195,8 @@ class HylaaSolverNaive(HylaaSolver):
 
     def solve_strategy(self, alpha_delta, psi_abs, bound):
         solver = Z3Solver()
-        print("reducing")
         # print(solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta)))
         sub_dict = {}
-        print("alpha_delta")
-        print(alpha_delta)
         for c in alpha_delta:
             if str(alpha_delta[c]) == "True":
                 sub_dict[c] = BoolVal("True")
@@ -215,19 +207,19 @@ class HylaaSolverNaive(HylaaSolver):
                 if not isinstance(c, Bool):
                     sub_dict[reduce_not(Not(c))] = BoolVal("True")
 
-        print("subdict")
-        print(sub_dict)
         simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), sub_dict))
+
         s_abs_set = set()
-        print("simplified")
-        print(simplified_result)
+        #print("simplified")
+        #print(simplified_result)
 
         if str(simplified_result) == "True":
             for c in alpha_delta:
                 b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
                 if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
                         len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                        s_abs_set.add(c)
+                        if str(alpha_delta[c]) == 'True':
+                            s_abs_set.add(c)
 
             return s_abs_set, alpha_delta
         else:
@@ -240,8 +232,6 @@ class HylaaSolverReduction(HylaaSolver):
 
     def solve_strategy(self, alpha_delta, psi_abs, bound):
         solver = Z3Solver()
-        print("reducing")
-        print(reduce_not(psi_abs))
         simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta))
         s_abs_set = set()
 
@@ -434,9 +424,9 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     ce = Core(ha, settings).run(init_list)
     result = ce.last_cur_state.mode.name
     if result == 'error':
-        return True
-    else:
         return False
+    else:
+        return True
 
 
 @singledispatch
@@ -618,10 +608,6 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
             new_dict[v] = remove_index(v)
         phi_reset_children.append(reduce_not(substitution(c, new_dict)))
 
-    print("guard")
-    for ccc in phi_reset_children:
-        print(infix(ccc))
-
     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
                                                    has_affine_variable=True)
     trans_i.set_guard(m_guard, m_guard_rhs)
@@ -754,7 +740,6 @@ def unit_split(S: set, i: int):
             e_index = int(var.id.rfind("_"))
             end_index = int(var.id.rfind("_"))
             if not (s_index == e_index or "newIntegral" in var.id):
-                print(var.id)
                 bound = int(var.id[start_index + 1:end_index])
                 last_str = var.id[-1]
                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
@@ -773,8 +758,7 @@ def gen_net_assignment(mapping: dict, range_dict: dict):
     for var in mapping:
         search_index = var.id.find("_")
         search_id = var.id[:search_index]
-        if not ((isinstance(var, Bool) and "newForall" in var.id) or Real(search_id) in range_dict or Real(
-                var.id) in range_dict or "tau" in var.id):
+        if not (Bool(var.id) in range_dict or Real(search_id) in range_dict or Real(var.id) in range_dict or "tau" in var.id):
             new_dict[var] = mapping[var]
     return new_dict
 

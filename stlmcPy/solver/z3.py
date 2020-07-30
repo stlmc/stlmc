@@ -57,9 +57,6 @@ class Z3Solver(BaseSolver, SMTSolver):
         for i in range(len(dicts)):
             total_dict.update(dicts[i])
         substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
-        print(z3.simplify(z3Obj(const)))
-        print("substitute_list")
-        print(substitute_list)
         return z3.substitute(z3Obj(const), substitute_list)
 
     # def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):

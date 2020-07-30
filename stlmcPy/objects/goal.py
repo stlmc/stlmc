@@ -61,8 +61,6 @@ class PropHelper:
                     bound_applied_const = substitution(const, new_substitute_dict)
                     relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
                     not_bound_applied_goal_var = Bool("not@"+bound_applied_goal_var.id)
-                    print("new const for goal")
-                    print(not_bound_applied_goal_var)
                     fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
                     fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
                     init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
