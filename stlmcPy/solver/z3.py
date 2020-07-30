@@ -46,9 +46,6 @@ class Z3Solver(BaseSolver, SMTSolver):
         #     print(z3.substitute(z3.simplify(consts), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
         #     print("=============")
 
-
-
-
         # print(z3.substitute(z3.simplify(17 <= tx_0_0), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
         return z3.simplify(consts)
 
@@ -64,11 +61,26 @@ class Z3Solver(BaseSolver, SMTSolver):
     def make_assignment(self):
         return Z3Assignment(self._z3_model)
 
-    def unsat_core(self, const: Constraint, assertion: list):
+    def unsat_core(self, psi, assertion_and_trace):
         solver = z3.SolverFor('LRA')
-        solver.add(z3Obj(const))
-        solver.check([z3Obj(c) for c in assertion])
-        return solver.unsat_core()
+        trace_dict = dict()
+        for (assertion, trace) in assertion_and_trace:
+            # trace should be boolean var
+            trace_dict[str(trace.id)] = assertion
+            solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
+        solver.add(z3Obj(Not(psi)))
+        print(solver.check())
+        unsat_cores = solver.unsat_core()
+        print(unsat_cores)
+        result = set()
+        for unsat_core in unsat_cores:
+            result.add(trace_dict[str(unsat_core)])
+        print(trace_dict)
+        return result
+
+        # solver.add(z3Obj(const))
+        # solver.check([z3Obj(c) for c in assertion])
+        # return solver.unsat_core()
 
 
 class Z3Assignment(Assignment):
@@ -90,6 +102,8 @@ class Z3Assignment(Assignment):
         return new_dict
 
     def eval(self, const):
+        if self._z3_model is None:
+            raise NotSupportedError("Z3 has no model")
         return self._z3_model.eval(z3Obj(const))
 
     # def get_assignments(self):
