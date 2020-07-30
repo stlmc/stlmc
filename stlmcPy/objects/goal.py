@@ -60,18 +60,28 @@ class PropHelper:
                     bound_applied_goal_var = substitution(goal_var, new_substitute_dict)
                     bound_applied_const = substitution(const, new_substitute_dict)
                     relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
-                    goal_sub_children.append(Or([Eq(bound_applied_goal_var, Forall(integral.current_mode_number,
+                    not_bound_applied_goal_var = Bool("not@"+bound_applied_goal_var.id)
+                    print("new const for goal")
+                    print(not_bound_applied_goal_var)
+                    fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
+                    fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
+                    init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
+                    init_const_2 = And([not_bound_applied_goal_var, reduce_not(Not(relaxed_bound_const))])
+                    init_point_check = Or([init_const_1, init_const_2])
+
+                    goal_sub_children.append(And([Eq(bound_applied_goal_var, Forall(integral.current_mode_number,
                                                                                    Real(
                                                                                        'tau_' + str(bound + 1)),
                                                                                    Real('tau_' + str(bound)),
                                                                                    relaxed_bound_const,
                                                                                    integral)),
-                                                 Eq(Not(bound_applied_goal_var), Forall(integral.current_mode_number,
+                                                 Eq(not_bound_applied_goal_var, Forall(integral.current_mode_number,
                                                                                         Real(
                                                                                             'tau_' + str(bound + 1)),
                                                                                         Real('tau_' + str(bound)),
                                                                                         reduce_not(Not(relaxed_bound_const)),
-                                                                                        integral))]))
+                                                                                        integral)),
+                                                  fair_const_1, fair_const_2, init_point_check]))
 
                     index += 1
                 result_children.append(Or(goal_sub_children))
@@ -112,9 +122,10 @@ class BaseStlGoal(Goal):
         stl_consts = self.make_stl_consts(bound)
         time_consts = self.make_time_consts(bound, time_bound)
 
-        result_const.append(stl_consts)
-        result_const.append(time_consts)
+        # result_const.append(stl_consts)
+        # result_const.append(time_consts)
         return And(result_const)
+
 
 
 class OldStlGoal(BaseStlGoal):

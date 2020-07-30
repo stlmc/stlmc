@@ -24,14 +24,12 @@ real vb;
     jump:
         (and (35 <= tx) (tx < 50)) =>
           (and (vb' = 5) (bx' = bx) (tx' = tx));
-          '''
         (and (5 <= tx) (tx < 35)) =>
           (and (vb' = 10) (bx' = bx) (tx' = tx));
         (and (-5 <= tx) (tx < 5) (bx <=80)) =>
           (and (vb' = -5) (bx' = bx) (tx' = tx));
         (and (bx > 85) (tx < -5)) =>
           (and (vb' = 0) (bx' = bx) (tx' = (100 + tx)));
-          '''
 }
 '''
 {

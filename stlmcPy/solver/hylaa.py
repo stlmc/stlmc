@@ -40,9 +40,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         # mode_dict, else_dict = divide_dict(info_dict)
         # 1. Build \varphi_ABS and mapping_info
         integral_forall_set = get_integrals_and_foralls(all_consts)
-        inverse_mapping_info = gen_fresh_new_var_map(integral_forall_set)
+        inverse_mapping_info, inverse_mapping_info_without_and = gen_fresh_new_var_map(integral_forall_set)
         abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
-        mapping_info = inverse_dict(inverse_mapping_info)
+        mapping_info = inverse_dict(inverse_mapping_info_without_and)
+        print(abstracted_consts)
+        print(mapping_info)
         max_bound = get_bound(mapping_info)
 
         hylaa_result = False
@@ -65,7 +67,8 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             new_alpha = gen_net_assignment(alpha, net_dict)
             new_abstracted_consts = substitution(abstracted_consts, new_alpha)
             c = clause(new_abstracted_consts)
-
+            print("clause")
+            print(c)
             s_diff = set()
             for elem in c:
                 if len(get_vars(elem)) == 0:
@@ -93,25 +96,50 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 if flag:
                     if assignment.eval(c_elem):
                         total[c_elem] = BoolVal("True")
+
                         c_sat.add(c_elem)
                     else:
-                        total[Not(c_elem)] = BoolVal("True")
+                        total[reduce_not(Not(c_elem))] = BoolVal("True")
                         c_unsat.add(Not(c_elem))
 
             alpha_delta = total
             max_literal_set_list = list()
+            print("+++++++++++++++")
+            print("C_Sat")
+            for cc in c_sat:
+                print(cc)
 
+            print("C_Unsat")
+            for cc in c_unsat:
+                print(cc)
+
+            print("alpha-delta")
+            print(alpha_delta)
+            print("+++++++++++++++")
 
             # print(solver.simplify(solver.substitution(abstracted_consts, {})))
 
             for i in range(max_bound + 1):
                 max_literal_set, alpha_delta = self.get_max_literal(new_abstracted_consts, i, c_sat.union(c_unsat),
                                                                     alpha_delta)
+                # new_max_literal_set = set()
+                # for nm in max_literal_set:
+                #     if str(alpha_delta[nm]) == "True":
+                #         new_max_literal_set.add(nm)
+
+                print("alpha-delta")
+                print(alpha_delta)
+
                 max_literal_set_list.append(max_literal_set)
 
             try:
+                print("max literal set")
+                print(max_literal_set_list)
+                print("mapping info")
+                print(mapping_info)
                 hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                                                                    new_alpha)
+                                                    new_alpha)
+
                 counter_consts_set = set()
                 for s in max_literal_set_list:
                     for c in s:
@@ -172,15 +200,34 @@ class HylaaSolverNaive(HylaaSolver):
 
     def solve_strategy(self, alpha_delta, psi_abs, bound):
         solver = Z3Solver()
-        simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
+        print("reducing")
+        # print(solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta)))
+        sub_dict = {}
+        print("alpha_delta")
+        print(alpha_delta)
+        for c in alpha_delta:
+            if str(alpha_delta[c]) == "True":
+                sub_dict[c] = BoolVal("True")
+                if not isinstance(c, Bool):
+                    sub_dict[reduce_not(Not(c))] = BoolVal("False")
+            else:
+                sub_dict[c] = BoolVal("False")
+                if not isinstance(c, Bool):
+                    sub_dict[reduce_not(Not(c))] = BoolVal("True")
+
+        print("subdict")
+        print(sub_dict)
+        simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), sub_dict))
         s_abs_set = set()
+        print("simplified")
+        print(simplified_result)
 
         if str(simplified_result) == "True":
             for c in alpha_delta:
                 b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
                 if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
                         len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                    s_abs_set.add(c)
+                        s_abs_set.add(c)
 
             return s_abs_set, alpha_delta
         else:
@@ -193,7 +240,9 @@ class HylaaSolverReduction(HylaaSolver):
 
     def solve_strategy(self, alpha_delta, psi_abs, bound):
         solver = Z3Solver()
-        simplified_result = solver.simplify(solver.substitution(psi_abs, alpha_delta))
+        print("reducing")
+        print(reduce_not(psi_abs))
+        simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta))
         s_abs_set = set()
 
         if str(simplified_result) == "True":
@@ -316,7 +365,7 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     sympy_expr_list = list()
 
     for cc in init_set:
-        sympy_expr_list.append(simplify(expr_to_sympy(cc)))
+        sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
 
     bound_box_list = list()
     for i in range(len(l_v)):
@@ -569,6 +618,10 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
             new_dict[v] = remove_index(v)
         phi_reset_children.append(reduce_not(substitution(c, new_dict)))
 
+    print("guard")
+    for ccc in phi_reset_children:
+        print(infix(ccc))
+
     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
                                                    has_affine_variable=True)
     trans_i.set_guard(m_guard, m_guard_rhs)
@@ -600,6 +653,7 @@ def z3_bool_to_const_bool(z3list):
 def get_bound(mapping_info: dict):
     max_bound = -1
     for key in mapping_info:
+        # for forall
         index = int(key.id.rfind("_")) + 1
         bound = int(key.id[index:])
         if max_bound < bound:
@@ -631,7 +685,7 @@ def unit_split(S: set, i: int):
         var_set = get_vars(c)
         for var in var_set:
             start_index = int(var.id.find("_"))
-            if var.id[start_index:] == "_0_0" and not ("newIntegral" in var.id) and not ("newForall" in var.id):
+            if var.id[start_index:] == "_0_0" and not ("newIntegral" in var.id):
                 init_set.add(c)
                 S_diff.add(c)
                 break
@@ -643,8 +697,10 @@ def unit_split(S: set, i: int):
         var_set = get_vars(c)
         for var in var_set:
             start_index = int(var.id.find("#"))
+            s_index = int(var.id.find("_"))
+            e_index = int(var.id.rfind("_"))
             bound_index = int(var.id.rfind("_"))
-            if var.id[:start_index] == "newForall":
+            if s_index == e_index and not "tau" in var.id:
                 bound = int(var.id[bound_index + 1:])
                 if i == bound:
                     forall_set.add(c)
@@ -694,10 +750,14 @@ def unit_split(S: set, i: int):
         flag = True
         for var in var_set:
             start_index = int(var.id.find("_"))
+            s_index = int(var.id.find("_"))
+            e_index = int(var.id.rfind("_"))
             end_index = int(var.id.rfind("_"))
-            if not ("newForall" in var.id or "newIntegral" in var.id or "tau" in var.id):
+            if not (s_index == e_index or "newIntegral" in var.id):
+                print(var.id)
                 bound = int(var.id[start_index + 1:end_index])
-                if not bound == i:
+                last_str = var.id[-1]
+                if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
                     flag = False
             else:
                 flag = False
@@ -713,7 +773,8 @@ def gen_net_assignment(mapping: dict, range_dict: dict):
     for var in mapping:
         search_index = var.id.find("_")
         search_id = var.id[:search_index]
-        if not (Real(search_id) in range_dict or Real(var.id) in range_dict or "tau" in var.id):
+        if not ((isinstance(var, Bool) and "newForall" in var.id) or Real(search_id) in range_dict or Real(
+                var.id) in range_dict or "tau" in var.id):
             new_dict[var] = mapping[var]
     return new_dict
 
@@ -726,30 +787,53 @@ def gen_fresh_new_var_map_aux(const: Constraint, id_str=None):
 @gen_fresh_new_var_map_aux.register(Integral)
 def _(const: Integral):
     new_map = dict()
+    new_map_without_and = dict()
     end_var_str = const.end_vector[0].id
     start_index = end_var_str.find('_')
     bound_str = end_var_str[start_index + 1:-2]
     new_id = "newIntegral#_" + str(const.current_mode_number) + "_" + bound_str
     new_map[const] = Bool(new_id)
-    return new_map
+    new_map_without_and[const] = Bool(new_id)
+    return new_map, new_map_without_and
 
 
 @gen_fresh_new_var_map_aux.register(Forall)
 def _(const: Forall):
     new_map = dict()
+    new_map_without_and = dict()
     end_var_str = const.integral.end_vector[0].id
     start_index = end_var_str.find('_')
     bound_str = end_var_str[start_index + 1:-2]
     new_id = "newForall#" + str(id(const)) + "_" + str(const.current_mode_number) + "_" + bound_str
-    new_map[const] = Bool(new_id)
-    return new_map
+    new_map[const] = And([Bool(new_id), const.const])
+    new_map_without_and[const] = Bool(new_id)
+    return new_map, new_map_without_and
+
+@gen_fresh_new_var_map_aux.register(Eq)
+def _(const: Eq):
+    new_map = dict()
+    new_map_without_and = dict()
+    # const_key is Forall object, const_value is boolean variable id
+    if isinstance(const.left, Forall):
+        const_key = const.left
+        const_value = const.right
+    else:
+        const_key = const.right
+        const_value = const.left
+
+    new_map[const] = BoolVal("True")
+    new_map_without_and[const_key] = const_value
+    return new_map, new_map_without_and
 
 
 def gen_fresh_new_var_map(if_set: set, id=None):
     new_map = dict()
+    new_map_without_and = dict()
     for elem in if_set:
-        new_map.update(gen_fresh_new_var_map_aux(elem))
-    return new_map
+        m, nm = gen_fresh_new_var_map_aux(elem)
+        new_map.update(m)
+        new_map_without_and.update(nm)
+    return new_map, new_map_without_and
 
 
 def divide_dict(info_dict: dict):
@@ -768,12 +852,24 @@ def clause(const: Constraint):
     return {const}
 
 
+@clause.register(Not)
+def _(const: Not):
+    return clause(const.child)
+
+
 @clause.register(And)
 def _(const: And):
     result = set()
     for c in list(const.children):
         result = result.union(clause(c))
     return result
+
+
+@clause.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Formula):
+        return clause(const.left).union(clause(const.right))
+    return {const}
 
 
 @clause.register(Or)

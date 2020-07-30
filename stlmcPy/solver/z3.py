@@ -19,6 +19,37 @@ class Z3Solver(BaseSolver, SMTSolver):
         return result, size
 
     def simplify(self, consts):
+        # substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
+        # print("simplify")
+        # print(substitute_list)
+        # print("z3.simplify")
+        # a = z3.simplify(consts)
+        # print(a)
+        # print(z3.substitute(a, substitute_list))
+        # print(z3.get_version_string())
+        # tx_0_0 = z3.Real('tx_0_0')
+        # for s in substitute_list:
+        #     print("=============")
+        #     print("s")
+        #     print(s)
+        #     print("cosnts")
+        #     print(consts)
+        #     print(type(s[0]))
+        #     print(type(s[1]))
+        #     # print(a)
+        #     # print(type(a))
+        #     print(z3.substitute(z3.simplify(consts), s))
+        #     print("=================>>>>>>>>>>>>>")
+        #     print(id(get_vars(consts)))
+        #     print(id(tx_0_0))
+        #     print(z3.substitute(z3.simplify(consts), s))
+        #     print(z3.substitute(z3.simplify(consts), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
+        #     print("=============")
+
+
+
+
+        # print(z3.substitute(z3.simplify(17 <= tx_0_0), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
         return z3.simplify(consts)
 
     def substitution(self, const, *dicts):
@@ -26,6 +57,9 @@ class Z3Solver(BaseSolver, SMTSolver):
         for i in range(len(dicts)):
             total_dict.update(dicts[i])
         substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
+        print(z3.simplify(z3Obj(const)))
+        print("substitute_list")
+        print(substitute_list)
         return z3.substitute(z3Obj(const), substitute_list)
 
     # def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):

@@ -538,8 +538,31 @@ def _(const: Not):
             return BoolVal('True')
         else:
             raise NotSupportedError("think wise real or integer type cannot be negated")
-    raise NotSupportedError("cannot reduce given constraint: " + str(const))
+    return const
+    #raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
+@reduce_not.register(And)
+def _(const: And):
+    return And([reduce_not(c) for c in const.children])
+
+
+@reduce_not.register(Or)
+def _(const: Or):
+    return Or([reduce_not(c) for c in const.children])
+
+
+@reduce_not.register(Implies)
+def _(const: Implies):
+    return Implies(reduce_not(const.left), reduce_not(const.right))
+
+@reduce_not.register(Eq)
+def _(const: Eq):
+    return Eq(reduce_not(const.left), reduce_not(const.right))
+
+
+@reduce_not.register(Neq)
+def _(const: Neq, delta):
+    return Neq(reduce_not(const.left), reduce_not(const.right))
 
 @singledispatch
 def get_integrals_and_foralls(const: Constraint):
@@ -560,6 +583,12 @@ def _(const: Integral):
 def _(const: Unary):
     return get_integrals_and_foralls(const.child)
 
+@get_integrals_and_foralls.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Forall) or isinstance(const.right, Forall):
+        return {const}
+    else:
+        return set()
 
 @get_integrals_and_foralls.register(Binary)
 def _(const: Binary):
@@ -604,8 +633,9 @@ def _(const: Not, substitution_dict):
 
 @forall_integral_substitution.register(Eq)
 def _(const: Eq, substitution_dict):
-    return Eq(forall_integral_substitution(const.left, substitution_dict),
-              forall_integral_substitution(const.right, substitution_dict))
+    if const in substitution_dict:
+        return substitution_dict[const]
+    return const
 
 
 @forall_integral_substitution.register(Neq)
