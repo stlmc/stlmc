@@ -1,13 +1,28 @@
-#!/usr/local/bin/python3
-from stlmcPy.driver.driver import Driver
-from stlmcPy.driver.test_driver import TestDriver
+#!/usr/bin/python3
+from stlmcPy.driver.base_driver import *
+
+
+class StlModelChecker:
+    def __init__(self):
+        self.config = None
+        self.runner = None
+
+    def create_simulation_env(self, df: DriverFactory):
+        self.config = df.make_config()
+        self.runner = df.make_runner()
+
+    def run(self):
+        self.config.parse()
+        self.runner.run(self.config)
+
 
 if __name__ == '__main__':
-
     try:
-        driver = TestDriver()
-        # driver.parse()
-        hehe = driver.run("./stlmcPy/tests/benchmark_models/linear/twoThermostatLinear.model", True)
-        # print(hehe)
+        # default driver factory
+        driver_factory = DriverFactory()
+
+        stlmc = StlModelChecker()
+        stlmc.create_simulation_env(driver_factory)
+        stlmc.run()
     except SystemExit:
         print("System error")
