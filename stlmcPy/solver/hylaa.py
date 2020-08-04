@@ -2,7 +2,8 @@ from abc import ABC
 from functools import singledispatch
 from itertools import product
 
-from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float
+from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float, Equality, \
+    Unequality
 from sympy.core import relational
 
 from hylaa import symbolic, lputil
@@ -12,7 +13,7 @@ from hylaa.settings import HylaaSettings
 from hylaa.stateset import StateSet
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import get_integrals_and_foralls, inverse_dict, \
-    forall_integral_substitution, substitution, reduce_not, get_vars
+    forall_integral_substitution, substitution, reduce_not, get_vars, infix
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.abstract_solver import BaseSolver
 from stlmcPy.solver.assignment import Assignment
@@ -31,6 +32,7 @@ class HylaaStrategy:
         c_sat = set()
         c_unsat = set()
         total = dict()
+
         for c_elem in c:
             vs = get_vars(c_elem)
             flag = True
@@ -45,8 +47,10 @@ class HylaaStrategy:
                         total[c_vs] = alpha[c_vs]
                         c_unsat.add(Not(c_vs))
                     else:
-                        raise NotSupportedError("Forall variable assignments problem")
+                        flag = True
+                        # raise NotSupportedError("Forall variable assignments problem")
                     break
+
             if flag:
                 if assignment.eval(c_elem):
                     total[c_elem] = BoolVal("True")
@@ -96,7 +100,6 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
     def __init__(self):
         self.hylaa_model = None
 
-
     def solve(self, all_consts, info_dict=None):
         if info_dict is None:
             info_dict = dict()
@@ -128,41 +131,67 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             net_dict = info_dict.copy()
             net_dict.update(mapping_info)
             new_alpha = gen_net_assignment(alpha, net_dict)
-            new_abstracted_consts = substitution(abstracted_consts, new_alpha)
+            # new_abstracted_consts = substitution(abstracted_consts, new_alpha)
+            new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
             s_diff = set()
             for elem in c:
-                if len(get_vars(elem)) == 0:
+                vs = get_vars(elem)
+                if len(vs) == 0:
                     s_diff.add(elem)
+
             c = c.difference(s_diff)
 
-            max_literal_set_list, alpha_delta = self.solve_strategy(alpha, assignment, max_bound, new_abstracted_consts, c)
+            max_literal_set_list, alpha_delta = self.solve_strategy(alpha, assignment, max_bound, new_abstracted_consts,
+                                                                    c)
+
+            counter_consts_set = set()
+            for s in max_literal_set_list:
+                for c in s:
+                    if str(alpha_delta[c]) == "True":
+                        counter_consts_set.add(Not(c))
+                    else:
+                        counter_consts_set.add(c)
+            counter_consts = list(counter_consts_set)
+
+            remove_mode_clauses = list()
+            for clause_bound in max_literal_set_list:
+                s_diff = set()
+                for elem in clause_bound:
+                    vs = get_vars(elem)
+                    for v in vs:
+                        if v in new_alpha:
+                            s_diff.add(elem)
+                clause_bound = clause_bound.difference(s_diff)
+                remove_mode_clauses.append(clause_bound)
+
+            max_literal_set_list = remove_mode_clauses
 
             try:
                 hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
                                                     new_alpha)
 
-                counter_consts_set = set()
-                for s in max_literal_set_list:
-                    for c in s:
-                        if str(alpha_delta[c]) == "True":
-                            counter_consts_set.add(Not(c))
-                        else:
-                            counter_consts_set.add(c)
-                counter_consts = list(counter_consts_set)
+                # counter_consts_set = set()
+                # for s in max_literal_set_list:
+                #     for c in s:
+                #         if str(alpha_delta[c]) == "True":
+                #             counter_consts_set.add(Not(c))
+                #         else:
+                #             counter_consts_set.add(c)
+                # counter_consts = list(counter_consts_set)
 
             except RuntimeError as re:
                 print("inside error")
                 # negate the error state
-                hylaa_result = False
-                counter_consts_set = set()
-                for s in max_literal_set_list:
-                    for c in s:
-                        if str(alpha_delta[c]) == "True":
-                            counter_consts_set.add(Not(c))
-                        else:
-                            counter_consts_set.add(c)
-                counter_consts = list(counter_consts_set)
+                hylaa_result = True
+                # counter_consts_set = set()
+                # for s in max_literal_set_list:
+                #     for c in s:
+                #         if str(alpha_delta[c]) == "True":
+                #             counter_consts_set.add(Not(c))
+                #         else:
+                #             counter_consts_set.add(c)
+                # counter_consts = list(counter_consts_set)
                 import sys, traceback
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_tb(exc_traceback, file=sys.stdout)
@@ -207,7 +236,7 @@ class HylaaSolverNaive(HylaaSolver):
                 b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
                 if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
                         len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                    if str(alpha_delta[c]) == 'True':
+                    if str(alpha_delta[c]) == 'True' and not (isinstance(c, Neq) and len(b_reset) == 1):
                         s_abs_set.add(c)
 
             return s_abs_set, alpha_delta
@@ -232,7 +261,7 @@ class HylaaSolverReduction(HylaaSolver):
                 b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
                 if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
                         len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                    if str(alpha_delta[c]) == 'True':
+                    if str(alpha_delta[c]) == 'True' and not isinstance(c, Not):
                         s_abs_set.add(c)
 
             return self.delta_debugging(s_abs_set, psi_abs), alpha_delta
@@ -298,8 +327,6 @@ class HylaaSolverUnsatCore(HylaaSolver):
         c = self.apply_unsat_core(c, new_abstracted_consts, assignment)
         max_literal_set_list = list()
         for i in range(max_bound + 1):
-            print("c")
-            print(c)
             forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c, i)
             new_set = set()
             for cc in forall_set:
@@ -309,15 +336,14 @@ class HylaaSolverUnsatCore(HylaaSolver):
                 if not isinstance(cc, Not):
                     new_set.add(cc)
             for cc in init_set:
-                new_set.add(cc)
+                new_set.add(reduce_not(cc))
             for cc in tau_set:
                 new_set.add(cc)
             for cc in reset_set:
-                new_set.add(cc)
+                if not isinstance(cc, Not):
+                    new_set.add(cc)
             for cc in guard_set:
-                new_set.add(cc)
-            print("new set")
-            print(new_set)
+                new_set.add(reduce_not(cc))
             max_literal_set_list.append(new_set)
         return max_literal_set_list, total
 
@@ -327,6 +353,7 @@ class HylaaSolverUnsatCore(HylaaSolver):
     def apply_unsat_core(self, c_max, psi, assignment: Assignment):
         c_sat = set()
         c_unsat = set()
+
         for c in c_max:
             if assignment.eval(c):
                 c_sat.add(c)
@@ -495,7 +522,10 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     init_lpi = lputil.from_box(bound_box_list, mode)
     init_list = [StateSet(init_lpi, mode)]
     settings = HylaaSettings(0.01, 100)
+    # settings.stop_on_aggregated_error = False
+    settings.aggstrat.deaggregate = True  # use deaggregation
     ce = Core(ha, settings).run(init_list)
+    print(ce.counterexample)
     result = ce.last_cur_state.mode.name
     if result == 'error':
         return False
@@ -525,7 +555,7 @@ def sympy_value(expr: Float):
 
 @singledispatch
 def expr_to_sympy(const: Constraint):
-    raise NotSupportedError("cannot make it canonical")
+    raise NotSupportedError("cannot make it canonical : " + str(const))
 
 
 @expr_to_sympy.register(Variable)
@@ -583,6 +613,16 @@ def _(const: Leq):
     return LessThan(expr_to_sympy(const.left), expr_to_sympy(const.right))
 
 
+@expr_to_sympy.register(Eq)
+def _(const: Eq):
+    return Equality(expr_to_sympy(const.left), expr_to_sympy(const.right))
+
+
+@expr_to_sympy.register(Neq)
+def _(const: Neq):
+    return Unequality(expr_to_sympy(const.left), expr_to_sympy(const.right))
+
+
 @singledispatch
 def remove_index(c: Constraint):
     return c
@@ -630,32 +670,35 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
         for exp in sigma[integral].dynamics.exps:
             try:
                 k = find_index(l_v, sigma[integral].dynamics.vars[index])
-                l_integral[k] = infix(substitution(exp, alpha))
+                l_integral[k] = infix(exp)
                 index += 1
             except NotFoundElementError as ne:
                 print(ne)
                 raise NotSupportedError("element should be found!")
 
-    if "tau" in l_v:
-        for j in range(i + 1):
-            k_j = find_index(l_v, Real("tau_" + str(j)))
-            l_integral[k_j] = "0"
+    # if "tau" in l_v:
+    # print("tau is "+ str(i))
+    for j in range(i + 1):
+        k_j = find_index(l_v, Real("tau_" + str(j)))
+        l_integral[k_j] = "0"
 
-        for j in range(i + 1, max_bound + 2):
-            k_j = find_index(l_v, Real("tau_" + str(j)))
-            l_integral[k_j] = "1"
+    for j in range(i + 1, max_bound + 2):
+        k_j = find_index(l_v, Real("tau_" + str(j)))
+        l_integral[k_j] = "1"
     m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
     mode_i.set_dynamics(m_integral)
 
     phi_forall_children = list()
     for c in s_forall_i:
-        new_c = substitution(substitution(c, sigma), alpha)
+        new_c = substitution(c, sigma)
         vs = get_vars(new_c)
         new_dict = dict()
         for v in vs:
             new_dict[v] = remove_index(v)
         phi_forall_children.append(reduce_not(substitution(new_c, new_dict)))
 
+    # print("forall")
+    # print(infix(And(phi_forall_children)).split('&'))
     if len(phi_forall_children) > 0:
         m_forall, m_forall_rhs = symbolic.make_condition(l_v, infix(And(phi_forall_children)).split('&'), {},
                                                          has_affine_variable=True)
@@ -682,6 +725,10 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
             new_dict[v] = remove_index(v)
         phi_reset_children.append(reduce_not(substitution(c, new_dict)))
 
+    # print("suu")
+    # for ssss in infix(And(phi_reset_children)).split('&'):
+    #     print(ssss)
+    # print(infix(And(phi_reset_children)).split('&'))
     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
                                                    has_affine_variable=True)
     trans_i.set_guard(m_guard, m_guard_rhs)
@@ -742,10 +789,16 @@ def unit_split(S: set, i: int):
     S_diff = set()
 
     for c in S:
+        if isinstance(c, Not):
+            S_diff.add(c)
+
+    S = S.difference(S_diff)
+
+    for c in S:
         var_set = get_vars(c)
         for var in var_set:
             start_index = int(var.id.find("_"))
-            if var.id[start_index:] == "_0_0" and not ("newIntegral" in var.id):
+            if var.id[start_index:] == "_0_0" and not ("newIntegral" in var.id) and not ("invAtomicID" in var.id):
                 init_set.add(c)
                 S_diff.add(c)
                 break
@@ -760,7 +813,7 @@ def unit_split(S: set, i: int):
             s_index = int(var.id.find("_"))
             e_index = int(var.id.rfind("_"))
             bound_index = int(var.id.rfind("_"))
-            if s_index == e_index and not "tau" in var.id:
+            if (s_index == e_index and not "tau" in var.id) or ("invAtomicID" in var.id):
                 bound = int(var.id[bound_index + 1:])
                 if i == bound:
                     forall_set.add(c)
@@ -797,10 +850,11 @@ def unit_split(S: set, i: int):
             if isinstance(c.left, Variable):
                 start_index = int(c.left.id.find("_"))
                 end_index = int(c.left.id.rfind("_"))
-                bound = int(c.left.id[start_index + 1:end_index])
-                if c.left.id[end_index + 1:] == "0" and bound == i + 1:
-                    reset_set.add(c)
-                    S_diff.add(c)
+                if start_index < end_index:
+                    bound = int(c.left.id[start_index + 1:end_index])
+                    if c.left.id[end_index + 1:] == "0" and bound == i + 1:
+                        reset_set.add(c)
+                        S_diff.add(c)
 
     S = S.difference(S_diff)
     S_diff = set()
@@ -813,11 +867,15 @@ def unit_split(S: set, i: int):
             s_index = int(var.id.find("_"))
             e_index = int(var.id.rfind("_"))
             end_index = int(var.id.rfind("_"))
-            if not (s_index == e_index or "newIntegral" in var.id):
+            if not (s_index == e_index or "newIntegral" in var.id or "invAtomicID" in var.id):
                 bound = int(var.id[start_index + 1:end_index])
                 last_str = var.id[-1]
                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
                     flag = False
+                if isinstance(c.left, Real):
+                    if c.left.id[e_index + 1:] == "0":
+                        flag = False
+                        break
             else:
                 flag = False
         if flag:
@@ -952,79 +1010,3 @@ def _(const):
     result = result.union(clause(const.left))
     result = result.union(clause(const.right))
     return result
-
-
-@singledispatch
-def infix(const: Constraint):
-    return str(const)
-
-
-@infix.register(Variable)
-def _(const: Variable):
-    return const.id
-
-
-@infix.register(And)
-def _(const: And):
-    return '&'.join([infix(c) for c in const.children])
-
-
-@infix.register(Geq)
-def _(const: Geq):
-    return infix(const.left) + " >= " + infix(const.right)
-
-
-@infix.register(Gt)
-def _(const: Geq):
-    return infix(const.left) + " >= " + infix(const.right)
-
-
-@infix.register(Leq)
-def _(const: Geq):
-    return infix(const.left) + " <= " + infix(const.right)
-
-
-@infix.register(Lt)
-def _(const: Geq):
-    return infix(const.left) + " <= " + infix(const.right)
-
-
-@infix.register(Eq)
-def _(const: Eq):
-    return infix(const.left) + " = " + infix(const.right)
-
-
-@infix.register(Neq)
-def _(const: Geq):
-    return "(" + infix(const.left) + " >= " + infix(const.right) + ") & (" + infix(const.left) + " < " + infix(
-        const.right) + ")"
-
-
-@infix.register(Add)
-def _(const: Add):
-    return "(" + infix(const.left) + " + " + infix(const.right) + ")"
-
-
-@infix.register(Sub)
-def _(const: Sub):
-    return "(" + infix(const.left) + " - " + infix(const.right) + ")"
-
-
-@infix.register(Mul)
-def _(const: Mul):
-    return "(" + infix(const.left) + " * " + infix(const.right) + ")"
-
-
-@infix.register(Div)
-def _(const: Div):
-    return "(" + infix(const.left) + " / " + infix(const.right) + ")"
-
-
-@infix.register(Pow)
-def _(const: Pow):
-    return "(" + infix(const.left) + " ** " + infix(const.right) + ")"
-
-
-@infix.register(Forall)
-def _(const: Forall):
-    return infix(const.const)

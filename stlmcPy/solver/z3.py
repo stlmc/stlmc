@@ -15,38 +15,10 @@ class Z3Solver(BaseSolver, SMTSolver):
         self._z3_model = None
 
     def solve(self, all_consts, info_dict=None):
-        result, size, self._z3_model = z3checkSat(all_consts, 'LRA')
+        result, size, self._z3_model = z3checkSat(all_consts, 'NRA')
         return result, size
 
     def simplify(self, consts):
-        # substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
-        # print("simplify")
-        # print(substitute_list)
-        # print("z3.simplify")
-        # a = z3.simplify(consts)
-        # print(a)
-        # print(z3.substitute(a, substitute_list))
-        # print(z3.get_version_string())
-        # tx_0_0 = z3.Real('tx_0_0')
-        # for s in substitute_list:
-        #     print("=============")
-        #     print("s")
-        #     print(s)
-        #     print("cosnts")
-        #     print(consts)
-        #     print(type(s[0]))
-        #     print(type(s[1]))
-        #     # print(a)
-        #     # print(type(a))
-        #     print(z3.substitute(z3.simplify(consts), s))
-        #     print("=================>>>>>>>>>>>>>")
-        #     print(id(get_vars(consts)))
-        #     print(id(tx_0_0))
-        #     print(z3.substitute(z3.simplify(consts), s))
-        #     print(z3.substitute(z3.simplify(consts), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
-        #     print("=============")
-
-        # print(z3.substitute(z3.simplify(17 <= tx_0_0), (tx_0_0 >= 17 + 0, z3.BoolVal(True))))
         return z3.simplify(consts)
 
     def substitution(self, const, *dicts):
@@ -56,31 +28,23 @@ class Z3Solver(BaseSolver, SMTSolver):
         substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
         return z3.substitute(z3Obj(const), substitute_list)
 
-    # def make_assignment(self, integrals_list, mode_var_dict, cont_var_dict):
-    #     return Z3Assignment(self._z3_model, integrals_list, mode_var_dict, cont_var_dict)
     def make_assignment(self):
         return Z3Assignment(self._z3_model)
 
     def unsat_core(self, psi, assertion_and_trace):
-        solver = z3.SolverFor('LRA')
+        solver = z3.SolverFor('NRA')
         trace_dict = dict()
         for (assertion, trace) in assertion_and_trace:
             # trace should be boolean var
             trace_dict[str(trace.id)] = assertion
             solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
         solver.add(z3Obj(Not(psi)))
-        print(solver.check())
+        solver.check()
         unsat_cores = solver.unsat_core()
-        print(unsat_cores)
         result = set()
         for unsat_core in unsat_cores:
             result.add(trace_dict[str(unsat_core)])
-        print(trace_dict)
         return result
-
-        # solver.add(z3Obj(const))
-        # solver.check([z3Obj(c) for c in assertion])
-        # return solver.unsat_core()
 
 
 class Z3Assignment(Assignment):

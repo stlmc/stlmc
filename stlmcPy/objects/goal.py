@@ -7,6 +7,17 @@ import abc
 
 
 class Goal:
+
+    def make_time_consts(self, bound, time_bound):
+        time_const_children = list()
+        time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
+        for k in range(bound + 2):
+            time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
+            time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
+            if k < bound + 1:
+                time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+        return And(time_const_children)
+
     @abc.abstractmethod
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
         pass
@@ -23,7 +34,7 @@ class PropHelper:
         self.proposition_dict = proposition_dict
 
     def make_integrals(self, bound):
-        mode_number = 1
+        mode_number = 0
         integrals = list()
         for mode_module in self.model.modules:
             dynamics = mode_module["flow"]
@@ -60,7 +71,8 @@ class PropHelper:
                     bound_applied_goal_var = substitution(goal_var, new_substitute_dict)
                     bound_applied_const = substitution(const, new_substitute_dict)
                     relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
-                    not_bound_applied_goal_var = Bool("not@"+bound_applied_goal_var.id)
+                    not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
+
                     fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
                     fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
                     init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
@@ -68,16 +80,17 @@ class PropHelper:
                     init_point_check = Or([init_const_1, init_const_2])
 
                     goal_sub_children.append(And([Eq(bound_applied_goal_var, Forall(integral.current_mode_number,
-                                                                                   Real(
-                                                                                       'tau_' + str(bound + 1)),
-                                                                                   Real('tau_' + str(bound)),
-                                                                                   relaxed_bound_const,
-                                                                                   integral)),
-                                                 Eq(not_bound_applied_goal_var, Forall(integral.current_mode_number,
+                                                                                    Real(
+                                                                                        'tau_' + str(bound + 1)),
+                                                                                    Real('tau_' + str(bound)),
+                                                                                    relaxed_bound_const,
+                                                                                    integral)),
+                                                  Eq(not_bound_applied_goal_var, Forall(integral.current_mode_number,
                                                                                         Real(
                                                                                             'tau_' + str(bound + 1)),
                                                                                         Real('tau_' + str(bound)),
-                                                                                        reduce_not(Not(relaxed_bound_const)),
+                                                                                        reduce_not(
+                                                                                            Not(relaxed_bound_const)),
                                                                                         integral)),
                                                   fair_const_1, fair_const_2, init_point_check]))
 
@@ -95,16 +108,6 @@ class BaseStlGoal(Goal):
     def make_stl_consts(self, bound):
         pass
 
-    def make_time_consts(self, bound, time_bound):
-        time_const_children = list()
-        #time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
-        for k in range(bound + 2):
-            time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
-            time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
-            if k < bound + 1:
-                time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
-        return And(time_const_children)
-
     def get_formula(self):
         return self.formula
 
@@ -120,10 +123,9 @@ class BaseStlGoal(Goal):
         stl_consts = self.make_stl_consts(bound)
         time_consts = self.make_time_consts(bound, time_bound)
 
-        # result_const.append(stl_consts)
-        # result_const.append(time_consts)
+        result_const.append(stl_consts)
+        result_const.append(time_consts)
         return And(result_const)
-
 
 
 class OldStlGoal(BaseStlGoal):
@@ -149,7 +151,9 @@ class NewStlGoal(BaseStlGoal):
 
         # partition constraints
         partition_const_children = PART.genPartition(baseP, fs[1], subFormulaMap)
-        return And(partition_const_children)
+        total_children = partition_const_children + [formulaConst]
+
+        return And(total_children)
 
 
 class ReachGoal(Goal):
@@ -167,7 +171,10 @@ class ReachGoal(Goal):
         # make goal speciific dictionary and substitute it
         goal_dict = make_dict(bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
         goal_consts = substitution(decoded_consts, goal_dict)
-        return goal_consts
+
+        # get time const
+        time_consts = self.make_time_consts(bound, time_bound)
+        return And([goal_consts, time_consts])
 
 
 class GoalFactory:

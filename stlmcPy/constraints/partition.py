@@ -6,7 +6,7 @@ from functools import singledispatch
 # We add linear order constraints for separation only
 
 def baseCase(baseSize):
-    genVar = generate_id(0, "tau_")
+    genVar = generate_id(1, "tau_")
     return [Real(next(genVar)) for _ in range(baseSize)]
 
 

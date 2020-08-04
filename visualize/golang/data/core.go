@@ -1,10 +1,10 @@
 /*
 Package data implements a simple library for stlMC visualization data.
-The data will be drawing using 2d space. It means that visualization
-itself is consist of (x, y) pair.
+The data represents a point (x, y) of a 2d space.
 
 The aforementioned conceptual objects' implementation in golang is marked
 with "Actual" and conceptual representation is marked with "Concept".
+
 The visualization needs data structure for basic elements such as point object.
 Point is a basic element (object) for representing graph base objects.
 
@@ -60,7 +60,7 @@ so it need to calculate maxPoint or minPoint before referencing them. The differ
 and [] Point is that, SubGraph is holding data that is related to actual sub-graph while [] Point 
 is holding data that is related to not sub-graph but many points. Since Sub of FullGraph's index is
 uid of each sub-graph, you can use same index at corresponding maxPoint and minPoint if you calculate any.
-The calculating max and min point needs to assert denying access to uncalculated but existing sub-graph's
+The calculating max and min point needs to assert denying access to not calculated but existing sub-graph's
 max and min point using maxPoint and minPoint. FullGraph's name and its sub-graphs name is same.
 
 	full-graph:
@@ -324,7 +324,7 @@ type IntervalInfo struct {
 	Data []float64		`json:"data"`
 }
 
-// FullGraphData is used for parsing a json file.
+// FullGraph4Json is used for parsing a json file.
 // This data structure exist only 1 for 1 json file.
 //
 // For example,

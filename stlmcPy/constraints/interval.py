@@ -8,6 +8,14 @@ def inIntervalC(x: float, j: Interval):
     return (x >= j.left if j.left_end else x > j.left) and (x <= j.right if j.right_end else x < j.right)
 
 
+def inIntervalCheck(j, b):
+    if str(j.left) == str(b.left) and str(j.right) == str(b.right):
+        return True
+    if str(j.left) == str(j.right) and str(j.left) == str(b.left):
+        return True
+    return False
+
+
 def intervalConstC(j: Interval, k: Interval, i: Interval):
     if j.left_end and not (k.left_end and i.right_end):
         if not (j.left > k.left - i.right):
@@ -79,7 +87,7 @@ def subInterval(i: Interval, j: Interval):
                 const.append(_real(i.right) <= _real(j.right))
     else:
         if not (isinstance(j.right, float) and math.isinf(j.right)):
-            return BoolVal(False)
+            return BoolVal("False")
 
     return And(const)
 
@@ -87,13 +95,13 @@ def subInterval(i: Interval, j: Interval):
 def intervalConst(j: Interval, k: Interval, i: Interval):
     const = []
     if not isinstance(j.right, float) or math.isfinite(j.right):
-        mid = (_real(j.left) + _real(j.right)) / RealVal(2)
+        mid = (_real(j.left) + _real(j.right)) / RealVal("2")
     else:
-        mid = (_real(j.left) + RealVal(1))
+        mid = (_real(j.left) + RealVal("1"))
 
     if isinstance(j.left, Real) or isinstance(j.left, RealVal) \
-        or isinstance(j.left, Int) or isinstance(j.left, IntVal):
-        const.append(_real(j.left) >= RealVal(0))
+            or isinstance(j.left, Int) or isinstance(j.left, IntVal):
+        const.append(_real(j.left) >= RealVal("0"))
 
     if math.isfinite(i.right):
         if j.left_end and not (k.left_end and i.right_end):
@@ -109,7 +117,7 @@ def intervalConst(j: Interval, k: Interval, i: Interval):
                 const.append(mid <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
-            return BoolVal(False)
+            return BoolVal("False")
 
     return And(const)
 
@@ -124,11 +132,11 @@ def _real(x):
     elif isinstance(x, IntVal):
         return x
     elif isinstance(x, float):
-        return RealVal(x)
+        return RealVal(str(x))
     elif isinstance(x, int):
-        return IntVal(x)
+        return IntVal(str(x))
     elif type(x) is str:
-        return Real(x)
+        return Real(str(x))
     else:
         print(type(x))
         raise RuntimeError("Invalid partition : " + str(x))

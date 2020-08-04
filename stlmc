@@ -1,12 +1,13 @@
 #!/usr/local/bin/python3
 from stlmcPy.driver.driver import Driver
+from stlmcPy.driver.test_driver import TestDriver
 
 if __name__ == '__main__':
 
     try:
-        driver = Driver()
+        driver = TestDriver()
         # driver.parse()
-        hehe = driver.run("./stlmcPy/tests/benchmark_models/linear/railroadLinearSimplify.model", True)
+        hehe = driver.run("./stlmcPy/tests/benchmark_models/linear/twoThermostatLinear.model", True)
         # print(hehe)
     except SystemExit:
         print("System error")

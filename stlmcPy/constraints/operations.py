@@ -539,7 +539,8 @@ def _(const: Not):
         else:
             raise NotSupportedError("think wise real or integer type cannot be negated")
     return const
-    #raise NotSupportedError("cannot reduce given constraint: " + str(const))
+    # raise NotSupportedError("cannot reduce given constraint: " + str(const))
+
 
 @reduce_not.register(And)
 def _(const: And):
@@ -555,14 +556,16 @@ def _(const: Or):
 def _(const: Implies):
     return Implies(reduce_not(const.left), reduce_not(const.right))
 
+
 @reduce_not.register(Eq)
 def _(const: Eq):
     return Eq(reduce_not(const.left), reduce_not(const.right))
 
 
 @reduce_not.register(Neq)
-def _(const: Neq, delta):
+def _(const: Neq):
     return Neq(reduce_not(const.left), reduce_not(const.right))
+
 
 @singledispatch
 def get_integrals_and_foralls(const: Constraint):
@@ -583,12 +586,14 @@ def _(const: Integral):
 def _(const: Unary):
     return get_integrals_and_foralls(const.child)
 
+
 @get_integrals_and_foralls.register(Eq)
 def _(const: Eq):
     if isinstance(const.left, Forall) or isinstance(const.right, Forall):
         return {const}
     else:
         return set()
+
 
 @get_integrals_and_foralls.register(Binary)
 def _(const: Binary):
@@ -676,3 +681,91 @@ def generate_id(initial, gid='v'):
     while True:
         yield gid + str(counter)
         counter += 1
+
+
+@singledispatch
+def infix(const: Constraint):
+    return str(const)
+
+
+# assumption: no mode variable exists
+@infix.register(Real)
+def _(const: Real):
+    if "tau" in const.id:
+        return const.id
+    index = const.id.find("_")
+    if index == -1:
+        return const.id
+    return const.id[:index]
+
+
+@infix.register(Variable)
+def _(const: Variable):
+    return const.id
+
+
+@infix.register(And)
+def _(const: And):
+    return '&'.join([infix(c) for c in const.children])
+
+
+@infix.register(Geq)
+def _(const: Geq):
+    return infix(const.left) + " >= " + infix(const.right)
+
+
+@infix.register(Gt)
+def _(const: Geq):
+    return infix(const.left) + " >= " + infix(const.right)
+
+
+@infix.register(Leq)
+def _(const: Geq):
+    return infix(const.left) + " <= " + infix(const.right)
+
+
+@infix.register(Lt)
+def _(const: Geq):
+    return infix(const.left) + " <= " + infix(const.right)
+
+
+@infix.register(Eq)
+def _(const: Eq):
+    return infix(const.left) + " >= " + infix(const.right) + " & " + infix(const.left) + " <= " + infix(
+        const.right)
+
+
+@infix.register(Neq)
+def _(const: Geq):
+    return infix(const.left) + " >= " + infix(const.right) + " & " + infix(const.left) + " < " + infix(
+        const.right)
+
+
+@infix.register(Add)
+def _(const: Add):
+    return "(" + infix(const.left) + " + " + infix(const.right) + ")"
+
+
+@infix.register(Sub)
+def _(const: Sub):
+    return "(" + infix(const.left) + " - " + infix(const.right) + ")"
+
+
+@infix.register(Mul)
+def _(const: Mul):
+    return "(" + infix(const.left) + " * " + infix(const.right) + ")"
+
+
+@infix.register(Div)
+def _(const: Div):
+    return "(" + infix(const.left) + " / " + infix(const.right) + ")"
+
+
+@infix.register(Pow)
+def _(const: Pow):
+    return "(" + infix(const.left) + " ** " + infix(const.right) + ")"
+
+
+@infix.register(Forall)
+def _(const: Forall):
+    return infix(const.const)

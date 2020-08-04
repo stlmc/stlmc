@@ -1,0 +1,9 @@
+(and (and (or (and (= bool reachability_0 (forall 1 . (<= real tx_0_0 (+ 70 0)))) (= bool not@reachability_0 (forall 1 . (> real tx_0_0 (+ 70 0)))) (or (not bool reachability_0) (not bool not@reachability_0)) (or bool reachability_0 bool not@reachability_0) (or (and bool reachability_0 (<= real tx_0_0 (+ 70 0))) (and bool not@reachability_0 (> real tx_0_0 (+ 70 0))))))) (and (or (and (= bool reachability_1 (forall 1 . (<= real tx_1_0 (+ 70 0)))) (= bool not@reachability_1 (forall 1 . (> real tx_1_0 (+ 70 0)))) (or (not bool reachability_1) (not bool not@reachability_1)) (or bool reachability_1 bool not@reachability_1) (or (and bool reachability_1 (<= real tx_1_0 (+ 70 0))) (and bool not@reachability_1 (> real tx_1_0 (+ 70 0)))))))
+
+
+
+
+
+
+(and (and (not (not
+        (and (implies (and (> (/ (+ 0.0 0.0) 2) (- 0.0 50.0)) (< (/ (+ 0.0 0.0) 2) (- real tau_1 0.0))) (and (implies (and (>= 0.0 0.0) (< 0.0 real tau_1)) bool reachability_0) (implies (and (>= 0.0 real tau_1)) bool reachability_1))) (implies (and (> (/ (+ 0.0 0.0) 2) (- real tau_1 50.0)) (< (/ (+ 0.0 0.0) 2) (- real tau_1 0.0))) (and (implies (and (>= 0.0 0.0) (< 0.0 real tau_1)) bool reachability_0) (implies (and (>= 0.0 real tau_1)) bool reachability_1))) (implies (and (> (/ (+ 0.0 0.0) 2) (- real tau_1 50.0))) (and (implies (and (>= 0.0 0.0) (< 0.0 real tau_1)) bool reachability_0) (implies (and (>= 0.0 real tau_1)) bool reachability_1)))))))) (and (= 0 real tau_0) (<= 0 real tau_0) (<= real tau_0 60) (< real tau_0 real tau_1) (<= 0 real tau_1) (<= real tau_1 60) (< real tau_1 real tau_2) (<= 0 real tau_2) (<= real tau_2 60)))
