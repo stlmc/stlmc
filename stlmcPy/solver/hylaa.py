@@ -115,7 +115,10 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
         hylaa_result = True
         counter_consts = None
+        curInd = 0
         while hylaa_result:
+            print("Current index : " + str(curInd))
+            curInd += 1
             if counter_consts is not None:
                 abstracted_consts = And([abstracted_consts, Or(counter_consts)])
             # 2. Perform process #2 from note
@@ -313,7 +316,7 @@ class HylaaSolverUnsatCore(HylaaSolver):
                         total[c_vs] = alpha[c_vs]
                         c_unsat.add(Not(c_vs))
                     else:
-                        raise NotSupportedError("Forall variable assignments problem")
+                        flag = True
                     break
             if flag:
                 if assignment.eval(c_elem):
@@ -527,7 +530,7 @@ def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
     ce = Core(ha, settings).run(init_list)
     print(ce.counterexample)
     result = ce.last_cur_state.mode.name
-    if result == 'error':
+    if len(ce.counterexample) > 0:
         return False
     else:
         return True
