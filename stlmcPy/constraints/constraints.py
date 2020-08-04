@@ -243,7 +243,7 @@ class Variable(Leaf, Expr):
         return str(self.__id)
 
     def __repr__(self):
-        return str(self.__type) + " " + str(self.__id)
+        return str(self.__id)
 
 
 class Real(Variable):

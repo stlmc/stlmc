@@ -18,6 +18,7 @@ from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.abstract_solver import BaseSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.z3 import Z3Solver
+from timeit import default_timer as timer
 
 import abc
 
@@ -107,23 +108,32 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         # pre-processing
         # mode_dict, else_dict = divide_dict(info_dict)
         # 1. Build \varphi_ABS and mapping_info
+        solve_start = timer()
         integral_forall_set = get_integrals_and_foralls(all_consts)
         inverse_mapping_info, inverse_mapping_info_without_and = gen_fresh_new_var_map(integral_forall_set)
         abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
         mapping_info = inverse_dict(inverse_mapping_info_without_and)
         max_bound = get_bound(mapping_info)
+        step1_end = timer()
+
+        print("step1 time: " + str(step1_end - solve_start) + " sec")
 
         hylaa_result = True
         counter_consts = None
         curInd = 0
         while hylaa_result:
-            print("Current index : " + str(curInd))
+            print("loop count: " + str(curInd))
+            loop_start = timer()
             curInd += 1
             if counter_consts is not None:
                 abstracted_consts = And([abstracted_consts, Or(counter_consts)])
             # 2. Perform process #2 from note
             solver = Z3Solver()
             result, size = solver.solve(abstracted_consts)
+
+            smt_solving_end = timer()
+
+            print("SMT solving time: " + str(smt_solving_end - loop_start) + " sec")
 
             if result:
                 print("SMT solver level result!")
@@ -169,11 +179,13 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 remove_mode_clauses.append(clause_bound)
 
             max_literal_set_list = remove_mode_clauses
+            solve_strategy_time = timer()
 
+            print("Preparing max literal set: " + str(solve_strategy_time - smt_solving_end) + " sec")
+            hylaa_start_time = timer()
             try:
                 hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
                                                     new_alpha)
-
                 # counter_consts_set = set()
                 # for s in max_literal_set_list:
                 #     for c in s:
@@ -199,6 +211,8 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(re))
+            hylaa_end_time = timer()
+            print("hylaa time: " + str(hylaa_end_time - hylaa_start_time) + " sec")
 
         # return False, 0
         return hylaa_result, size

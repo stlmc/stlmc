@@ -191,8 +191,8 @@ def z3checkSat(consts, logic):
     # solver.add(target_z3_simplify)
     solver.add(z3Consts)
 
-    with open("thermoLinear.smt2", 'w') as fle:
-        print(solver.to_smt2(), file=fle)
+    # with open("thermoLinear.smt2", 'w') as fle:
+    #     print(solver.to_smt2(), file=fle)
 
     result = solver.check()
     str_result = str(result)
