@@ -8,7 +8,7 @@ linear_src_model := $(wildcard $(shell pwd)/stlmcPy/tests/benchmark_models/linea
 linear-test := $(linear_src_model:%.model=%.result)
 
 
-.PHONY: antlr clean all
+.PHONY: antlr clean all %.result
 all: $(linear-test)
 	@ echo $<
 
@@ -18,7 +18,7 @@ antlr:
 
 %.result: %.model
 	$(info start testing for $<)
-	@./stlmc $< -solver hylaa -u 6 > $@
+	@./stlmc $< -solver hylaa
 
 
 clean:

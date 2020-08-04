@@ -1,7 +1,9 @@
 import abc
 
+from stlmcPy.util.logger import Logger
 
-class BaseSolver:
+
+class BaseSolver(Logger):
 
     @abc.abstractmethod
     def solve(self, all_consts, info_dict=None):

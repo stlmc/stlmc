@@ -1,9 +1,9 @@
 from antlr4 import FileStream, CommonTokenStream
 
 from stlmcPy.constraints.constraints import *
-from stlmcPy.core.syntax.modelLexer import modelLexer
-from stlmcPy.core.syntax.modelParser import modelParser
-from stlmcPy.core.syntax.modelVisitor import modelVisitor
+from stlmcPy.syntax.modelLexer import modelLexer
+from stlmcPy.syntax.modelParser import modelParser
+from stlmcPy.syntax.modelVisitor import modelVisitor
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.objects.model import StlMC
 

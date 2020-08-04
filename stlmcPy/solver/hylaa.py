@@ -116,13 +116,13 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         max_bound = get_bound(mapping_info)
         step1_end = timer()
 
-        print("step1 time: " + str(step1_end - solve_start) + " sec")
-
+        self.add_log_info("step1 time: " + str(step1_end - solve_start) + " sec")
+        self.add_log_info("------------------------------")
         hylaa_result = True
         counter_consts = None
         curInd = 0
         while hylaa_result:
-            print("loop count: " + str(curInd))
+            self.add_log_info("loop count: " + str(curInd))
             loop_start = timer()
             curInd += 1
             if counter_consts is not None:
@@ -133,10 +133,10 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
             smt_solving_end = timer()
 
-            print("SMT solving time: " + str(smt_solving_end - loop_start) + " sec")
+            self.add_log_info("SMT solving time: " + str(smt_solving_end - loop_start) + " sec")
 
             if result:
-                print("SMT solver level result!")
+                self.add_log_info("SMT solver level result!")
                 return True, 0
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
@@ -181,10 +181,10 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             max_literal_set_list = remove_mode_clauses
             solve_strategy_time = timer()
 
-            print("Preparing max literal set: " + str(solve_strategy_time - smt_solving_end) + " sec")
+            self.add_log_info("Preparing max literal set: " + str(solve_strategy_time - smt_solving_end) + " sec")
             hylaa_start_time = timer()
             try:
-                hylaa_result = gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
+                hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
                                                     new_alpha)
                 # counter_consts_set = set()
                 # for s in max_literal_set_list:
@@ -212,10 +212,115 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(re))
             hylaa_end_time = timer()
-            print("hylaa time: " + str(hylaa_end_time - hylaa_start_time) + " sec")
-
+            self.add_log_info("hylaa time: " + str(hylaa_end_time - hylaa_start_time) + " sec")
+            self.add_log_info("------------------------------")
         # return False, 0
         return hylaa_result, size
+
+    def gen_and_run_hylaa_ha(self, s_f_list, bound, sigma, alpha):
+        new_s_f_list = list()
+        for s in s_f_list:
+            new_s = set()
+            for c in s:
+                new_s.add(substitution(c, sigma))
+            new_s_f_list.append(new_s)
+
+        sv = get_vars_from_set(new_s_f_list)
+        l_v = list()
+        for v in sv:
+            new_v = remove_index(v)
+            if not new_v.id in l_v:
+                l_v.append(new_v.id)
+
+        ha = HybridAutomaton('ha')
+        l_mode = list()
+        for i in range(bound + 1):
+            l_mode.append(make_mode_property(s_f_list[i], i, bound, l_v, ha, sigma, alpha))
+
+        l_mode.append(ha.new_mode("error"))
+        for i in range(bound + 1):
+            make_transition(s_f_list[i], i, bound, l_v, ha, l_mode[i], l_mode[i + 1])
+
+        forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], bound)
+
+        # assumption: all boundaries should be number
+        sympy_expr_list = list()
+
+        for cc in init_set:
+            sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
+
+        bound_box_list = list()
+        for i in range(len(l_v)):
+            bound_box_list.append([None, None])
+
+        for t in l_v:
+            if "tau" in t:
+                index = find_index(l_v, Real(t))
+                bound_box_list[index][0] = Float(0.0)
+                bound_box_list[index][1] = Float(0.0)
+
+        for expr in sympy_expr_list:
+            if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
+                # left is variable
+                if isinstance(expr.lhs, Symbol):
+                    var_id = str(expr.lhs)
+                    index = find_index(l_v, Real(var_id))
+                    if bound_box_list[index][0] is None:
+                        bound_box_list[index][0] = expr.rhs
+                    else:
+                        if str(simplify(bound_box_list[index][0] <= expr.rhs)) == "True":
+                            bound_box_list[index][0] = expr.rhs
+                else:
+                    var_id = str(expr.rhs)
+                    index = find_index(l_v, Real(var_id))
+                    if bound_box_list[index][1] is None:
+                        bound_box_list[index][1] = expr.lhs
+                    else:
+                        if str(simplify(bound_box_list[index][1] <= expr.lhs)) == "True":
+                            bound_box_list[index][1] = expr.lhs
+
+            elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
+                # left is variable
+                if isinstance(expr.lhs, Symbol):
+                    var_id = str(expr.lhs)
+                    index = find_index(l_v, Real(var_id))
+                    if bound_box_list[index][1] is None:
+                        bound_box_list[index][1] = expr.rhs
+                    else:
+                        if str(simplify(bound_box_list[index][1] >= expr.rhs)) == "True":
+                            bound_box_list[index][1] = expr.rhs
+                else:
+                    var_id = str(expr.rhs)
+                    index = find_index(l_v, Real(var_id))
+                    if bound_box_list[index][0] is None:
+                        bound_box_list[index][0] = expr.lhs
+                    else:
+                        if str(simplify(bound_box_list[index][0] >= expr.lhs)) == "True":
+                            bound_box_list[index][0] = expr.lhs
+        for e in bound_box_list:
+            if e[0] is None:
+                e[0] = -float("inf")
+            else:
+                e[0] = float(e[0])
+            if e[1] is None:
+                e[1] = float("inf")
+            else:
+                e[1] = float(e[1])
+
+        # add affine variable
+        bound_box_list.append([1.0, 1.0])
+        mode = ha.modes['mode0']
+        init_lpi = lputil.from_box(bound_box_list, mode)
+        init_list = [StateSet(init_lpi, mode)]
+        settings = HylaaSettings(0.01, 100)
+        # settings.stop_on_aggregated_error = False
+        settings.aggstrat.deaggregate = True  # use deaggregation
+        ce = Core(ha, settings).run(init_list)
+        self.add_log_info(str(ce.counterexample))
+        if len(ce.counterexample) > 0:
+            return False
+        else:
+            return True
 
     def make_assignment(self):
         return HylaaAssignment(HylaaSolver().hylaa_model)
@@ -441,113 +546,6 @@ def revert_by_sigma(clauses: set, sigma: dict):
         else:
             revert_s.add(c)
     return revert_s
-
-
-def gen_and_run_hylaa_ha(s_f_list, bound, sigma, alpha):
-    new_s_f_list = list()
-    for s in s_f_list:
-        new_s = set()
-        for c in s:
-            new_s.add(substitution(c, sigma))
-        new_s_f_list.append(new_s)
-
-    sv = get_vars_from_set(new_s_f_list)
-    l_v = list()
-    for v in sv:
-        new_v = remove_index(v)
-        if not new_v.id in l_v:
-            l_v.append(new_v.id)
-
-    ha = HybridAutomaton('ha')
-    l_mode = list()
-    for i in range(bound + 1):
-        l_mode.append(make_mode_property(s_f_list[i], i, bound, l_v, ha, sigma, alpha))
-
-    l_mode.append(ha.new_mode("error"))
-    for i in range(bound + 1):
-        make_transition(s_f_list[i], i, bound, l_v, ha, l_mode[i], l_mode[i + 1])
-
-    forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], bound)
-
-    # assumption: all boundaries should be number
-    sympy_expr_list = list()
-
-    for cc in init_set:
-        sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
-
-    bound_box_list = list()
-    for i in range(len(l_v)):
-        bound_box_list.append([None, None])
-
-    for t in l_v:
-        if "tau" in t:
-            index = find_index(l_v, Real(t))
-            bound_box_list[index][0] = Float(0.0)
-            bound_box_list[index][1] = Float(0.0)
-
-    for expr in sympy_expr_list:
-        if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
-            # left is variable
-            if isinstance(expr.lhs, Symbol):
-                var_id = str(expr.lhs)
-                index = find_index(l_v, Real(var_id))
-                if bound_box_list[index][0] is None:
-                    bound_box_list[index][0] = expr.rhs
-                else:
-                    if str(simplify(bound_box_list[index][0] <= expr.rhs)) == "True":
-                        bound_box_list[index][0] = expr.rhs
-            else:
-                var_id = str(expr.rhs)
-                index = find_index(l_v, Real(var_id))
-                if bound_box_list[index][1] is None:
-                    bound_box_list[index][1] = expr.lhs
-                else:
-                    if str(simplify(bound_box_list[index][1] <= expr.lhs)) == "True":
-                        bound_box_list[index][1] = expr.lhs
-
-        elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
-            # left is variable
-            if isinstance(expr.lhs, Symbol):
-                var_id = str(expr.lhs)
-                index = find_index(l_v, Real(var_id))
-                if bound_box_list[index][1] is None:
-                    bound_box_list[index][1] = expr.rhs
-                else:
-                    if str(simplify(bound_box_list[index][1] >= expr.rhs)) == "True":
-                        bound_box_list[index][1] = expr.rhs
-            else:
-                var_id = str(expr.rhs)
-                index = find_index(l_v, Real(var_id))
-                if bound_box_list[index][0] is None:
-                    bound_box_list[index][0] = expr.lhs
-                else:
-                    if str(simplify(bound_box_list[index][0] >= expr.lhs)) == "True":
-                        bound_box_list[index][0] = expr.lhs
-    for e in bound_box_list:
-        if e[0] is None:
-            e[0] = -float("inf")
-        else:
-            e[0] = float(e[0])
-        if e[1] is None:
-            e[1] = float("inf")
-        else:
-            e[1] = float(e[1])
-
-    # add affine variable
-    bound_box_list.append([1.0, 1.0])
-    mode = ha.modes['mode0']
-    init_lpi = lputil.from_box(bound_box_list, mode)
-    init_list = [StateSet(init_lpi, mode)]
-    settings = HylaaSettings(0.01, 100)
-    # settings.stop_on_aggregated_error = False
-    settings.aggstrat.deaggregate = True  # use deaggregation
-    ce = Core(ha, settings).run(init_list)
-    print(ce.counterexample)
-    result = ce.last_cur_state.mode.name
-    if len(ce.counterexample) > 0:
-        return False
-    else:
-        return True
 
 
 @singledispatch
