@@ -34,7 +34,7 @@ real vb;
 '''
 {
     mode:
-        vb = 5 ; 
+        vb = 5 ;
     inv:
     flow:
         d/dt[tx] = -5;
@@ -68,7 +68,7 @@ real vb;
 }
 {
     mode:
-        vb = -5 ; 
+        vb = -5 ;
     inv:
     flow:
         d/dt[tx] = -5;
