@@ -108,23 +108,26 @@ class StlConfiguration:
 class Runner(Logger):
     @abc.abstractmethod
     def run(self, config: StlConfiguration):
+        solver = SolverFactory(config.solver).generate_solver()
         for file_name in config.file_list:
-            self.add_log_info("Model : \"" + str(file_name) + "\"")
+            #self.add_log_info("Model : \"" + str(file_name) + "\"")
             model, PD, goals = generate_object(file_name)
-            for bound in config.bound:
-                self.add_log_info("bound: " + str(bound))
-                model_const = model.make_consts(bound)
-                solver = SolverFactory(config.solver).generate_solver()
-                for goal in goals:
+            for goal in goals:
+                solver.clear_log()
+                for bound in config.bound:
+                    solver.add_bound(bound)
+                    model_const = model.make_consts(bound)
                     goal_const = goal.make_consts(bound, 60, 0, model, PD)
                     result, size = solver.solve(And([model_const, goal_const]), model.range_dict)
-                    self.add_log_info(solver.get_log_info())
+                    #self.concat(solver.get_log_info())
                     print("Driver returns " + str(result))
-                    self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
-                    self.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "###" + str(bound) + "###" + str(result))
+                    solver.add_result(result)
+                    solver.add_log_info()
+                    # self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
+                solver.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
                         # print(assignment)
                     # if is_visualize:
                     # integrals_list = model.get_flow_for_assignment(1)

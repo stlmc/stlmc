@@ -538,6 +538,12 @@ def _(const: Not):
             return BoolVal('True')
         else:
             raise NotSupportedError("think wise real or integer type cannot be negated")
+    if isinstance(child, And):
+        return Or([reduce_not(Not(c)) for c in child.children])
+    if isinstance(child, Or):
+        return And([reduce_not(Not(c)) for c in child.children])
+    if isinstance(child, Implies):
+        return And([child.left, reduce_not(Not(child.right))])
     return const
     # raise NotSupportedError("cannot reduce given constraint: " + str(const))
 

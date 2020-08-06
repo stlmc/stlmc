@@ -3,11 +3,12 @@ from functools import singledispatch
 import z3
 
 from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
-    substitution_zero2t, substitution, reduce_not
+    substitution_zero2t, reduce_not
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
 from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
+from timeit import default_timer as timer
 
 
 class Z3Solver(BaseSolver, SMTSolver):
@@ -15,8 +16,37 @@ class Z3Solver(BaseSolver, SMTSolver):
         BaseSolver.__init__(self)
         self._z3_model = None
 
+    def z3checkSat(self, consts: Constraint, logic):
+        z3Consts = z3Obj(consts)
+
+        if logic != "NONE":
+            solver = z3.SolverFor(logic)
+        else:
+            solver = z3.Solver()
+
+        # solver.set("timeout", timeout * 1000)
+        # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
+        # solver.add(target_z3_simplify)
+        solving_start = timer()
+        solver.add(z3Consts)
+
+        # with open("thermoLinear.smt2", 'w') as fle:
+        #     print(solver.to_smt2(), file=fle)
+
+        result = solver.check()
+        solving_end = timer()
+        self.add_smt_solving_time(solving_end - solving_start)
+        str_result = str(result)
+        if str_result == "sat":
+            m = solver.model()
+            result = False
+        else:
+            m = None
+            result = True if str_result == "unsat" else "Unknown"
+        return result, sizeAst(z3.And([z3Consts])), m
+
     def solve(self, all_consts, info_dict=None):
-        result, size, self._z3_model = z3checkSat(all_consts, 'NRA')
+        result, size, self._z3_model = self.z3checkSat(all_consts, 'NRA')
         return result, size
 
     def simplify(self, consts):
@@ -177,33 +207,6 @@ def make_forall_consts(forall: Forall):
         return Or([first_const, second_const])
     else:
         return make_forall_consts_aux(forall)
-
-
-def z3checkSat(consts, logic):
-    z3Consts = z3Obj(consts)
-
-    if logic != "NONE":
-        solver = z3.SolverFor(logic)
-    else:
-        solver = z3.Solver()
-
-    # solver.set("timeout", timeout * 1000)
-    # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-    # solver.add(target_z3_simplify)
-    solver.add(z3Consts)
-
-    # with open("thermoLinear.smt2", 'w') as fle:
-    #     print(solver.to_smt2(), file=fle)
-
-    result = solver.check()
-    str_result = str(result)
-    if str_result == "sat":
-        m = solver.model()
-        result = False
-    else:
-        m = None
-        result = True if str_result == "unsat" else "Unknown"
-    return result, sizeAst(z3.And([z3Consts])), m
 
 
 # return the size of the Z3 constraint

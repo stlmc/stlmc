@@ -4,7 +4,7 @@ from functools import singledispatch
 from itertools import product
 from timeit import default_timer as timer
 
-from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float, Equality,\
+from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float, Equality, \
     Unequality
 from sympy.core import relational
 
@@ -125,14 +125,14 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         max_bound = get_bound(mapping_info)
         step1_end = timer()
 
-        self.add_log_info("step1 time: " + str(step1_end - solve_start) + " sec")
-        self.add_log_info("------------------------------")
+        self.add_step1_time(str(step1_end - solve_start))
+        # self.add_log_info("------------------------------")
         hylaa_result = True
         counter_consts = None
 
         cur_index = 0
         while hylaa_result:
-            self.add_log_info("loop count: " + str(cur_index))
+            self.add_loop_time(str(cur_index))
             loop_start = timer()
             cur_index += 1
             if counter_consts is not None:
@@ -143,10 +143,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
             smt_solving_end = timer()
 
-            self.add_log_info("SMT solving time: " + str(smt_solving_end - loop_start) + " sec")
+            self.add_smt_solving_time(str(smt_solving_end - loop_start))
 
             if result:
-                self.add_log_info("SMT solver level result!")
+                print("Smt solver level result!")
+                # self.add_log_info("SMT solver level result!")
                 return True, 0
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
@@ -191,7 +192,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             max_literal_set_list = remove_mode_clauses
             solve_strategy_time = timer()
 
-            self.add_log_info("Preparing max literal set: " + str(solve_strategy_time - smt_solving_end) + " sec")
+            self.add_literal_set_time(str(solve_strategy_time - smt_solving_end))
             hylaa_start_time = timer()
             try:
                 hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
@@ -223,8 +224,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 print(repr(re))
             hylaa_end_time = timer()
-            self.add_log_info("hylaa time: " + str(hylaa_end_time - hylaa_start_time) + " sec")
-            self.add_log_info("------------------------------")
+            self.add_hylaa_time(str(hylaa_end_time - hylaa_start_time))
+            self.add_log_info()
+            # self.add_log_info("------------------------------")
 
         # TODO: replace -1 to formula size
         return hylaa_result, -1
@@ -259,6 +261,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         sympy_expr_list = list()
 
         for cc in init_set:
+            # if not isinstance(cc, Lt) or not isinstance(cc, Leq) or \
+            #         not isinstance(cc, Gt) or not isinstance(cc, Geq) or \
+            #         not isinstance(cc, Eq) or not isinstance(cc, Neq):
             sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
 
         bound_box_list = list()
@@ -329,7 +334,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         settings.aggstrat.deaggregate = True  # use deaggregation
         core = Core(ha, settings)
         ce = core.run(init_list)
-        self.add_log_info(str(ce.counterexample))
+        # self.add_log_info(str(ce.counterexample))
         if core.is_counterexample:
             self.hylaa_core = core
             return False
@@ -483,7 +488,6 @@ class HylaaSolverMultiJump(HylaaSolver):
                     new_set.add(cc)
             for cc in guard_set:
                 new_set.add(reduce_not(cc))
-            new_set = new_set.difference(s_diff)
             max_literal_set_list.append(new_set)
         return max_literal_set_list, total
 
