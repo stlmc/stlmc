@@ -21,9 +21,5 @@ class Assignment:
         pass
 
     @abc.abstractmethod
-    def solver_model_to_generalized_model(self):
-        pass
-
-    @abc.abstractmethod
     def eval(self, const):
         pass

@@ -45,6 +45,8 @@ class StlConfiguration:
         # TODO: move hylaa-reduction, hylaa-unsat core to hylaa strategy option
         self.parser.add_argument('-solver', type=str,
                                  help='run the objects using given smt solver, support \" {yices, z3, hylaa, hylaa-reduction, hylaa-unsat-core} \" (default: z3)')
+        self.parser.add_argument('-ce', type=string_to_bool,
+                                 help='generate counter example (default: false)')
         # self.parser.add_argument('-logic', type=str,
         #                          help='run the SMT solver using given given logic (default: QF-NRA)')
         # self.parser.add_argument('-visualize', type=self.str2bool,
@@ -61,6 +63,7 @@ class StlConfiguration:
         self._upper = 1
         self._solver = "z3"
         self._solver_list = ["z3", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
+        self._gen_ce = False
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -82,6 +85,8 @@ class StlConfiguration:
             self._upper = self._args.upper
         if self._args.solver is not None:
             self._solver = (self._args.solver.lower() if self._args.solver.lower() in self._solver_list else 'z3')
+        if self._args.ce is not None:
+            self._gen_ce = self._args.ce
 
     @property
     def file_list(self):
@@ -94,6 +99,10 @@ class StlConfiguration:
     @property
     def solver(self):
         return self._solver
+
+    @property
+    def is_generate_counterexample(self):
+        return self._gen_ce
 
 
 class Runner(Logger):
@@ -110,8 +119,13 @@ class Runner(Logger):
                     goal_const = goal.make_consts(bound, 60, 0, model, PD)
                     result, size = solver.solve(And([model_const, goal_const]), model.range_dict)
                     self.add_log_info(solver.get_log_info())
+                    print("Driver returns " + str(result))
                     self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     self.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "###" + str(bound) + "###" + str(result))
+                    if config.is_generate_counterexample:
+                        assignment = solver.make_assignment()
+                        assignment.get_assignments()
+                        # print(assignment)
                     # if is_visualize:
                     # integrals_list = model.get_flow_for_assignment(1)
                     # assignment = solver.make_assignment()

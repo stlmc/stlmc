@@ -1,4 +1,4 @@
-ANTLR_DIR := $(shell pwd)/stlmcPy/core/syntax
+ANTLR_DIR := $(shell pwd)/stlmcPy/syntax
 LINEAR_TEST_DIR := $(shell pwd)/stlmcPy/tests/benchmark_models/linear
 
 #

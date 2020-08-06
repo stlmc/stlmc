@@ -3,7 +3,7 @@ from functools import singledispatch
 import z3
 
 from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
-    substitution_zero2t, substitution
+    substitution_zero2t, substitution, reduce_not
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
 from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
@@ -12,6 +12,7 @@ from stlmcPy.constraints.constraints import *
 
 class Z3Solver(BaseSolver, SMTSolver):
     def __init__(self):
+        BaseSolver.__init__(self)
         self._z3_model = None
 
     def solve(self, all_consts, info_dict=None):
@@ -369,7 +370,34 @@ def _(const: Forall):
     bound_str = const.start_tau.id[3:]
 
     new_forall_const = const.const
-    if not isinstance(const.const, Bool):
+    if isinstance(const.const, Bool):
+        return z3Obj(const.const)
+    if get_vars(const.const) is None:
+        return const.const
+    if isinstance(const.const, Not):
+        if isinstance(const.const.child, Bool):
+            return z3.Not(z3Obj(const.const.child))
+        reduced_const = reduce_not(const.const)
+        new_const = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
+        return new_const
+    elif isinstance(const.const, Implies):
+        left = reduce_not(Not(const.const.left))
+        right = const.const.right
+        left_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, left, const.integral))
+        right_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, right, const.integral))
+        return z3.Or([left_new, right_new])
+    elif isinstance(const.const, And) or isinstance(const.const, Or):
+        op_dict = {And: z3.And, Or: z3.Or}
+        result = list()
+        for c in const.const.children:
+            if isinstance(c, Bool):
+                result.append(z3Obj(c))
+            elif get_vars(c) is None:
+                result.append(z3Obj(c))
+            else:
+                result.append(z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+        return op_dict[const.const.__class__](result)
+    elif not isinstance(const.const, Bool):
         op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
         exp = Sub(const.const.left, const.const.right)
         new_forall_child_const = reverse_inequality(op_dict[const.const.__class__](exp, RealVal('0')))

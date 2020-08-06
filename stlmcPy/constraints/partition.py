@@ -1,5 +1,5 @@
 from .constraints import *
-from .operations import generate_id
+from .operations import generate_id, get_vars
 from functools import singledispatch
 
 
@@ -61,21 +61,47 @@ def genPartition(baseP, sepMap, subFormula):
 
     baseP.insert(0, RealVal(0))
 
+    count = 0
+    tau_abstraction = dict()
+
     for k in propOrdDict.keys():
         left = subGlobal[k][0]
         right = subGlobal[k][1]
         for i in range(1, len(baseP)):
-            sub = []
-            sub.append(Not(Neq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i - 1])))
-            sub.append(Not(Neq(propOrdDict[k][2 * i - 1], propOrdDict[k][2 * i])))
-            subLeft = []
-            subRight = []
+            change_point = Eq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
+            sub_left = []
+            sub_right = []
+            sub_left.append((baseP[i] - left) < RealVal("0"))
+            sub_right.append((baseP[i] - right) < RealVal("0"))
             for j in range(0, i):
-                subLeft.append(Implies((baseP[i] - left) >= RealVal(0), Eq((baseP[i] - left), baseP[j])))
-                subRight.append(Implies((baseP[i] - right) >= RealVal(0), Eq((baseP[i] - right), baseP[j])))
-            consts.append(Implies(Or(sub), And([Or(subLeft), Or(subRight)])))
+                sub_left.append(Eq((baseP[i] - left), baseP[j]))
+                sub_right.append(Eq((baseP[i] - right), baseP[j]))
+            left_vars = get_vars(Or(sub_left))
+            left_max = find_max(left_vars)
+            right_vars = get_vars(Or(sub_right))
+            right_max = find_max(right_vars)
+            tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
+            count += 1
+            tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
+            consts.append(And([change_point, And([Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1)),
+                                                  Bool("newTau#_" + str(count) + "_" + str(right_max - 1))])]))
+            count += 1
+
+    for ta in tau_abstraction:
+        consts.append(Eq(ta, tau_abstraction[ta]))
 
     return consts
+
+
+def find_max(s: set):
+    max_bound = -1
+    for var in s:
+        start_index = int(var.id.find("_"))
+        if var.id[:start_index] == "tau":
+            bound = int(var.id[start_index + 1:])
+            if max_bound < bound:
+                max_bound = bound
+    return max_bound
 
 
 @singledispatch
@@ -139,4 +165,3 @@ def _(formula, baseCase, result, sepMap):
 
     # result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
     result[formula] = set(baseCase)
-

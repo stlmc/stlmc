@@ -58,6 +58,8 @@ class Core(Freezable):
         LpInstance.print_verbose = self.print_verbose
         LpInstance.print_debug = self.print_debug
 
+        self.ce_dict = dict()
+        self._is_ce_exist = False
         self.freeze_attrs()
 
     def print_normal(self, msg):
@@ -121,10 +123,24 @@ class Core(Freezable):
 
             if self.settings.make_counterexample and not self.result.counterexample:
                 self.print_verbose("Reached concrete error state; making concrete counter-example")
-                self.result.counterexample = make_counterexample(self.hybrid_automaton, state, t, t_lpi)
-
+                self._is_ce_exist = True
+                self.ce_dict["state"] = state
+                self.ce_dict["t"] = t
+                self.ce_dict["t_lpi"] = t_lpi
+                # self.result.counterexample = make_counterexample(self.hybrid_automaton, state, t, t_lpi)
                 # todo: implement this with inputs
                 #self.plotman.draw_counterexample(self.result.counterexample)
+
+    @property
+    def is_counterexample(self):
+        return self._is_ce_exist
+
+    def get_counterexample(self):
+        if self._is_ce_exist:
+            self.result.counterexample = make_counterexample(self.hybrid_automaton, self.ce_dict["state"], self.ce_dict["t"], self.ce_dict["t_lpi"])
+            return self.result.counterexample
+        return None
+
 
     def check_guards(self):
         '''check for discrete successors with the guards'''

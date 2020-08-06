@@ -398,11 +398,11 @@ def _(const):
     x = const.left
     y = const.right
 
-    if len(get_vars(const)) == 0:
+    if get_vars(const) is None:
         return RealVal("0")
-    if len(get_vars(x)) == 0:
+    if get_vars(x) is None:
         return diff_aux(y)
-    if len(get_vars(y)) == 0:
+    if get_vars(y) is None:
         return diff_aux(x)
 
     return Add(diff_aux(x), diff_aux(y))
@@ -413,11 +413,11 @@ def _(const):
     x = const.left
     y = const.right
 
-    if len(get_vars(const)) == 0:
+    if get_vars(const) is None:
         return RealVal("0")
-    if len(get_vars(x)) == 0:
+    if get_vars(x) is None:
         return diff_aux(y)
-    if len(get_vars(y)) == 0:
+    if get_vars(y) is None:
         return diff_aux(x)
 
     return Sub(diff_aux(x), diff_aux(y))
@@ -429,9 +429,9 @@ def _(const):
     y = const.right
 
     if isinstance(x, Variable) and (len(get_vars(y)) == 0):
-        if eval(str(y)) == 0:
+        if eval(str(infix(y))) == 0:
             return RealVal("0")
-        elif str(x.id[0:3] == 'tau'):
+        elif str(x.id)[0:3] == 'tau':
             return Mul(y, Pow(x, (Sub(y, RealVal("1")))))
         else:
             return RealVal("0")
@@ -568,45 +568,49 @@ def _(const: Neq):
 
 
 @singledispatch
-def get_integrals_and_foralls(const: Constraint):
+def get_boolean_abstraction(const: Constraint):
     return set()
 
 
-@get_integrals_and_foralls.register(Forall)
+@get_boolean_abstraction.register(Forall)
 def _(const: Forall):
     return {const}
 
 
-@get_integrals_and_foralls.register(Integral)
+@get_boolean_abstraction.register(Integral)
 def _(const: Integral):
     return {const}
 
 
-@get_integrals_and_foralls.register(Unary)
+@get_boolean_abstraction.register(Unary)
 def _(const: Unary):
-    return get_integrals_and_foralls(const.child)
+    return get_boolean_abstraction(const.child)
 
 
-@get_integrals_and_foralls.register(Eq)
+@get_boolean_abstraction.register(Eq)
 def _(const: Eq):
     if isinstance(const.left, Forall) or isinstance(const.right, Forall):
         return {const}
+    elif isinstance(const.left, Bool):
+        if "newTau#" in const.left.id:
+            return {const}
+        return set()
     else:
         return set()
 
 
-@get_integrals_and_foralls.register(Binary)
+@get_boolean_abstraction.register(Binary)
 def _(const: Binary):
-    left_set = get_integrals_and_foralls(const.left)
-    right_set = get_integrals_and_foralls(const.right)
+    left_set = get_boolean_abstraction(const.left)
+    right_set = get_boolean_abstraction(const.right)
     return left_set.union(right_set)
 
 
-@get_integrals_and_foralls.register(Multinary)
+@get_boolean_abstraction.register(Multinary)
 def _(const: Multinary):
     new_set = set()
     for c in const.children:
-        new_set = new_set.union(get_integrals_and_foralls(c))
+        new_set = new_set.union(get_boolean_abstraction(c))
     return new_set
 
 
