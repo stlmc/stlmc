@@ -7,6 +7,8 @@ from timeit import default_timer as timer
 from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float, Equality, \
     Unequality
 from sympy.core import relational
+from stlmcPy.tree.operations import size_of_tree
+import copy
 
 from hylaa import symbolic, lputil
 from hylaa.core import Core
@@ -25,24 +27,41 @@ from stlmcPy.solver.z3 import Z3Solver
 class HylaaStrategy:
 
     @abc.abstractmethod
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c):
+    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
+                       boolean_sub_dict):
         pass
 
-    def get_max_literal(self, alpha, assignment, max_bound, new_abstracted_consts, c):
+    def get_max_literal(self, alpha, assignment, max_bound, c, optimize, z3_boolean_consts, boolean_sub_dict):
         c_sat = set()
         c_unsat = set()
         total = dict()
+
+        assign_const = list()
+
+        for b in boolean_sub_dict:
+            if not isinstance(b, Bool):
+                if assignment.eval(b):
+                    assign_const.append(boolean_sub_dict[b])
+                else:
+                    if not "newTau" in boolean_sub_dict[b].id:
+                        assign_const.append(Not(boolean_sub_dict[b]))
+
+
+        boolean_variables = list()
+        for a in alpha:
+            if isinstance(a, Bool):
+                boolean_variables.append(a.id)
 
         for c_elem in c:
             vs = get_vars(c_elem)
             flag = True
 
             for c_vs in vs:
-                if "newPropDecl" in c_vs.id or "chi" in c_vs.id or "newIntegral" in c_vs.id or (
-                        c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
+                if c_vs.id in boolean_variables or "newPropDecl" in c_vs.id or "chi" in c_vs.id or "invAtomicID" in c_vs.id or "newIntegral" in c_vs.id:
                     flag = False
                     if c_vs not in alpha:
-                        total[c_vs] = BoolVal("True")
+                        total[c_vs] = BoolVal("False")
+                        c_unsat.add(Not(c_vs))
                     elif str(alpha[c_vs]) == "True":
                         total[c_vs] = alpha[c_vs]
                         c_sat.add(c_vs)
@@ -57,23 +76,28 @@ class HylaaStrategy:
             if flag:
                 if assignment.eval(c_elem):
                     total[c_elem] = BoolVal("True")
-
                     c_sat.add(c_elem)
                 else:
-                    total[reduce_not(Not(c_elem))] = BoolVal("True")
+                    total[c_elem] = BoolVal("False")
                     c_unsat.add(Not(c_elem))
 
         alpha_delta = total
+
         max_literal_set_list = list()
+        total_set = c_sat.union(c_unsat)
 
         for i in range(max_bound + 1):
-            max_literal_set, alpha_delta = self.get_max_literal_aux(new_abstracted_consts, i, c_sat.union(c_unsat),
-                                                                    alpha_delta)
+            max_literal_start = timer()
+            max_literal_set, alpha_delta = self.get_max_literal_aux(i, c_sat.union(c_unsat), alpha_delta, optimize,
+                                                                    z3_boolean_consts, boolean_sub_dict, assign_const)
+            max_literal_end = timer()
+            # print("For bound : " + str(i) + " solving time is " + str(max_literal_end - max_literal_start))
 
             max_literal_set_list.append(max_literal_set)
         return max_literal_set_list, alpha_delta
 
-    def get_max_literal_aux(self, psi_abs, i, c_sat, alpha_delta: dict):
+    def get_max_literal_aux(self, i, c_sat, alpha_delta: dict, optimize, z3_boolean_consts, boolean_sub_dict,
+                            assign_const):
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c_sat, i)
         reset_pool = make_reset_pool(reset_set)
 
@@ -85,61 +109,139 @@ class HylaaStrategy:
                 alpha_delta[c] = BoolVal("False")
 
         for integral in integral_set:
+            append_boolean_const = list()
             for v in get_vars(integral):
                 alpha_delta[v] = BoolVal("True")
             for reset in reset_pool:
                 for r in reset:
                     alpha_delta[r] = BoolVal("True")
-                max_literal_set, alpha_delta = self.solve_strategy_aux(alpha_delta, psi_abs, i)
+                # print("current alpha delta")
+                # print(alpha_delta)
+                for b in boolean_sub_dict:
+                    if isinstance(b, Bool):
+                        if b not in alpha_delta:
+                            append_boolean_const.append(Not(b))
+                        elif str(alpha_delta[b]) == "True":
+                            append_boolean_const.append(b)
+                        else:
+                            append_boolean_const.append(Not(b))
+
+                last_boolean_const = assign_const + append_boolean_const
+
+                max_literal_set, alpha_delta = self.solve_strategy_aux(alpha_delta, i, z3_boolean_consts, last_boolean_const, boolean_sub_dict)
+
+
                 if max_literal_set is not None and alpha_delta is not None:
-                    s_diff = set()
-                    for se in max_literal_set:
-                        if isinstance(se, Bool):
-                            if "newTau#" in se.id:
-                                s_diff.add(se)
-                    max_literal_set = max_literal_set.difference(s_diff)
+                    if not optimize:
+                        s_diff = set()
+                        for se in max_literal_set:
+                            if isinstance(se, Bool):
+                                if "newTau#" in se.id:
+                                    s_diff.add(se)
+                        max_literal_set = max_literal_set.difference(s_diff)
+
                     return max_literal_set, alpha_delta
+
 
     @abc.abstractmethod
     def solve_strategy_aux(self, alpha_delta, psi_abs, bound):
         pass
+
+def make_tau_guard(tau_dict, max_bound):
+    result = list()
+    for i in range(max_bound):
+        sub = list()
+        for k in tau_dict:
+            if "newTau" in k.id:
+                if k.id[-1] == str(i):
+                    or_literals = set()
+                    for e in tau_dict[k].children:
+                        or_literals.add(e)
+                    sub.append(or_literals)
+        result.append(sub)
+    return result
+
+def make_boolean_abstract(abstracted_consts):
+    index = 0
+    new_id = "new_boolean_var_"
+    clause_list = clause(abstracted_consts)
+    sub_dict = dict()
+    original_bool = list()
+
+    solver = Z3Solver()
+
+    for c in clause_list:
+        if not isinstance(c, Bool):
+            sub_dict[c] = Bool(new_id + str(index))
+            index += 1
+        else:
+            original_bool.append(c)
+
+    boolean_abstracted = solver.substitution(abstracted_consts, sub_dict)
+
+    for o in original_bool:
+        sub_dict[o] = o
+    return boolean_abstracted, sub_dict
 
 
 class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
     def __init__(self):
         BaseSolver.__init__(self)
         self.hylaa_core = None
+        self.time_optimize = False
 
-    def solve(self, all_consts, info_dict=None):
+    def solve(self, all_consts, info_dict=None, mapping_info=None):
         if info_dict is None:
             info_dict = dict()
+        if mapping_info is  None:
+            mapping_info = dict()
         # result, size, self._hylaa_model = hylaaCheckSat(all_consts, info_dict)
         # pre-processing
         # mode_dict, else_dict = divide_dict(info_dict)
         # 1. Build \varphi_ABS and mapping_info
         solve_start = timer()
-        abstraction_set = get_boolean_abstraction(all_consts)
-        inverse_mapping_info, inverse_mapping_info_without_and = gen_fresh_new_var_map(abstraction_set)
-        abstracted_consts = forall_integral_substitution(all_consts, inverse_mapping_info)
-        mapping_info = inverse_dict(inverse_mapping_info_without_and)
+        # Delete boolen variable matching
+
+        abstracted_consts = And(all_consts.children[0:2])
+        # abstracted_consts = all_consts.children[1]
+        boolean_start = timer()
+        z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
+
+        print("mapping_info")
+        print(mapping_info)
+
+        boolean_end = timer()
+
+        # abstracted_consts = all_consts.children[0]
+
         max_bound = get_bound(mapping_info)
+        tau_guard_list = make_tau_guard(mapping_info, max_bound)
+
         step1_end = timer()
 
         self.add_step1_time(str(step1_end - solve_start))
         # self.add_log_info("------------------------------")
+
         hylaa_result = True
         counter_consts = None
 
         cur_index = 0
+        solver = Z3Solver()
+        solver.add(abstracted_consts)
         while hylaa_result:
             self.add_loop_time(str(cur_index))
             loop_start = timer()
+            print("loop : " + str(cur_index) + ", size of constraints : " + str(size_of_tree(abstracted_consts)))
             cur_index += 1
             if counter_consts is not None:
-                abstracted_consts = And([abstracted_consts, Or(counter_consts)])
+                children_list = list()
+                for chi in abstracted_consts.children:
+                    children_list.append(chi)
+                children_list.append(Or(counter_consts))
+                abstracted_consts = And(children_list)
+                solver.add(Or(counter_consts))
             # 2. Perform process #2 from note
-            solver = Z3Solver()
-            result, size = solver.solve(abstracted_consts)
+            result, size = solver.solve()
 
             smt_solving_end = timer()
 
@@ -159,29 +261,33 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
             s_diff = set()
+            tau_clausese_flatten = set()
+
             for elem in c:
+                if elem in mapping_info and "newTau" in elem.id and not HylaaSolver().time_optimize:
+                    tau_elem_clause = clause(mapping_info[elem])
+                    tau_clausese_flatten = tau_clausese_flatten.union(tau_elem_clause)
+                    for tchi in tau_elem_clause:
+                        boolean_sub_dict[tchi] = elem
+                    # s_diff.add(elem)
                 vs = get_vars(elem)
                 if len(vs) == 0:
                     s_diff.add(elem)
 
             c = c.difference(s_diff)
+            c = c.union(tau_clausese_flatten)
 
+            clause_end = timer()
             max_literal_set_list, alpha_delta = self.solve_strategy(alpha, assignment, max_bound, new_abstracted_consts,
-                                                                    c)
-
-            counter_consts_set = set()
-            for s in max_literal_set_list:
-                for c in s:
-                    if str(alpha_delta[c]) == "True":
-                        counter_consts_set.add(Not(c))
-                    else:
-                        counter_consts_set.add(c)
-            counter_consts = list(counter_consts_set)
+                                                                    c, HylaaSolver().time_optimize, z3_boolean_consts, boolean_sub_dict)
+            end_max_literal = timer()
 
             remove_mode_clauses = list()
             for clause_bound in max_literal_set_list:
                 s_diff = set()
                 for elem in clause_bound:
+                    if isinstance(elem, Neq):
+                        s_diff.add(elem)
                     vs = get_vars(elem)
                     for v in vs:
                         if v in new_alpha:
@@ -190,34 +296,34 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 remove_mode_clauses.append(clause_bound)
 
             max_literal_set_list = remove_mode_clauses
+
+            counter_consts_set = set()
+            for s in max_literal_set_list:
+                for c in s:
+                    if str(alpha_delta[c]) == "True":
+                        counter_consts_set.add(Not(c))
+                    else:
+                        counter_consts_set.add(c)
+
+            counter_consts = list(counter_consts_set)
+            # print("what is counter const")
+            # print(counter_consts)
+
             solve_strategy_time = timer()
 
             self.add_literal_set_time(str(solve_strategy_time - smt_solving_end))
             hylaa_start_time = timer()
+
             try:
                 hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                                                         new_alpha)
-                # counter_consts_set = set()
-                # for s in max_literal_set_list:
-                #     for c in s:
-                #         if str(alpha_delta[c]) == "True":
-                #             counter_consts_set.add(Not(c))
-                #         else:
-                #             counter_consts_set.add(c)
-                # counter_consts = list(counter_consts_set)
+                                                         new_alpha, tau_guard_list)
+
 
             except RuntimeError as re:
                 print("inside error")
                 # negate the error state
                 hylaa_result = True
-                # counter_consts_set = set()
-                # for s in max_literal_set_list:
-                #     for c in s:
-                #         if str(alpha_delta[c]) == "True":
-                #             counter_consts_set.add(Not(c))
-                #         else:
-                #             counter_consts_set.add(c)
-                # counter_consts = list(counter_consts_set)
+
                 import sys
                 import traceback
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -229,10 +335,15 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             # self.add_log_info("------------------------------")
 
         # TODO: replace -1 to formula size
+
         return hylaa_result, -1
 
     def gen_and_run_hylaa_ha(self, s_f_list, bound, sigma, alpha):
         new_s_f_list = list()
+        print("what is input s_f_list")
+        print(s_f_list)
+
+
         for s in s_f_list:
             new_s = set()
             for c in s:
@@ -275,11 +386,16 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 index = find_index(l_v, Real(t))
                 bound_box_list[index][0] = Float(0.0)
                 bound_box_list[index][1] = Float(0.0)
+        print("init constraints")
+        print(l_v)
+        print(init_set)
+        print("sympy expression list")
+        print(sympy_expr_list)
 
         for expr in sympy_expr_list:
             if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
                 # left is variable
-                if isinstance(expr.lhs, Symbol):
+                if expr.lhs.is_symbol:
                     var_id = str(expr.lhs)
                     index = find_index(l_v, Real(var_id))
                     if bound_box_list[index][0] is None:
@@ -287,7 +403,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                     else:
                         if str(simplify(bound_box_list[index][0] <= expr.rhs)) == "True":
                             bound_box_list[index][0] = expr.rhs
-                else:
+                elif expr.rhs.is_symbol:
                     var_id = str(expr.rhs)
                     index = find_index(l_v, Real(var_id))
                     if bound_box_list[index][1] is None:
@@ -298,7 +414,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
             elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
                 # left is variable
-                if isinstance(expr.lhs, Symbol):
+                if expr.lhs.is_symbol:
                     var_id = str(expr.lhs)
                     index = find_index(l_v, Real(var_id))
                     if bound_box_list[index][1] is None:
@@ -306,7 +422,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                     else:
                         if str(simplify(bound_box_list[index][1] >= expr.rhs)) == "True":
                             bound_box_list[index][1] = expr.rhs
-                else:
+                elif expr.rhs.is_symbol:
                     var_id = str(expr.rhs)
                     index = find_index(l_v, Real(var_id))
                     if bound_box_list[index][0] is None:
@@ -326,12 +442,17 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
         # add affine variable
         new_bound_box_list.append([1.0, 1.0])
+        print("init bound")
+        print(new_bound_box_list)
+        print("============================================")
+
         mode = ha.modes['mode0']
         init_lpi = lputil.from_box(new_bound_box_list, mode)
         init_list = [StateSet(init_lpi, mode)]
-        settings = HylaaSettings(0.01, 100)
+        settings = HylaaSettings(0.1, 100)
         # settings.stop_on_aggregated_error = False
         settings.aggstrat.deaggregate = True  # use deaggregation
+        settings.stdout = HylaaSettings.STDOUT_VERBOSE
         core = Core(ha, settings)
         ce = core.run(init_list)
         # self.add_log_info(str(ce.counterexample))
@@ -351,174 +472,105 @@ class HylaaSolverNaive(HylaaSolver):
     def __init__(self):
         super(HylaaSolver, self).__init__()
 
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c):
-        return self.get_max_literal(alpha, assignment, max_bound, new_abstracted_consts, c)
+    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts, boolean_sub_dict):
+        return self.get_max_literal(alpha, assignment, max_bound, c, optimize, z3_boolean_consts, boolean_sub_dict)
 
-    def solve_strategy_aux(self, alpha_delta, psi_abs, bound):
+    def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
+        solve_start = timer()
         solver = Z3Solver()
-        # print(solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta)))
-        sub_dict = {}
-        for c in alpha_delta:
-            if str(alpha_delta[c]) == "True":
-                sub_dict[c] = BoolVal("True")
-                if not isinstance(c, Bool):
-                    sub_dict[reduce_not(Not(c))] = BoolVal("False")
-            else:
-                sub_dict[c] = BoolVal("False")
-                if not isinstance(c, Bool):
-                    sub_dict[reduce_not(Not(c))] = BoolVal("True")
 
-        simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), sub_dict))
+        solver.add(And(boolean_const_model))
+        if not solver.solve()[0]:
+            assignment = solver.make_assignment()
 
-        s_abs_set = set()
+            simplified_result = assignment.z3eval(z3_boolean_consts)
 
-        if str(simplified_result) == "True":
-            for c in alpha_delta:
-                b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
-                if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
-                        len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                    if str(alpha_delta[c]) == 'True' and not isinstance(c, Neq):
-                        s_abs_set.add(c)
+            make_sub_dict_time = timer()
 
-            return s_abs_set, alpha_delta
-        else:
-            return None, alpha_delta
+            s_abs_set = set()
+            solve_end = timer()
+
+            if str(simplified_result) == "True":
+                for c in alpha_delta:
+                    b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
+                    if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
+                            len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
+                        if str(alpha_delta[c]) == 'True' and not isinstance(c, Neq):
+                            s_abs_set.add(c)
+
+                return s_abs_set, alpha_delta
+
+        return None, alpha_delta
 
 
 class HylaaSolverReduction(HylaaSolver):
     def __init__(self):
         super(HylaaSolver, self).__init__()
 
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c):
-        return self.get_max_literal(alpha, assignment, max_bound, new_abstracted_consts, c)
+    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
+                       boolean_sub_dict):
+        return self.get_max_literal(alpha, assignment, max_bound, c, optimize, z3_boolean_consts, boolean_sub_dict)
 
-    def solve_strategy_aux(self, alpha_delta, psi_abs, bound):
+    def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
         solver = Z3Solver()
-        simplified_result = solver.simplify(solver.substitution(reduce_not(psi_abs), alpha_delta))
-        s_abs_set = set()
+        solver.add(And(boolean_const_model))
+        if not solver.solve()[0]:
+            assignment = solver.make_assignment()
 
-        if str(simplified_result) == "True":
-            for c in alpha_delta:
-                b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
-                if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
-                        len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
-                    if str(alpha_delta[c]) == 'True' and not isinstance(c, Not):
-                        s_abs_set.add(c)
+            simplified_result = assignment.z3eval(z3_boolean_consts)
 
-            return self.delta_debugging(s_abs_set, psi_abs), alpha_delta
-        else:
-            return None, alpha_delta
+            s_abs_set = set()
 
-    def delta_debugging_aux(self, c_max: set, psi: Constraint):
+            if str(simplified_result) == "True":
+                for c in alpha_delta:
+                    b_forall, b_integral, b_zero, b_tau, b_reset, b_guard = unit_split({c}, bound)
+                    if (len(b_forall) == 1 or len(b_integral) == 1 or len(b_zero) == 1 or
+                            len(b_tau) == 1 or len(b_reset) == 1 or len(b_guard) == 1):
+                        if str(alpha_delta[c]) == 'True' and not isinstance(c, Neq):
+                            s_abs_set.add(c)
+
+                return self.delta_debugging(s_abs_set, z3_boolean_consts, boolean_sub_dict), alpha_delta
+
+        return None, alpha_delta
+
+    def delta_debugging_aux(self, c_max: set, z3_boolean_consts, boolean_sub_dict):
         if len(c_max) == 0:
             return set()
         alpha = dict()
+        boolean_const_model = list()
         for c in c_max:
             alpha[c] = BoolVal("True")
+            boolean_const_model.append(boolean_sub_dict[c])
 
         for c in c_max:
             new_alpha = alpha.copy()
+            revise_boolean_const = copy.deepcopy(boolean_const_model)
             new_alpha[c] = BoolVal("False")
+            revise_boolean_const.remove(boolean_sub_dict[c])
+            revise_boolean_const.append(Not(boolean_sub_dict[c]))
             solver = Z3Solver()
-            simplified_result = solver.simplify(solver.substitution(psi, new_alpha))
+            solver.add(And(revise_boolean_const))
+            if not solver.solve()[0]:
+                assignment = solver.make_assignment()
 
-            if str(simplified_result) == "True":
-                return self.delta_debugging_aux(c_max.difference({c}), psi).union({c})
+                simplified_result = assignment.z3eval(z3_boolean_consts)
 
-        return set()
+                if str(simplified_result) == "True":
+                    return self.delta_debugging_aux(c_max.difference({c}), z3_boolean_consts)
 
-    def delta_debugging(self, c_max, psi):
-        s = self.delta_debugging_aux(c_max, psi)
-        return c_max.difference(s)
+        return c_max
 
-
-class HylaaSolverMultiJump(HylaaSolver):
-    def __init__(self):
-        super(HylaaSolver, self).__init__()
-
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c):
-        c_sat = set()
-        c_unsat = set()
-        total = dict()
-        for c_elem in c:
-            vs = get_vars(c_elem)
-            flag = True
-
-            for c_vs in vs:
-                if "chi" in c_vs.id or "newIntegral" in c_vs.id or "newTau" in c_vs.id or (
-                        c_vs.id.count('_') == 1 and ('tau' not in c_vs.id)):
-                    flag = False
-                    if c_vs not in alpha:
-                        total[c_vs] = BoolVal("True")
-                    elif str(alpha[c_vs]) == "True":
-                        total[c_vs] = alpha[c_vs]
-                        c_sat.add(c_vs)
-                    elif str(alpha[c_vs]) == "False":
-                        total[c_vs] = alpha[c_vs]
-                        c_unsat.add(Not(c_vs))
-                    else:
-                        flag = True
-                    break
-            if flag:
-                if assignment.eval(c_elem):
-                    total[c_elem] = BoolVal("True")
-
-                    c_sat.add(c_elem)
-                else:
-                    total[reduce_not(Not(c_elem))] = BoolVal("True")
-                    c_unsat.add(Not(c_elem))
-
-        c = self.apply_unsat_core(c, new_abstracted_consts, assignment)
-        max_literal_set_list = list()
-        for i in range(max_bound + 1):
-            forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c, i)
-            new_set = set()
-            for cc in forall_set:
-                if not isinstance(cc, Not):
-                    new_set.add(cc)
-            for cc in integral_set:
-                if not isinstance(cc, Not):
-                    new_set.add(cc)
-            for cc in init_set:
-                new_set.add(reduce_not(cc))
-            for cc in tau_set:
-                new_set.add(cc)
-            for cc in reset_set:
-                if not isinstance(cc, Not):
-                    new_set.add(cc)
-            for cc in guard_set:
-                new_set.add(reduce_not(cc))
-            max_literal_set_list.append(new_set)
-        return max_literal_set_list, total
-
-    def solve_strategy_aux(self, alpha_delta, psi_abs, bound):
-        pass
-
-    def apply_unsat_core(self, c_max, psi, assignment: Assignment):
-        c_sat = set()
-        c_unsat = set()
-
-        for c in c_max:
-            if assignment.eval(c):
-                c_sat.add(c)
-            else:
-                c_unsat.add(Not(c))
-        new_c = c_sat.union(c_unsat)
-        index = 0
-        assertion_and_trace = list()
-        for c in new_c:
-            assertion_and_trace.append((c, Bool("trace_var_" + str(index))))
-            index += 1
-
-        solver = Z3Solver()
-        return solver.unsat_core(psi, assertion_and_trace)
+    def delta_debugging(self, c_max, z3_boolean_consts, boolean_sub_dict):
+        s = self.delta_debugging_aux(c_max, z3_boolean_consts, boolean_sub_dict)
+        return s
 
 
 class HylaaSolverUnsatCore(HylaaSolver):
     def __init__(self):
         super(HylaaSolver, self).__init__()
 
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c):
+    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
+                       boolean_sub_dict):
         c_sat = set()
         c_unsat = set()
         total = dict()
@@ -527,10 +579,12 @@ class HylaaSolverUnsatCore(HylaaSolver):
             flag = True
 
             for c_vs in vs:
-                if "chi" in c_vs.id or "newIntegral" in c_vs.id or (c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
+                if "chi" in c_vs.id or "invAtomicID" in c_vs.id or "newIntegral" in c_vs.id or (
+                        c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
                     flag = False
                     if c_vs not in alpha:
-                        total[c_vs] = BoolVal("True")
+                        total[c_vs] = BoolVal("False")
+                        c_unsat.add(Not(c_vs))
                     elif str(alpha[c_vs]) == "True":
                         total[c_vs] = alpha[c_vs]
                         c_sat.add(c_vs)
@@ -585,8 +639,12 @@ class HylaaSolverUnsatCore(HylaaSolver):
         c_sat = set()
         c_unsat = set()
 
+        assign_dict = assignment.get_assignments()
+
         for c in c_max:
-            if assignment.eval(c):
+            if isinstance(c, Bool) and not (c in assign_dict):
+                c_unsat.add(Not(c))
+            elif assignment.eval(c):
                 c_sat.add(c)
             else:
                 c_unsat.add(Not(c))
@@ -783,6 +841,7 @@ def find_index(input_list: list, v: Variable):
 
 def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigma):
     mode_i = ha.new_mode("mode" + str(i))
+
     s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
     l_integral = l_v.copy()
 
@@ -804,8 +863,14 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
     for j in range(i + 1, max_bound + 2):
         k_j = find_index(l_v, Real("tau_" + str(j)))
         l_integral[k_j] = "1"
+
     m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
+    print("what is l integral")
+    print(l_integral)
+    print("hylaa make dynmics mat result")
+    print(m_integral)
     mode_i.set_dynamics(m_integral)
+
 
     phi_forall_children = list()
     for c in s_forall_i:
@@ -815,11 +880,18 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
         for v in vs:
             new_dict[v] = remove_index(v)
         phi_forall_children.append(reduce_not(substitution(new_c, new_dict)))
+    print("invariant")
+    print(infix(And(phi_forall_children)))
 
     if len(phi_forall_children) > 0:
         m_forall, m_forall_rhs = symbolic.make_condition(l_v, infix(And(phi_forall_children)).split('&'), {},
                                                          has_affine_variable=True)
         mode_i.set_invariant(m_forall, m_forall_rhs)
+        print("m forall, m forall rhs")
+        print(m_forall)
+        print(m_forall_rhs)
+        print("=====================")
+
     return mode_i
 
 
@@ -842,13 +914,17 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
             new_dict[v] = remove_index(v)
         phi_reset_children.append(reduce_not(substitution(c, new_dict)))
 
-    # print("suu")
-    # for ssss in infix(And(phi_reset_children)).split('&'):
-    #     print(ssss)
-    # print(infix(And(phi_reset_children)).split('&'))
+    print("guard condition")
+    print(infix(And(phi_reset_children)))
+
     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
                                                    has_affine_variable=True)
     trans_i.set_guard(m_guard, m_guard_rhs)
+
+    print("m guard")
+    print(m_guard)
+    print("m guard rhs")
+    print(m_guard_rhs)
 
     remove_var_dict = dict()
     for c in s_reset_i:
@@ -865,8 +941,14 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         for j in range(max_bound + 1):
             k_t_j = find_index(l_v, Real("tau_" + str(j)))
             l_r[k_t_j] = "tau_" + str(j)
+    print("l_v in reset part")
+    print(l_v)
+    print("l_r in reset part")
+    print(l_r)
 
     reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+    print("reset mat")
+    print(reset_mat)
     trans_i.set_reset(reset_mat)
 
 
@@ -878,8 +960,10 @@ def get_bound(mapping_info: dict):
     max_bound = -1
     for key in mapping_info:
         # for forall
-        index = int(key.id.rfind("_")) + 1
-        bound = int(key.id[index:])
+        if isinstance(key, Bool):
+            if "newIntegral#" in key.id:
+                index = int(key.id.rfind("_")) + 1
+                bound = int(key.id[index:])
         if max_bound < bound:
             max_bound = bound
     return max_bound
@@ -913,12 +997,13 @@ def unit_split(given_set: set, i: int):
 
     for c in given_set:
         var_set = get_vars(c)
-        for var in var_set:
-            start_index = int(var.id.find("_"))
-            if var.id[start_index:] == "_0_0" and "newIntegral" not in var.id and "invAtomicID" not in var.id:
-                init_set.add(c)
-                s_diff.add(c)
-                break
+        if len(var_set) == 1:
+            for var in var_set:
+                start_index = int(var.id.find("_"))
+                if var.id[start_index:] == "_0_0" and "newIntegral" not in var.id and "invAtomicID" not in var.id:
+                    init_set.add(c)
+                    s_diff.add(c)
+                    break
 
     given_set = given_set.difference(s_diff)
     s_diff = set()

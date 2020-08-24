@@ -187,6 +187,235 @@ def _(const: ReleaseFormula, substitution_dict):
                           substitution(const.right, substitution_dict))
 
 
+@singledispatch
+def substitutionSize(const: Constraint, substitution_dict):
+    return const, 1
+
+
+@substitutionSize.register(Variable)
+def _(const: Variable, substitution_dict):
+    if const in substitution_dict:
+        result = substitution_dict[const]
+        return result, 1
+    return const, 1
+
+
+@substitutionSize.register(Add)
+def _(const: Add, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Add(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Sub)
+def _(const: Sub, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Sub(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Mul)
+def _(const: Mul, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Mul(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Div)
+def _(const: Div, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Div(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Pow)
+def _(const: Pow, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    return Pow(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Neg)
+def _(const: Neg, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    s, sl = substitutionSize(const.child, substitution_dict)
+    return Neg(s), sl + 1
+
+
+@substitutionSize.register(Function)
+def _(const: Function, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+
+    left, sl = substitutionSize(const.var, substitution_dict)
+    right, rl = substitutionSize(const.exp, substitution_dict)
+    return Function(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Ode)
+def _(const: Ode, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.var, substitution_dict)
+    right, rl = substitutionSize(const.exp, substitution_dict)
+    return Ode(left, right), sl + rl + 1
+
+
+@substitutionSize.register(And)
+def _(const: And, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    children = list()
+    total = 0
+    for child in const.children:
+        chi, s = substitutionSize(child, substitution_dict)
+        total += s
+        children.append(chi)
+    return And(children), total + 1
+
+
+@substitutionSize.register(Or)
+def _(const: Or, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    children = list()
+    total = 0
+    for child in const.children:
+        chi, s = substitutionSize(child, substitution_dict)
+        total += s
+        children.append(chi)
+    return Or(children), total + 1
+
+
+@substitutionSize.register(Not)
+def _(const: Not, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+
+    s, ss = substitutionSize(const.child, substitution_dict)
+    return Not(s), ss + 1
+
+
+@substitutionSize.register(Gt)
+def _(const: Gt, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Gt(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Geq)
+def _(const: Geq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Geq(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Lt)
+def _(const: Lt, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Lt(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Leq)
+def _(const: Leq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Leq(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Eq)
+def _(const: Eq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Eq(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Neq)
+def _(const: Neq, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Neq(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Implies)
+def _(const: Implies, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    left, sl = substitutionSize(const.left, substitution_dict)
+    right, rl = substitutionSize(const.right, substitution_dict)
+    return Implies(left, right), sl + rl + 1
+
+
+@substitutionSize.register(Forall)
+def _(const: Forall, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    s, ss = substitutionSize(const.const, substitution_dict)
+    return Forall(const.current_mode_number, const.end_tau, const.start_tau,
+                  s, const.integral), ss + 1
+
+
+@substitutionSize.register(FinallyFormula)
+def _(const: FinallyFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    s, ss = substitutionSize(const.const, substitution_dict)
+    return FinallyFormula(const.local_time, const.global_time, s), ss + 1
+
+
+@substitutionSize.register(GloballyFormula)
+def _(const: GloballyFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    s, ss = substitutionSize(const.const, substitution_dict)
+    return GloballyFormula(const.local_time, const.global_time, s), ss + 1
+
+
+@substitutionSize.register(UntilFormula)
+def _(const: UntilFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    sl, ssl = substitutionSize(const.left, substitution_dict)
+    sr, ssr = substitutionSize(const.right, substitution_dict)
+    return UntilFormula(const.local_time, const.global_time,
+                        sl,
+                        sr), ssl + ssr + 1
+
+
+@substitutionSize.register(ReleaseFormula)
+def _(const: ReleaseFormula, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const], 1
+    sl, ssl = substitutionSize(const.left, substitution_dict)
+    sr, ssr = substitutionSize(const.right, substitution_dict)
+    return ReleaseFormula(const.local_time, const.global_time,
+                          sl,
+                          sr), ssl + ssr + 1
+
+
 # mode_dict => key : string, value : object
 # cont_dict => key : object, value : (left_end, left, right, right_end)
 # assumption : object is variable type
@@ -693,6 +922,13 @@ def generate_id(initial, gid='v'):
         counter += 1
 
 
+def make_boolean_abstract_consts(props: dict()):
+    result = list()
+    for p in props:
+        result.append(Eq(p, props[p]))
+    return And(result)
+
+
 @singledispatch
 def infix(const: Constraint):
     return str(const)
@@ -759,6 +995,11 @@ def _(const: Add):
 @infix.register(Sub)
 def _(const: Sub):
     return "(" + infix(const.left) + " - " + infix(const.right) + ")"
+
+
+@infix.register(Neg)
+def _(const: Neg):
+    return "(-" + infix(const.child) + ")"
 
 
 @infix.register(Mul)

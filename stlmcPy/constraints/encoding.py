@@ -1,6 +1,8 @@
 from .constraints import *
 from functools import singledispatch
 
+from stlmcPy.tree.operations import size_of_tree
+
 
 # making proposition id for each interval ex) [0, tau_0) = p_0, [tau_0, tau_1) = p_1 ...
 from .interval import intervalConst, subInterval, inIntervalCheck
@@ -37,7 +39,7 @@ def valuation(f: Formula, sub: dict, j: Interval, base: dict):
 
     vf = _value(f, sub, j, base, genPr, fMap, subFormulaFOL)
 
-    return And([vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]]), fMap
+    return [vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]], fMap
 
 
 @singledispatch
@@ -62,14 +64,17 @@ def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap, subFormula):
     '''
     if f in base:
         return _atomEncoding(f, j, base)
-    if f in sub:
-        if sub[f] in base:
-            return _atomEncoding(sub[f], j, base)
-    if f in sub:
-        if not (f, j) in fMap:
-            np = Bool(next(genPr))
-            fMap[(f, j)] = (np, _value(sub[f], sub, j, base, genPr, fMap, subFormula))
-        return fMap[(f, j)][0]
+    for (fkey, time) in sub[1]:
+        if isinstance(sub[1][(fkey, time)], Bool):
+            if sub[1][(fkey, time)] in base and fkey.id == f.id:
+                return _atomEncoding(sub[1][(f, time)], j, base)
+    if not (f, j) in fMap:
+        for (fkey, time) in sub[1]:
+            if fkey.id == f.id:
+                np = Bool(next(genPr))
+                fMap[(f, j)] = (np, _value(sub[1][(fkey, time)], sub, j, base, genPr, fMap, subFormula))
+                break
+    return fMap[(f, j)][0]
 
 
 @_value.register(Not)
@@ -91,19 +96,34 @@ def _(f: Implies, sub: dict, j: Interval, base, genPr, fMap, subFormula):
 
 @_value.register(FinallyFormula)
 def _(f: FinallyFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    args = [intervalConst(j, f.global_time, f.local_time), _value(f.child, sub, f.global_time, base, genPr, fMap, subFormula)]
-    return And(args)
+    result = list()
+    interval_const = intervalConst(j, f.global_time, f.local_time)
+    if isinstance(interval_const, BoolVal):
+        return BoolVal("False")
+    result.extend(interval_const.children)
+    result.append(_value(f.child, sub, f.global_time, base, genPr, fMap, subFormula))
+    return And(result)
 
 
 @_value.register(GloballyFormula)
 def _(f: GloballyFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    return Implies(intervalConst(j, f.global_time, f.local_time), _value(f.child, sub, f.global_time, base, genPr, fMap, subFormula))
+    interval_const = intervalConst(j, f.global_time, f.local_time)
+    if isinstance(interval_const, BoolVal):
+        return BoolVal("True")
+
+    return Implies(interval_const, _value(f.child, sub, f.global_time, base, genPr, fMap, subFormula))
 
 
 @_value.register(UntilFormula)
 def _(f: UntilFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    return And([*[intervalConst(j, f.global_time, f.local_time), _value(f.left, sub, f.global_time, base, genPr, fMap, subFormula),
-                 _value(f.right, sub, f.global_time, base, genPr, fMap, subFormula)]])
+    result = list()
+    interval_const = intervalConst(j, f.global_time, f.local_time)
+    if isinstance(interval_const, BoolVal):
+        return BoolVal("False")
+    result.extend(interval_const.children)
+    result.append(_value(f.left, sub, f.global_time, base, genPr, fMap, subFormula))
+    result.append(_value(f.right, sub, f.global_time, base, genPr, fMap, subFormula))
+    return And(result)
 
 
 @_value.register(ReleaseFormula)

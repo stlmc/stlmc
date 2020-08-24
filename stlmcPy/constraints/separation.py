@@ -32,7 +32,15 @@ def _(f: Not, sepMap, gen, fMap):
 
 @_separation.register(Multinary)
 def _(f: Multinary, sepMap, gen, fMap):
-    return f.__class__([_separation(c, sepMap, gen, fMap) for c in f.children])
+    flatten = list()
+    ft = f.__class__
+    result = [_separation(c, sepMap, gen, fMap) for c in f.children]
+    for r in result:
+        if isinstance(r, ft):
+            flatten.extend(r.children)
+        else:
+            flatten.append(r)
+    return f.__class__(flatten)
 
 
 @_separation.register(Implies)
@@ -45,7 +53,11 @@ def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     np = Bool(next(gen))
     fMap[(np, f.local_time)] = _separation(f.child, sepMap, gen, fMap)
     tf = f.__class__(f.local_time, f.global_time, np)
-    return _separateUnary(tf, 0, sepMap[f])
+    ft = tf.__class__
+    op = {GloballyFormula: And, FinallyFormula: Or}
+    result = _separateUnary(tf, 0, sepMap[f])
+
+    return op[ft](result)
 
 
 @_separation.register(BinaryTemporalFormula)
@@ -55,7 +67,10 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
     fMap[(np1, f.local_time)] = _separation(f.left, sepMap, gen, fMap)
     fMap[(np2, f.local_time)] = _separation(f.right, sepMap, gen, fMap)
     tf = f.__class__(f.local_time, f.global_time, np1, np2)
-    return _separateBinary(tf, 0, sepMap[f])
+    op1 = {UntilFormula: Or, ReleaseFormula: And}
+    result = _separateBinary(tf, 0, sepMap[f])
+
+    return op1[tf.__class__](result)
 
 
 def _separateUnary(f: UnaryTemporalFormula, index, partition):
@@ -70,13 +85,15 @@ def _separateUnary(f: UnaryTemporalFormula, index, partition):
     """
     assert f.global_time == universeInterval
     ft = f.__class__
+    result = list()
     op = {GloballyFormula: And, FinallyFormula: Or}
     if index >= len(partition):
-        return ft(f.local_time, _sepEndPart(index, partition), f.child)
+        return [ft(f.local_time, _sepEndPart(index, partition), f.child)]
     else:
         (p1, p2) = _sepMidPart(index, partition)
-        return op[ft]([ft(f.local_time, p1, f.child), ft(f.local_time, p2, f.child),
-                       _separateUnary(f, index + 1, partition)])
+        result.extend([ft(f.local_time, p1, f.child), ft(f.local_time, p2, f.child)])
+        result.extend(_separateUnary(f, index + 1, partition))
+        return result
 
 
 def _separateBinary(f: BinaryTemporalFormula, index, partition):
@@ -95,17 +112,18 @@ def _separateBinary(f: BinaryTemporalFormula, index, partition):
     op2 = {UntilFormula: And, ReleaseFormula: Or}
     st1 = {UntilFormula: GloballyFormula, ReleaseFormula: FinallyFormula}
     st2 = {UntilFormula: FinallyFormula, ReleaseFormula: GloballyFormula}
-
+    result = list()
     if index >= len(partition):
-        return ft(f.local_time, _sepEndPart(index, partition), f.left, f.right)
+        return [ft(f.local_time, _sepEndPart(index, partition), f.left, f.right)]
     else:
         (p1, p2) = _sepMidPart(index, partition)
-        return op1[ft]([ft(f.local_time, p1, f.left, f.right),
-                        op2[ft]([
-                            st1[ft](universeInterval, p1, f.left),
-                            st1[ft](universeInterval, p2, f.left),
-                            op1[ft]([st2[ft](f.local_time, p2, f.right),
-                                     _separateBinary(f, index + 1, partition)])])])
+        result.append(ft(f.local_time, p1, f.left, f.right))
+        subresult = list()
+        subresult.append(st2[ft](f.local_time, p2, f.right))
+        subresult.extend(_separateBinary(f, index + 1, partition))
+        result.append(op2[ft]([st1[ft](universeInterval, p1, f.left),
+                               st1[ft](universeInterval, p2, f.left), op1[ft](subresult)]))
+        return result
 
 
 def _sepEndPart(index, partition):

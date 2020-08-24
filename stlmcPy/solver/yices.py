@@ -12,7 +12,7 @@ class YicesSolver(BaseSolver, SMTSolver):
     def __init__(self):
         self._yices_model = None
 
-    def solve(self, all_consts, info_dict=None):
+    def solve(self, all_consts, info_dict=None, boolean_abstract=None):
         result, size, self_yices_model = yicescheckSat(all_consts, 'QF_NRA')
         return result, size
 

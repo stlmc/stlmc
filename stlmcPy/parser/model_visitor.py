@@ -389,7 +389,10 @@ class ModelVisitor(modelVisitor):
     def visitDirectCond(self, ctx: modelParser.DirectCondContext):
         new_var_str = "newPropDecl_" + str(len(self.proposition_dict))
         new_var = Bool(new_var_str)
-        self.proposition_dict[new_var] = self.visit(ctx.condition())
+        op_dict = {'<=': Leq, '>=': Geq, "<": Lt, ">": Gt, "=": Eq, "!=": Neq}
+        left = self.visit(ctx.expression()[0])
+        right = self.visit(ctx.expression()[1])
+        self.proposition_dict[new_var] = op_dict[ctx.op.text](left, right)
         return new_var
 
         # newProp = "newPropDecl_" + str(len(self.newPropDecl))

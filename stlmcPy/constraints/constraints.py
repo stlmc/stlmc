@@ -1,6 +1,6 @@
 # start of base_objects
 from stlmcPy.exception.exception import NotFoundElementError
-from stlmcPy.tree.tree import Leaf
+from stlmcPy.tree.tree import Leaf, NonLeaf
 
 
 class Interval:
@@ -18,8 +18,9 @@ class Interval:
 universeInterval = Interval(True, 0.0, False, float('inf'))
 
 
-class Unary:
+class Unary(NonLeaf):
     def __init__(self, child):
+        NonLeaf.__init__(self, [child])
         self.child = child
 
     def get_child(self):
@@ -29,8 +30,9 @@ class Unary:
         return str(self.child)
 
 
-class Binary:
+class Binary(NonLeaf):
     def __init__(self, left, right):
+        NonLeaf.__init__(self, [left, right])
         self.left = left
         self.right = right
 
@@ -44,8 +46,9 @@ class Binary:
         return str(self.left) + " " + str(self.right)
 
 
-class Multinary:
+class Multinary(NonLeaf):
     def __init__(self, children):
+        NonLeaf.__init__(self, children)
         self.children = children
 
     def at(self, i):

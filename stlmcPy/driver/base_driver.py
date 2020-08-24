@@ -2,8 +2,13 @@ import abc
 import os
 
 from stlmcPy.constraints.constraints import And
+from stlmcPy.constraints.operations import make_boolean_abstract_consts, substitutionSize
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.objects.object_builder import generate_object
+
+from timeit import default_timer as timer
+
+from stlmcPy.tree.operations import size_of_tree
 
 import argparse
 
@@ -112,23 +117,51 @@ class Runner(Logger):
         for file_name in config.file_list:
             #self.add_log_info("Model : \"" + str(file_name) + "\"")
             model, PD, goals = generate_object(file_name)
-            for goal in goals:
+            for bound in config.bound:
                 solver.clear_log()
-                for bound in config.bound:
+                for goal in goals:
+                    # if bound == 0:
+                    # solver.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
+                    print("======================================")
+                    print(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + "_" + str(bound))
                     solver.add_bound(bound)
+                    # print("start model const")
                     model_const = model.make_consts(bound)
-                    goal_const = goal.make_consts(bound, 60, 0, model, PD)
-                    result, size = solver.solve(And([model_const, goal_const]), model.range_dict)
-                    #self.concat(solver.get_log_info())
-                    print("Driver returns " + str(result))
+                    # print("end model const")
+                    goal_const, goal_boolean_abstract = goal.make_consts(bound, 60, 0.1, model, PD)
+                    # print("what is goal_const")
+                    # print(goal_const)
+                    # print(goal_boolean_abstract)
+
+                    boolean_abstract = dict()
+                    boolean_abstract.update(model.boolean_abstract)
+                    boolean_abstract.update(goal_boolean_abstract)
+                    boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
+
+                    solve_start = timer()
+                    result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+                                                model.range_dict, boolean_abstract)
+                    # result, size = solver.solve(And([goal_const, boolean_abstract_consts]), model.range_dict, boolean_abstract)
+                    # result, size = solver.solve(And([model_const, boolean_abstract_consts]), model.range_dict, boolean_abstract)
+
+                    solve_end = timer()
+                    self.concat(solver.get_log_info())
+                    print("Driver returns : " + str(result) + ", Total solving time : " + str(solve_end - solve_start))
+                    print(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + "_" + str(bound))
+                    model.clear()
+                    goal.clear()
+                    print("======================================")
+
                     solver.add_result(result)
                     solver.add_log_info()
                     # self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
-                solver.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
-                        # print(assignment)
+                    solver.append_to_file(
+                        str(file_name) + "_#" + str(goal.get_formula()) + "_#" + config.solver + "_#" + str(
+                            bound) + ".csv")
+                    # print(assignment)
                     # if is_visualize:
                     # integrals_list = model.get_flow_for_assignment(1)
                     # assignment = solver.make_assignment()

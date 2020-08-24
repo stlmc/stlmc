@@ -51,10 +51,20 @@ class Logger:
         return self.line
 
     def write_to_file(self, file_name: str):
-        with open(file_name, 'w', newline='') as csvfile:
-            fieldnames = ['bound', 'step1 time', 'smt solving time', 'preparing max literal set', 'hylaa time', 'loop', 'total', 'result']
+        with open(file_name, 'a+', newline='') as csvfile:
+            fieldnames = ['bound', 'step1 time', 'smt solving time', 'preparing max literal set', 'hylaa time', 'loop',
+                          'total', 'result']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
+            for line in self.lines:
+                writer.writerow(line)
+
+    def append_to_file(self, file_name: str):
+        with open(file_name, 'a+', newline='') as csvfile:
+            fieldnames = ['bound', 'step1 time', 'smt solving time', 'preparing max literal set', 'hylaa time', 'loop',
+                          'total', 'result']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
             for line in self.lines:
                 writer.writerow(line)

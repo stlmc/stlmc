@@ -68,9 +68,11 @@ def genPartition(baseP, sepMap, subFormula):
         left = subGlobal[k][0]
         right = subGlobal[k][1]
         for i in range(1, len(baseP)):
-            change_point = Eq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
+            change_point = Neq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
             sub_left = []
             sub_right = []
+            sub_left.append(change_point)
+            sub_right.append(change_point)
             sub_left.append((baseP[i] - left) < RealVal("0"))
             sub_right.append((baseP[i] - right) < RealVal("0"))
             for j in range(0, i):
@@ -83,14 +85,13 @@ def genPartition(baseP, sepMap, subFormula):
             tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
             count += 1
             tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
-            consts.append(And([change_point, And([Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1)),
-                                                  Bool("newTau#_" + str(count) + "_" + str(right_max - 1))])]))
+            consts.append(Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1)))
+            consts.append(Bool("newTau#_" + str(count) + "_" + str(right_max - 1)))
+
             count += 1
 
-    for ta in tau_abstraction:
-        consts.append(Eq(ta, tau_abstraction[ta]))
 
-    return consts
+    return consts, tau_abstraction
 
 
 def find_max(s: set):

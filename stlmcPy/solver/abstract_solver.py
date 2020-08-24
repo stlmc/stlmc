@@ -6,7 +6,7 @@ from stlmcPy.util.logger import Logger
 class BaseSolver(Logger):
 
     @abc.abstractmethod
-    def solve(self, all_consts, info_dict=None):
+    def solve(self, all_consts=None, cont_vars_dict=None, boolean_abstract_dict=None):
         pass
 
     @abc.abstractmethod
@@ -21,4 +21,8 @@ class SMTSolver:
 
     @abc.abstractmethod
     def substitution(self, const, *dicts):
+        pass
+
+    @abc.abstractmethod
+    def add(self, const):
         pass

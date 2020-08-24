@@ -15,10 +15,9 @@ class Z3Solver(BaseSolver, SMTSolver):
     def __init__(self):
         BaseSolver.__init__(self)
         self._z3_model = None
+        self._cache = list()
 
-    def z3checkSat(self, consts: Constraint, logic):
-        z3Consts = z3Obj(consts)
-
+    def z3checkSat(self, consts, logic):
         if logic != "NONE":
             solver = z3.SolverFor(logic)
         else:
@@ -28,29 +27,43 @@ class Z3Solver(BaseSolver, SMTSolver):
         # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
         # solver.add(target_z3_simplify)
         solving_start = timer()
-        solver.add(z3Consts)
+        solver.add(consts)
 
-        # with open("thermoLinear.smt2", 'w') as fle:
-        #     print(solver.to_smt2(), file=fle)
+        with open("thermoLinear.smt2", 'w') as fle:
+            print(solver.to_smt2(), file=fle)
 
         result = solver.check()
         solving_end = timer()
         self.add_smt_solving_time(solving_end - solving_start)
         str_result = str(result)
+
         if str_result == "sat":
             m = solver.model()
             result = False
         else:
+            print("unsat")
+            print(solver.unsat_core())
             m = None
             result = True if str_result == "unsat" else "Unknown"
-        return result, sizeAst(z3.And([z3Consts])), m
+        return result, sizeAst(z3.And(self._cache)), m
 
-    def solve(self, all_consts, info_dict=None):
-        result, size, self._z3_model = self.z3checkSat(all_consts, 'NRA')
+    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        if all_consts is not None:
+            self._cache.append(z3Obj(all_consts))
+        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), 'LRA')
         return result, size
+
+    def result_simplify(self):
+        print("z3 size")
+        print(sizeAst(z3.And(self._cache)))
+        print(z3.simplify(z3.And(self._cache)))
+        return z3.simplify(z3.And(self._cache))
 
     def simplify(self, consts):
         return z3.simplify(consts)
+
+    def add(self, const):
+        self._cache.append(z3Obj(const))
 
     def substitution(self, const, *dicts):
         total_dict = dict()
@@ -63,7 +76,7 @@ class Z3Solver(BaseSolver, SMTSolver):
         return Z3Assignment(self._z3_model)
 
     def unsat_core(self, psi, assertion_and_trace):
-        solver = z3.SolverFor('NRA')
+        solver = z3.SolverFor('LRA')
         trace_dict = dict()
         for (assertion, trace) in assertion_and_trace:
             # trace should be boolean var
@@ -100,6 +113,14 @@ class Z3Assignment(Assignment):
         if self._z3_model is None:
             raise NotSupportedError("Z3 has no model")
         return self._z3_model.eval(z3Obj(const))
+
+    def z3eval(self, const):
+        if self._z3_model is None:
+            raise NotSupportedError("Z3 has no model")
+        # print("z3Obj")
+        # print(z3Obj(const))
+        # print(self._z3_model)
+        return self._z3_model.eval(const)
 
     # def get_assignments(self):
     #     if self._z3_model is not None:
