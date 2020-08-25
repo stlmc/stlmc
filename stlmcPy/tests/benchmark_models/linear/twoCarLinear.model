@@ -30,20 +30,17 @@ real v2;
         d/dt[x1] = 65;
         d/dt[x2] = 60;
     jump:
-    	# if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
-          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+            (and ((x2 - x1) >= 3.5) ((x2 - x1) < 4)) =>
               (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
 
         # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+            (and ((x2 - x1) >= 1.5) ((x2 - x1) < 2)) =>
               (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+            (and ((x2 - x1) >= 4.5) ((x2 - x1) < 5)) =>
               (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) < 1 then, jump to 100 state.
@@ -51,7 +48,7 @@ real v2;
               (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
         
         # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
+            ((x2 - x1) >= 5.5) =>
               (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 
 }
@@ -66,19 +63,15 @@ real v2;
         d/dt[x2] = 40;
     jump:
         # if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+        (and ((x2 - x1) >= 2.5) ((x2 - x1) < 3)) =>
           (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
-        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
-              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
-
         # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+            (and ((x2 - x1) >= 1.5) ((x2 - x1) < 2)) =>
               (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+            (and ((x2 - x1) >= 4.5) ((x2 - x1) < 5)) =>
               (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) < 1 then, jump to 100 state.
@@ -86,7 +79,7 @@ real v2;
               (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
+            ((x2 - x1) >= 5.5) =>
               (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 }
 {
@@ -100,19 +93,15 @@ real v2;
         d/dt[x2] = 60;
     jump:
         # if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+        (and ((x2 - x1) >= 2.5) ((x2 - x1) < 3)) =>
           (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+            (and ((x2 - x1) >= 3.5) ((x2 - x1) < 4)) =>
               (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
 
-        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
-              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
-
         # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+            (and ((x2 - x1) >= 4.5) ((x2 - x1) < 5)) =>
               (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) < 1 then, jump to 100 state.
@@ -120,7 +109,7 @@ real v2;
               (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
+            ((x2 - x1) >= 5.5) =>
               (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 }
 {
@@ -134,27 +123,23 @@ real v2;
         d/dt[x2] = 35;
     jump:
         # if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+        (and ((x2 - x1) >= 2.5) ((x2 - x1) < 3)) =>
           (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+            (and ((x2 - x1) >= 3.5) ((x2 - x1) < 4)) =>
               (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
 
         # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+            (and ((x2 - x1) >= 1.5) ((x2 - x1) < 2)) =>
               (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
-
-        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
-              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) < 1 then, jump to 100 state.
             ((x2 - x1) < 1) =>
               (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
+            ((x2 - x1) >= 5.5) =>
               (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 }
 {   
@@ -168,27 +153,23 @@ real v2;
         d/dt[x2] = 60;
     jump:
         # if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+        (and ((x2 - x1) >= 2.5) ((x2 - x1) < 3)) =>
           (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+            (and ((x2 - x1) >= 3.5) ((x2 - x1) < 4)) =>
               (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
 
         # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+            (and ((x2 - x1) >= 1.5) ((x2 - x1) < 2)) =>
               (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+            (and ((x2 - x1) >= 4.5) ((x2 - x1) < 5)) =>
               (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
-        # if (x2 - x1) < 1 then, jump to 100 state.
-            ((x2 - x1) < 1) =>
-              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
-
         # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
+            ((x2 - x1) >= 5.5) =>
               (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 }
 {   
@@ -202,28 +183,24 @@ real v2;
         d/dt[x2] = 35;
     jump:
         # if 2 <= (x2 - x1) < 3 then, no jump occur.
-        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+        (and ((x2 - x1) >= 2.5) ((x2 - x1) < 3)) =>
           (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
-            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+            (and ((x2 - x1) >= 3.5) ((x2 - x1) < 4)) =>
               (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
 
         # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
-            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+            (and ((x2 - x1) >= 1.5) ((x2 - x1) < 2)) =>
               (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
 
         # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
-            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+            (and ((x2 - x1) >= 4.5) ((x2 - x1) < 5)) =>
               (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
 
         # if (x2 - x1) < 1 then, jump to 100 state.
             ((x2 - x1) < 1) =>
               (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
-
-        # if (x2 - x1) >= 5 then, jump to 101 state
-            ((x2 - x1) >= 5) =>
-              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
 }
 
 
@@ -232,14 +209,12 @@ init:
 (and (v1 = 65) (v2 = 60) (x1 >= 0) (x1 <= 1) (x2 <= 10) (x2 >= 3));
 
 propositions:
-disl4 = (x2 - x1) <= 4 ;
-modeMH = (and (v1 = 30) (v2 = 60)) ; 
-modeML = (and (v1 = 30) (v2 = 35)) ;
-modeLH = (and (v1 = 25) (v2 = 60)) ;
+disl4 = (x2 - x1) <= 2 ;
+
 
 goal:
+reach disl4;
+(<> [0, 50] disl4);
 ([] [0.0,20.0] (<>[0.0,5.0] (disl4))) ;
-([] [0.0,10.0] (modeMH -> <>[0.0,5.0] (~ modeMH))) ;
 ([] [0.0,100.0] (x2 > x1));
-(<> [10.0,40.0] ((x2 - x1) >= 4.5) -> [][0.0, 10.0] (or modeML modeLH));
 

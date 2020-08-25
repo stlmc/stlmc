@@ -71,8 +71,6 @@ def genPartition(baseP, sepMap, subFormula):
             change_point = Neq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
             sub_left = []
             sub_right = []
-            sub_left.append(change_point)
-            sub_right.append(change_point)
             sub_left.append((baseP[i] - left) < RealVal("0"))
             sub_right.append((baseP[i] - right) < RealVal("0"))
             for j in range(0, i):
@@ -87,6 +85,7 @@ def genPartition(baseP, sepMap, subFormula):
             tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
             consts.append(Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1)))
             consts.append(Bool("newTau#_" + str(count) + "_" + str(right_max - 1)))
+            consts.append(change_point)
 
             count += 1
 
@@ -147,7 +146,7 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     _guess(formula.child, baseCase, result, sepMap)
 
-    p = result[formula.child]
+    # p = result[formula.child]
     # sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
     sepMap[formula] = baseCase
 
@@ -160,7 +159,7 @@ def _(formula, baseCase, result, sepMap):
     _guess(formula.left, baseCase, result, sepMap)
     _guess(formula.right, baseCase, result, sepMap)
 
-    p = result[formula.left] | result[formula.right]
+    # p = result[formula.left] | result[formula.right]
     # sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
     sepMap[formula] = baseCase
 

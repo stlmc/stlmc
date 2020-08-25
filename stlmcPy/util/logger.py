@@ -13,8 +13,8 @@ class Logger:
     def add_bound(self, bound):
         self.line["bound"] = str(bound)
 
-    def add_step1_time(self, step1_time):
-        self.line["step1 time"] = str(step1_time)
+    def add_const_size(self, const_size):
+        self.line["constraint size"] = str(const_size)
 
     def add_smt_solving_time(self, smt_solving):
         self.line["smt solving time"] = str(smt_solving)
@@ -27,6 +27,9 @@ class Logger:
 
     def add_loop_time(self, loop):
         self.line["loop"] = str(loop)
+
+    def add_loop_total_time(self, loop):
+        self.line["loop total"] = str(loop)
 
     def add_total_time(self, total):
         self.line["total"] = str(total)
@@ -44,16 +47,13 @@ class Logger:
         self.lines.append(self.line)
         self.line = dict()
 
-    def get_log_info(self):
+    def get_total_log(self):
         return self.lines
 
-    def get_log(self):
-        return self.line
-
     def write_to_file(self, file_name: str):
-        with open(file_name, 'a+', newline='') as csvfile:
-            fieldnames = ['bound', 'step1 time', 'smt solving time', 'preparing max literal set', 'hylaa time', 'loop',
-                          'total', 'result']
+        with open(file_name, 'w', newline='') as csvfile:
+            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
+                          'loop total', 'total', 'result']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
@@ -62,8 +62,8 @@ class Logger:
 
     def append_to_file(self, file_name: str):
         with open(file_name, 'a+', newline='') as csvfile:
-            fieldnames = ['bound', 'step1 time', 'smt solving time', 'preparing max literal set', 'hylaa time', 'loop',
-                          'total', 'result']
+            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
+                          'loop total', 'total', 'result']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             for line in self.lines:

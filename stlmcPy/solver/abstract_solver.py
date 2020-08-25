@@ -1,8 +1,9 @@
 import abc
+from abc import ABC
 
 from stlmcPy.util.logger import Logger
 
-
+# all solver have logger
 class BaseSolver(Logger):
 
     @abc.abstractmethod
@@ -26,3 +27,7 @@ class SMTSolver:
     @abc.abstractmethod
     def add(self, const):
         pass
+
+
+# class OdeSolver(BaseSolver):
+#     pass

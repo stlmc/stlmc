@@ -24,6 +24,7 @@ from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.z3 import Z3Solver
 
 
+# builder class for hylaa
 class HylaaStrategy:
 
     @abc.abstractmethod
@@ -45,7 +46,6 @@ class HylaaStrategy:
                 else:
                     if not "newTau" in boolean_sub_dict[b].id:
                         assign_const.append(Not(boolean_sub_dict[b]))
-
 
         boolean_variables = list()
         for a in alpha:
@@ -128,8 +128,8 @@ class HylaaStrategy:
 
                 last_boolean_const = assign_const + append_boolean_const
 
-                max_literal_set, alpha_delta = self.solve_strategy_aux(alpha_delta, i, z3_boolean_consts, last_boolean_const, boolean_sub_dict)
-
+                max_literal_set, alpha_delta = self.solve_strategy_aux(alpha_delta, i, z3_boolean_consts,
+                                                                       last_boolean_const, boolean_sub_dict)
 
                 if max_literal_set is not None and alpha_delta is not None:
                     if not optimize:
@@ -142,24 +142,25 @@ class HylaaStrategy:
 
                     return max_literal_set, alpha_delta
 
-
     @abc.abstractmethod
-    def solve_strategy_aux(self, alpha_delta, psi_abs, bound):
+    def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
         pass
+
 
 def make_tau_guard(tau_dict, max_bound):
     result = list()
     for i in range(max_bound):
-        sub = list()
+        sub = dict()
         for k in tau_dict:
             if "newTau" in k.id:
                 if k.id[-1] == str(i):
                     or_literals = set()
                     for e in tau_dict[k].children:
                         or_literals.add(e)
-                    sub.append(or_literals)
+                    sub[k] = or_literals
         result.append(sub)
     return result
+
 
 def make_boolean_abstract(abstracted_consts):
     index = 0
@@ -188,39 +189,25 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
     def __init__(self):
         BaseSolver.__init__(self)
         self.hylaa_core = None
-        self.time_optimize = False
+        self.time_optimize = True
 
-    def solve(self, all_consts, info_dict=None, mapping_info=None):
+    def solve(self, all_consts=None, info_dict=None, mapping_info=None):
         if info_dict is None:
             info_dict = dict()
-        if mapping_info is  None:
+        if mapping_info is None:
             mapping_info = dict()
-        # result, size, self._hylaa_model = hylaaCheckSat(all_consts, info_dict)
+
         # pre-processing
-        # mode_dict, else_dict = divide_dict(info_dict)
-        # 1. Build \varphi_ABS and mapping_info
-        solve_start = timer()
-        # Delete boolen variable matching
-
-        abstracted_consts = And(all_consts.children[0:2])
-        # abstracted_consts = all_consts.children[1]
         boolean_start = timer()
+        # heuristic: removing mapping constraint part.
+        abstracted_consts = And(all_consts.children[0:2])
+
+        # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
-
-        print("mapping_info")
-        print(mapping_info)
-
         boolean_end = timer()
-
-        # abstracted_consts = all_consts.children[0]
 
         max_bound = get_bound(mapping_info)
         tau_guard_list = make_tau_guard(mapping_info, max_bound)
-
-        step1_end = timer()
-
-        self.add_step1_time(str(step1_end - solve_start))
-        # self.add_log_info("------------------------------")
 
         hylaa_result = True
         counter_consts = None
@@ -228,10 +215,16 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         cur_index = 0
         solver = Z3Solver()
         solver.add(abstracted_consts)
+
         while hylaa_result:
+
+            # logging
             self.add_loop_time(str(cur_index))
-            loop_start = timer()
+            self.add_const_size(str(size_of_tree(abstracted_consts)))
             print("loop : " + str(cur_index) + ", size of constraints : " + str(size_of_tree(abstracted_consts)))
+            #
+
+            loop_start = timer()
             cur_index += 1
             if counter_consts is not None:
                 children_list = list()
@@ -240,14 +233,18 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 children_list.append(Or(counter_consts))
                 abstracted_consts = And(children_list)
                 solver.add(Or(counter_consts))
+
             # 2. Perform process #2 from note
             result, size = solver.solve()
 
             smt_solving_end = timer()
 
+            # logging
             self.add_smt_solving_time(str(smt_solving_end - loop_start))
+            #
 
             if result:
+                self.add_log_info()
                 print("Smt solver level result!")
                 # self.add_log_info("SMT solver level result!")
                 return True, 0
@@ -278,9 +275,13 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             c = c.union(tau_clausese_flatten)
 
             clause_end = timer()
+
+            start_max_literal = timer()
             max_literal_set_list, alpha_delta = self.solve_strategy(alpha, assignment, max_bound, new_abstracted_consts,
-                                                                    c, HylaaSolver().time_optimize, z3_boolean_consts, boolean_sub_dict)
+                                                                    c, HylaaSolver().time_optimize, z3_boolean_consts,
+                                                                    boolean_sub_dict)
             end_max_literal = timer()
+            self.add_literal_set_time(str(end_max_literal - start_max_literal))
 
             remove_mode_clauses = list()
             for clause_bound in max_literal_set_list:
@@ -306,17 +307,12 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                         counter_consts_set.add(c)
 
             counter_consts = list(counter_consts_set)
-            # print("what is counter const")
-            # print(counter_consts)
-
-            solve_strategy_time = timer()
-
-            self.add_literal_set_time(str(solve_strategy_time - smt_solving_end))
             hylaa_start_time = timer()
 
             try:
-                hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                                                         new_alpha, tau_guard_list)
+                # hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
+                #                                          new_alpha, tau_guard_list)
+                hylaa_result = True
 
 
             except RuntimeError as re:
@@ -331,18 +327,17 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 print(repr(re))
             hylaa_end_time = timer()
             self.add_hylaa_time(str(hylaa_end_time - hylaa_start_time))
+            self.add_loop_total_time(str(hylaa_end_time - loop_start))
+            # self.add_result(hylaa_result)
             self.add_log_info()
-            # self.add_log_info("------------------------------")
 
         # TODO: replace -1 to formula size
-
         return hylaa_result, -1
 
-    def gen_and_run_hylaa_ha(self, s_f_list, bound, sigma, alpha):
+    def gen_and_run_hylaa_ha(self, s_f_list, max_bound, sigma, alpha, tau_guard_list):
         new_s_f_list = list()
         print("what is input s_f_list")
         print(s_f_list)
-
 
         for s in s_f_list:
             new_s = set()
@@ -359,14 +354,190 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
         ha = HybridAutomaton('ha')
         l_mode = list()
-        for i in range(bound + 1):
-            l_mode.append(make_mode_property(s_f_list[i], i, bound, l_v, ha, sigma))
+
+        s_forall = list()
+        s_integral = list()
+        s_0 = list()
+        s_tau = list()
+        s_reset = list()
+        s_guard = list()
+
+        num_internal = [0 for i in range(max_bound + 1)]
+
+        for i in range(max_bound + 1):
+            s_forall_i, s_integral_i, s_0_i, s_tau_i, s_reset_i, s_guard_i = unit_split(s_f_list[i], i)
+            s_forall.append(s_forall_i)
+            s_integral.append(s_integral_i)
+            s_0.append(s_0_i)
+            s_tau.append(s_tau_i)
+            s_reset.append(s_reset_i)
+            s_guard.append(s_guard_i)
+            if len(tau_guard_list) > i:
+                num_internal[i] = len(tau_guard_list[i])
+
+        if HylaaSolver().time_optimize:
+            l_v.append("timeStep")
+            for i in range(max_bound + 1):
+                l_mode.append(make_mode_property(s_integral[i], s_forall[i], i, max_bound, l_v, ha, sigma,
+                                                 HylaaSolver().time_optimize))
+                for j in range(num_internal[i]):
+                    mode_i = ha.new_mode("internal_mode_" + str(i) + "_" + str(j))
+                    l_integral = l_v.copy()
+                    integral_in = [[0 for il in range(len(l_v) + 1)] for jl in range(len(l_v))]
+                    sub_integral = [0 for il in range(len(l_v) + 1)]
+                    sub_integral[-1] = 1
+                    integral_in.append(sub_integral)
+                    mode_i.set_dynamics(integral_in)
+                    invariants = "timeStep>=0 & timeStep<=0"
+                    m_forall, m_forall_rhs = symbolic.make_condition(l_v, invariants.split('&'), {},
+                                                                     has_affine_variable=True)
+                    mode_i.set_invariant(m_forall, m_forall_rhs)
+                    l_mode.append(mode_i)
+        else:
+            for i in range(max_bound + 1):
+                l_mode.append(make_mode_property(s_integral[i], s_forall[i], i, max_bound, l_v, ha, sigma,
+                                                 optimize=HylaaSolver().time_optimize))
 
         l_mode.append(ha.new_mode("error"))
-        for i in range(bound + 1):
-            make_transition(s_f_list[i], i, bound, l_v, ha, l_mode[i], l_mode[i + 1])
 
-        forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], bound)
+        if HylaaSolver().time_optimize:
+            for i in range(max_bound + 1):
+                flat = list()
+                print("tau_guard")
+                print(s_tau[i])
+                print(tau_guard_list)
+                if len(tau_guard_list) > i:
+                    print(tau_guard_list)
+                    for ss in tau_guard_list[i].keys():
+                        if ss in s_tau[i]:
+                            flat.append(tau_guard_list[i][ss])
+                            s_tau[i].remove(ss)
+
+                total_children = set()
+                print("s_guard")
+                print(s_guard[i])
+                print(s_tau[i])
+                print(flat)
+                total_children = total_children.union(s_guard[i])
+                total_children = total_children.union(s_tau[i])
+                guard_first = total_children
+                remove_var_dict = dict()
+
+                for c in s_reset[i]:
+                    vs = get_vars(c)
+                    for v in vs:
+                        remove_var_dict[v] = remove_index(v)
+
+                l_r = l_v.copy()
+                for r in s_reset[i]:
+                    k = find_index(l_v, r.left)
+                    l_r[k] = infix(substitution(r.right, remove_var_dict))
+
+                if "tau" in l_v:
+                    for j in range(max_bound + 1):
+                        k_t_j = find_index(l_v, Real("tau_" + str(j)))
+                        l_r[k_t_j] = "tau_" + str(j)
+                l_r[-1] = "0"
+
+                trans_dict = dict()
+
+                if num_internal[i] == 0:
+                    mode_p = ha.modes["mode" + str(i)]
+                    if i >= max_bound:
+                        mode_q = ha.modes["error"]
+                    else:
+                        mode_q = ha.modes["mode" + str(i + 1)]
+                    trans_i = ha.new_transition(mode_p, mode_q)
+                    phi_guard_children = list()
+                    for c in guard_first:
+                        vs = get_vars(c)
+                        new_dict = dict()
+                        for v in vs:
+                            new_dict[v] = remove_index(v)
+                            phi_guard_children.append(reduce_not(substitution(c, new_dict)))
+                    print("phi guard")
+                    print(phi_guard_children)
+                    m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'), {},
+                                                                   has_affine_variable=True)
+                    trans_i.set_guard(m_guard, m_guard_rhs)
+
+                    reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                    trans_i.set_reset(reset_mat)
+
+                for j in range(num_internal[i]):
+                    if j == 0:
+                        mode_p = ha.modes["mode" + str(i)]
+                        mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
+                        trans_i = ha.new_transition(mode_p, mode_q)
+
+                        phi_guard_children = list()
+                        for c in guard_first:
+                            vs = get_vars(c)
+                            new_dict = dict()
+                            for v in vs:
+                                new_dict[v] = remove_index(v)
+                                phi_guard_children.append(reduce_not(substitution(c, new_dict)))
+                        print("phi guard2")
+                        print(phi_guard_children)
+                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
+                                                                       {},
+                                                                       has_affine_variable=True)
+                        trans_i.set_guard(m_guard, m_guard_rhs)
+
+                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                        trans_i.set_reset(reset_mat)
+
+                    elif j >= num_internal[i] - 1:
+                        mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
+                        if i >= max_bound:
+                            mode_q = ha.modes["error"]
+                        else:
+                            mode_q = ha.modes["mode" + str(i + 1)]
+                        trans_i = ha.new_transition(mode_p, mode_q)
+                        phi_guard_children = list()
+                        for c in flat[j - 1]:
+                            vs = get_vars(c)
+                            new_dict = dict()
+                            for v in vs:
+                                new_dict[v] = remove_index(v)
+                                phi_guard_children.append(reduce_not(substitution(c, new_dict)))
+                        print("phi guard3")
+                        print(phi_guard_children)
+                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
+                                                                       {},
+                                                                       has_affine_variable=True)
+                        trans_i.set_guard(m_guard, m_guard_rhs)
+
+                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                        trans_i.set_reset(reset_mat)
+                    else:
+                        mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
+                        mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j + 1)]
+                        trans_i = ha.new_transition(mode_p, mode_q)
+                        phi_guard_children = list()
+                        for c in flat[j - 1]:
+                            vs = get_vars(c)
+                            new_dict = dict()
+                            for v in vs:
+                                new_dict[v] = remove_index(v)
+                                phi_guard_children.append(reduce_not(substitution(c, new_dict)))
+                        print("phi guard4")
+                        print(phi_guard_children)
+                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
+                                                                       {},
+                                                                       has_affine_variable=True)
+                        trans_i.set_guard(m_guard, m_guard_rhs)
+
+                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                        trans_i.set_reset(reset_mat)
+
+
+
+        else:
+            for i in range(max_bound + 1):
+                make_transition(s_f_list[i], i, max_bound, l_v, ha, l_mode[i], l_mode[i + 1])
+
+        forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
         # assumption: all boundaries should be number
         sympy_expr_list = list()
@@ -382,10 +553,11 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             bound_box_list.append([None, None])
 
         for t in l_v:
-            if "tau" in t:
+            if ("tau" in t) or (HylaaSolver().time_optimize and "timeStep" in t):
                 index = find_index(l_v, Real(t))
                 bound_box_list[index][0] = Float(0.0)
                 bound_box_list[index][1] = Float(0.0)
+
         print("init constraints")
         print(l_v)
         print(init_set)
@@ -451,8 +623,8 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         init_list = [StateSet(init_lpi, mode)]
         settings = HylaaSettings(0.1, 100)
         # settings.stop_on_aggregated_error = False
-        settings.aggstrat.deaggregate = True  # use deaggregation
-        settings.stdout = HylaaSettings.STDOUT_VERBOSE
+        settings.aggstrat.deaggregate = True  # use deaggregationboolean_abstract_dict
+        # settings.stdout = HylaaSettings.STDOUT_VERBOSE
         core = Core(ha, settings)
         ce = core.run(init_list)
         # self.add_log_info(str(ce.counterexample))
@@ -472,7 +644,8 @@ class HylaaSolverNaive(HylaaSolver):
     def __init__(self):
         super(HylaaSolver, self).__init__()
 
-    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts, boolean_sub_dict):
+    def solve_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
+                       boolean_sub_dict):
         return self.get_max_literal(alpha, assignment, max_bound, c, optimize, z3_boolean_consts, boolean_sub_dict)
 
     def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
@@ -839,10 +1012,8 @@ def find_index(input_list: list, v: Variable):
     raise NotFoundElementError(v, "index not found")
 
 
-def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigma):
+def make_mode_property(s_integral_i, s_forall_i, i, max_bound, l_v, ha: HybridAutomaton, sigma, optimize):
     mode_i = ha.new_mode("mode" + str(i))
-
-    s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
     l_integral = l_v.copy()
 
     for integral in s_integral_i:
@@ -864,13 +1035,15 @@ def make_mode_property(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, sigm
         k_j = find_index(l_v, Real("tau_" + str(j)))
         l_integral[k_j] = "1"
 
+    if optimize:
+        l_integral[-1] = "1"
+
     m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
     print("what is l integral")
     print(l_integral)
     print("hylaa make dynmics mat result")
     print(m_integral)
     mode_i.set_dynamics(m_integral)
-
 
     phi_forall_children = list()
     for c in s_forall_i:

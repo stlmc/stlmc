@@ -61,14 +61,14 @@ def _(const: Neg, substitution_dict):
 def _(const: Function, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Function(substitution(const.var, substitution_dict), substitution(const.exp, substitution_dict))
+    return Function([substitution(const.var, substitution_dict)], [substitution(const.exp, substitution_dict)])
 
 
 @substitution.register(Ode)
 def _(const: Ode, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Ode(substitution(const.var, substitution_dict), substitution(const.exp, substitution_dict))
+    return Ode([substitution(const.var, substitution_dict)], [substitution(const.exp, substitution_dict)])
 
 
 @substitution.register(And)
@@ -259,7 +259,7 @@ def _(const: Function, substitution_dict):
 
     left, sl = substitutionSize(const.var, substitution_dict)
     right, rl = substitutionSize(const.exp, substitution_dict)
-    return Function(left, right), sl + rl + 1
+    return Function([left], [right]), sl + rl + 1
 
 
 @substitutionSize.register(Ode)
@@ -268,7 +268,7 @@ def _(const: Ode, substitution_dict):
         return substitution_dict[const], 1
     left, sl = substitutionSize(const.var, substitution_dict)
     right, rl = substitutionSize(const.exp, substitution_dict)
-    return Ode(left, right), sl + rl + 1
+    return Ode([left], [right]), sl + rl + 1
 
 
 @substitutionSize.register(And)
@@ -382,7 +382,7 @@ def _(const: Forall, substitution_dict):
 def _(const: FinallyFormula, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const], 1
-    s, ss = substitutionSize(const.const, substitution_dict)
+    s, ss = substitutionSize(const.child, substitution_dict)
     return FinallyFormula(const.local_time, const.global_time, s), ss + 1
 
 
@@ -390,7 +390,7 @@ def _(const: FinallyFormula, substitution_dict):
 def _(const: GloballyFormula, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const], 1
-    s, ss = substitutionSize(const.const, substitution_dict)
+    s, ss = substitutionSize(const.child, substitution_dict)
     return GloballyFormula(const.local_time, const.global_time, s), ss + 1
 
 

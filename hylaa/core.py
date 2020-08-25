@@ -148,7 +148,8 @@ class Core(Freezable):
         Timers.tic("check_guards")
 
         cur_state = self.aggdag.get_cur_state()
-
+        self.print_verbose("[STLMC] start")
+        self.print_verbose(cur_state.cur_steps_since_start)
         for t in cur_state.mode.transitions:
             t_lpi = t.get_guard_intersection(cur_state.lpi)
 
@@ -161,7 +162,7 @@ class Core(Freezable):
 
                     if cur_state.is_concrete and self.settings.stop_on_concrete_error:
                         break
-                
+                # print(t.guard_csr)
                 self.aggdag.add_transition_successor(t, t_lpi)
 
                 self.print_verbose(f"Took transition {t} at steps {cur_state.cur_steps_since_start}")

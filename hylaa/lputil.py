@@ -45,7 +45,6 @@ def from_box(box_list, mode):
 
     csr = csr_matrix((data, inds, indptr), shape=(2*dims, dims), dtype=float)
     csr.check_format()
-
     return from_constraints(csr, rhs, mode)
 
 def from_zonotope(center, generator_list, mode):

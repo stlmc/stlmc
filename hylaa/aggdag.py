@@ -55,7 +55,8 @@ class AggDag(Freezable):
         '''called when the current state left the invariant (or exceeds reach time bound)'''
 
         state = self.get_cur_state()
-
+        self.core.print_verbose("[STLMC] reach time bound:")
+        self.core.print_verbose(state.cur_step_in_mode)
         op = OpLeftInvariant(state.cur_step_in_mode, self.cur_node, reached_time_bound)
         self.cur_node.op_list.append(op)
 
@@ -148,6 +149,7 @@ class AggDag(Freezable):
         if op:
             cur_node.op_list.append(op)
             self.waiting_list.append(op)
+        self.core.print_verbose("transition size : {}".format(len(cur_node.op_list)))
 
     def _get_node_leaf_ops(self, node):
         'recursively get all the leaf ops originating from the given node'
