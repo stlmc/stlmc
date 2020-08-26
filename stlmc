@@ -2,20 +2,6 @@
 from stlmcPy.driver.base_driver import *
 
 
-class StlModelChecker:
-    def __init__(self):
-        self.config = None
-        self.runner = None
-
-    def create_simulation_env(self, df: DriverFactory):
-        self.config = df.make_config()
-        self.runner = df.make_runner()
-
-    def run(self):
-        self.config.parse()
-        self.runner.run(self.config)
-
-
 if __name__ == '__main__':
     try:
         # default driver factory

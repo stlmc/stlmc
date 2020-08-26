@@ -119,7 +119,8 @@ class Runner(Logger):
             for bound in config.bound:
                 for goal in goals:
                     if bound == 1:
-                        self.write_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
+                        self.write_to_file(
+                            str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
                     print("======================================")
                     print(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + "_" + str(bound))
                     solver.add_bound(bound)
@@ -157,7 +158,8 @@ class Runner(Logger):
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
-                    self.append_to_file(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
+                    self.append_to_file(
+                        str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
                     self.clear_log()
                     # print(assignment)
                     # if is_visualize:
@@ -178,3 +180,17 @@ class DriverFactory:
     @abc.abstractmethod
     def make_runner(self):
         return Runner()
+
+
+class StlModelChecker:
+    def __init__(self):
+        self.config = None
+        self.runner = None
+
+    def create_simulation_env(self, df: DriverFactory):
+        self.config = df.make_config()
+        self.runner = df.make_runner()
+
+    def run(self):
+        self.config.parse()
+        self.runner.run(self.config)

@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+
+# SBATCH -J STLMC
+# SBATCH -o = %x.o%j
+# SBATCH -e = %x.e%j
+# SBATCH --partition=whatever_the_name_of_your_SLURM_partition_is
+# SBATCH -N 5
+# SBATCH -n 15 # 5 cores
+
+import multiprocessing
+from stlmcPy.driver.multiprocess_driver import MultiprocessDriverFactory, MultiprocessStlModelChecker, unit_run
+
+pool = multiprocessing.Pool()
+
+if __name__ == '__main__':
+    try:
+        # default driver factory
+        driver_factory = MultiprocessDriverFactory()
+
+        stlmc = MultiprocessStlModelChecker()
+        stlmc.create_simulation_env(driver_factory)
+        stlmc.run()
+
+        args = stlmc.get_args()
+        result = pool.map_async(unit_run, args)
+
+        pool.close()
+        pool.join()
+
+    except SystemExit:
+        print("System error")
