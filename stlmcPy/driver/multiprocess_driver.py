@@ -1,6 +1,6 @@
 from stlmcPy.constraints.constraints import And
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
-from stlmcPy.driver.base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
+from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
 from stlmcPy.objects.object_builder import generate_object
 from stlmcPy.solver.solver_factory import SolverFactory
 

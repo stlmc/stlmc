@@ -310,9 +310,9 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             hylaa_start_time = timer()
 
             try:
-                # hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                #                                          new_alpha, tau_guard_list)
-                hylaa_result = True
+                hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
+                                                         new_alpha, tau_guard_list)
+                #hylaa_result = True
 
 
             except RuntimeError as re:

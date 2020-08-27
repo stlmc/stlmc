@@ -1,0 +1,24 @@
+Model : "/home/rgyenr2/workspace/STL/stlmcPy/tests/benchmark_models/linear/railroadLinear.model"
+bound: 1
+step1 time: 0.0010234999936074018 sec
+------------------------------
+loop count: 0
+SMT solving time: 0.025160307995975018 sec
+Preparing max literal set: 0.07748332410119474 sec
+[]
+hylaa time: 3.289648409001529 sec
+------------------------------
+loop count: 1
+SMT solving time: 0.03765681805089116 sec
+Preparing max literal set: 0.14458379498682916 sec
+[]
+hylaa time: 2.979551699012518 sec
+------------------------------
+loop count: 2
+SMT solving time: 0.0493409619666636 sec
+Preparing max literal set: 0.10245004203170538 sec
+[[CE_Segment: [0.0, 0.0, 90.0, 0.0, 0.0, 1.0] -> [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] in 'mode0'], [CE_Segment: [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] -> [0.0, 0.0, -5.099999999996743, 19.020000000000174, 19.010000000000172, 1.0] in 'mode1']]
+hylaa time: 48.18964194599539 sec
+------------------------------
+
+goal: reachability, result: False

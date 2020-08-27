@@ -1,0 +1,462 @@
+Model : "/home/rgyenr2/workspace/STL/stlmcPy/tests/benchmark_models/linear/railroadLinear.model"
+bound: 1
+step1 time: 0.0010234999936074018 sec
+------------------------------
+loop count: 0
+SMT solving time: 0.025160307995975018 sec
+Preparing max literal set: 0.07748332410119474 sec
+[]
+hylaa time: 3.289648409001529 sec
+------------------------------
+loop count: 1
+SMT solving time: 0.03765681805089116 sec
+Preparing max literal set: 0.14458379498682916 sec
+[]
+hylaa time: 2.979551699012518 sec
+------------------------------
+loop count: 2
+SMT solving time: 0.0493409619666636 sec
+Preparing max literal set: 0.10245004203170538 sec
+[[CE_Segment: [0.0, 0.0, 90.0, 0.0, 0.0, 1.0] -> [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] in 'mode0'], [CE_Segment: [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] -> [0.0, 0.0, -5.099999999996743, 19.020000000000174, 19.010000000000172, 1.0] in 'mode1']]
+hylaa time: 48.18964194599539 sec
+------------------------------
+
+goal: reachability, result: False
+step1 time: 0.0010234999936074018 sec
+------------------------------
+loop count: 0
+SMT solving time: 0.025160307995975018 sec
+Preparing max literal set: 0.07748332410119474 sec
+[]
+hylaa time: 3.289648409001529 sec
+------------------------------
+loop count: 1
+SMT solving time: 0.03765681805089116 sec
+Preparing max literal set: 0.14458379498682916 sec
+[]
+hylaa time: 2.979551699012518 sec
+------------------------------
+loop count: 2
+SMT solving time: 0.0493409619666636 sec
+Preparing max literal set: 0.10245004203170538 sec
+[[CE_Segment: [0.0, 0.0, 90.0, 0.0, 0.0, 1.0] -> [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] in 'mode0'], [CE_Segment: [0.0, 0.0, -5.049999999996743, 19.010000000000172, 19.010000000000172, 1.0] -> [0.0, 0.0, -5.099999999996743, 19.020000000000174, 19.010000000000172, 1.0] in 'mode1']]
+hylaa time: 48.18964194599539 sec
+------------------------------
+step1 time: 0.001040478004142642 sec
+------------------------------
+loop count: 0
+SMT solving time: 0.028224468929693103 sec
+Preparing max literal set: 0.08533884910866618 sec
+[]
+hylaa time: 5.466680619865656 sec
+------------------------------
+loop count: 1
+SMT solving time: 0.042050129966810346 sec
+Preparing max literal set: 0.10155411902815104 sec
+[]
+hylaa time: 0.5951344149652869 sec
+------------------------------
+loop count: 2
+SMT solving time: 0.056698097847402096 sec
+Preparing max literal set: 0.11749653308652341 sec
+[]
+hylaa time: 0.6114213750697672 sec
+------------------------------
+loop count: 3
+SMT solving time: 0.07269457005895674 sec
+Preparing max literal set: 0.13274256279692054 sec
+[]
+hylaa time: 0.5914220381528139 sec
+------------------------------
+loop count: 4
+SMT solving time: 0.08449517912231386 sec
+Preparing max literal set: 0.14690747787244618 sec
+[]
+hylaa time: 0.7148381799925119 sec
+------------------------------
+loop count: 5
+SMT solving time: 0.10048480099067092 sec
+Preparing max literal set: 0.16254665097221732 sec
+[]
+hylaa time: 0.6240090308710933 sec
+------------------------------
+loop count: 6
+SMT solving time: 0.11518800910562277 sec
+Preparing max literal set: 0.17737996485084295 sec
+[]
+hylaa time: 0.6179662791546434 sec
+------------------------------
+loop count: 7
+SMT solving time: 0.12987090297974646 sec
+Preparing max literal set: 0.19206353090703487 sec
+[]
+hylaa time: 0.6206533538643271 sec
+------------------------------
+loop count: 8
+SMT solving time: 0.143351691076532 sec
+Preparing max literal set: 0.20911714690737426 sec
+[]
+hylaa time: 0.6223729189950973 sec
+------------------------------
+loop count: 9
+SMT solving time: 0.15889842808246613 sec
+Preparing max literal set: 0.22160866390913725 sec
+[]
+hylaa time: 0.6008445660118014 sec
+------------------------------
+loop count: 10
+SMT solving time: 0.17290637199766934 sec
+Preparing max literal set: 0.23858031281270087 sec
+[]
+hylaa time: 0.6193038839846849 sec
+------------------------------
+loop count: 11
+SMT solving time: 0.187269221059978 sec
+Preparing max literal set: 0.2516283190343529 sec
+[]
+hylaa time: 0.6114154998213053 sec
+------------------------------
+loop count: 12
+SMT solving time: 0.2004291380289942 sec
+Preparing max literal set: 0.2690636059269309 sec
+[]
+hylaa time: 1.1669001171831042 sec
+------------------------------
+loop count: 13
+SMT solving time: 0.21602660208009183 sec
+Preparing max literal set: 0.28450999688357115 sec
+[]
+hylaa time: 0.6665167899336666 sec
+------------------------------
+loop count: 14
+SMT solving time: 0.23398900916799903 sec
+Preparing max literal set: 0.29867833387106657 sec
+[]
+hylaa time: 0.6580875909421593 sec
+------------------------------
+loop count: 15
+SMT solving time: 0.2501289159990847 sec
+Preparing max literal set: 0.3137981949839741 sec
+[]
+hylaa time: 0.6580795710906386 sec
+------------------------------
+loop count: 16
+SMT solving time: 0.25991276395507157 sec
+Preparing max literal set: 0.3370597530156374 sec
+[]
+hylaa time: 0.6418969719670713 sec
+------------------------------
+loop count: 17
+SMT solving time: 0.2716805811505765 sec
+Preparing max literal set: 0.3509219139814377 sec
+[]
+hylaa time: 0.6308645531535149 sec
+------------------------------
+loop count: 18
+SMT solving time: 0.28556206403300166 sec
+Preparing max literal set: 0.35928566404618323 sec
+[]
+hylaa time: 5.870929782977328 sec
+------------------------------
+loop count: 19
+SMT solving time: 0.3006812068633735 sec
+Preparing max literal set: 0.37447575107216835 sec
+[]
+hylaa time: 0.6388249679002911 sec
+------------------------------
+loop count: 20
+SMT solving time: 0.3143782070837915 sec
+Preparing max literal set: 0.38690910185687244 sec
+[]
+hylaa time: 1.230564797995612 sec
+------------------------------
+loop count: 21
+SMT solving time: 0.3303795710671693 sec
+Preparing max literal set: 0.40125268092378974 sec
+[]
+hylaa time: 0.6225603648927063 sec
+------------------------------
+loop count: 22
+SMT solving time: 0.34265533508732915 sec
+Preparing max literal set: 0.41971128387376666 sec
+[]
+hylaa time: 0.637496406910941 sec
+------------------------------
+loop count: 23
+SMT solving time: 0.3566000401042402 sec
+Preparing max literal set: 0.4309345190413296 sec
+[]
+hylaa time: 0.6360008509363979 sec
+------------------------------
+loop count: 24
+SMT solving time: 0.36998013500124216 sec
+Preparing max literal set: 0.4467492760159075 sec
+[]
+hylaa time: 0.6400693878531456 sec
+------------------------------
+loop count: 25
+SMT solving time: 0.38807534612715244 sec
+Preparing max literal set: 0.4614397999830544 sec
+[]
+hylaa time: 1.2230280810035765 sec
+------------------------------
+loop count: 26
+SMT solving time: 0.3979089129716158 sec
+Preparing max literal set: 0.4783801669254899 sec
+[]
+hylaa time: 0.6402057309169322 sec
+------------------------------
+loop count: 27
+SMT solving time: 0.41197398118674755 sec
+Preparing max literal set: 0.4901485559530556 sec
+[]
+hylaa time: 0.6247680340893567 sec
+------------------------------
+loop count: 28
+SMT solving time: 0.42693540221080184 sec
+Preparing max literal set: 0.5055724468547851 sec
+[]
+hylaa time: 0.6422758239787072 sec
+------------------------------
+loop count: 29
+SMT solving time: 0.441271232906729 sec
+Preparing max literal set: 0.5817095940001309 sec
+[]
+hylaa time: 0.6440348459873348 sec
+------------------------------
+loop count: 30
+SMT solving time: 0.45614797505550086 sec
+Preparing max literal set: 0.5380434580147266 sec
+[]
+hylaa time: 0.6434574550949037 sec
+------------------------------
+loop count: 31
+SMT solving time: 0.4687958729919046 sec
+Preparing max literal set: 0.5511640389449894 sec
+[]
+hylaa time: 0.6396315270103514 sec
+------------------------------
+loop count: 32
+SMT solving time: 0.4825167388189584 sec
+Preparing max literal set: 0.5657990551553667 sec
+[]
+hylaa time: 0.6388448139186949 sec
+------------------------------
+loop count: 33
+SMT solving time: 0.4969578660093248 sec
+Preparing max literal set: 0.5807693609967828 sec
+[]
+hylaa time: 1.2359968649689108 sec
+------------------------------
+loop count: 34
+SMT solving time: 0.5136999250389636 sec
+Preparing max literal set: 0.5954008679836988 sec
+[]
+hylaa time: 0.6391219040378928 sec
+------------------------------
+loop count: 35
+SMT solving time: 0.5254105150233954 sec
+Preparing max literal set: 0.6096591870300472 sec
+[]
+hylaa time: 0.639860738068819 sec
+------------------------------
+loop count: 36
+SMT solving time: 0.541778972838074 sec
+Preparing max literal set: 0.6249607021454722 sec
+[]
+hylaa time: 10.678688689833507 sec
+------------------------------
+loop count: 37
+SMT solving time: 0.5629048671107739 sec
+Preparing max literal set: 0.6422619689255953 sec
+[]
+hylaa time: 0.6387556039262563 sec
+------------------------------
+loop count: 38
+SMT solving time: 0.5680052670650184 sec
+Preparing max literal set: 0.6549684738274664 sec
+[]
+hylaa time: 0.6409558700397611 sec
+------------------------------
+loop count: 39
+SMT solving time: 0.5859997670631856 sec
+Preparing max literal set: 0.6744297409895808 sec
+[]
+hylaa time: 0.6425674702040851 sec
+------------------------------
+loop count: 40
+SMT solving time: 0.5980870330240577 sec
+Preparing max literal set: 0.6849662938620895 sec
+[]
+hylaa time: 10.604232297977433 sec
+------------------------------
+loop count: 41
+SMT solving time: 0.6162712490186095 sec
+Preparing max literal set: 0.6993506769649684 sec
+[]
+hylaa time: 0.624460905091837 sec
+------------------------------
+loop count: 42
+SMT solving time: 0.6255636981222779 sec
+Preparing max literal set: 0.7158179727848619 sec
+[]
+hylaa time: 0.6389984909910709 sec
+------------------------------
+loop count: 43
+SMT solving time: 0.6428912600968033 sec
+Preparing max literal set: 0.7289865589700639 sec
+[]
+hylaa time: 0.6430632330011576 sec
+------------------------------
+loop count: 44
+SMT solving time: 0.6579469998832792 sec
+Preparing max literal set: 0.7447890001349151 sec
+[]
+hylaa time: 0.6415620360057801 sec
+------------------------------
+loop count: 45
+SMT solving time: 0.6738466711249202 sec
+Preparing max literal set: 0.8141522100195289 sec
+[]
+hylaa time: 0.6452082139439881 sec
+------------------------------
+loop count: 46
+SMT solving time: 0.6846581851132214 sec
+Preparing max literal set: 0.7736427008640021 sec
+[]
+hylaa time: 0.6400411669164896 sec
+------------------------------
+loop count: 47
+SMT solving time: 0.70004270109348 sec
+Preparing max literal set: 0.7870905809104443 sec
+[]
+hylaa time: 0.6404267100151628 sec
+------------------------------
+loop count: 48
+SMT solving time: 0.7181293570902199 sec
+Preparing max literal set: 0.805320868967101 sec
+[]
+hylaa time: 0.6438355201389641 sec
+------------------------------
+loop count: 49
+SMT solving time: 0.7288799150846899 sec
+Preparing max literal set: 0.8189120290335268 sec
+[]
+hylaa time: 0.6254161749966443 sec
+------------------------------
+loop count: 50
+SMT solving time: 0.7411381117999554 sec
+Preparing max literal set: 0.8780661839991808 sec
+[]
+hylaa time: 0.646414496935904 sec
+------------------------------
+loop count: 51
+SMT solving time: 0.7560438120272011 sec
+Preparing max literal set: 0.85338896792382 sec
+[]
+hylaa time: 0.6422415471170098 sec
+------------------------------
+loop count: 52
+SMT solving time: 0.769011870957911 sec
+Preparing max literal set: 0.8625101989600807 sec
+[]
+hylaa time: 0.642673232126981 sec
+------------------------------
+loop count: 53
+SMT solving time: 0.7859071081038564 sec
+Preparing max literal set: 0.9044801688287407 sec
+[]
+hylaa time: 0.6220753730740398 sec
+------------------------------
+loop count: 54
+SMT solving time: 0.7967977500520647 sec
+Preparing max literal set: 0.9307572129182518 sec
+[]
+hylaa time: 0.6367535011377186 sec
+------------------------------
+loop count: 55
+SMT solving time: 0.8133274021092802 sec
+Preparing max literal set: 0.9468672350049019 sec
+[]
+hylaa time: 0.6389272201340646 sec
+------------------------------
+loop count: 56
+SMT solving time: 0.8300112129654735 sec
+Preparing max literal set: 0.9239358350168914 sec
+[]
+hylaa time: 0.638824180001393 sec
+------------------------------
+loop count: 57
+SMT solving time: 0.8397432980127633 sec
+Preparing max literal set: 0.936365531058982 sec
+[]
+hylaa time: 0.6404212550260127 sec
+------------------------------
+loop count: 58
+SMT solving time: 0.8539405819028616 sec
+Preparing max literal set: 0.9515152920503169 sec
+[]
+hylaa time: 0.6444041100330651 sec
+------------------------------
+loop count: 59
+SMT solving time: 0.8725556198041886 sec
+Preparing max literal set: 0.9680109859909862 sec
+[]
+hylaa time: 0.6429223029408604 sec
+------------------------------
+loop count: 60
+SMT solving time: 0.8833853779360652 sec
+Preparing max literal set: 1.022878305055201 sec
+[]
+hylaa time: 0.6425090399570763 sec
+------------------------------
+loop count: 61
+SMT solving time: 0.9009025059640408 sec
+Preparing max literal set: 0.9958250790368766 sec
+[]
+hylaa time: 0.6413795629050583 sec
+------------------------------
+loop count: 62
+SMT solving time: 0.9136696700006723 sec
+Preparing max literal set: 1.0110818890389055 sec
+[]
+hylaa time: 0.640806192997843 sec
+------------------------------
+loop count: 63
+SMT solving time: 0.9251796030439436 sec
+Preparing max literal set: 1.027788108913228 sec
+[]
+hylaa time: 0.6394609820563346 sec
+------------------------------
+loop count: 64
+SMT solving time: 0.9419846720993519 sec
+Preparing max literal set: 1.040996350813657 sec
+[]
+hylaa time: 0.6826753779314458 sec
+------------------------------
+loop count: 65
+SMT solving time: 0.9581978851929307 sec
+Preparing max literal set: 1.0532493179198354 sec
+[]
+hylaa time: 0.6422690700273961 sec
+------------------------------
+loop count: 66
+SMT solving time: 0.9715103539638221 sec
+Preparing max literal set: 1.069366078125313 sec
+[]
+hylaa time: 0.6392301600426435 sec
+------------------------------
+loop count: 67
+SMT solving time: 0.9848555130884051 sec
+Preparing max literal set: 1.0884711791295558 sec
+[]
+hylaa time: 0.6230728288646787 sec
+------------------------------
+loop count: 68
+SMT solving time: 0.9988315440714359 sec
+Preparing max literal set: 1.1383537088986486 sec
+[[CE_Segment: [0.0, 0.0, 89.94999999999902, 0.0, 0.0, 1.0] -> [0.0, 0.0, 35.0, 10.98999999999981, 10.98999999999981, 1.0] in 'mode0'], [CE_Segment: [0.0, 0.0, 35.0, 10.98999999999981, 10.98999999999981, 1.0] -> [0.0, 0.0, 34.95, 10.99999999999981, 10.98999999999981, 1.0] in 'mode1']]
+hylaa time: 49.32094740914181 sec
+------------------------------
+
+goal: (<>_(0.0,50.0)^[0.0,inf) reachability), result: False
