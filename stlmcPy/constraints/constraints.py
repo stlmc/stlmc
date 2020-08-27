@@ -10,10 +10,15 @@ class Interval:
         self.right_end = right_end
         self.right = right
 
+    def __hash__(self):
+        return hash(id(self))
+
     def __repr__(self):
         return ('[' if self.left_end else '(') + repr(self.left) + ',' + repr(self.right) + (
             ']' if self.right_end else ')')
 
+    def __eq__(self, other):
+        return isinstance(other, Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
 
 universeInterval = Interval(True, 0.0, False, float('inf'))
 

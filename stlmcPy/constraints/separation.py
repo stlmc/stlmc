@@ -16,12 +16,12 @@ def _separation(f: Formula, sepMap, gen, fMap):
 
 
 @_separation.register(Constant)
-def _(f: Formula, sepMap, gen, fMap):
+def _(f: Constant, sepMap, gen, fMap):
     return f
 
 
 @_separation.register(Bool)
-def _(f: Formula, sepMap, gen, fMap):
+def _(f: Bool, sepMap, gen, fMap):
     return f
 
 

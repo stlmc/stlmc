@@ -9,19 +9,20 @@ from timeit import default_timer as timer
 
 def unit_run(arg):
     mul_runner, cur_bound, file_name, solver, model, goal, PD = arg
-    print(file_name)
     if cur_bound == 1:
+        print("write file, {}".format(file_name))
         mul_runner.write_to_file(file_name + ".csv")
-    print(file_name)
+    else:
+        print("row added to {}".format(file_name))
     solver.add_bound(cur_bound)
     model_const = model.make_consts(cur_bound)
     goal_const, goal_boolean_abstract = goal.make_consts(cur_bound, 60, 1, model, PD)
-
+    
     boolean_abstract = dict()
     boolean_abstract.update(model.boolean_abstract)
     boolean_abstract.update(goal_boolean_abstract)
     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-
+    
     solve_start = timer()
     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                 model.range_dict, boolean_abstract)
@@ -51,8 +52,7 @@ class MultiprocessRunner(Runner):
             model, PD, goals = generate_object(file_name)
             for bound in config.bound:
                 for goal in goals:
-                    new_file_name = str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + "_" + str(
-                        bound)
+                    new_file_name = str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver
                     solver = SolverFactory(config.solver).generate_solver()
                     arg = self, bound, new_file_name, solver, model, goal, PD
                     self.arguments.append(arg)

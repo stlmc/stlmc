@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
         args = stlmc.get_args()
         result = pool.map_async(unit_run, args)
-
+        result.get()
         pool.close()
         pool.join()
 
