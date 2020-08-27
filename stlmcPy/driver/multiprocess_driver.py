@@ -1,3 +1,5 @@
+import os
+
 from stlmcPy.constraints.constraints import And
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
 from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
@@ -54,9 +56,10 @@ class MultiprocessRunner(Runner):
                 for goal in goals:
                     abstract_log_file = str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver
                     log_file = abstract_log_file + "_" + str(bound)
-                    self.write_to_file(abstract_log_file + ".csv")
-                    if bound == 1:
+                    if not os.path.exists(log_file + ".csv"):
                         self.write_to_file(log_file + ".csv")
+                    if not os.path.exists(abstract_log_file + ".csv"):
+                        self.write_to_file(abstract_log_file + ".csv")
                     solver = SolverFactory(config.solver).generate_solver()
                     arg = self, bound, log_file, abstract_log_file, solver, model, goal, PD
                     self.arguments.append(arg)
