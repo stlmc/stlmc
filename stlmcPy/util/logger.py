@@ -5,10 +5,15 @@ class Logger:
     def __init__(self):
         self.lines = list()
         self.line = dict()
+        self.abst_dict = dict()
 
     def clear_log(self):
         self.lines = list()
         self.line = dict()
+        self.abst_dict = dict()
+
+    def get_abst_log(self):
+        return self.abst_dict
 
     def add_bound(self, bound):
         self.line["bound"] = str(bound)
@@ -68,3 +73,12 @@ class Logger:
 
             for line in self.lines:
                 writer.writerow(line)
+
+
+    def append_to_file_with(self, file_name: str, line: dict):
+        with open(file_name, 'a+', newline='') as csvfile:
+            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
+                          'loop total', 'total', 'result']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow(line)
+ 

@@ -197,10 +197,26 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         if mapping_info is None:
             mapping_info = dict()
 
+        tau_info = dict()
+        for k in mapping_info:
+            if "newTau" in k.id:
+                tau_info[k] = mapping_info[k]
+
         # pre-processing
         boolean_start = timer()
         # heuristic: removing mapping constraint part.
-        abstracted_consts = And(all_consts.children[0:2])
+        trans_all_consts = list()
+        trans_all_consts.append(all_consts.children[0])
+        if not HylaaSolver().time_optimize:
+            bef = all_consts.children[1]
+            tau_condition_sub = substitution(all_consts.children[1].children[-1], tau_info)
+            aft = all_consts.children[1].children[0:-1]
+            aft.append(tau_condition_sub)
+            trans_all_consts.extend(aft)
+        else:
+            trans_all_consts.append(all_consts.children[1])
+
+        abstracted_consts = And(trans_all_consts)
 
         # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
@@ -220,10 +236,12 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
             # logging
             self.add_loop_time(str(cur_index))
-            self.add_const_size(str(size_of_tree(abstracted_consts)))
-            print("loop : " + str(cur_index) + ", size of constraints : " + str(size_of_tree(abstracted_consts)))
+            abst_size = size_of_tree(abstracted_consts)
+            self.add_const_size(abst_size)
+            print("loop : " + str(cur_index) + ", size of constraints : " + str(abst_size))
             #
-
+            self.abst_dict["loop"] = str(cur_index)
+            self.abst_dict["constraint size"] = str(abst_size)
             loop_start = timer()
             cur_index += 1
             if counter_consts is not None:
@@ -257,24 +275,6 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             # new_abstracted_consts = substitution(abstracted_consts, new_alpha)
             new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
-            s_diff = set()
-            tau_clausese_flatten = set()
-
-            for elem in c:
-                if elem in mapping_info and "newTau" in elem.id and not HylaaSolver().time_optimize:
-                    tau_elem_clause = clause(mapping_info[elem])
-                    tau_clausese_flatten = tau_clausese_flatten.union(tau_elem_clause)
-                    for tchi in tau_elem_clause:
-                        boolean_sub_dict[tchi] = elem
-                    # s_diff.add(elem)
-                vs = get_vars(elem)
-                if len(vs) == 0:
-                    s_diff.add(elem)
-
-            c = c.difference(s_diff)
-            c = c.union(tau_clausese_flatten)
-
-            clause_end = timer()
 
             start_max_literal = timer()
             max_literal_set_list, alpha_delta = self.solve_strategy(alpha, assignment, max_bound, new_abstracted_consts,
@@ -338,10 +338,15 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         new_s_f_list = list()
         print("what is input s_f_list")
         print(s_f_list)
+        num_internal = [0 for i in range(max_bound + 1)]
 
         for s in s_f_list:
             new_s = set()
             for c in s:
+                if isinstance(c, Bool):
+                    if "newTau" in c.id:
+                        index = c.id.rfind("_") + 1
+                        num_internal[int(c.id[index:])] = num_internal[int(c.id[index:])] + 1
                 new_s.add(substitution(c, sigma))
             new_s_f_list.append(new_s)
 
@@ -362,7 +367,6 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         s_reset = list()
         s_guard = list()
 
-        num_internal = [0 for i in range(max_bound + 1)]
 
         for i in range(max_bound + 1):
             s_forall_i, s_integral_i, s_0_i, s_tau_i, s_reset_i, s_guard_i = unit_split(s_f_list[i], i)
@@ -372,8 +376,6 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
             s_tau.append(s_tau_i)
             s_reset.append(s_reset_i)
             s_guard.append(s_guard_i)
-            if len(tau_guard_list) > i:
-                num_internal[i] = len(tau_guard_list[i])
 
         if HylaaSolver().time_optimize:
             l_v.append("timeStep")
@@ -403,9 +405,8 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
         if HylaaSolver().time_optimize:
             for i in range(max_bound + 1):
                 flat = list()
-                print("tau_guard")
+                print("current tau condition")
                 print(s_tau[i])
-                print(tau_guard_list)
                 if len(tau_guard_list) > i:
                     print(tau_guard_list)
                     for ss in tau_guard_list[i].keys():
@@ -416,7 +417,6 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                 total_children = set()
                 print("s_guard")
                 print(s_guard[i])
-                print(s_tau[i])
                 print(flat)
                 total_children = total_children.union(s_guard[i])
                 total_children = total_children.union(s_tau[i])
@@ -455,7 +455,7 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
                         for v in vs:
                             new_dict[v] = remove_index(v)
                             phi_guard_children.append(reduce_not(substitution(c, new_dict)))
-                    print("phi guard")
+                    print("internal mode to origin mode")
                     print(phi_guard_children)
                     m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'), {},
                                                                    has_affine_variable=True)
@@ -463,73 +463,77 @@ class HylaaSolver(BaseSolver, HylaaStrategy, ABC):
 
                     reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
                     trans_i.set_reset(reset_mat)
+                else:
+                    for j in range(num_internal[i] + 1):
+                        if j == 0:
+                            print("l_mode")
+                            print(l_mode)
+                            mode_p = ha.modes["mode" + str(i)]
+                            mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
+                            trans_i = ha.new_transition(mode_p, mode_q)
 
-                for j in range(num_internal[i]):
-                    if j == 0:
-                        mode_p = ha.modes["mode" + str(i)]
-                        mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
-                        trans_i = ha.new_transition(mode_p, mode_q)
+                            phi_guard_children = list()
+                            for c in guard_first:
+                                vs = get_vars(c)
+                                new_dict = dict()
+                                for v in vs:
+                                    new_dict[v] = remove_index(v)
+                                    phi_guard_children.append(reduce_not(substitution(c, new_dict)))
+                            print("mode to internal " + str(mode_p.name) + " => " + str(mode_q.name))
+                            print(phi_guard_children)
+                            m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
+                                                                           {},
+                                                                           has_affine_variable=True)
+                            trans_i.set_guard(m_guard, m_guard_rhs)
 
-                        phi_guard_children = list()
-                        for c in guard_first:
-                            vs = get_vars(c)
-                            new_dict = dict()
-                            for v in vs:
-                                new_dict[v] = remove_index(v)
+                            reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                            trans_i.set_reset(reset_mat)
+
+                        elif j >= num_internal[i]:
+                            mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j-1)]
+                            if i >= max_bound:
+                                mode_q = ha.modes["error"]
+                            else:
+                                mode_q = ha.modes["mode" + str(i + 1)]
+                            phi_guard_children = list()
+                            for c in flat[j - 1]:
+                                vs = get_vars(c)
+                                new_dict = dict()
+                                for v in vs:
+                                    new_dict[v] = remove_index(v)
                                 phi_guard_children.append(reduce_not(substitution(c, new_dict)))
-                        print("phi guard2")
-                        print(phi_guard_children)
-                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
-                                                                       {},
-                                                                       has_affine_variable=True)
-                        trans_i.set_guard(m_guard, m_guard_rhs)
+                            for c in phi_guard_children:
+                                trans_i = ha.new_transition(mode_p, mode_q)
+                                print("internal mode to mode or error " + str(mode_p.name) + " => " + str(mode_q.name))
+                                print(c)
+                                m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(c).split('&'),
+                                                                           {},
+                                                                           has_affine_variable=True)
+                                trans_i.set_guard(m_guard, m_guard_rhs)
 
-                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
-                        trans_i.set_reset(reset_mat)
-
-                    elif j >= num_internal[i] - 1:
-                        mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
-                        if i >= max_bound:
-                            mode_q = ha.modes["error"]
+                                reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                                trans_i.set_reset(reset_mat)
                         else:
-                            mode_q = ha.modes["mode" + str(i + 1)]
-                        trans_i = ha.new_transition(mode_p, mode_q)
-                        phi_guard_children = list()
-                        for c in flat[j - 1]:
-                            vs = get_vars(c)
-                            new_dict = dict()
-                            for v in vs:
-                                new_dict[v] = remove_index(v)
+                            mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j - 1)]
+                            mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
+                            phi_guard_children = list()
+                            for c in flat[j - 1]:
+                                vs = get_vars(c)
+                                new_dict = dict()
+                                for v in vs:
+                                    new_dict[v] = remove_index(v)
                                 phi_guard_children.append(reduce_not(substitution(c, new_dict)))
-                        print("phi guard3")
-                        print(phi_guard_children)
-                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
-                                                                       {},
-                                                                       has_affine_variable=True)
-                        trans_i.set_guard(m_guard, m_guard_rhs)
+                            for c in phi_guard_children:
+                                trans_i = ha.new_transition(mode_p, mode_q)
+                                print("internal mode to internal mode  " + str(mode_p.name) + " => " + str(mode_q.name))
+                                print(c)
+                                m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(c).split('&'),
+                                                                           {},
+                                                                           has_affine_variable=True)
+                                trans_i.set_guard(m_guard, m_guard_rhs)
 
-                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
-                        trans_i.set_reset(reset_mat)
-                    else:
-                        mode_p = ha.modes["internal_mode_" + str(i) + "_" + str(j)]
-                        mode_q = ha.modes["internal_mode_" + str(i) + "_" + str(j + 1)]
-                        trans_i = ha.new_transition(mode_p, mode_q)
-                        phi_guard_children = list()
-                        for c in flat[j - 1]:
-                            vs = get_vars(c)
-                            new_dict = dict()
-                            for v in vs:
-                                new_dict[v] = remove_index(v)
-                                phi_guard_children.append(reduce_not(substitution(c, new_dict)))
-                        print("phi guard4")
-                        print(phi_guard_children)
-                        m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_guard_children)).split('&'),
-                                                                       {},
-                                                                       has_affine_variable=True)
-                        trans_i.set_guard(m_guard, m_guard_rhs)
-
-                        reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
-                        trans_i.set_reset(reset_mat)
+                                reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
+                                trans_i.set_reset(reset_mat)
 
 
 
@@ -797,10 +801,11 @@ class HylaaSolverUnsatCore(HylaaSolver):
             for cc in guard_set:
                 new_set.add(reduce_not(cc))
             s_diff = set()
-            for se in new_set:
-                if isinstance(se, Bool):
-                    if "newTau#" in se.id:
-                        s_diff.add(se)
+            if not optimize:
+                for se in new_set:
+                    if isinstance(se, Bool):
+                        if "newTau#" in se.id:
+                            s_diff.add(se)
             new_set = new_set.difference(s_diff)
             max_literal_set_list.append(new_set)
         return max_literal_set_list, total
@@ -1173,7 +1178,7 @@ def unit_split(given_set: set, i: int):
         if len(var_set) == 1:
             for var in var_set:
                 start_index = int(var.id.find("_"))
-                if var.id[start_index:] == "_0_0" and "newIntegral" not in var.id and "invAtomicID" not in var.id:
+                if var.id[start_index:] == "_0_0" and "newTau" not in var.id and "newIntegral" not in var.id and "invAtomicID" not in var.id:
                     init_set.add(c)
                     s_diff.add(c)
                     break

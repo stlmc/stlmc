@@ -87,7 +87,7 @@ class PropHelper:
                 fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
                 fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
                 init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
-                init_const_2 = And([not_bound_applied_goal_var, reduce_not(Not(relaxed_bound_const))])
+                init_const_2 = And([not_bound_applied_goal_var, not_relaxed_bound_const])
                 init_point_check = Or([init_const_1, init_const_2])
                 self.boolean_abstract[bound_applied_goal_var] = Forall(integral.current_mode_number,
                                                                        Real('tau_' + str(bound + 1)),
@@ -134,8 +134,8 @@ class BaseStlGoal(Goal):
 
         time_consts_list = self.make_time_consts(bound, time_bound)
 
-        result_const.extend(stl_consts_list)
         result_const.extend(time_consts_list)
+        result_const.extend(stl_consts_list)
         boolean_abstract = dict()
         boolean_abstract.update(self.boolean_abstract)
         boolean_abstract.update(propHelper.boolean_abstract)
@@ -164,7 +164,10 @@ class NewStlGoal(BaseStlGoal):
 
         # partition constraints
         partition_const_children, self.boolean_abstract = PART.genPartition(baseP, fs[1], subFormulaMap)
-        total_children = partition_const_children + formulaConst
+        part_const = And(partition_const_children)
+        total_children = list()
+        total_children.extend(formulaConst)
+        total_children.append(part_const)
 
         return total_children
 

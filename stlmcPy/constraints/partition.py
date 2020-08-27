@@ -68,7 +68,7 @@ def genPartition(baseP, sepMap, subFormula):
         left = subGlobal[k][0]
         right = subGlobal[k][1]
         for i in range(1, len(baseP)):
-            change_point = Neq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
+            change_point = Eq(propOrdDict[k][2 * i - 2], propOrdDict[k][2 * i])
             sub_left = []
             sub_right = []
             sub_left.append((baseP[i] - left) < RealVal("0"))
@@ -83,9 +83,8 @@ def genPartition(baseP, sepMap, subFormula):
             tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
             count += 1
             tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
-            consts.append(Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1)))
-            consts.append(Bool("newTau#_" + str(count) + "_" + str(right_max - 1)))
-            consts.append(change_point)
+            consts.append(Or([change_point, Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1))]))
+            consts.append(Or([change_point, Bool("newTau#_" + str(count) + "_" + str(right_max - 1))]))
 
             count += 1
 

@@ -87,16 +87,15 @@ class StlMC:
 
     def make_range_consts(self, bound):
         result = list()
-        for k in range(bound + 1):
-            for i in self.range_dict:
-                init_var = Real(i.id + '_' + str(k) + '_' + '0')
-                end_var = Real(i.id + '_' + str(k) + '_' + 't')
+        for i in self.range_dict:
+            init_var = Real(i.id + '_' + str(bound) + '_' + '0')
+            end_var = Real(i.id + '_' + str(bound) + '_' + 't')
 
-                init_const = self.aux_make_range_const(init_var, self.range_dict[i])
-                end_const = self.aux_make_range_const(end_var, self.range_dict[i])
+            init_const = self.aux_make_range_const(init_var, self.range_dict[i])
+            end_const = self.aux_make_range_const(end_var, self.range_dict[i])
 
-                result.extend(init_const)
-                result.extend(end_const)
+            result.extend(init_const)
+            result.extend(end_const)
         return result
 
     def make_flow_consts(self, bound):
@@ -112,7 +111,7 @@ class StlMC:
         for mode_module in self.modules:
             dynamics = mode_module["flow"]
             mode_const = mode_module["mode"]
-            mode_const_bound = substitution(mode_const, substitute_dict)
+            mode_const_bound = substitution(mode_const, substitute_dict).children
             start_vector = list()
             end_vector = list()
 
@@ -127,7 +126,7 @@ class StlMC:
             bool_integral = Bool("newIntegral#_" + str(mode_number) + "_" + str(bound))
             self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
-            integral_children.append(And([bool_integral, mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
+            integral_children.append(And([bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
             mode_number += 1
         return Or(integral_children), integral_object_list
 
@@ -146,7 +145,7 @@ class StlMC:
             transformed_inv_const, inv_prop_dict = make_dictionary_for_invariant(invariant_constraint,
                                                                                  dict())
             mode_const = mode_module["mode"]
-            mode_const_bound = substitution(mode_const, substitute_dict)
+            mode_const_bound = substitution(mode_const, substitute_dict).children
             # generate new dict for invariant constraint
             new_mode_var_dict = self.mode_var_dict.copy()
             for invariant_var in inv_prop_dict:
@@ -169,7 +168,7 @@ class StlMC:
                                                                   bound_applied_const, integral)
                 invariant_sub_children.extend([Bool(inv_boolean), bound_applied_const])
             if len(inv_prop_dict) > 0:
-                invariant_sub_children.append(mode_const_bound)
+                invariant_sub_children.extend(mode_const_bound)
             if len(invariant_sub_children) > 0:
                 invariant_children.append(And(invariant_sub_children))
             index += 1
@@ -187,7 +186,7 @@ class StlMC:
         index = 0
         for mode_module in self.modules:
             mode_const_list = list()
-            mode_const_list.append(mode_module["mode"])
+            mode_const_list.extend(mode_module["mode"].children)
             mode_const_list.extend(self.make_additional_mode_consts(bound, index, total_mode_num))
             new_mode_const = And(mode_const_list)
 
@@ -196,8 +195,11 @@ class StlMC:
             jump_sub_children = list()
 
             for jump_pre in jump_dict:
+                jump_flat = list()
+                jump_flat.extend(jump_pre.children)
                 jump_post = jump_dict[jump_pre]
-                jump_sub_children.append(And([jump_pre, jump_post]))
+                jump_flat.extend(jump_post.children)
+                jump_sub_children.append(And(jump_flat))
 
             # generate steady jump const
             steady_jump_const_children = list()
