@@ -129,7 +129,7 @@ class Core(Freezable):
                 self.ce_dict["t_lpi"] = t_lpi
                 # self.result.counterexample = make_counterexample(self.hybrid_automaton, state, t, t_lpi)
                 # todo: implement this with inputs
-                #self.plotman.draw_counterexample(self.result.counterexample)
+                # self.plotman.draw_counterexample(self.result.counterexample)
 
     @property
     def is_counterexample(self):

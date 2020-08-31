@@ -656,8 +656,9 @@ def _(const):
 def _(const):
     x = const.left
     y = const.right
-
+    
     if isinstance(x, Variable) and (len(get_vars(y)) == 0):
+        print("what happened")
         if eval(str(infix(y))) == 0:
             return RealVal("0")
         elif str(x.id)[0:3] == 'tau':
@@ -665,9 +666,7 @@ def _(const):
         else:
             return RealVal("0")
     else:
-        print(type(const))
-        print(const)
-        raise NotSupportedError('Cannot hanlindg polynomial yet')
+        raise NotSupportedError('Cannot handling polynomial yet {} : {}'.format(y, const))
 
 
 @diff_aux.register(Mul)
