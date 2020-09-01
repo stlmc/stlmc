@@ -36,8 +36,8 @@ class StlConfiguration:
                                  help='objects checking from the given lower bound (default: 1)')
         self.parser.add_argument('-upper', '-u', type=int,
                                  help='objects checking upto given upper bound (default: lower_bound)')
-        # self.parser.add_argument('-step', '-s', type=int,
-        #                          help='objects checking at intervals of step in (lower, upper) (default: 1)')
+        self.parser.add_argument('-step', '-s', type=int,
+                                 help='objects checking at intervals of step in (lower, upper) (default: 1)')
         # self.parser.add_argument('-timebound', '-tb', type=int,
         #                          help='set time bound of objects checking (default: 60)')
         # self.parser.add_argument('-multithread', '-multy', type=self.str2bool,
@@ -61,6 +61,7 @@ class StlConfiguration:
         self._file_list = list()
         self._lower = 1
         self._upper = 1
+        self._step = 1
         self._solver = "z3"
         self._solver_list = ["z3", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
         self._gen_ce = False
@@ -83,6 +84,8 @@ class StlConfiguration:
             self._lower = self._args.lower
         if self._args.upper is not None:
             self._upper = self._args.upper
+        if self._step is not None:
+            self._step = self._args.step
         if self._args.solver is not None:
             self._solver = (self._args.solver.lower() if self._args.solver.lower() in self._solver_list else 'z3')
         if self._args.ce is not None:
@@ -94,7 +97,7 @@ class StlConfiguration:
 
     @property
     def bound(self):
-        return range(self._lower, self._upper + 1)
+        return range(self._lower, self._upper + 1, self._step)
 
     @property
     def solver(self):
