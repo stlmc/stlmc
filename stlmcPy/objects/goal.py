@@ -10,8 +10,8 @@ class Goal:
 
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
-        time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
-        for k in range(bound + 2):
+        # time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
+        for k in range(1, bound + 2):
             time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
             time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
             if k < bound + 1:
@@ -84,8 +84,8 @@ class PropHelper:
 
                 not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
 
-                fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
-                fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
+                # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
+                # fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
                 init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
                 init_const_2 = And([not_bound_applied_goal_var, not_relaxed_bound_const])
                 init_point_check = Or([init_const_1, init_const_2])
@@ -100,7 +100,8 @@ class PropHelper:
                                                                            not_relaxed_bound_const,
                                                                            integral)
 
-                result_children.extend([fair_const_1, fair_const_2, init_point_check])
+                # result_children.extend([fair_const_1, fair_const_2, init_point_check])
+                result_children.append(init_point_check)
         return result_children
 
 
@@ -125,10 +126,12 @@ class BaseStlGoal(Goal):
         propHelper = PropHelper(self, model, proposition_dict)
 
         result_const = list()
+        prop_const = list()
 
         for k in range(bound + 1):
             mapping_consts = propHelper.make_consts(k, delta)
-            result_const.extend(mapping_consts)
+            prop_const.extend(mapping_consts)
+        result_const.append(And(prop_const))
 
         stl_consts_list = self.make_stl_consts(bound)
 
@@ -152,7 +155,7 @@ class OldStlGoal(BaseStlGoal):
 class NewStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound):
         baseP = PART.baseCase(bound)
-        negFormula = Not(self.formula)
+        negFormula = reduce_not(Not(self.formula))
 
         (partition, sepMap) = PART.guessPartition(negFormula, baseP)
 

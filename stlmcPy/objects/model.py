@@ -9,6 +9,7 @@ from stlmcPy.constraints.operations import make_dict, substitution, make_diction
 @singledispatch
 def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
     new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
+    new_dynamics_dict[Real('time')] = Real('tau_' + str(bound + 1))
     new_exps = list()
     for exp in dyn.exps:
         new_exp = substitution(exp, new_dynamics_dict)

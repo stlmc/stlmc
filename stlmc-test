@@ -1,17 +1,15 @@
 #!/usr/bin/python3
 
-#SBATCH --job-name=stlmc
-#SBATCH --output=%x.o%j
-#SBATCH --error=%x.e%j
-#SBATCH --cpus-per-task=2 # 5 cores
-#SBATCH --ntasks-per-node=12 # 5 cores
+# SBATCH --job-name=stlmc
+# SBATCH --output=%x.o%j
+# SBATCH --error=%x.e%j
+# SBATCH --cpus-per-task=2 # 5 cores
+# SBATCH --ntasks-per-node=12 # 5 cores
 
 import multiprocessing
 import sys
-import os
 
 sys.path.append("/home/rgyenr2/workspace/STL")
-
 
 from stlmcPy.driver.multiprocess_driver import MultiprocessDriverFactory, MultiprocessStlModelChecker, unit_run
 

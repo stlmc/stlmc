@@ -1,84 +1,78 @@
 import csv
+import os
+from timeit import default_timer as timer
 
 
 class Logger:
     def __init__(self):
-        self.lines = list()
-        self.line = dict()
-        self.abst_dict = dict()
+        self._output_file = ""
+        self._line = dict()
+        self._start_timer_dict = dict()
+        self._end_timer_dict = dict()
 
-    def clear_log(self):
-        self.lines = list()
-        self.line = dict()
-        self.abst_dict = dict()
+    # file_name : something.csv
+    def set_output_file_name(self, file_name: str):
+        self._output_file = file_name
 
-    def get_abst_log(self):
-        return self.abst_dict
+    def add_info(self, key, value):
+        self._line[str(key)] = str(value)
 
-    def add_bound(self, bound):
-        self.line["bound"] = str(bound)
+    def start_timer(self, name: str):
+        assert name not in self._start_timer_dict
+        self._start_timer_dict[name] = timer()
 
-    def add_const_size(self, const_size):
-        self.line["constraint size"] = str(const_size)
+    def stop_timer(self, name: str):
+        assert name not in self._end_timer_dict
+        self._end_timer_dict[name] = timer()
 
-    def add_smt_solving_time(self, smt_solving):
-        self.line["smt solving time"] = str(smt_solving)
+    def reset_timer(self):
+        self._start_timer_dict = dict()
+        self._end_timer_dict = dict()
 
-    def add_literal_set_time(self, prep_max_time):
-        self.line["preparing max literal set"] = str(prep_max_time)
+    def reset_timer_without(self, *name_args):
+        new_start_timer_dict = dict()
+        new_end_timer_dict = dict()
+        for name in name_args:
+            if name in self._start_timer_dict:
+                new_start_timer_dict[name] = self._start_timer_dict[name]
+            if name in self._end_timer_dict:
+                new_end_timer_dict[name] = self._end_timer_dict[name]
+        self._start_timer_dict = new_start_timer_dict
+        self._end_timer_dict = new_end_timer_dict
 
-    def add_hylaa_time(self, hylaa_time):
-        self.line["hylaa time"] = str(hylaa_time)
+    def get_duration_time(self, name: str):
+        assert name in self._start_timer_dict and name in self._end_timer_dict
+        return self._end_timer_dict[name] - self._start_timer_dict[name]
 
-    def add_loop_time(self, loop):
-        self.line["loop"] = str(loop)
+    def clear(self):
+        self._line = dict()
 
-    def add_loop_total_time(self, loop):
-        self.line["loop total"] = str(loop)
+    def write_to_csv(self, file_name: str = None, overwrite=False):
+        if file_name is None:
+            file_name = self._output_file
 
-    def add_total_time(self, total):
-        self.line["total"] = str(total)
+        write_flags = {'write': 'w', 'append': 'a+'}
+        if overwrite:
+            write_flags = {'write': 'w', 'append': 'w'}
 
-    def add_result(self, result):
-        self.line["result"] = str(result)
+        assert not (file_name == "")
+        fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time',
+                      'preparing max literal set', 'hylaa time',
+                      'loop total', 'total', 'result']
+        if not os.path.exists(file_name + ".csv"):
+            with open(file_name + ".csv", write_flags['write'], newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                if len(self._line) > 0:
+                    writer.writerow(self._line)
+                    self.clear()
+        else:
+            with open(file_name + ".csv", write_flags['append'], newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                if overwrite:
+                    writer.writeheader()
 
-    def concat(self, lines:dict):
-        for line in lines:
-            self.lines.append(line)
+                if len(self._line) > 0:
+                    writer.writerow(self._line)
+                    self.clear()
 
-    def add_log_info(self):
-        # assumption:
-        # bound, step1 time, smt solving time, prep max literal set, hylaa time, loop, total, result
-        self.lines.append(self.line)
-        self.line = dict()
-
-    def get_total_log(self):
-        return self.lines
-
-    def write_to_file(self, file_name: str):
-        with open(file_name, 'w', newline='') as csvfile:
-            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
-                          'loop total', 'total', 'result']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-            writer.writeheader()
-            for line in self.lines:
-                writer.writerow(line)
-
-    def append_to_file(self, file_name: str):
-        with open(file_name, 'a+', newline='') as csvfile:
-            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
-                          'loop total', 'total', 'result']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-            for line in self.lines:
-                writer.writerow(line)
-
-
-    def append_to_file_with(self, file_name: str, line: dict):
-        with open(file_name, 'a+', newline='') as csvfile:
-            fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time', 'preparing max literal set', 'hylaa time',
-                          'loop total', 'total', 'result']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writerow(line)
- 

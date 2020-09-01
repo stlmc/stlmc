@@ -1,46 +1,57 @@
-import os
-
 from stlmcPy.constraints.constraints import And
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
-from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
 from stlmcPy.objects.object_builder import generate_object
 from stlmcPy.solver.solver_factory import SolverFactory
+from stlmcPy.util.print import Printer
+from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
+from ..util.logger import Logger
 
-from timeit import default_timer as timer
 
+def unit_run(arg: dict):
+    mul_runner = arg["runner"]
+    cur_bound = arg["bound"]
+    output_file_name = arg["output_file_name"]
+    output_file_name_bound = arg["output_file_name_bound"]
+    solver = arg["solver"]
+    solver_name = arg["solver_name"]
+    model = arg["model"]
+    goal = arg["goal"]
+    PD = arg["prop dict"]
+    logger = arg["logger"]
+    printer = arg["printer"]
 
-def unit_run(arg):
-    mul_runner, cur_bound, log_file, abstract_log_file, solver, model, goal, PD = arg
-    solver.add_bound(cur_bound)
+    logger.set_output_file_name(output_file_name_bound)
+    logger.write_to_csv(overwrite=True)
+
+    logger.reset_timer()
+    logger.start_timer("goal timer")
+    logger.add_info("bound", cur_bound)
+
     model_const = model.make_consts(cur_bound)
     goal_const, goal_boolean_abstract = goal.make_consts(cur_bound, 60, 1, model, PD)
-    
+
     boolean_abstract = dict()
     boolean_abstract.update(model.boolean_abstract)
     boolean_abstract.update(goal_boolean_abstract)
     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-    
-    solve_start = timer()
+
+    printer.print_normal("> {}".format(solver_name))
     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                 model.range_dict, boolean_abstract)
 
-    solve_end = timer()
-    mul_runner.concat(solver.get_total_log())
-    abst_log_data = solver.get_abst_log().copy()
-    solver.clear_log()
-    print("Driver returns : " + str(result) + ", Total solving time : " + str(solve_end - solve_start))
-    mul_runner.add_result(result)
-    mul_runner.add_total_time(str(solve_end - solve_start))
-    mul_runner.add_log_info()
-    abst_log_data["bound"] = str(cur_bound)
-    abst_log_data["result"] = str(result)
-    abst_log_data["total"] = str(solve_end - solve_start)
+    logger.stop_timer("goal timer")
+    printer.print_normal_dark("\n> result")
+    printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result,
+                                                                                    logger.get_duration_time(
+                                                                                        "goal timer")))
+    printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), cur_bound))
+    printer.print_line()
+
+    logger.add_info("result", result)
+    logger.add_info("total", logger.get_duration_time("goal timer"))
+    logger.write_to_csv()
     model.clear()
     goal.clear()
-    print("======================================")
-    mul_runner.append_to_file(log_file + ".csv")
-    mul_runner.append_to_file_with(abstract_log_file + ".csv", abst_log_data)
-    mul_runner.clear_log()
 
 
 class MultiprocessRunner(Runner):
@@ -49,21 +60,33 @@ class MultiprocessRunner(Runner):
         self.jobs = []
         self.arguments = []
 
-    def run(self, config: StlConfiguration):
+    def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
         for file_name in config.file_list:
             model, PD, goals = generate_object(file_name)
             for bound in config.bound:
                 for goal in goals:
-                    abstract_log_file = str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver
-                    log_file = abstract_log_file + "_" + str(bound)
-                    if not os.path.exists(log_file + ".csv"):
-                        self.write_to_file(log_file + ".csv")
-                    if not os.path.exists(abstract_log_file + ".csv"):
-                        self.write_to_file(abstract_log_file + ".csv")
-                    solver = SolverFactory(config.solver).generate_solver()
-                    arg = self, bound, log_file, abstract_log_file, solver, model, goal, PD
-                    self.arguments.append(arg)
-        print("multiprocess arguments: {}".format(str(len(self.arguments))))
+                    output_file_name = "{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver)
+                    output_file_name_bound = "{}_{}".format(output_file_name, bound)
+
+                    thread_logger = Logger()
+                    thread_solver = SolverFactory(config.solver).generate_solver()
+                    thread_solver.append_logger(thread_logger)
+
+                    info_dict = dict()
+                    info_dict["runner"] = self
+                    info_dict["bound"] = bound
+                    info_dict["output_file_name"] = output_file_name
+                    info_dict["output_file_name_bound"] = output_file_name_bound
+                    info_dict["solver"] = thread_solver
+                    info_dict["solver_name"] = config.solver
+                    info_dict["model"] = model
+                    info_dict["goal"] = goal
+                    info_dict["prop dict"] = PD
+                    info_dict["logger"] = thread_logger
+                    info_dict["printer"] = printer
+
+                    self.arguments.append(info_dict)
+        printer.print_verbose("multiprocess arguments: {}".format(str(len(self.arguments))))
 
 
 class MultiprocessDriverFactory(DriverFactory):
@@ -75,6 +98,12 @@ class MultiprocessDriverFactory(DriverFactory):
 
     def make_runner(self):
         return MultiprocessRunner()
+
+    def make_logger(self):
+        return Logger()
+
+    def make_printer(self):
+        return Printer()
 
 
 class MultiprocessStlModelChecker(StlModelChecker):

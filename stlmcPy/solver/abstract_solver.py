@@ -3,8 +3,14 @@ from abc import ABC
 
 from stlmcPy.util.logger import Logger
 
+
 # all solver have logger
-class BaseSolver(Logger):
+class BaseSolver:
+    def __init__(self):
+        self.logger = None
+
+    def append_logger(self, logger: Logger):
+        self.logger = logger
 
     @abc.abstractmethod
     def solve(self, all_consts=None, cont_vars_dict=None, boolean_abstract_dict=None):
@@ -15,7 +21,7 @@ class BaseSolver(Logger):
         pass
 
 
-class SMTSolver:
+class SMTSolver(BaseSolver):
     @abc.abstractmethod
     def simplify(self, consts):
         pass
@@ -29,5 +35,10 @@ class SMTSolver:
         pass
 
 
-# class OdeSolver(BaseSolver):
-#     pass
+class OdeSolver(BaseSolver, ABC):
+    pass
+
+# class BaseSolverFactory:
+#     @abc.abstractmethod
+#     def generate_solver(self):
+#         pass

@@ -1,19 +1,14 @@
 import abc
+import argparse
 import os
 
 from stlmcPy.constraints.constraints import And
-from stlmcPy.constraints.operations import make_boolean_abstract_consts, substitutionSize
+from stlmcPy.constraints.operations import make_boolean_abstract_consts
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.objects.object_builder import generate_object
-
-from timeit import default_timer as timer
-
-from stlmcPy.tree.operations import size_of_tree
-
-import argparse
-
 from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.logger import Logger
+from stlmcPy.util.print import Printer
 
 
 def string_to_bool(v: str):
@@ -110,57 +105,63 @@ class StlConfiguration:
         return self._gen_ce
 
 
-class Runner(Logger):
+class Runner:
     @abc.abstractmethod
-    def run(self, config: StlConfiguration):
+    def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
         solver = SolverFactory(config.solver).generate_solver()
+        solver.append_logger(logger)
+        # Printer.verbose_on = True
+        # Printer.debug_on = True
         for file_name in config.file_list:
             model, PD, goals = generate_object(file_name)
             for bound in config.bound:
                 for goal in goals:
-                    if bound == 1:
-                        self.write_to_file(
-                            str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
-                    print("======================================")
-                    print(str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + "_" + str(bound))
-                    solver.add_bound(bound)
-                    # print("start model const")
+                    output_file_name = "{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver)
+                    output_file_name_bound = "{}_{}".format(output_file_name, bound)
+                    logger.set_output_file_name(output_file_name_bound)
+                    logger.write_to_csv(overwrite=True)
+                    # printer.print_normal("> {}\n\n".format(output_file_name))
+
+                    # start logging
+                    logger.reset_timer()
+                    logger.start_timer("goal timer")
+                    logger.add_info("bound", bound)
+
                     model_const = model.make_consts(bound)
-                    # print("end model const")
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, 60, 1, model, PD)
-                    # print("what is goal_const")
-                    # print(goal_const)
-                    # print(goal_boolean_abstract)
 
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)
                     boolean_abstract.update(goal_boolean_abstract)
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
 
-                    solve_start = timer()
+                    printer.print_normal("> {}".format(config.solver))
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
-                    # result, size = solver.solve(And([goal_const, boolean_abstract_consts]), model.range_dict, boolean_abstract)
-                    # result, size = solver.solve(And([model_const, boolean_abstract_consts]), model.range_dict, boolean_abstract)
 
-                    solve_end = timer()
-                    self.concat(solver.get_total_log())
-                    solver.clear_log()
-                    print("Driver returns : " + str(result) + ", Total solving time : " + str(solve_end - solve_start))
-                    result_dict = dict()
-                    self.add_result(result)
-                    self.add_total_time(str(solve_end - solve_start))
-                    self.add_log_info()
+                    logger.stop_timer("goal timer")
+                    printer.print_normal_dark("\n> result")
+                    printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result,
+                                                                                                    logger.get_duration_time(
+                                                                                                        "goal timer")))
+                    printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
+                    printer.print_line()
+
+                    logger.add_info("result", result)
+                    logger.add_info("total", logger.get_duration_time("goal timer"))
+                    logger.write_to_csv()
+
                     model.clear()
                     goal.clear()
-                    print("======================================")
+
                     # self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
-                    self.append_to_file(
-                        str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
-                    self.clear_log()
+                    # self.append_to_file(
+                    #     str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
+                    # self.clear_log()
+
                     # print(assignment)
                     # if is_visualize:
                     # integrals_list = model.get_flow_for_assignment(1)
@@ -181,16 +182,28 @@ class DriverFactory:
     def make_runner(self):
         return Runner()
 
+    @abc.abstractmethod
+    def make_logger(self):
+        return Logger()
+
+    @abc.abstractmethod
+    def make_printer(self):
+        return Printer()
+
 
 class StlModelChecker:
     def __init__(self):
         self.config = None
         self.runner = None
+        self.logger = None
+        self.printer = None
 
     def create_simulation_env(self, df: DriverFactory):
         self.config = df.make_config()
         self.runner = df.make_runner()
+        self.logger = df.make_logger()
+        self.printer = df.make_printer()
 
     def run(self):
         self.config.parse()
-        self.runner.run(self.config)
+        self.runner.run(self.config, self.logger, self.printer)

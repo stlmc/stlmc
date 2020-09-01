@@ -656,9 +656,8 @@ def _(const):
 def _(const):
     x = const.left
     y = const.right
-    
+
     if isinstance(x, Variable) and (len(get_vars(y)) == 0):
-        print("what happened")
         if eval(str(infix(y))) == 0:
             return RealVal("0")
         elif str(x.id)[0:3] == 'tau':
@@ -666,7 +665,7 @@ def _(const):
         else:
             return RealVal("0")
     else:
-        raise NotSupportedError('Cannot handling polynomial yet {} : {}'.format(y, const))
+        raise NotSupportedError('Cannot handling polynomial yet : {}'.format(const))
 
 
 @diff_aux.register(Mul)
@@ -771,7 +770,19 @@ def _(const: Not):
     if isinstance(child, Or):
         return And([reduce_not(Not(c)) for c in child.children])
     if isinstance(child, Implies):
-        return And([child.left, reduce_not(Not(child.right))])
+        return And([reduce_not(child.left), reduce_not(Not(child.right))])
+    if isinstance(child, FinallyFormula):
+        return GloballyFormula(child.local_time, child.global_time, reduce_not(Not(child.child)))
+    if isinstance(child, GloballyFormula):
+        return FinallyFormula(child.local_time, child.global_time, reduce_not(Not(child.child)))
+    if isinstance(child, UntilFormula):
+        return ReleaseFormula(child.local_time, child.global_time,
+                              reduce_not(Not(child.left)),
+                              reduce_not(Not(child.right)))
+    if isinstance(child, ReleaseFormula):
+        return UntilFormula(child.local_time, child.global_time,
+                            reduce_not(Not(child.left)),
+                            reduce_not(Not(child.right)))
     return const
     # raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
@@ -800,6 +811,28 @@ def _(const: Eq):
 def _(const: Neq):
     return Neq(reduce_not(const.left), reduce_not(const.right))
 
+@reduce_not.register(FinallyFormula)
+def _(const: FinallyFormula):
+    return FinallyFormula(const.local_time, const.global_time, reduce_not(const.child))
+
+
+@reduce_not.register(GloballyFormula)
+def _(const: GloballyFormula):
+    return GloballyFormula(const.local_time, const.global_time, reduce_not(const.child))
+
+
+@reduce_not.register(UntilFormula)
+def _(const: UntilFormula):
+    return UntilFormula(const.local_time, const.global_time,
+                        reduce_not(const.left),
+                        reduce_not(const.right))
+
+
+@reduce_not.register(ReleaseFormula)
+def _(const: ReleaseFormula):
+    return ReleaseFormula(const.local_time, const.global_time,
+                          reduce_not(const.left),
+                          reduce_not(const.right))
 
 @singledispatch
 def get_boolean_abstraction(const: Constraint):

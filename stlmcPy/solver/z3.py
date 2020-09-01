@@ -10,14 +10,19 @@ from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
 from timeit import default_timer as timer
 
+from stlmcPy.util.logger import Logger
 
-class Z3Solver(BaseSolver, SMTSolver):
+
+class Z3Solver(SMTSolver):
     def __init__(self):
-        BaseSolver.__init__(self)
+        SMTSolver.__init__(self)
         self._z3_model = None
         self._cache = list()
 
     def z3checkSat(self, consts, logic):
+        assert self.logger is not None
+        logger = self.logger
+
         if logic != "NONE":
             solver = z3.SolverFor(logic)
         else:
@@ -26,23 +31,22 @@ class Z3Solver(BaseSolver, SMTSolver):
         # solver.set("timeout", timeout * 1000)
         # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
         # solver.add(target_z3_simplify)
-        solving_start = timer()
+
+        logger.start_timer("solving timer")
         solver.add(consts)
 
         with open("thermoLinear.smt2", 'w') as fle:
             print(solver.to_smt2(), file=fle)
 
         result = solver.check()
-        solving_end = timer()
-        self.add_smt_solving_time(solving_end - solving_start)
+        logger.stop_timer("solving timer")
+        logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
         str_result = str(result)
 
         if str_result == "sat":
             m = solver.model()
             result = False
         else:
-            print("unsat")
-            print(solver.unsat_core())
             m = None
             result = True if str_result == "unsat" else "Unknown"
         return result, sizeAst(z3.And(self._cache)), m
@@ -50,7 +54,7 @@ class Z3Solver(BaseSolver, SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), 'LRA')
+        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), 'NRA')
         return result, size
 
     def result_simplify(self):

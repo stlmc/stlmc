@@ -8,11 +8,12 @@ from stlmcPy.constraints.constraints import *
 from functools import singledispatch
 
 
-class YicesSolver(BaseSolver, SMTSolver):
+class YicesSolver(SMTSolver):
     def __init__(self):
+        SMTSolver.__init__(self)
         self._yices_model = None
 
-    def solve(self, all_consts, info_dict=None, boolean_abstract=None):
+    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         result, size, self_yices_model = yicescheckSat(all_consts, 'QF_NRA')
         return result, size
 
@@ -23,6 +24,9 @@ class YicesSolver(BaseSolver, SMTSolver):
         pass
 
     def substitution(self, const, *dicts):
+        pass
+
+    def add(self, const):
         pass
 
 
