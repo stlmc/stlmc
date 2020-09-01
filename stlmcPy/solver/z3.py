@@ -35,8 +35,8 @@ class Z3Solver(SMTSolver):
         logger.start_timer("solving timer")
         solver.add(consts)
 
-        with open("thermoLinear.smt2", 'w') as fle:
-            print(solver.to_smt2(), file=fle)
+        #with open("thermoLinear.smt2", 'w') as fle:
+        #    print(solver.to_smt2(), file=fle)
 
         result = solver.check()
         logger.stop_timer("solving timer")
