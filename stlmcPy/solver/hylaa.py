@@ -209,6 +209,8 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
                 tau_info[k] = mapping_info[k]
 
         printer = Printer()
+        Printer.verbose_on = True
+        Printer.debug_on = True
         # pre-processing
         # boolean_start = timer()
         # heuristic: removing mapping constraint part.
@@ -568,8 +570,10 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             bound_box_list.append([None, None])
 
         for t in l_v:
+            printer.print_debug("tau setting :\n{}".format(l_v))
             if ("tau" in t) or (HylaaSolver().time_optimize and "timeStep" in t):
                 index = find_index(l_v, Real(t))
+                printer.print_debug("{}, index => {}".format(t, index))
                 bound_box_list[index][0] = Float(0.0)
                 bound_box_list[index][1] = Float(0.0)
 
@@ -618,6 +622,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
                             bound_box_list[index][0] = expr.lhs
         new_bound_box_list = list()
         for e in bound_box_list:
+            printer.print_debug("bound box list test : {}".format(e))
             bound_box_left = -float("inf")
             bound_box_right = float("inf")
             if e[0] is not None:
@@ -637,7 +642,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         settings = HylaaSettings(0.1, 100)
         # settings.stop_on_aggregated_error = False
         settings.aggstrat.deaggregate = True  # use deaggregationboolean_abstract_dict
-        # settings.stdout = HylaaSettings.STDOUT_VERBOSE
+        settings.stdout = HylaaSettings.STDOUT_VERBOSE
         core = Core(ha, settings)
         ce = core.run(init_list)
         # self.add_log_info(str(ce.counterexample))
@@ -944,7 +949,7 @@ def get_vars_from_set(set_of_list: list):
 def find_index(input_list: list, v: Variable):
     index = 0
     for e in input_list:
-        if e in v.id:
+        if e == remove_index(v).id:
             return index
         index += 1
     raise NotFoundElementError(v, "index not found")

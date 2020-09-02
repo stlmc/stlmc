@@ -21,7 +21,7 @@ def unit_run(arg: dict):
     printer = arg["printer"]
 
     logger.set_output_file_name(output_file_name_bound)
-    logger.write_to_csv(overwrite=True)
+    logger.write_to_csv()
 
     logger.reset_timer()
     logger.start_timer("goal timer")
@@ -61,6 +61,8 @@ class MultiprocessRunner(Runner):
         self.arguments = []
 
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
+        Printer.verbose_on = True
+        Printer.debug_on = True
         for file_name in config.file_list:
             model, PD, goals = generate_object(file_name)
             for bound in config.bound:

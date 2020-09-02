@@ -84,7 +84,7 @@ class StlConfiguration:
             self._lower = self._args.lower
         if self._args.upper is not None:
             self._upper = self._args.upper
-        if self._step is not None:
+        if self._args.step is not None:
             self._step = self._args.step
         if self._args.solver is not None:
             self._solver = (self._args.solver.lower() if self._args.solver.lower() in self._solver_list else 'z3')
