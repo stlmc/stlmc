@@ -5,7 +5,7 @@ import os
 from stlmcPy.constraints.constraints import And
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
 from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.objects.object_builder import generate_object
+from stlmcPy.objects.object_factory import ObjectFactory
 from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
@@ -45,8 +45,16 @@ class StlConfiguration:
         # TODO: move hylaa-reduction, hylaa-unsat core to hylaa strategy option
         self.parser.add_argument('-solver', type=str,
                                  help='run the objects using given smt solver, support \" {yices, z3, hylaa, hylaa-reduction, hylaa-unsat-core} \" (default: z3)')
+        self.parser.add_argument('-optimize', type=str,
+                                 help='turn on solver optimization, support \" {formula} \" (default: None)')
+        self.parser.add_argument('-formula_encoding', type=str,
+                                 help='select formula encoding, support \" {model-with-goal, only-goal-stl, only-goal-stl-enhanced} \" (default: model-with-goal)')
         self.parser.add_argument('-ce', type=string_to_bool,
                                  help='generate counter example (default: false)')
+        self.parser.add_argument('-verbose', type=string_to_bool,
+                                 help='turn on verbose message logging (default: false)')
+        self.parser.add_argument('-debug', type=string_to_bool,
+                                 help='turn on debug message logging (default: false)')
         # self.parser.add_argument('-logic', type=str,
         #                          help='run the SMT solver using given given logic (default: QF-NRA)')
         # self.parser.add_argument('-visualize', type=self.str2bool,
@@ -63,8 +71,13 @@ class StlConfiguration:
         self._upper = 1
         self._step = 1
         self._solver = "z3"
+        self._optimize_flags = list()
         self._solver_list = ["z3", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
+        self._formula_encoding = "model-with-goal"
+        self._formula_encoding_list = ["model-with-goal","only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
+        self._verbose = False
+        self._debug = False
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -88,8 +101,16 @@ class StlConfiguration:
             self._step = self._args.step
         if self._args.solver is not None:
             self._solver = (self._args.solver.lower() if self._args.solver.lower() in self._solver_list else 'z3')
+        if self._args.optimize is not None:
+            self._optimize_flags = self._args.optimize.split(',')
         if self._args.ce is not None:
             self._gen_ce = self._args.ce
+        if self._args.formula_encoding is not None:
+            self._formula_encoding = (self._args.formula_encoding.lower() if self._args.formula_encoding.lower() in self._formula_encoding_list else "model-with-goal")
+        if self._args.verbose is not None:
+            self._verbose = self._args.verbose
+        if self._args.debug is not None:
+            self._debug = self._args.debug
 
     @property
     def file_list(self):
@@ -100,8 +121,24 @@ class StlConfiguration:
         return range(self._lower, self._upper + 1, self._step)
 
     @property
+    def optimize_flags(self):
+        return self._optimize_flags
+
+    @property
     def solver(self):
         return self._solver
+
+    @property
+    def encoding(self):
+        return self._formula_encoding
+
+    @property
+    def debug_flag(self):
+        return self._debug
+
+    @property
+    def verbose_flag(self):
+        return self._verbose
 
     @property
     def is_generate_counterexample(self):
@@ -111,12 +148,18 @@ class StlConfiguration:
 class Runner:
     @abc.abstractmethod
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
+        object_manager = ObjectFactory(config.encoding).generate_object_manager()
         solver = SolverFactory(config.solver).generate_solver()
         solver.append_logger(logger)
-        # Printer.verbose_on = True
-        # Printer.debug_on = True
+
+        # apply every optimization
+        for opt in config.optimize_flags:
+            solver.set_optimize_flag(opt, True)
+
+        Printer.debug_on = config.debug_flag
+        Printer.verbose_on = config.verbose_flag
         for file_name in config.file_list:
-            model, PD, goals = generate_object(file_name)
+            model, PD, goals = object_manager.generate_objects(file_name)
             for bound in config.bound:
                 for goal in goals:
                     output_file_name = "{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver)

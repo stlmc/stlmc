@@ -27,6 +27,8 @@ def _(f: Bool, sepMap, gen, fMap):
 
 @_separation.register(Not)
 def _(f: Not, sepMap, gen, fMap):
+    if isinstance(f.child, Bool):
+        return Bool("not@" + f.child.id)
     return f.__class__(_separation(f.child, sepMap, gen, fMap))
 
 

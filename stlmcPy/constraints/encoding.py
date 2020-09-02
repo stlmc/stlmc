@@ -3,21 +3,45 @@ from functools import singledispatch
 
 from stlmcPy.tree.operations import size_of_tree
 
-
 # making proposition id for each interval ex) [0, tau_0) = p_0, [tau_0, tau_1) = p_1 ...
 from .interval import intervalConst, subInterval, inIntervalCheck
 from .operations import generate_id
 
+# "new" and "old"
+ENC_TYPES = "new"
+
 
 def baseEncoding(partition: dict, baseCase):
+    if ENC_TYPES == "new":
+        return _base_encoding_aux_enhanced(partition, baseCase)
+    elif ENC_TYPES == "old":
+        return _base_encoding_aux(partition, baseCase)
+
+
+def _base_encoding_aux_enhanced(partition: dict, baseCase):
     base = {}
 
+    for f in partition.keys():
+        if isinstance(f, Bool):
+            genProp = generate_id(0, f.id + "_")
+            genNotProp = generate_id(0, "not@" + f.id + "_")
+            exPar = [0.0] + baseCase + [float('inf')]
+            base[f] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genProp))) for i in
+                       range(len(baseCase) + 1)]
+            base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
+                                         in range(len(baseCase) + 1)]
+    return base
+
+
+def _base_encoding_aux(partition: dict, baseCase):
+    base = {}
     for f in partition.keys():
         if isinstance(f, Bool):
             genProp = generate_id(0, f.id + "_")
             exPar = [0.0] + baseCase + [float('inf')]
             base[f] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genProp))) for i in
                        range(len(baseCase) + 1)]
+    print(base)
     return base
 
 
@@ -34,34 +58,33 @@ def subfMap(formula, fMap):
 def valuation(f: Formula, sub: dict, j: Interval, base: dict):
     genPr = generate_id(0, 'chi')
     fMap = {}
-    subFormula = {}
-    subFormulaFOL = dict()
 
-    vf = _value(f, sub, j, base, genPr, fMap, subFormulaFOL)
+    vf = _value(f, sub, j, base, genPr, fMap)
 
     return [vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]], fMap
 
 
 @singledispatch
-def _value(f: Formula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _value(f: Formula, sub: dict, j: Interval, base, genPr, fMap):
     raise NotImplementedError('Something wrong')
 
 
 @_value.register(BoolVal)
-def _(f: BoolVal, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _(f: BoolVal, sub: dict, j: Interval, base, genPr, fMap):
     return BoolVal(f.value)
 
 
-@_value.register(Bool)
-def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    '''
-    print("what is sub")
-    print(sub)
-    print("what is base")
-    print(base)
-    print(f)
-    print("==========")
-    '''
+def _value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
+    if f in sub:
+        if not (f, j) in fMap:
+            np = Bool(next(genPr))
+            fMap[(f, j)] = (np, _value(sub[f], sub, j, base, genPr, fMap))
+        return fMap[(f, j)][0]
+    else:
+        return _atomEncoding_old(f, j, base)
+
+
+def _enhanced_value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
     if f in base:
         return _atomEncoding(f, j, base)
     for (fkey, time) in sub[1]:
@@ -72,64 +95,85 @@ def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap, subFormula):
         for (fkey, time) in sub[1]:
             if fkey.id == f.id:
                 np = Bool(next(genPr))
-                fMap[(f, j)] = (np, _value(sub[1][(fkey, time)], sub, j, base, genPr, fMap, subFormula))
+                fMap[(f, j)] = (np, _value(sub[1][(fkey, time)], sub, j, base, genPr, fMap))
                 break
     return fMap[(f, j)][0]
 
 
+@_value.register(Bool)
+def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
+    '''
+    print("what is sub")
+    print(sub)
+    print("what is base")
+    print(base)
+    print(f)
+    print("==========")
+    '''
+    if ENC_TYPES == "new":
+        return _enhanced_value_aux(f, sub, j, base, genPr, fMap)
+    elif ENC_TYPES == "old":
+        return _value_aux(f, sub, j, base, genPr, fMap)
+
+
 @_value.register(Not)
-def _(f: Not, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    return Not(_value(f.child, sub, j, base, genPr, fMap, subFormula))
+def _(f: Not, sub: dict, j: Interval, base, genPr, fMap):
+    if f.child in base:
+        if ENC_TYPES == "new":
+            bound_bool = _atomEncoding(f.child, j, base)
+            return Bool("not@" + bound_bool.id)
+    return Not(_value(f.child, sub, j, base, genPr, fMap))
 
 
 @_value.register(Multinary)
-def _(f: Multinary, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _(f: Multinary, sub: dict, j: Interval, base, genPr, fMap):
     op = {And: And, Or: Or}
-    return op[f.__class__]([_value(c, sub, j, base, genPr, fMap, subFormula) for c in f.children])
+    return op[f.__class__]([_value(c, sub, j, base, genPr, fMap) for c in f.children])
 
 
 @_value.register(Implies)
-def _(f: Implies, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    return Implies(_value(f.left, sub, j, base, genPr, fMap, subFormula),
-                   _value(f.right, sub, j, base, genPr, fMap, subFormula))
+def _(f: Implies, sub: dict, j: Interval, base, genPr, fMap):
+    return Implies(_value(f.left, sub, j, base, genPr, fMap),
+                   _value(f.right, sub, j, base, genPr, fMap))
 
 
 @_value.register(FinallyFormula)
-def _(f: FinallyFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _(f: FinallyFormula, sub: dict, j: Interval, base, genPr, fMap):
     result = list()
     interval_const = intervalConst(j, f.global_time, f.local_time)
     if isinstance(interval_const, BoolVal):
         return BoolVal("False")
     result.extend(interval_const.children)
-    result.append(_value(f.child, sub, f.global_time, base, genPr, fMap, subFormula))
+    result.append(_value(f.child, sub, f.global_time, base, genPr, fMap))
     return And(result)
 
 
 @_value.register(GloballyFormula)
-def _(f: GloballyFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _(f: GloballyFormula, sub: dict, j: Interval, base, genPr, fMap):
     interval_const = intervalConst(j, f.global_time, f.local_time)
     if isinstance(interval_const, BoolVal):
         return BoolVal("True")
 
-    return Implies(interval_const, _value(f.child, sub, f.global_time, base, genPr, fMap, subFormula))
+    return Implies(interval_const, _value(f.child, sub, f.global_time, base, genPr, fMap))
 
 
 @_value.register(UntilFormula)
-def _(f: UntilFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
+def _(f: UntilFormula, sub: dict, j: Interval, base, genPr, fMap):
     result = list()
     interval_const = intervalConst(j, f.global_time, f.local_time)
     if isinstance(interval_const, BoolVal):
         return BoolVal("False")
     result.extend(interval_const.children)
-    result.append(_value(f.left, sub, f.global_time, base, genPr, fMap, subFormula))
-    result.append(_value(f.right, sub, f.global_time, base, genPr, fMap, subFormula))
+    result.append(_value(f.left, sub, f.global_time, base, genPr, fMap))
+    result.append(_value(f.right, sub, f.global_time, base, genPr, fMap))
     return And(result)
 
 
 @_value.register(ReleaseFormula)
-def _(f: ReleaseFormula, sub: dict, j: Interval, base, genPr, fMap, subFormula):
-    return Or([*[Not(intervalConst(j, f.global_time, f.local_time)), _value(f.left, sub, f.global_time, base, genPr, fMap, subFormula),
-                _value(f.right, sub, f.global_time, base, genPr, fMap, subFormula)]])
+def _(f: ReleaseFormula, sub: dict, j: Interval, base, genPr, fMap):
+    return Or([*[Not(intervalConst(j, f.global_time, f.local_time)),
+                 _value(f.left, sub, f.global_time, base, genPr, fMap),
+                 _value(f.right, sub, f.global_time, base, genPr, fMap)]])
 
 
 def _atomEncoding(f: Bool, j: Interval, base: dict):
@@ -138,6 +182,8 @@ def _atomEncoding(f: Bool, j: Interval, base: dict):
             return prop
 
 
-
-
-
+def _atomEncoding_old(f: Bool, j: Interval, base: dict):
+    const = []
+    for (basePartition, prop) in base[f]:
+        const.append(Implies(subInterval(j, basePartition), prop))
+    return And(*const)

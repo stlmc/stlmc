@@ -8,6 +8,16 @@ from stlmcPy.util.logger import Logger
 class BaseSolver:
     def __init__(self):
         self.logger = None
+        self._optimize_dict = dict()
+
+    def set_optimize_flag(self, name: str, value: bool):
+        assert isinstance(value, bool)
+        self._optimize_dict[name] = value
+
+    def get_optimize_flag(self, name: str):
+        if name in self._optimize_dict:
+            return self._optimize_dict[name]
+        return False
 
     def append_logger(self, logger: Logger):
         self.logger = logger

@@ -221,7 +221,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             tau_condition_sub = substitution(all_consts.children[1].children[-1], tau_info)
             aft = all_consts.children[1].children[0:-1]
             aft.append(tau_condition_sub)
-            trans_all_consts.extend(aft)
+            trans_all_consts.append(And(aft))
         else:
             trans_all_consts.append(all_consts.children[1])
 
@@ -268,10 +268,6 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             logger.stop_timer("smt solving timer")
             logger.add_info("smt solving time", logger.get_duration_time("smt solving timer"))
 
-            # logging
-            # self.add_smt_solving_time(str(smt_solving_end - loop_start))
-            #
-
             if result:
                 printer.print_normal_dark("Smt solver level result!")
                 logger.write_to_csv()
@@ -283,12 +279,10 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             net_dict = info_dict.copy()
             net_dict.update(mapping_info)
             new_alpha = gen_net_assignment(alpha, net_dict)
-            # new_abstracted_consts = substitution(abstracted_consts, new_alpha)
             new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
 
             logger.start_timer("max literal timer")
-
             max_literal_set_list, alpha_delta = self.perform_strategy(alpha, assignment, max_bound,
                                                                       new_abstracted_consts,
                                                                       c, HylaaSolver().time_optimize, z3_boolean_consts,
@@ -770,6 +764,7 @@ class HylaaSolverUnsatCore(HylaaSolver):
         info_dict["new_abstracted_consts"] = new_abstracted_consts
         info_dict["c"] = c
         info_dict["optimize"] = optimize
+        info_dict["reduction_flag"] = self.get_optimize_flag("formula")
 
         self.builder.prepare(info_dict)
         return self.builder.perform()

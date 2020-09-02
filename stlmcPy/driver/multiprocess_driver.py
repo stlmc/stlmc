@@ -1,6 +1,6 @@
 from stlmcPy.constraints.constraints import And
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
-from stlmcPy.objects.object_builder import generate_object
+from stlmcPy.objects.object_factory import ObjectFactory
 from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.print import Printer
 from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
@@ -61,10 +61,13 @@ class MultiprocessRunner(Runner):
         self.arguments = []
 
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
-        Printer.verbose_on = True
-        Printer.debug_on = True
+        Printer.verbose_on = config.verbose_flag
+        Printer.debug_on = config.debug_flag
+
+        object_manager = ObjectFactory(config.encoding).generate_object_manager()
+
         for file_name in config.file_list:
-            model, PD, goals = generate_object(file_name)
+            model, PD, goals = object_manager.generate_objects(file_name)
             for bound in config.bound:
                 for goal in goals:
                     output_file_name = "{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver)
@@ -73,6 +76,10 @@ class MultiprocessRunner(Runner):
                     thread_logger = Logger()
                     thread_solver = SolverFactory(config.solver).generate_solver()
                     thread_solver.append_logger(thread_logger)
+
+                    # apply every optimization
+                    for opt in config.optimize_flags:
+                        thread_solver.set_optimize_flag(opt, True)
 
                     info_dict = dict()
                     info_dict["runner"] = self

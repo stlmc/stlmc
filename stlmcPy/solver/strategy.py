@@ -240,7 +240,8 @@ class UnsatCoreBuilder(StrategyBuilder):
     def __init__(self):
         super().__init__()
         self.arg_names = ["alpha", "assignment", "max_bound",
-                          "new_abstracted_consts", "c", "optimize"]
+                          "new_abstracted_consts", "c",
+                          "optimize", "reduction_flag"]
 
     def perform(self):
         self.assert_keys()
@@ -250,6 +251,7 @@ class UnsatCoreBuilder(StrategyBuilder):
         new_abstracted_consts = self.info["new_abstracted_consts"]
         c = self.info["c"]
         optimize = self.info["optimize"]
+        reduction_flag = self.info["reduction_flag"]
 
         c_sat = set()
         c_unsat = set()
@@ -263,8 +265,8 @@ class UnsatCoreBuilder(StrategyBuilder):
                         c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
                     flag = False
                     if c_vs not in alpha:
-                        total[c_vs] = BoolVal("False")
-                        c_unsat.add(Not(c_vs))
+                        # do nothing
+                        pass
                     elif str(alpha[c_vs]) == "True":
                         total[c_vs] = alpha[c_vs]
                         c_sat.add(c_vs)
@@ -283,7 +285,7 @@ class UnsatCoreBuilder(StrategyBuilder):
                     total[reduce_not(Not(c_elem))] = BoolVal("True")
                     c_unsat.add(Not(c_elem))
 
-        c = self.apply_unsat_core(c, new_abstracted_consts, assignment)
+        c = self.apply_unsat_core(c, new_abstracted_consts, assignment, is_formula_reduction=reduction_flag)
         max_literal_set_list = list()
         for i in range(max_bound + 1):
             forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c, i)
@@ -313,7 +315,7 @@ class UnsatCoreBuilder(StrategyBuilder):
             max_literal_set_list.append(new_set)
         return max_literal_set_list, total
 
-    def apply_unsat_core(self, c_max, psi, assignment: Assignment):
+    def apply_unsat_core(self, c_max, psi, assignment: Assignment, is_formula_reduction=False):
         c_sat = set()
         c_unsat = set()
 
@@ -334,6 +336,20 @@ class UnsatCoreBuilder(StrategyBuilder):
             index += 1
 
         solver = Z3Solver()
+        if is_formula_reduction:
+            print("reduction apply")
+            model_unsat_list = psi.children.copy()
+            del model_unsat_list[1]
+            goal_unsat_list = psi.children.copy()
+            del goal_unsat_list[0]
+            del_model_rel = goal_unsat_list[0].children[1:].copy()
+            del goal_unsat_list[0]
+            goal_unsat_list.extend(del_model_rel)
+            model_unsat_core_set = solver.unsat_core(And(model_unsat_list), assertion_and_trace)
+            goal_unsat_core_set = solver.unsat_core(And(goal_unsat_list), assertion_and_trace)
+            total = model_unsat_core_set.union(goal_unsat_core_set)
+            return total
+        print("nope")
         return solver.unsat_core(psi, assertion_and_trace)
 
 

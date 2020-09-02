@@ -1,5 +1,6 @@
-import stlmcPy.constraints.partition as PART
+import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
 import stlmcPy.constraints.separation as SEP
+import stlmcPy.constraints.partition as PART
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not
 import stlmcPy.constraints.encoding as ENC
@@ -10,7 +11,6 @@ class Goal:
 
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
-        # time_const_children.append(Eq(RealVal('0'), Real('tau_0')))
         for k in range(1, bound + 2):
             time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
             time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
@@ -38,7 +38,6 @@ class PropHelper:
         self.proposition_dict = proposition_dict
         self.boolean_abstract = dict()
 
-
     def make_integrals(self, bound):
         mode_number = 0
         integrals = list()
@@ -58,6 +57,11 @@ class PropHelper:
         return integrals
 
     def make_consts(self, bound, delta):
+        result_children = list()
+        # don't do anything when there is nothing to do.
+        if len(self.proposition_dict) == 0:
+            return result_children
+
         goal_vars = get_vars(self.goal.get_formula())
 
         integrals = self.make_integrals(bound)
@@ -66,8 +70,6 @@ class PropHelper:
         new_substitute_dict = substitute_dict.copy()
         for prop_var in self.proposition_dict:
             new_substitute_dict[prop_var] = Bool(prop_var.id + "_" + str(bound))
-
-        result_children = list()
 
         for goal_var in goal_vars:
             if goal_var in self.proposition_dict:
@@ -143,30 +145,51 @@ class BaseStlGoal(Goal):
         boolean_abstract.update(self.boolean_abstract)
         boolean_abstract.update(propHelper.boolean_abstract)
 
-
         return And(result_const), boolean_abstract
 
 
 class OldStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound):
-        pass
+        baseP = PART.baseCase(bound)
+        negFormula = reduce_not(Not(self.formula))
+
+        # partition constraint
+        (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+
+        # full separation
+        fs = SEP.fullSeparation(negFormula, sepMap)
+        # set enc flags
+        ENC.ENC_TYPES = "old"
+        # FOL translation
+        baseV = ENC.baseEncoding(partition, baseP)
+
+        formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
+
+        total_children = list()
+        total_children.extend(formulaConst)
+        total_children.append(partitionConsts)
+
+        return total_children
 
 
 class NewStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound):
-        baseP = PART.baseCase(bound)
+        baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
 
-        (partition, sepMap) = PART.guessPartition(negFormula, baseP)
+        (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
         fs = SEP.fullSeparation(negFormula, sepMap)
+
+        # set enc flags
+        ENC.ENC_TYPES = "new"
 
         baseV = ENC.baseEncoding(partition, baseP)
 
         (formulaConst, subFormulaMap) = ENC.valuation(fs[0], fs, ENC.Interval(True, 0.0, True, 0.0), baseV)
 
         # partition constraints
-        partition_const_children, self.boolean_abstract = PART.genPartition(baseP, fs[1], subFormulaMap)
+        partition_const_children, self.boolean_abstract = ENHANCED_PART.genPartition(baseP, fs[1], subFormulaMap)
         part_const = And(partition_const_children)
         total_children = list()
         total_children.extend(formulaConst)
@@ -184,6 +207,9 @@ class ReachGoal(Goal):
         return self.formula
 
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+        if len(proposition_dict) == 0:
+            return BoolVal("True"), dict()
+
         result = list()
         # return to original const
         decoded_consts = substitution(self.formula, proposition_dict)
@@ -202,9 +228,22 @@ class GoalFactory:
     def __init__(self, raw_goal: Formula):
         self.raw_goal = raw_goal
 
+    @abc.abstractmethod
     def generate_goal(self):
         if isinstance(self.raw_goal, Reach):
             return ReachGoal(self.raw_goal.formula)
         else:
             return NewStlGoal(self.raw_goal)
+        pass
+
+
+class OldGoalFactory(GoalFactory):
+    def __init__(self, raw_goal: Formula):
+        super().__init__(raw_goal)
+
+    def generate_goal(self):
+        if isinstance(self.raw_goal, Reach):
+            return ReachGoal(self.raw_goal.formula)
+        else:
+            return OldStlGoal(self.raw_goal)
         pass

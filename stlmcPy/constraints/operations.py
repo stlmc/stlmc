@@ -600,7 +600,10 @@ def make_diff_mapping(integral: Integral):
         if not isinstance(integral.dynamics, Ode):
             new_dict[dyn_var] = integral.dynamics.exps[index]
         else:
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real('tau'))
+            one_var = integral.end_vector[0].id
+            bound_start = one_var.find("_") + 1
+            bound_end = one_var.rfind("_")
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real('tau_' + one_var[bound_start:bound_end]))
     return new_dict
 
 

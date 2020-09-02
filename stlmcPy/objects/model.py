@@ -1,3 +1,4 @@
+import abc
 from functools import singledispatch
 
 from stlmcPy.constraints.constraints import *
@@ -40,8 +41,29 @@ def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
     return Function(new_vars, new_exps)
 
 
-class StlMC:
+class Model:
+    def __init__(self):
+        self.boolean_abstract = dict()
+        self.range_dict = dict()
+
+    @abc.abstractmethod
+    def make_consts(self, bound):
+        pass
+
+    def clear(self):
+        self.boolean_abstract = dict()
+
+
+# empty model for formula_encoding
+class EmptyModel(Model):
+    def make_consts(self, bound):
+        # return any value
+        return BoolVal("True")
+
+
+class StlMC(Model):
     def __init__(self, mode_var_dict, range_dict, const_dict, modules, init):
+        super().__init__()
         # key : string, value : object
         self.mode_var_dict = mode_var_dict
         self.range_dict = range_dict
@@ -50,10 +72,6 @@ class StlMC:
         self.init = init
         self.next_str = "##$%^&$%^&##'"
         # key is boolean variable, value is forall / Integral object
-        self.boolean_abstract = dict()
-
-    def clear(self):
-        self.boolean_abstract = dict()
 
     @staticmethod
     def make_additional_mode_consts(bound, current_mode_num, total_mode_num):
@@ -127,7 +145,8 @@ class StlMC:
             bool_integral = Bool("newIntegral#_" + str(mode_number) + "_" + str(bound))
             self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
-            integral_children.append(And([bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
+            integral_children.append(And(
+                [bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
             mode_number += 1
         return Or(integral_children), integral_object_list
 
@@ -161,7 +180,8 @@ class StlMC:
                 const = inv_prop_dict[invariant_var]
                 bound_applied_inv_var = substitution(invariant_var, new_substitute_dict)
                 key_index = bound_applied_inv_var.id.find("_")
-                inv_boolean = bound_applied_inv_var.id[:key_index + 1] + str(index) + str(bound_applied_inv_var.id[key_index + 1]) + "_" + bound_applied_inv_var.id[-1]
+                inv_boolean = bound_applied_inv_var.id[:key_index + 1] + str(index) + str(
+                    bound_applied_inv_var.id[key_index + 1]) + "_" + bound_applied_inv_var.id[-1]
                 bound_applied_const = substitution(const, new_substitute_dict)
                 self.boolean_abstract[Bool(inv_boolean)] = Forall(integral.current_mode_number,
                                                                   Real('tau_' + str(bound + 1)),
