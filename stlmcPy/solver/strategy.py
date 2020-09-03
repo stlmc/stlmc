@@ -349,7 +349,6 @@ class UnsatCoreBuilder(StrategyBuilder):
             goal_unsat_core_set = solver.unsat_core(And(goal_unsat_list), assertion_and_trace)
             total = model_unsat_core_set.union(goal_unsat_core_set)
             return total
-        print("nope")
         return solver.unsat_core(psi, assertion_and_trace)
 
 

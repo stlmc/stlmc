@@ -209,8 +209,6 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
                 tau_info[k] = mapping_info[k]
 
         printer = Printer()
-        Printer.verbose_on = True
-        Printer.debug_on = True
         # pre-processing
         # boolean_start = timer()
         # heuristic: removing mapping constraint part.
@@ -636,7 +634,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         settings = HylaaSettings(0.1, 100)
         # settings.stop_on_aggregated_error = False
         settings.aggstrat.deaggregate = True  # use deaggregationboolean_abstract_dict
-        settings.stdout = HylaaSettings.STDOUT_VERBOSE
+        # settings.stdout = HylaaSettings.STDOUT_VERBOSE
         core = Core(ha, settings)
         ce = core.run(init_list)
         # self.add_log_info(str(ce.counterexample))
