@@ -1,4 +1,5 @@
 import abc
+import copy
 from abc import ABC
 from functools import singledispatch
 from itertools import product
@@ -7,22 +8,19 @@ from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, S
     Unequality
 from sympy.core import relational
 
-from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
-from stlmcPy.tree.operations import size_of_tree
-import copy
-
 from hylaa import symbolic, lputil
 from hylaa.core import Core
 from hylaa.hybrid_automaton import HybridAutomaton
 from hylaa.settings import HylaaSettings
 from hylaa.stateset import StateSet
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_boolean_abstraction, inverse_dict, \
-    forall_integral_substitution, substitution, reduce_not, get_vars, infix
+from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, infix
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
+from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
 from stlmcPy.solver.z3 import Z3Solver
+from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
 
@@ -63,8 +61,7 @@ class HylaaStrategy:
                 if c_vs.id in boolean_variables or "newPropDecl" in c_vs.id or "chi" in c_vs.id or "invAtomicID" in c_vs.id or "newIntegral" in c_vs.id:
                     flag = False
                     if c_vs not in alpha:
-                        total[c_vs] = BoolVal("False")
-                        c_unsat.add(Not(c_vs))
+                        pass
                     elif str(alpha[c_vs]) == "True":
                         total[c_vs] = alpha[c_vs]
                         c_sat.add(c_vs)
@@ -104,12 +101,16 @@ class HylaaStrategy:
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c_sat, i)
         reset_pool = make_reset_pool(reset_set)
 
+        diff = set()
+
         for c in alpha_delta:
             if c in integral_set:
                 for v in get_vars(c):
-                    alpha_delta[v] = BoolVal("False")
+                    diff.add(v)
             elif c in reset_set:
-                alpha_delta[c] = BoolVal("False")
+                diff.add(c)
+        for c in diff:
+            del alpha_delta[c]
 
         for integral in integral_set:
             append_boolean_const = list()
@@ -118,12 +119,10 @@ class HylaaStrategy:
             for reset in reset_pool:
                 for r in reset:
                     alpha_delta[r] = BoolVal("True")
-                # print("current alpha delta")
-                # print(alpha_delta)
                 for b in boolean_sub_dict:
                     if isinstance(b, Bool):
                         if b not in alpha_delta:
-                            append_boolean_const.append(Not(b))
+                            pass
                         elif str(alpha_delta[b]) == "True":
                             append_boolean_const.append(b)
                         else:
@@ -173,6 +172,7 @@ def make_boolean_abstract(abstracted_consts):
     original_bool = list()
 
     solver = Z3Solver()
+    solver.set_logic("lra")
 
     for c in clause_list:
         if not isinstance(c, Bool):
@@ -224,6 +224,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             trans_all_consts.append(all_consts.children[1])
 
         abstracted_consts = And(trans_all_consts)
+        first_abst_size = size_of_tree(abstracted_consts)
 
         # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
@@ -295,6 +296,8 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
                     if isinstance(elem, Neq):
                         s_diff.add(elem)
                     vs = get_vars(elem)
+                    if len(vs) == 0:
+                        s_diff.add(elem)
                     for v in vs:
                         if v in new_alpha:
                             s_diff.add(elem)
@@ -337,6 +340,16 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
                 printer.print_normal_dark("retry because of {}".format(re))
                 logger.write_to_csv()
                 logger.reset_timer_without("goal timer")
+
+        # get overviewed file name
+        output_file_name = logger.get_output_file_name()
+        bound_index = output_file_name.rfind("_")
+        overview_file_name = output_file_name[:bound_index]
+
+        logger.add_info("bound", max_bound)
+        logger.add_info("loop", cur_index)
+        logger.add_info("constraint size", first_abst_size)
+        logger.write_to_csv(file_name=overview_file_name, cols=["bound", "loop", "constraint size"])
 
         # TODO: replace -1 to formula size
         return hylaa_result, -1
@@ -661,9 +674,13 @@ class HylaaSolverNaive(HylaaSolver):
     def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
         # solve_start = timer()
         solver = Z3Solver()
+        dummy_logger = Logger()
+        solver.append_logger(dummy_logger)
 
         solver.add(And(boolean_const_model))
-        if not solver.solve()[0]:
+        result = solver.solve()
+
+        if not result[0]:
             assignment = solver.make_assignment()
 
             simplified_result = assignment.z3eval(z3_boolean_consts)
@@ -696,6 +713,7 @@ class HylaaSolverReduction(HylaaSolver):
 
     def solve_strategy_aux(self, alpha_delta, bound, z3_boolean_consts, boolean_const_model, boolean_sub_dict):
         solver = Z3Solver()
+        solver.set_logic('lra')
         solver.add(And(boolean_const_model))
         if not solver.solve()[0]:
             assignment = solver.make_assignment()
@@ -732,6 +750,7 @@ class HylaaSolverReduction(HylaaSolver):
             revise_boolean_const.remove(boolean_sub_dict[c])
             revise_boolean_const.append(Not(boolean_sub_dict[c]))
             solver = Z3Solver()
+            solver.set_logic('lra')
             solver.add(And(revise_boolean_const))
             if not solver.solve()[0]:
                 assignment = solver.make_assignment()

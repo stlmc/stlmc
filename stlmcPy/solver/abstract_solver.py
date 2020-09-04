@@ -44,6 +44,10 @@ class SMTSolver(BaseSolver):
     def add(self, const):
         pass
 
+    @abc.abstractmethod
+    def set_logic(self, logic_name: str):
+        pass
+
 
 class OdeSolver(BaseSolver, ABC):
     pass

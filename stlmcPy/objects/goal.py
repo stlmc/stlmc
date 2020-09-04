@@ -163,11 +163,11 @@ class OldStlGoal(BaseStlGoal):
         # FOL translation
         baseV = ENC.baseEncoding(partition, baseP)
 
-        formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)
+        formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
 
         total_children = list()
         total_children.extend(formulaConst)
-        total_children.append(partitionConsts)
+        total_children.extend(partitionConsts)
 
         return total_children
 

@@ -21,7 +21,7 @@ def unit_run(arg: dict):
     printer = arg["printer"]
 
     logger.set_output_file_name(output_file_name_bound)
-    logger.write_to_csv()
+    logger.write_to_csv(overwrite=True)
 
     logger.reset_timer()
     logger.start_timer("goal timer")
@@ -49,7 +49,8 @@ def unit_run(arg: dict):
 
     logger.add_info("result", result)
     logger.add_info("total", logger.get_duration_time("goal timer"))
-    logger.write_to_csv()
+    logger.write_to_csv(clear_after_write=False)
+    logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
     model.clear()
     goal.clear()
 
@@ -68,9 +69,10 @@ class MultiprocessRunner(Runner):
 
         for file_name in config.file_list:
             model, PD, goals = object_manager.generate_objects(file_name)
-            for bound in config.bound:
-                for goal in goals:
-                    output_file_name = "{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver)
+            for goal in goals:
+                output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver, config.encoding)
+                logger.write_to_csv(file_name=output_file_name, overwrite=True)
+                for bound in config.bound:
                     output_file_name_bound = "{}_{}".format(output_file_name, bound)
 
                     thread_logger = Logger()

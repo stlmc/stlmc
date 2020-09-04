@@ -29,6 +29,9 @@ class YicesSolver(SMTSolver):
     def add(self, const):
         pass
 
+    def set_logic(self, logic_name: str):
+        pass
+
 
 @singledispatch
 def make_dynamics_consts(dyn: Ode):

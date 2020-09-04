@@ -18,6 +18,11 @@ class Z3Solver(SMTSolver):
         SMTSolver.__init__(self)
         self._z3_model = None
         self._cache = list()
+        self._logic_list = ["LRA", "NRA"]
+        self._logic = "NRA"
+
+    def set_logic(self, logic_name: str):
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
 
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
@@ -54,7 +59,7 @@ class Z3Solver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), 'NRA')
+        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
 
     def result_simplify(self):

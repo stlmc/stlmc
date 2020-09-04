@@ -1,8 +1,6 @@
-from .constraints import *
 from functools import singledispatch
 
-from stlmcPy.tree.operations import size_of_tree
-
+from .constraints import *
 # making proposition id for each interval ex) [0, tau_0) = p_0, [tau_0, tau_1) = p_1 ...
 from .interval import intervalConst, subInterval, inIntervalCheck
 from .operations import generate_id
@@ -12,13 +10,6 @@ ENC_TYPES = "new"
 
 
 def baseEncoding(partition: dict, baseCase):
-    if ENC_TYPES == "new":
-        return _base_encoding_aux_enhanced(partition, baseCase)
-    elif ENC_TYPES == "old":
-        return _base_encoding_aux(partition, baseCase)
-
-
-def _base_encoding_aux_enhanced(partition: dict, baseCase):
     base = {}
 
     for f in partition.keys():
@@ -30,18 +21,6 @@ def _base_encoding_aux_enhanced(partition: dict, baseCase):
                        range(len(baseCase) + 1)]
             base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
                                          in range(len(baseCase) + 1)]
-    return base
-
-
-def _base_encoding_aux(partition: dict, baseCase):
-    base = {}
-    for f in partition.keys():
-        if isinstance(f, Bool):
-            genProp = generate_id(0, f.id + "_")
-            exPar = [0.0] + baseCase + [float('inf')]
-            base[f] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genProp))) for i in
-                       range(len(baseCase) + 1)]
-    print(base)
     return base
 
 
@@ -59,7 +38,14 @@ def valuation(f: Formula, sub: dict, j: Interval, base: dict):
     genPr = generate_id(0, 'chi')
     fMap = {}
 
-    vf = _value(f, sub, j, base, genPr, fMap)
+    newSub = {}
+    if ENC_TYPES == "old":
+        for ns in sub:
+            newSub[ns[0]] = sub[ns]
+    else:
+        newSub = sub
+
+    vf = _value(f, newSub, j, base, genPr, fMap)
 
     return [vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]], fMap
 
@@ -102,14 +88,6 @@ def _enhanced_value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
 
 @_value.register(Bool)
 def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
-    '''
-    print("what is sub")
-    print(sub)
-    print("what is base")
-    print(base)
-    print(f)
-    print("==========")
-    '''
     if ENC_TYPES == "new":
         return _enhanced_value_aux(f, sub, j, base, genPr, fMap)
     elif ENC_TYPES == "old":
@@ -186,4 +164,4 @@ def _atomEncoding_old(f: Bool, j: Interval, base: dict):
     const = []
     for (basePartition, prop) in base[f]:
         const.append(Implies(subInterval(j, basePartition), prop))
-    return And(*const)
+    return And(const)

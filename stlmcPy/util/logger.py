@@ -14,6 +14,9 @@ class Logger:
     def set_output_file_name(self, file_name: str):
         self._output_file = file_name
 
+    def get_output_file_name(self):
+        return self._output_file
+
     def add_info(self, key, value):
         self._line[str(key)] = str(value)
 
@@ -47,7 +50,7 @@ class Logger:
     def clear(self):
         self._line = dict()
 
-    def write_to_csv(self, file_name: str = None, overwrite=False):
+    def write_to_csv(self, file_name: str = None, cols=None, overwrite=False, clear_after_write=True):
         if file_name is None:
             file_name = self._output_file
 
@@ -59,13 +62,25 @@ class Logger:
         fieldnames = ['bound', 'loop', 'constraint size', 'smt solving time',
                       'preparing max literal set', 'hylaa time',
                       'loop total', 'total', 'result']
+        filter_flag = True
+        if cols is None:
+            filter_flag = False
+
         if not os.path.exists(file_name + ".csv"):
             with open(file_name + ".csv", write_flags['write'], newline='') as csv_file:
                 writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
                 writer.writeheader()
                 if len(self._line) > 0:
-                    writer.writerow(self._line)
-                    self.clear()
+                    filtered_data = self._line
+                    if filter_flag:
+                        filtered_data = dict()
+                        for key in self._line:
+                            if key in cols:
+                                filtered_data[key] = self._line[key]
+
+                    writer.writerow(filtered_data)
+                    if clear_after_write:
+                        self.clear()
         else:
             with open(file_name + ".csv", write_flags['append'], newline='') as csv_file:
                 writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -73,6 +88,14 @@ class Logger:
                     writer.writeheader()
 
                 if len(self._line) > 0:
-                    writer.writerow(self._line)
-                    self.clear()
+                    filtered_data = self._line
+                    if filter_flag:
+                        filtered_data = dict()
+                        for key in self._line:
+                            if key in cols:
+                                filtered_data[key] = self._line[key]
+
+                    writer.writerow(filtered_data)
+                    if clear_after_write:
+                        self.clear()
 
