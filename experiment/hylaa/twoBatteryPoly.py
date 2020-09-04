@@ -14,27 +14,35 @@ from hylaa.stateset import StateSet
 def make_automaton():
     'make the hybrid automaton'
 
-    ha = HybridAutomaton('railroadPoly')
+    ha = HybridAutomaton('twoBatteryPoly')
 
     # variables
-    variables = ["m", "tx", "bx", "vx", "vacc", "gTimer"]
+    variables = ["b1", "b2", "d1", "d2", "g1", "g2", "gTimer"]
 
     # mode names
-    mode_names = ["mode(0)", "mode(5)", "mode(10)", "mode(-5)"]
-
-    # all modes' derivatives are the same
-    derivatives = ["0", "-5", "vx", "vacc", "0", "1"]
+    mode_names = ["11", "12", "21", "31", "13", "33"]
 
     # no constant dict
-    constant_dict = {}
+    constant_dict = {"coeff_1": 0.5, "coeff_2": 0.166}
+    
+    # all modes' derivatives are the same
+    derivatives = [
+            ["0", "0", "-1 * coeff_1 * coeff_2 * x1 / 16", "coeff_1 * coeff_2 * (x1 - x2) / 18", "1"],
+            ["0", "0", "-1 * coeff_1 * coeff_2 * x1 / 16", "(0.015 + coeff_1 * coeff_2 * (x1 - x2)) / 18", "1"],
+            ["0", "0", "(coeff_1 - coeff_1 * coeff_2 * x1) / 16", "(coeff_1 * coeff_2 * (x1 - x2)) / 18", "1"],
+            ["0", "0", "(coeff_1 - coeff_1 * coeff_2 * x1) / 16", "(0.015 + coeff_1 * coeff_2 * (x1 - x2)) / 18", "1"]]
+
+    # invariant
+    invariants = ["x1 >= 0 & x2 >= 0", "x1 >= 0 & x2 <= 9", "x1 <= 8 & x2 >= 0", "x1 <= 9 & x2 <= 8"]
+
 
     ############## Modes ##############
-    for mode_name in mode_names:
+    for index, mode_name in enumerate(mode_names):
         mode = ha.new_mode(mode_name)
-        a_mat = symbolic.make_dynamics_mat(variables, derivatives, constant_dict, has_affine_variable=True)
+        a_mat = symbolic.make_dynamics_mat(variables, derivatives[index], constant_dict, has_affine_variable=True)
         mode.set_dynamics(a_mat)
 
-        invariant = "gTimer <= 60"
+        invariant = "{} & gTimer <= 60".format(invariants[index])
         inv_mat, inv_rhs = symbolic.make_condition(variables, invariant.split('&'), constant_dict, has_affine_variable=True)
         mode.set_invariant(inv_mat, inv_rhs)
 
@@ -44,21 +52,23 @@ def make_automaton():
 
     ############## Transition ##############
     # target_mode, guard, reset
-    transition_list = [[("mode(5)", "40 <= tx & tx <= 50", ["5", "tx", "bx", "vx", "5", "gTimer"]),
-                        ("mode(10)", "10 <= tx & tx <= 30", ["10", "tx", "bx", "vx", "10", "gTimer"]),
-                        ("mode(-5)", "-5 <= tx & tx <= 0", ["-5", "tx", "bx", "vx", "-5", "gTimer"])],
-                       [("mode(10)", "10 <= tx & tx <= 30", ["10", "tx", "bx", "vx", "10", "gTimer"]),
-                        ("mode(-5)", "-5 <= tx & tx <= 0", ["-5", "tx", "bx", "vx", "-5", "gTimer"]),
-                        ("mode(0)", "85 <= bx & tx <= -8", ["0", "100 + tx", "bx", "vx", "0", "gTimer"])],
-                       [("mode(5)", "40 <= tx & tx <= 50", ["5", "tx", "bx", "vx", "5", "gTimer"]),
-                        ("mode(-5)", "-5 <= tx & tx <= 0", ["-5", "tx", "bx", "vx", "-5", "gTimer"]),
-                        ("mode(0)", "85 <= bx & tx <= -8", ["0", "100 + tx", "bx", "vx", "0", "gTimer"])],
-                       [("mode(5)", "40 <= tx & tx <= 50", ["5", "tx", "bx", "vx", "5", "gTimer"]),
-                        ("mode(10)", "10 <= tx & tx <= 30", ["10", "tx", "bx", "vx", "10", "gTimer"]),
-                        ("mode(0)", "85 <= bx & tx <= -8", ["0", "100 + tx", "bx", "vx", "0", "gTimer"])]
+
+    identity_reset = variables
+    transition_list = [[("ft", "x1 >= 5 & x2 <= 4", ["0", "1", "x1", "x2", "gTimer"]),
+                        ("tf", "x1 <= 4 & x2 >= 5", ["1", "0", "x1", "x2", "gTimer"]),
+                        ("tt", "x1 <= 4 & x2 <= 4", ["1", "1", "x1", "x2", "gTimer"])],
+                       [("ff", "x1 >= 5 & x2 >= 5", ["0", "0", "x1", "x2", "gTimer"]),
+                        ("tf", "x1 <= 4 & x2 >= 5", ["1", "0", "x1", "x2", "gTimer"]),
+                        ("tt", "x1 <= 4 & x2 <= 4", ["1", "1", "x1", "x2", "gTimer"])],
+                       [("ff", "x1 >= 5 & x2 >= 5", ["0", "0", "x1", "x2", "gTimer"]),
+                        ("ft", "x1 >= 5 & x2 <= 4", ["0", "1", "x1", "x2", "gTimer"]),
+                        ("tt", "x1 <= 4 & x2 <= 4", ["1", "1", "x1", "x2", "gTimer"])],
+                       [("ff", "x1 >= 5 & x2 >= 5", ["0", "0", "x1", "x2", "gTimer"]),
+                        ("ft", "x1 >= 5 & x2 <= 4", ["0", "1", "x1", "x2", "gTimer"]),
+                        ("tf", "x1 <= 4 & x2 <= 5", ["1", "0", "x1", "x2", "gTimer"])]
                        ]
 
-    goal = "vacc >= 10 & tx <= 10 & gTimer >= 59.9"
+    goal = "x1 >= 5.6 & gTimer <= 59.9 & gTimer >= 59.8"
 
     for mode_num, transition_info_list in enumerate(transition_list):
         src_mode_name = mode_names[mode_num]
@@ -87,7 +97,7 @@ def make_automaton():
 def make_init(ha, box):
     'make the initial states'
 
-    mode = ha.modes['mode(0)']
+    mode = ha.modes['ff']
     init_lpi = lputil.from_box(box, mode)
     init_list = [StateSet(init_lpi, mode)]
 
@@ -115,7 +125,7 @@ def run_hylaa():
 
     ha = make_automaton()
 
-    box = [(0, 0), (60, 70), (0, 1), (0, 0.1), (0, 0), (0, 0), (1.0, 1.0)]
+    box = [(0, 0), (0, 0), (4.9, 5.1), (4.9, 5.1), (0, 0), (1.0, 1.0)]
 
     settings = make_settings()
 

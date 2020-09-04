@@ -83,14 +83,16 @@ init:
 (and (m = 0) (vacc = 0) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
 
 propositions:
-reachability = tx < 0 ;
+# new reachability
+# hylaa : 261.44 sec, stlmc : 301.56 sec
+reachability = and (vacc >= 10) (tx <= 10) ;
 barg80 = bx >= 80;
 barl60 = bx < 40;
 
 goal:
 reach reachability;
-(<> (0.0,50.0) reachability);
-([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
-([] [3.0,50.0] (<>[5.0, 20.0] barg80));
-([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
+#(<> (0.0,50.0) reachability);
+#([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
+#([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+#([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
 

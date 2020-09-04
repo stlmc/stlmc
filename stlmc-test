@@ -3,8 +3,7 @@
 #SBATCH --job-name=stlmc
 #SBATCH --output=%x.o%j
 #SBATCH --error=%x.e%j
-#SBATCH --cpus-per-task=12 # 5 cores
-#SBATCH --ntasks-per-node=24 # 5 cores
+#SBATCH --cpus-per-task=5 # 5 cores
 
 import multiprocessing
 import sys
