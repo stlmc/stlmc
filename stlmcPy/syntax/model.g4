@@ -165,8 +165,8 @@ interval
 formula
  :
    LPAREN formula RPAREN                                # parenFormula
- | formula  op=(BOOL_AND | BOOL_OR)     formula         # binaryFormula
  |          op=NOT                      formula         # unaryFormula
+ | formula  op=(BOOL_AND | BOOL_OR)     formula         # binaryFormula
  |          op=(GLOBAL|FINAL)  interval formula         # unaryTemporalFormula
  | op=(BOOL_AND | BOOL_OR) formula formula+             # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula         # binaryTemporalFormula

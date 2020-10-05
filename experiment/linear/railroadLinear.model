@@ -18,6 +18,7 @@ real vb;
     mode:
         vb = 0;
     inv:
+	tx > 40;
     flow:
         d/dt[tx] = -5;
         d/dt[bx] = 0;
@@ -63,6 +64,7 @@ real vb;
     mode:
         vb = -5 ;
     inv:
+	tx > -10;
     flow:
         d/dt[tx] = -5;
         d/dt[bx] = -5;
@@ -83,10 +85,11 @@ barg80 = bx >= 80;
 barl60 = bx < 40;
 
 goal:
-reach (~ reachability);
-([] (0.0,50.0) reachability);
-([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
-([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+([] (0.0, 50.0) tx > 50);
+reach (reachability);
+(<> (0.0,50.0) reachability);
+([] [20.0,40.0] (barg80 U [1.0,6.0] tx > 40));
+(<> [3.0,50.0] ([][5.0, 20.0] barg80));
 ([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
 
 

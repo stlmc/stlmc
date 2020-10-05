@@ -19,19 +19,21 @@ class Z3Solver(SMTSolver):
         self._z3_model = None
         self._cache = list()
         self._logic_list = ["LRA", "NRA"]
-        self._logic = "NRA"
+        self._logic = "LRA"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'LRA')
 
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
         logger = self.logger
-
+        '''
         if logic != "NONE":
             solver = z3.SolverFor(logic)
         else:
             solver = z3.Solver()
+        '''
+        solver = z3.Solver()
 
         # solver.set("timeout", timeout * 1000)
         # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
@@ -40,20 +42,20 @@ class Z3Solver(SMTSolver):
         logger.start_timer("solving timer")
         solver.add(consts)
 
-        #with open("thermoLinear.smt2", 'w') as fle:
-        #    print(solver.to_smt2(), file=fle)
+        with open("battery.smt2", 'w') as fle:
+            print(solver.to_smt2(), file=fle)
 
         result = solver.check()
         logger.stop_timer("solving timer")
         logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
         str_result = str(result)
-
         if str_result == "sat":
             m = solver.model()
             result = False
         else:
             m = None
             result = True if str_result == "unsat" else "Unknown"
+        #result = False
         return result, sizeAst(z3.And(self._cache)), m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
@@ -61,6 +63,9 @@ class Z3Solver(SMTSolver):
             self._cache.append(z3Obj(all_consts))
         result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
+
+    def clear(self):
+        self._cache = list()
 
     def result_simplify(self):
         print("z3 size")
@@ -171,7 +176,10 @@ def make_dynamics_consts(dyn: Ode):
         new_start_var = Real(new_start_var_id)
 
         end_tau_var = Real('tau_' + str(int(bound_str) + 1))
-        start_tau_var = Real('tau_' + bound_str)
+        if bound_str == "0":
+            start_tau_var = RealVal("0")
+        else:
+            start_tau_var = Real('tau_' + bound_str)
 
         new_exp_const = Eq(new_end_var, Add(new_start_var, Mul(Sub(end_tau_var, start_tau_var), exp)))
         dyn_const_children.append(new_exp_const)
@@ -401,23 +409,40 @@ def _(const: Integral):
 @z3Obj.register(Forall)
 def _(const: Forall):
     bound_str = const.start_tau.id[3:]
+    
+    if len(get_vars(const.const)) == 0:
+        return z3Obj(const.const)
 
     new_forall_const = const.const
+    cur_mode = const.current_mode_number
+    result = list()
+    #print("forall part")
+    #print(const.const)
     if isinstance(const.const, Bool):
+        #print("direct boolean variable")
         return z3Obj(const.const)
     if get_vars(const.const) is None:
+        #print("zero variables")
         return const.const
     if isinstance(const.const, Not):
+        #print("not type")
         if isinstance(const.const.child, Bool):
+            #print("boolean in not")
             return z3.Not(z3Obj(const.const.child))
         reduced_const = reduce_not(const.const)
         new_const = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
+        #print("ent not part")
+        #print(new_const)
         return new_const
     elif isinstance(const.const, Implies):
         left = reduce_not(Not(const.const.left))
         right = const.const.right
         left_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, left, const.integral))
         right_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, right, const.integral))
+        #print("Implies")
+        #print(left_new)
+        #print(right_new)
+        #print("or combine")
         return z3.Or([left_new, right_new])
     elif isinstance(const.const, And) or isinstance(const.const, Or):
         op_dict = {And: z3.And, Or: z3.Or}
@@ -429,6 +454,8 @@ def _(const: Forall):
                 result.append(z3Obj(c))
             else:
                 result.append(z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+        #print("const and or or type")
+        #print(result)
         return op_dict[const.const.__class__](result)
     elif not isinstance(const.const, Bool):
         op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
@@ -438,4 +465,6 @@ def _(const: Forall):
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
     new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
+    #print("else part")
+    #print(new_const)
     return z3.And(z3Obj(new_const))

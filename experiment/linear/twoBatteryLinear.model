@@ -22,6 +22,8 @@ int b2;
         b1 = 1;
         b2 = 1;
     inv:
+ 	g1 > 0.5;
+	g2 > 0.5;
     flow:
         d/dt[d1] = 0.5 / 0.166 ;
         d/dt[d2] = 0.5 / 0.166 ;
@@ -44,6 +46,8 @@ int b2;
         b1 = 1 ;
         b2 = 2 ;
     inv:
+	g1 > 0.5;
+	d2 > 1;
     flow:
         d/dt[d1] = 0.7 / 0.166 ;
         d/dt[d2] = -0.166 ;
@@ -66,6 +70,8 @@ int b2;
         b1 = 2;
         b2 = 1;
     inv:
+	d1 > 1;
+	g2 > 0.5;
     flow:
         d/dt[d1] = -0.166 ;
         d/dt[d2] = 0.7 / 0.166 ;
@@ -89,6 +95,8 @@ int b2;
         b1 = 3;
         b2 = 1;
     inv:
+	g1 < 1;
+	g2 > 0.5;
     flow:
         d/dt[d1] = 0 ;
         d/dt[d2] = 0.7 / 0.166 ;
@@ -111,6 +119,8 @@ int b2;
         b1 = 1;
         b2 = 3;
     inv:
+	g1 > 0.5;
+	g2 < 1;
     flow:
         d/dt[d1] = 0.7 / 0.166 ;
         d/dt[d2] = 0; 
@@ -133,6 +143,8 @@ int b2;
         b1 = 3;
         b2 = 3;
     inv:
+	g1 < 0.5;
+	g2 < 0.5;
     flow:
         d/dt[d1] = 0 ; 
         d/dt[d2] = 0 ;
@@ -154,16 +166,16 @@ init:
 (and (b1 = 1) (b2 = 1) (g1 = 8.5) (d1 = 0) (g2 = 7.5) (d2 = 0)) ;
 
 propositions:
-reachability = d1 > 1.4 ;
+reachability = g2 < 6 ;
 modeLL = (d1 > 0.3); 
-donegzero = d1 > 0.5 ;
-dtwogzero = d2 > 0.5;
+donegzero = d1 > 0.2 ;
+dtwogzero = d2 > 0.2;
 modeDD = (d1 < 0.1); 
 
 goal:
-(<> [3.0, 14.0] (donegzero -> <>[0.0, 5.0) reachability)) ;
+([] [0.0, 40.0] (d1 > 1 -> <>[0.0, 20.0) reachability)) ;
 (<> (5.0,30.0] (modeLL -> [][7.5,25) modeLL));
-(<> (0.0,50.0) dtwogzero);
-reach dtwogzero;
-([] (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD));
+(<> [0.0, 100.0) (dtwogzero or donegzero));
+reach (b1 >= 3);
+(<> (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD));
 

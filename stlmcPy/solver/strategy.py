@@ -2,7 +2,7 @@
 import abc
 
 from stlmcPy.constraints.constraints import Bool, Not, BoolVal, And, Neq, Real, Variable, Eq
-from stlmcPy.constraints.operations import get_vars, reduce_not
+from stlmcPy.constraints.operations import get_vars, reduce_not, get_max_bound
 from stlmcPy.solver.assignment import Assignment
 # from stlmcPy.solver.hylaa import unit_split
 from functools import reduce
@@ -261,7 +261,7 @@ class UnsatCoreBuilder(StrategyBuilder):
             flag = True
 
             for c_vs in vs:
-                if "chi" in c_vs.id or "invAtomicID" in c_vs.id or "newIntegral" in c_vs.id or (
+                if "chi" in c_vs.id or "newPropDecl" in c_vs.id or "invAtomicID" in c_vs.id or "reach_goal_" in c_vs.id or"newIntegral" in c_vs.id or (
                         c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
                     flag = False
                     if c_vs not in alpha:
@@ -287,6 +287,8 @@ class UnsatCoreBuilder(StrategyBuilder):
 
         c = self.apply_unsat_core(c, new_abstracted_consts, assignment, is_formula_reduction=reduction_flag)
         max_literal_set_list = list()
+        reach_min_bound = 1000000
+        is_reach = False
         for i in range(max_bound + 1):
             forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c, i)
             new_set = set()
@@ -304,6 +306,12 @@ class UnsatCoreBuilder(StrategyBuilder):
                 if not isinstance(cc, Not):
                     new_set.add(cc)
             for cc in guard_set:
+                if isinstance(cc, Bool):
+                    if "reach_goal_" in cc.id:
+                        is_reach = True
+                        cur_min = int(cc.id[cc.id.rfind("_")+1:])
+                        if reach_min_bound > cur_min:
+                            reach_min_bound = cur_min
                 new_set.add(reduce_not(cc))
             s_diff = set()
             if not optimize:
@@ -311,6 +319,10 @@ class UnsatCoreBuilder(StrategyBuilder):
                     if isinstance(se, Bool):
                         if "newTau#" in se.id:
                             s_diff.add(se)
+            if is_reach:
+                for se in new_set:
+                    if get_max_bound(se) > reach_min_bound:
+                        s_diff.add(se)
             new_set = new_set.difference(s_diff)
             max_literal_set_list.append(new_set)
         return max_literal_set_list, total
@@ -337,7 +349,6 @@ class UnsatCoreBuilder(StrategyBuilder):
 
         solver = Z3Solver()
         if is_formula_reduction:
-            print("reduction apply")
             model_unsat_list = psi.children.copy()
             del model_unsat_list[1]
             goal_unsat_list = psi.children.copy()
@@ -448,7 +459,7 @@ def unit_split(given_set: set, i: int):
             e_index = int(var.id.rfind("_"))
             end_index = int(var.id.rfind("_"))
             if not (s_index == e_index or "newIntegral" in var.id or "invAtomicID" in var.id
-                    or "newPropDecl" in var.id or "newTau" in var.id):
+                    or "newPropDecl" in var.id or "newTau" in var.id or "reach_goal" in var.id):
                 bound = int(var.id[start_index + 1:end_index])
                 last_str = var.id[-1]
                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
@@ -462,5 +473,8 @@ def unit_split(given_set: set, i: int):
         if flag:
             guard_set.add(c)
             s_diff.add(c)
+        if isinstance(c, Bool):
+            if "reach_goal_" in c.id:
+                guard_set.add(c)
 
     return forall_set, integral_set, init_set, tau_set, reset_set, guard_set

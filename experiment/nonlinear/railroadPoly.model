@@ -15,6 +15,7 @@ real m;
     mode:
         m = 0;
     inv:
+	tx > 45;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
@@ -32,6 +33,7 @@ real m;
     mode:
         m = 5;
     inv:
+	tx > 20;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
@@ -49,6 +51,7 @@ real m;
     mode:
         m = 10;
     inv:
+	bx < 90;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
@@ -66,6 +69,7 @@ real m;
     mode:
         m = -5;
     inv:
+	tx > -10;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
@@ -80,19 +84,19 @@ real m;
           (and (m' = 0) (vacc' = 0) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
 }
 init:
-(and (m = 0) (vacc = 0) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
+(and (m > 0) (m < 0.1) (vacc > 0) (vacc < 0.1) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
 
 propositions:
 # new reachability
 # hylaa : 261.44 sec, stlmc : 301.56 sec
-reachability = and (vacc >= 10) (tx <= 10) ;
+reachability = tx < 30;
 barg80 = bx >= 80;
-barl60 = bx < 40;
+barg40 = bx > 40;
 
 goal:
-reach reachability;
-#(<> (0.0,50.0) reachability);
-#([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
+#reach reachability;
+(<> (0.0,50.0) (reachability -> ~barg40));  # True
+#([] [20.0,40.0] (<>[1.0,6.0] reachability));
 #([] [3.0,50.0] (<>[5.0, 20.0] barg80));
-#([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
+#([] [0.0, 50.0] (<>[0.0, 20.0) (tx < 30 -> vx > 2))); # True
 

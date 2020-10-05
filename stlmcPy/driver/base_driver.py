@@ -9,6 +9,7 @@ from stlmcPy.objects.object_factory import ObjectFactory
 from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
+from timeit import default_timer as timer
 
 
 def string_to_bool(v: str):
@@ -48,7 +49,7 @@ class StlConfiguration:
         self.parser.add_argument('-optimize', type=str,
                                  help='turn on solver optimization, support \" {formula} \" (default: None)')
         self.parser.add_argument('-formula_encoding', type=str,
-                                 help='select formula encoding, support \" {model-with-goal, only-goal-stl, only-goal-stl-enhanced} \" (default: model-with-goal)')
+                                 help='select formula encoding, support \" {model-with-goal, model-with-goal-enhanced, only-goal-stl, only-goal-stl-enhanced} \" (default: model-with-goal-enhanced)')
         self.parser.add_argument('-ce', type=string_to_bool,
                                  help='generate counter example (default: false)')
         self.parser.add_argument('-verbose', type=string_to_bool,
@@ -73,8 +74,8 @@ class StlConfiguration:
         self._solver = "z3"
         self._optimize_flags = list()
         self._solver_list = ["z3", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
-        self._formula_encoding = "model-with-goal"
-        self._formula_encoding_list = ["model-with-goal","only-goal-stl", "only-goal-stl-enhanced"]
+        self._formula_encoding = "model-with-goal-enhanced"
+        self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
         self._verbose = False
         self._debug = False
@@ -106,7 +107,7 @@ class StlConfiguration:
         if self._args.ce is not None:
             self._gen_ce = self._args.ce
         if self._args.formula_encoding is not None:
-            self._formula_encoding = (self._args.formula_encoding.lower() if self._args.formula_encoding.lower() in self._formula_encoding_list else "model-with-goal")
+            self._formula_encoding = (self._args.formula_encoding.lower() if self._args.formula_encoding.lower() in self._formula_encoding_list else "model-with-goal-enhanced")
         if self._args.verbose is not None:
             self._verbose = self._args.verbose
         if self._args.debug is not None:
@@ -163,6 +164,10 @@ class Runner:
             for goal in goals:
                 output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver, config.encoding)
                 logger.write_to_csv(file_name=output_file_name, overwrite=True)
+                key_index = file_name.rfind("/")
+                stl_file_name = str(file_name[key_index+1:]) + "_" + str(goal.get_formula()) + "_" + config.solver
+                print("str_file_name")
+                print(stl_file_name)
                 for bound in config.bound:
                     output_file_name_bound = "{}_{}".format(output_file_name, bound)
                     logger.set_output_file_name(output_file_name_bound)
@@ -175,16 +180,29 @@ class Runner:
                     logger.add_info("bound", bound)
 
                     model_const = model.make_consts(bound)
+                    s_time = timer()
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, 60, 1, model, PD)
-
+                    
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)
                     boolean_abstract.update(goal_boolean_abstract)
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-
+                    e_time = timer()
+                    print("Goal genaration total : " + str(e_time - s_time))
+                    
                     printer.print_normal("> {}".format(config.solver))
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
+                    e_time2 = timer()
+                    print("SMT solving time : " + str(e_time2 - e_time) + ", Constraint size : " + str(size))
+                    if not os.path.exists(stl_file_name + ".csv"):
+                        with open(stl_file_name + ".csv", 'a') as csv_file:
+                            csv_file.write("formula,bound,goal_generation_time,smt_solving_time,result\n")
+                            csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+                    else:
+                        with open(stl_file_name + ".csv", 'a') as csv_file:
+                            csv_file.write(str(goal.get_formula()) + "," +str(bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+
 
                     logger.stop_timer("goal timer")
                     printer.print_normal_dark("\n> result")
@@ -199,8 +217,10 @@ class Runner:
                     logger.write_to_csv(clear_after_write=False)
                     logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
 
+
                     model.clear()
                     goal.clear()
+                    solver.clear()
 
                     # self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     if config.is_generate_counterexample:

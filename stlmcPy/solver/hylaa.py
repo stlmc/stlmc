@@ -270,10 +270,16 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             if result:
                 printer.print_normal_dark("Smt solver level result!")
                 logger.write_to_csv()
+                print("The number of loop : " + str(cur_index))
                 # self.add_log_info("SMT solver level result!")
                 return True, 0
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
+
+            for mp in mapping_info:
+                if isinstance(mapping_info[mp], Or):
+                    mapping_info[mp] = mapping_info[mp].children[0]
+
 
             net_dict = info_dict.copy()
             net_dict.update(mapping_info)
@@ -293,6 +299,9 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             for clause_bound in max_literal_set_list:
                 s_diff = set()
                 for elem in clause_bound:
+                    if isinstance(elem, Bool):
+                        if "reach_goal" in elem.id:
+                            s_diff.add(elem)
                     if isinstance(elem, Neq):
                         s_diff.add(elem)
                     vs = get_vars(elem)
@@ -306,9 +315,70 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
 
             max_literal_set_list = remove_mode_clauses
 
+            '''
+            is_reach = False
+            min_bound = 1000000
+            cur_min_bound = 1000000
+            print("new_alpha")
+            print(new_alpha)
+            print(max_literal_set_list)
+
+            remove_mode_clauses = list()
+            for clause_bound in max_literal_set_list:
+                s_diff = set()
+                for elem in clause_bound:
+                    if isinstance(elem, Bool):
+                        if "reach_goal_" in elem.id:
+                            is_reach = True
+                            s_diff.add(elem)
+                            index = elem.id.rfind("_")
+                            cur_min_bound = int(elem.id[index+1:])
+                            if cur_min_bound < min_bound:
+                                min_bound = cur_min_bound
+                    if isinstance(elem, Neq):
+                        s_diff.add(elem)
+                    vs = get_vars(elem)
+                    if len(vs) == 0:
+                        s_diff.add(elem)
+                    for v in vs:
+                        if v in new_alpha:
+                            s_diff.add(elem)
+                clause_bound = clause_bound.difference(s_diff)
+                remove_mode_clauses.append(clause_bound)
+
+            max_literal_set_list = remove_mode_clauses
+
+            remove_reach_clauses = list()
+
+            if is_reach:
+                remove_reach_clauses = list()
+                for clause_bound in max_literal_set_list:
+                    s_diff = set()
+                    for elem in clause_bound:
+                        print("elem : " + str(elem) +", " + str(get_max_bound(elem)))
+
+                        if get_max_bound(elem) > min_bound:
+                            s_diff.add(elem)
+                    clause_bound = clause_bound.difference(s_diff)
+                    print("cur min bound : " + str(min_bound))
+                    print(s_diff)
+                    remove_reach_clauses.append(clause_bound)
+                max_literal_set_list = remove_reach_clauses
+                max_bound = min_bound
+                print("result")
+                print(max_literal_set_list)
+            '''
+
             counter_consts_set = set()
+            max_bound = -1
             for s in max_literal_set_list:
                 for c in s:
+                    if isinstance(c, Bool):
+                        if "newIntegral" in c.id:
+                            index = int(c.id.rfind("_")) + 1
+                            bound = int(c.id[index:])
+                            if bound > max_bound:
+                                max_bound = bound
                     if str(alpha_delta[c]) == "True":
                         counter_consts_set.add(Not(c))
                     else:

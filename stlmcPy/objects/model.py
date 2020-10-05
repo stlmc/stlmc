@@ -4,42 +4,7 @@ from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 
 # TODO: why attribute error occured here?
-from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not
-
-
-@singledispatch
-def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
-    new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
-    new_dynamics_dict[Real('time')] = Real('tau_' + str(bound + 1))
-    new_exps = list()
-    for exp in dyn.exps:
-        new_exp = substitution(exp, new_dynamics_dict)
-        new_exps.append(new_exp)
-
-    new_vars_dict = make_dict(bound, {}, range_dict, {}, "_0_t")
-    new_vars = list()
-    for var in dyn.vars:
-        new_var = substitution(var, new_vars_dict)
-        new_vars.append(new_var)
-    return Ode(new_vars, new_exps)
-
-
-@make_new_dynamics.register(Function)
-def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
-    new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
-    new_dynamics_dict[Real('time')] = Real('tau_' + str(bound + 1))
-    new_exps = list()
-    for exp in dyn.exps:
-        new_exp = substitution(exp, new_dynamics_dict)
-        new_exps.append(new_exp)
-
-    new_vars_dict = make_dict(bound, {}, range_dict, {}, "_0_t")
-    new_vars = list()
-    for var in dyn.vars:
-        new_var = substitution(var, new_vars_dict)
-        new_vars.append(new_var)
-    return Function(new_vars, new_exps)
-
+from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics
 
 class Model:
     def __init__(self):
@@ -217,7 +182,7 @@ class StlMC(Model):
 
             for jump_pre in jump_dict:
                 jump_flat = list()
-                jump_flat.extend(jump_pre.children)
+                jump_flat.append(jump_pre)
                 jump_post = jump_dict[jump_pre]
                 jump_flat.extend(jump_post.children)
                 jump_sub_children.append(And(jump_flat))
@@ -258,19 +223,6 @@ class StlMC(Model):
             flows.append(flow_consts.children)
         return flows
 
-    # def get_bound_var_dict_list(self, bound):
-    #     total_dict_list = list()
-    #     for k in range(bound + 1):
-    #         total_dict = dict()
-    #         start_dict = make_dict(k, {}, self.range_dict, {}, "_0")
-    #         end_dict = make_dict(k, {}, self.range_dict, {}, "_t")
-    #         mode_dict = make_dict(k, self.mode_var_dict, {}, {})
-    #         total_dict.update(mode_dict)
-    #         total_dict.update(end_dict)
-    #         total_dict.update(start_dict)
-    #         total_dict_list.append(total_dict)
-    #     return total_dict_list
-
     def make_consts(self, bound):
         result_child = list()
 
@@ -298,7 +250,4 @@ class StlMC(Model):
                 jump_consts = self.make_jump_consts(k)
                 result_child.append(jump_consts)
 
-        # TODO : For Hylaa, separate these to multiple constraints..
-        # return And([rangeConsts, initConst, jumpConsts, invConsts, flowConsts])
-        # return And([range_consts])
         return And(result_child)

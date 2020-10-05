@@ -8,7 +8,7 @@
 import multiprocessing
 import sys
 
-sys.path.append("/home/rgyenr2/workspace/STL")
+sys.path.append("/home/leejia/unsathylaa/STL")
 
 from stlmcPy.driver.multiprocess_driver import MultiprocessDriverFactory, MultiprocessStlModelChecker, unit_run
 

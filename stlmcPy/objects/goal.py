@@ -2,10 +2,10 @@ import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
 import stlmcPy.constraints.separation as SEP
 import stlmcPy.constraints.partition as PART
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not
+from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not, make_new_dynamics
 import stlmcPy.constraints.encoding as ENC
 import abc
-
+from timeit import default_timer as timer
 
 class Goal:
 
@@ -66,6 +66,14 @@ class PropHelper:
 
         integrals = self.make_integrals(bound)
         substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict, "_0")
+        dynamics_list = list()
+        sub_integrals_list = list()
+        for chi in integrals:
+            new_dynamics = make_new_dynamics(chi.dynamics, bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict)
+            sub_integrals_list.append(Integral(chi.current_mode_number, chi.end_vector, chi.start_vector, new_dynamics))
+            
+
+
 
         new_substitute_dict = substitute_dict.copy()
         for prop_var in self.proposition_dict:
@@ -87,22 +95,18 @@ class PropHelper:
                 not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
 
                 # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
-                # fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
-                init_const_1 = And([bound_applied_goal_var, relaxed_bound_const])
-                init_const_2 = And([not_bound_applied_goal_var, not_relaxed_bound_const])
-                init_point_check = Or([init_const_1, init_const_2])
-                self.boolean_abstract[bound_applied_goal_var] = Forall(integral.current_mode_number,
-                                                                       Real('tau_' + str(bound + 1)),
-                                                                       Real('tau_' + str(bound)),
-                                                                       relaxed_bound_const,
-                                                                       integral)
-                self.boolean_abstract[not_bound_applied_goal_var] = Forall(integral.current_mode_number,
-                                                                           Real('tau_' + str(bound + 1)),
-                                                                           Real('tau_' + str(bound)),
-                                                                           not_relaxed_bound_const,
-                                                                           integral)
+                fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
+                init_const_1 = Implies(bound_applied_goal_var, relaxed_bound_const)
+                init_const_2 = Implies(not_bound_applied_goal_var, not_relaxed_bound_const)
+                init_point_check = And([init_const_1, init_const_2, fair_const_2])
+                pos_forall_list = list()
+                neg_forall_list = list()
+                for chi in range(len(sub_integrals_list)):
+                    pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), Real('tau_' + str(bound)), relaxed_bound_const, sub_integrals_list[chi]))
+                    neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), Real('tau_' + str(bound)), not_relaxed_bound_const, sub_integrals_list[chi]))
+                self.boolean_abstract[bound_applied_goal_var] = Or(pos_forall_list)
+                self.boolean_abstract[not_bound_applied_goal_var] = Or(neg_forall_list)
 
-                # result_children.extend([fair_const_1, fair_const_2, init_point_check])
                 result_children.append(init_point_check)
         return result_children
 
@@ -154,16 +158,25 @@ class OldStlGoal(BaseStlGoal):
         negFormula = reduce_not(Not(self.formula))
 
         # partition constraint
+        s_time1 = timer()
         (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+        e_time1 = timer()
+        #print("Partition time : " + str(e_time1 - s_time1))
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
+        e_time2 = timer()
+        #print("Separtion time : " + str(e_time2 - e_time1))
         # set enc flags
         ENC.ENC_TYPES = "old"
         # FOL translation
         baseV = ENC.baseEncoding(partition, baseP)
+        e_time3 = timer()
+        #print("Base encoding time : " + str(e_time3 - e_time2))
 
         formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
+        e_time4 = timer()
+        #print("Formula valuation time : " + str(e_time4 - e_time3))
 
         total_children = list()
         total_children.extend(formulaConst)
@@ -176,6 +189,8 @@ class NewStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
+        print("formula ")
+        print(negFormula)
 
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
@@ -213,12 +228,16 @@ class ReachGoal(Goal):
         result = list()
         # return to original const
         decoded_consts = substitution(self.formula, proposition_dict)
+        sub_result = list()
 
         # make goal speciific dictionary and substitute it
-        goal_dict = make_dict(bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
-        goal_consts = substitution(decoded_consts, goal_dict)
-        result.append(goal_consts)
+        for cur_bound in range(0, bound+1):
+            goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
+            goal_consts = substitution(decoded_consts, goal_dict)
+            cur_bool = Bool("reach_goal_" + str(cur_bound))
+            sub_result.append(And([cur_bool, goal_consts]))
         # get time const
+        result.append(Or(sub_result))
         result.extend(self.make_time_consts(bound, time_bound))
 
         return And(result), dict()

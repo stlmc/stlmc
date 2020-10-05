@@ -44,7 +44,6 @@ def valuation(f: Formula, sub: dict, j: Interval, base: dict):
             newSub[ns[0]] = sub[ns]
     else:
         newSub = sub
-
     vf = _value(f, newSub, j, base, genPr, fMap)
 
     return [vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]], fMap
@@ -119,8 +118,6 @@ def _(f: Implies, sub: dict, j: Interval, base, genPr, fMap):
 def _(f: FinallyFormula, sub: dict, j: Interval, base, genPr, fMap):
     result = list()
     interval_const = intervalConst(j, f.global_time, f.local_time)
-    if isinstance(interval_const, BoolVal):
-        return BoolVal("False")
     result.extend(interval_const.children)
     result.append(_value(f.child, sub, f.global_time, base, genPr, fMap))
     return And(result)
@@ -129,9 +126,6 @@ def _(f: FinallyFormula, sub: dict, j: Interval, base, genPr, fMap):
 @_value.register(GloballyFormula)
 def _(f: GloballyFormula, sub: dict, j: Interval, base, genPr, fMap):
     interval_const = intervalConst(j, f.global_time, f.local_time)
-    if isinstance(interval_const, BoolVal):
-        return BoolVal("True")
-
     return Implies(interval_const, _value(f.child, sub, f.global_time, base, genPr, fMap))
 
 
@@ -139,8 +133,6 @@ def _(f: GloballyFormula, sub: dict, j: Interval, base, genPr, fMap):
 def _(f: UntilFormula, sub: dict, j: Interval, base, genPr, fMap):
     result = list()
     interval_const = intervalConst(j, f.global_time, f.local_time)
-    if isinstance(interval_const, BoolVal):
-        return BoolVal("False")
     result.extend(interval_const.children)
     result.append(_value(f.left, sub, f.global_time, base, genPr, fMap))
     result.append(_value(f.right, sub, f.global_time, base, genPr, fMap))

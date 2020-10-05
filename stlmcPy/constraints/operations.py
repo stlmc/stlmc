@@ -470,6 +470,26 @@ def _(cur_inv_const: BinaryFormula, inv_prop_dict: dict):
     inv_prop_dict[new_var] = cur_inv_const
     return new_var, inv_prop_dict
 
+def get_max_bound(literal):
+    max_bound = -1
+    bound = -1
+    for v in get_vars(literal):
+        if isinstance(v, Bool):
+            index = int(v.id.rfind("_")) + 1
+            bound = int(v.id[index:])
+            if max_bound < bound:
+                max_bound = bound
+        else:
+            s_index = int(v.id.find("_"))
+            e_index = int(v.id.rfind("_"))
+            if s_index == e_index:
+                bound = int(v.id[s_index+1:]) - 1
+            else:
+                if "_0_0" in v.id or "_t" in v.id:
+                    bound = int(v.id[s_index+1:e_index])
+            if max_bound < bound:
+                max_bound = bound
+    return max_bound
 
 @singledispatch
 def get_vars(const: Constraint):
@@ -590,6 +610,13 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
+    '''
+    print("diff")
+    print(alpha)
+    print(exp)
+    print(new_exp)
+    print(diff_aux(new_exp))
+    '''
     return diff_aux(new_exp)
 
 
@@ -736,7 +763,7 @@ def _(const: Or):
 @substitution_zero2t.register(Variable)
 def _(const: Variable):
     op_dict = {Bool: Bool, Real: Real, Int: Int}
-    if const.id[:-2] == "_0":
+    if const.id[-2:] == "_0":
         return op_dict[const.__class__](const.id[:-2] + "_t")
     return const
 
@@ -786,6 +813,8 @@ def _(const: Not):
         return UntilFormula(child.local_time, child.global_time,
                             reduce_not(Not(child.left)),
                             reduce_not(Not(child.right)))
+    if isinstance(child, Bool):
+        return Bool("not@"+child.id)
     return const
     # raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
@@ -1055,3 +1084,36 @@ def _(const: Pow):
 @infix.register(Forall)
 def _(const: Forall):
     return infix(const.const)
+
+@singledispatch
+def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
+    new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
+    new_dynamics_dict[Real('time')] = Real('tau_' + str(bound + 1))
+    new_exps = list()
+    for exp in dyn.exps:
+        new_exp = substitution(exp, new_dynamics_dict)
+        new_exps.append(new_exp)
+
+    new_vars_dict = make_dict(bound, {}, range_dict, {}, "_0_t")
+    new_vars = list()
+    for var in dyn.vars:
+        new_var = substitution(var, new_vars_dict)
+        new_vars.append(new_var)
+    return Ode(new_vars, new_exps)
+
+
+@make_new_dynamics.register(Function)
+def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
+    new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
+    new_dynamics_dict[Real('time')] = Real('tau_' + str(bound + 1))
+    new_exps = list()
+    for exp in dyn.exps:
+        new_exp = substitution(exp, new_dynamics_dict)
+        new_exps.append(new_exp)
+
+    new_vars_dict = make_dict(bound, {}, range_dict, {}, "_0_t")
+    new_vars = list()
+    for var in dyn.vars:
+        new_var = substitution(var, new_vars_dict)
+        new_vars.append(new_var)
+    return Function(new_vars, new_exps)

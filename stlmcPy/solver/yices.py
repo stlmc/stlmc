@@ -1,6 +1,12 @@
-from stlmcPy.constraints.operations import substitution_zero2t, diff, get_vars, reverse_inequality
+from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
+    substitution_zero2t, reduce_not
 from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
 from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
+from stlmcPy.constraints.constraints import *
+from timeit import default_timer as timer
+
+from stlmcPy.util.logger import Logger
 
 from yices import *
 import yices_api as yapi
@@ -12,13 +18,63 @@ class YicesSolver(SMTSolver):
     def __init__(self):
         SMTSolver.__init__(self)
         self._yices_model = None
+        self._cache = list()
+        self._logic_list = ["QF_LRA", "QF_NRA"]
+        self._logic = "QF_NRA"
+
+    def set_logic(self, logic_name: str):
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
+
+    def yicescheckSat(self, consts, logic):
+        assert self.logger is not None
+        logger = self.logger
+
+        cfg = Config()
+
+        # TODO : current logic input is LRA, it should be QF_LRA
+        if logic != "NONE":
+            cfg.default_config_for_logic('QF_NRA')
+        else:
+            cfg.default_config_for_logic('QF_NRA')
+
+        ctx = Context(cfg)
+        yicesConsts = list()
+        for i in range(len(consts)):
+            yicesConsts.append(Terms.parse_term(consts[i]))
+
+        logger.start_timer("solving timer")
+        ctx.assert_formulas(yicesConsts)
+
+        result = ctx.check_context()
+
+        logger.stop_timer("solving timer")
+        logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        str_result = str(result)
+
+        if result == Status.SAT:
+            m = Model.from_context(ctx, 1)
+            result = False
+        else:
+            m = None
+            result = True if Status.UNSAT else "Unknown"
+    
+        cfg.dispose()
+        ctx.dispose()
+
+
+        return result, -1, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        result, size, self_yices_model = yicescheckSat(all_consts, 'QF_NRA')
+        if all_consts is not None:
+            self._cache.append(yicesObj(all_consts))
+        result, size, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
     def make_assignment(self):
         pass
+
+    def clear(self):
+        self._cache = list()
 
     def simplify(self, consts):
         pass
@@ -50,7 +106,10 @@ def make_dynamics_consts(dyn: Ode):
         new_start_var = Real(new_start_var_id)
 
         end_tau_var = Real('tau_' + str(int(bound_str) + 1))
-        start_tau_var = Real('tau_' + bound_str)
+        if bound_str == "0":
+            start_tau_var = RealVal("0")
+        else:
+            start_tau_var = Real('tau_' + bound_str)
 
         new_exp_const = Eq(new_end_var, Add(new_start_var, Mul(Sub(end_tau_var, start_tau_var), exp)))
         dyn_const_children.append(new_exp_const)
@@ -118,37 +177,6 @@ def make_forall_consts(forall: Forall):
         return make_forall_consts_aux(forall)
 
 
-# return a check result and the Z3 constraint size
-def yicescheckSat(consts, logic):
-    strConsts = yicesObj(consts)
-    cfg = Config()
-
-    # TODO : current logic input is LRA, it should be QF_LRA
-    if logic != "NONE":
-        cfg.default_config_for_logic('QF_LRA')
-    else:
-        cfg.default_config_for_logic('QF_LRA')
-
-    ctx = Context(cfg)
-
-    yicesConsts = Terms.parse_term(strConsts)
-
-    ctx.assert_formulas([yicesConsts])
-
-    result = ctx.check_context()
-    if result == Status.SAT:
-        m = Model.from_context(ctx, 1)
-        result = False
-    else:
-        m = None
-        result = True if Status.UNSAT else "Unknown"
-
-    cfg.dispose()
-    ctx.dispose()
-
-    return (result, -1, m)
-
-
 # return the size of the Z3 constraint
 def sizeAst(node: Terms):
     if node == Terms.NULL_TERM:
@@ -200,7 +228,6 @@ def _(const):
     result = '(>= ' + x + ' ' + y + ')'
     return result
 
-
 @yicesObj.register(Gt)
 def _(const):
     x = yicesObj(const.left)
@@ -245,7 +272,6 @@ def _(const):
     y = yicesObj(const.right)
     result = '(+ ' + x + ' ' + y + ')'
     return result
-
 
 @yicesObj.register(Sub)
 def _(const):
@@ -293,7 +319,6 @@ def _(const):
     y = yicesObj(const.right)
     result = '(/ ' + x + ' ' + y + ')'
     return result
-
 
 @yicesObj.register(Neg)
 def _(const):
@@ -346,12 +371,46 @@ def _(const: Integral):
     return yicesObj(make_dynamics_consts(const.dynamics))
 
 
+
 @yicesObj.register(Forall)
 def _(const: Forall):
     bound_str = const.start_tau.id[3:]
 
+    if len(get_vars(const.const)) == 0:
+        return yicesObj(const.const)
+
     new_forall_const = const.const
-    if not isinstance(const.const, Bool):
+    if isinstance(const.const, Bool):
+        return yicesObj(const.const)
+    if get_vars(const.const) is None:
+        return yicseObj(const.const)
+    if isinstance(const.const, Not):
+        if isinstance(const.const.child, Bool):
+            return "(not " + yicesObj(const.const.child) +")"
+        reduced_const = reduce_not(const.const)
+        new_const = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
+        return new_const
+    elif isinstance(const.const, Implies):
+        left = reduce_not(Not(const.const.left))
+        right = const.const.right
+        left_new = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, left, const.integral))
+        right_new = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, right, const.integral))
+        return "(or " + yicesObj(left_new) + " " + yicesObj(right_new) + ")"
+    elif isinstance(const.const, And) or isinstance(const.const, Or):
+        result = list()
+        for c in const.const.children:
+            if isinstance(c, Bool):
+                result.append(yicesOjb(c))
+            elif get_vars(c) is None:
+                result.append(yicesObj(c))
+            else:
+                result.append(yicesObjObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+
+        if isinstance(const.const, Or):
+            return '(or ' + ' '.join(result) + ')'
+        else:
+            return '(and ' + ' '.join(result) + ')'
+    elif not isinstance(const.const, Bool):
         op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
         exp = Sub(const.const.left, const.const.right)
         new_forall_child_const = reverse_inequality(op_dict[const.const.__class__](exp, RealVal('0')))
@@ -360,7 +419,3 @@ def _(const: Forall):
     new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
     return yicesObj(new_const)
-# ?????? return z3.And(z3Obj(new_const))
-
-
-

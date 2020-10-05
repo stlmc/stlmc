@@ -87,7 +87,7 @@ def subInterval(i: Interval, j: Interval):
                 const.append(_real(i.right) <= _real(j.right))
     else:
         if not (isinstance(j.right, float) and math.isinf(j.right)):
-            return BoolVal("False")
+            return And([BoolVal("False")])
 
     return And(const)
 
@@ -117,7 +117,7 @@ def intervalConst(j: Interval, k: Interval, i: Interval):
                 const.append(mid <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
-            return BoolVal("False")
+            return And([BoolVal("False")])
 
     return And(const)
 

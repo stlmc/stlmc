@@ -5,6 +5,8 @@ from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.print import Printer
 from .base_driver import DriverFactory, StlConfiguration, Runner, StlModelChecker
 from ..util.logger import Logger
+import os
+from timeit import default_timer as timer
 
 
 def unit_run(arg: dict):
@@ -28,16 +30,32 @@ def unit_run(arg: dict):
     logger.add_info("bound", cur_bound)
 
     model_const = model.make_consts(cur_bound)
+    s_time = timer()
     goal_const, goal_boolean_abstract = goal.make_consts(cur_bound, 60, 1, model, PD)
 
     boolean_abstract = dict()
     boolean_abstract.update(model.boolean_abstract)
     boolean_abstract.update(goal_boolean_abstract)
     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
+    e_time = timer()
 
     printer.print_normal("> {}".format(solver_name))
     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                 model.range_dict, boolean_abstract)
+    e_time2 = timer()
+    ki = output_file_name.rfind("/")
+    if "only-goal-stl-enhanced" in str(output_file_name):
+        stl_file_name = output_file_name[ki+1:] + "_" + str(goal.get_formula()) + "_" + str(solver_name) + "_enhanced"
+    else:
+        stl_file_name = output_file_name[ki+1:] + "_" + str(goal.get_formula()) + "_" + str(solver_name)
+
+    if not os.path.exists(stl_file_name + ".csv"):
+        with open(stl_file_name + ".csv", 'a') as csv_file:
+            csv_file.write("formula,bound,goal_generation_time,smt_solving_time,result\n")
+            csv_file.write(str(goal.get_formula()) + "," + str(cur_bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+    else:
+        with open(stl_file_name + ".csv", 'a') as csv_file:
+            csv_file.write(str(goal.get_formula()) + "," +str(cur_bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
 
     logger.stop_timer("goal timer")
     printer.print_normal_dark("\n> result")
