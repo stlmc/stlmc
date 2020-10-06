@@ -12,8 +12,12 @@ class Goal:
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
         for k in range(1, bound + 2):
-            time_const_children.append(Leq(RealVal('0'), Real('tau_' + str(k))))
-            time_const_children.append(Leq(Real('tau_' + str(k)), RealVal(str(time_bound))))
+            chi = Geq(Real('tau_' + str(k)), RealVal('0'))
+            chi._range = True
+            time_const_children.append(chi)
+            chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
+            chi._range = True
+            time_const_children.append(chi)
             if k < bound + 1:
                 time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
         return time_const_children
@@ -202,9 +206,23 @@ class NewStlGoal(BaseStlGoal):
         baseV = ENC.baseEncoding(partition, baseP)
 
         (formulaConst, subFormulaMap) = ENC.valuation(fs[0], fs, ENC.Interval(True, 0.0, True, 0.0), baseV)
+        '''
+        print("fs")
+        print(fs)
+        print("baseV")
+        print(baseV)
+        print("formula constraints")
+        print(formulaConst)
+        print("subFormula map")
+        for sk in subFormulaMap:
+            print(sk)
+            print(subFormulaMap[sk])
+            print("===================")
+        '''
 
         # partition constraints
         partition_const_children, self.boolean_abstract = ENHANCED_PART.genPartition(baseP, fs[1], subFormulaMap)
+
         part_const = And(partition_const_children)
         total_children = list()
         total_children.extend(formulaConst)
@@ -231,11 +249,12 @@ class ReachGoal(Goal):
         sub_result = list()
 
         # make goal speciific dictionary and substitute it
-        for cur_bound in range(0, bound+1):
+        for cur_bound in range(bound, bound+1):
             goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
             goal_consts = substitution(decoded_consts, goal_dict)
-            cur_bool = Bool("reach_goal_" + str(cur_bound))
-            sub_result.append(And([cur_bool, goal_consts]))
+            #cur_bool = Bool("reach_goal_" + str(cur_bound))
+            #sub_result.append(And([cur_bool, goal_consts]))
+            sub_result.append(goal_consts)
         # get time const
         result.append(Or(sub_result))
         result.extend(self.make_time_consts(bound, time_bound))

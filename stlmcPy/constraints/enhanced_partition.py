@@ -80,11 +80,11 @@ def genPartition(baseP, sepMap, subFormula):
             left_max = find_max(left_vars)
             right_vars = get_vars(Or(sub_right))
             right_max = find_max(right_vars)
-            tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
+            tau_abstraction[Bool("newTau_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
             count += 1
-            tau_abstraction[Bool("newTau#_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
-            consts.append(Or([change_point, Bool("newTau#_" + str(count - 1) + "_" + str(left_max - 1))]))
-            consts.append(Or([change_point, Bool("newTau#_" + str(count) + "_" + str(right_max - 1))]))
+            tau_abstraction[Bool("newTau_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
+            consts.append(Or([change_point, Bool("newTau_" + str(count - 1) + "_" + str(left_max - 1))]))
+            consts.append(Or([change_point, Bool("newTau_" + str(count) + "_" + str(right_max - 1))]))
 
             count += 1
 

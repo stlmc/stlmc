@@ -108,9 +108,13 @@ class ModelVisitor(modelVisitor):
     '''
 
     def visitUnaryExp(self, ctx: modelParser.UnaryExpContext):
-        if ctx.op.text in ['sin', 'cos', 'tan', 'log', 'sqrt']:
+        op = {"sin" : Sin, "cos" : Cos, "tan" : Tan, "sqrt" : Sqrt, "arcsin" : Arcsin, "arccos" : Arccos, "arctan" : Arctan}
+        if ctx.op.text in op.keys():
+            return op[ctx.op.text](self.visit(ctx.expression()))
+        elif ctx.op.text == "-":
+            return Neg(self.visit(ctx.expression()))
+        else:
             raise NotSupportedError("Can't support non-linear function")
-        return Neg(self.visit(ctx.expression()))
 
     def visitParenthesisExp(self, ctx: modelParser.ParenthesisExpContext):
         return self.visit(ctx.expression())
@@ -220,7 +224,7 @@ class ModelVisitor(modelVisitor):
             else:
                 raise NotSupportedError("Cannot visit jump mod")
 
-    def vistVar_type(self, ctx: modelParser.Var_typeContext):
+    def visitVar_type(self, ctx: modelParser.Var_typeContext):
         return ctx.varType.text
 
     '''

@@ -528,6 +528,7 @@ def _(const: Integral):
         result.add(ev)
     for sv in const.start_vector:
         result.add(sv)
+    result.add(const)
     return result
 
 
@@ -997,7 +998,7 @@ def make_boolean_abstract_consts(props: dict()):
 def infix(const: Constraint):
     return str(const)
 
-
+'''
 # assumption: no mode variable exists
 @infix.register(Real)
 def _(const: Real):
@@ -1007,7 +1008,7 @@ def _(const: Real):
     if index == -1:
         return const.id
     return const.id[:index]
-
+'''
 
 @infix.register(Variable)
 def _(const: Variable):
@@ -1117,3 +1118,49 @@ def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
         new_var = substitution(var, new_vars_dict)
         new_vars.append(new_var)
     return Function(new_vars, new_exps)
+
+@singledispatch
+def clause(const: Constraint):
+    return {const}
+
+
+@clause.register(Not)
+def _(const: Not):
+    return clause(const.child)
+
+
+@clause.register(And)
+def _(const: And):
+    result = set()
+    for c in list(const.children):
+        result = result.union(clause(c))
+    return result
+
+
+@clause.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Formula):
+        return clause(const.left).union(clause(const.right))
+    return {const}
+
+
+@clause.register(Or)
+def _(const: Or):
+    result = set()
+    for c in list(const.children):
+        result = result.union(clause(c))
+    return result
+
+
+@clause.register(Not)
+def _(const: Not):
+    result = set()
+    return result.union(clause(const.child))
+
+
+@clause.register(Implies)
+def _(const):
+    result = set()
+    result = result.union(clause(const.left))
+    result = result.union(clause(const.right))
+    return result

@@ -4,7 +4,7 @@ from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 
 # TODO: why attribute error occured here?
-from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics, get_vars
+from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics
 
 class Model:
     def __init__(self):
@@ -112,22 +112,15 @@ class StlMC(Model):
                 end_vector.append(Real(dyn_var_id + "_" + str(bound) + "_t"))
                 index += 1
             new_dynamics = make_new_dynamics(dynamics, bound, self.mode_var_dict, self.range_dict, self.const_dict)
-            constant_consts = list()
-
-            if isinstance(new_dynamics, Ode):
-                for cur_ode in range(len(new_dynamics.exps)):
-                    cur_flow = new_dynamics.exps[cur_ode]
-                    if len(get_vars(cur_flow)) == 0:
-                        constant_consts.append(Eq(end_vector[cur_ode], start_vector[cur_ode] + cur_flow * Real("time_" + str(bound))))
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(mode_number) + "_" + str(bound))
             #self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
             integral_children.append(And(
                 #[bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
-                [integral, *mode_const_bound, *constant_consts]))
+                [integral, *mode_const_bound]))
             mode_number += 1
-        return integral_children, integral_object_list
+        return Or(integral_children), integral_object_list
 
     def make_invariant_consts(self, bound, integrals):
         invariant_children = list()
@@ -178,17 +171,14 @@ class StlMC(Model):
                 invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
                 #invariant_sub_children.extend([forall_obj, bound_applied_const])
             if len(inv_prop_dict) > 0:
-                pass
-                #invariant_sub_children.extend(mode_const_bound)
+                invariant_sub_children.extend(mode_const_bound)
             if len(invariant_sub_children) > 0:
                 invariant_children.append(And(invariant_sub_children))
-            else:
-                invariant_children.append(And([BoolVal("True")]))
             index += 1
-        #if len(invariant_children) > 0:
-        return invariant_children
-        #else:
-        #    return [BoolVal("True")]
+        if len(invariant_children) > 0:
+            return Or(invariant_children)
+        else:
+            return BoolVal("True")
 
     def make_jump_consts(self, bound):
 
@@ -233,15 +223,15 @@ class StlMC(Model):
                 # add bounded info
                 substitute_dict[next_var] = Real(range_var.id + "_" + str(bound + 1) + "_0")
 
-            steady_jump_const = And(steady_jump_const_children)
-            jump_sub_children.append(steady_jump_const)
-            #jump_children.append(And([new_mode_const, Or(jump_sub_children)]))
-            jump_children.append(Or(jump_sub_children))
+            #steady_jump_const = And(steady_jump_const_children)
+            #jump_sub_children.append(steady_jump_const)
+            jump_children.append(And([new_mode_const, Or(jump_sub_children)]))
+            #jump_children.append(Or(jump_sub_children))
             index += 1
 
         jump_const_before_subst = Or(jump_children)
         jump_const = substitution(jump_const_before_subst, substitute_dict)
-        return jump_const.children
+        return jump_const
 
     # assignment specific function
     def get_flow_for_assignment(self, bound):
@@ -266,27 +256,17 @@ class StlMC(Model):
             # make range constraint
             # and append it to the result
             range_consts_list = self.make_range_consts(k)
-            result_child.append(And(range_consts_list))
+            result_child.extend(range_consts_list)
 
             flow_consts, integral_object_list = self.make_flow_consts(k)
+            result_child.append(flow_consts)
 
             inv_consts = self.make_invariant_consts(k, integral_object_list)
+            result_child.append(inv_consts)
+
             if k < bound:
                 jump_consts = self.make_jump_consts(k)
-            else:
-                jump_consts = None
-            sub_result = list()
-            sub_chi = list()
-            for cur in range(len(flow_consts)):
-                chi = list()
-                chi.extend(flow_consts[cur].children)
-                chi.extend(inv_consts[cur].children)
-                if jump_consts is not None:
-                    chi.append(jump_consts[cur])
-                sub_chi.append(chi)
-            for cur in sub_chi:
-                sub_result.append(And(cur))
-            result_child.append(Or(sub_result))
+                result_child.append(jump_consts)
 
         
 

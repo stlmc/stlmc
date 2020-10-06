@@ -39,13 +39,13 @@ class StlConfiguration:
                                  help='objects checking upto given upper bound (default: lower_bound)')
         self.parser.add_argument('-step', '-s', type=int,
                                  help='objects checking at intervals of step in (lower, upper) (default: 1)')
-        # self.parser.add_argument('-timebound', '-tb', type=int,
-        #                          help='set time bound of objects checking (default: 60)')
+        self.parser.add_argument('-timebound', '-tb', type=int,
+                                  help='set time bound of objects checking (default: 60)')
         # self.parser.add_argument('-multithread', '-multy', type=self.str2bool,
         #                          help='run the given objects using multithread (default: false)')
         # TODO: move hylaa-reduction, hylaa-unsat core to hylaa strategy option
         self.parser.add_argument('-solver', type=str,
-                                 help='run the objects using given smt solver, support \" {yices, z3, hylaa, hylaa-reduction, hylaa-unsat-core} \" (default: z3)')
+                                 help='run the objects using given smt solver, support \" {yices, dreal, z3, hylaa, hylaa-reduction, hylaa-unsat-core} \" (default: z3)')
         self.parser.add_argument('-optimize', type=str,
                                  help='turn on solver optimization, support \" {formula} \" (default: None)')
         self.parser.add_argument('-formula_encoding', type=str,
@@ -73,12 +73,13 @@ class StlConfiguration:
         self._step = 1
         self._solver = "z3"
         self._optimize_flags = list()
-        self._solver_list = ["z3", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
+        self._solver_list = ["z3", "dreal", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
         self._verbose = False
         self._debug = False
+        self._timebound = 1
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -112,6 +113,8 @@ class StlConfiguration:
             self._verbose = self._args.verbose
         if self._args.debug is not None:
             self._debug = self._args.debug
+        if self._args.timebound is not None:
+            self._timebound = self._args.timebound
 
     @property
     def file_list(self):
@@ -128,6 +131,10 @@ class StlConfiguration:
     @property
     def solver(self):
         return self._solver
+
+    @property
+    def timebound(self):
+        return self._timebound
 
     @property
     def encoding(self):
@@ -166,8 +173,6 @@ class Runner:
                 logger.write_to_csv(file_name=output_file_name, overwrite=True)
                 key_index = file_name.rfind("/")
                 stl_file_name = str(file_name[key_index+1:]) + "_" + str(goal.get_formula()) + "_" + config.solver
-                print("str_file_name")
-                print(stl_file_name)
                 for bound in config.bound:
                     output_file_name_bound = "{}_{}".format(output_file_name, bound)
                     logger.set_output_file_name(output_file_name_bound)
@@ -181,17 +186,18 @@ class Runner:
 
                     model_const = model.make_consts(bound)
                     s_time = timer()
-                    goal_const, goal_boolean_abstract = goal.make_consts(bound, 60, 1, model, PD)
+                    
+                    goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
                     
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)
                     boolean_abstract.update(goal_boolean_abstract)
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                     e_time = timer()
-                    print("Goal genaration total : " + str(e_time - s_time))
                     
                     printer.print_normal("> {}".format(config.solver))
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+                    #result, size = solver.solve(And([goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
                     e_time2 = timer()
                     print("SMT solving time : " + str(e_time2 - e_time) + ", Constraint size : " + str(size))

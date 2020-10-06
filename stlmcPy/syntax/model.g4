@@ -16,9 +16,11 @@ NEQ         : '!=' ;
 fragment OP_SIN    : 'sin' ;
 fragment OP_COS    : 'cos' ;
 fragment OP_TAN    : 'tan' ;
-fragment OP_LOG    : 'log' ;
+fragment OP_ARCSIN : 'arcsin';
+fragment OP_ARCCOS : 'arccos';
+fragment OP_ARCTAN : 'arctan';
 fragment OP_SQRT   : 'sqrt' ;
-FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_LOG | OP_SQRT) ;
+FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_ARCSIN | OP_ARCCOS | OP_ARCTAN | OP_SQRT) ;
 
 PLUS     : '+' ;
 MINUS    : '-' ;

@@ -190,6 +190,8 @@ class BinaryFormula(Formula, Binary):
     def __init__(self, left, right):
         Formula.__init__(self)
         Binary.__init__(self, left, right)
+        self._range = False
+
 
     def __repr__(self):
         return Binary.__repr__(self)
@@ -277,12 +279,14 @@ class IntVal(Constant):
 class Bool(Variable, Formula):
     def __init__(self, var_id):
         Variable.__init__(self, "bool", var_id)
+        self._range = False
 
 
 class BoolVal(Constant, Formula):
     def __init__(self, value):
         Constant.__init__(self, "bool", value)
         Formula.__init__(self)
+        self._range = False
 
 
 class Add(BinaryExpr):
@@ -323,6 +327,55 @@ class Neg(UnaryExpr):
 
     def __repr__(self):
         return "(- " + Unary.__repr__(self) + ")"
+
+class Sqrt(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(sqrt (" + Unary.__repr__(self) + "))"
+
+class Sin(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(sin (" + Unary.__repr__(self) + "))"
+
+class Cos(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(cos (" + Unary.__repr__(self) + "))"
+
+class Tan(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(tan (" + Unary.__repr__(self) + "))"
+
+class Arcsin(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(arcsin (" + Unary.__repr__(self) + "))"
+
+class Arccos(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(arccos (" + Unary.__repr__(self) + "))"
+
+class Arctan(UnaryExpr):
+    def __init__(self, child):
+        UnaryExpr.__init__(self, child)
+
+    def __repr__(self):
+        return "(arctan (" + Unary.__repr__(self) + "))"
 
 
 class Pow(BinaryExpr):
@@ -493,6 +546,7 @@ class Integral(Formula):
         self.start_vector = start_vector
         # list of dynamics
         self.dynamics = dynamics
+        self._range = False
 
     def __hash__(self):
         return hash(str(self))
@@ -510,6 +564,7 @@ class Forall(Formula):
         self.start_tau = start_tau
         self.const = const
         self.integral = integral
+        self._range = False
 
     def __hash__(self):
         return hash(str(self))

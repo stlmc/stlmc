@@ -1,5 +1,5 @@
 from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
-    substitution_zero2t, reduce_not
+    substitution_zero2t, reduce_not, clause
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
 from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
@@ -44,8 +44,10 @@ class YicesSolver(SMTSolver):
 
         logger.start_timer("solving timer")
         ctx.assert_formulas(yicesConsts)
+        print("start")
 
         result = ctx.check_context()
+        print("end")
 
         logger.stop_timer("solving timer")
         logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
@@ -67,6 +69,7 @@ class YicesSolver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
             self._cache.append(yicesObj(all_consts))
+        #self.add_contradict_consts()
         result, size, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
@@ -87,6 +90,68 @@ class YicesSolver(SMTSolver):
 
     def set_logic(self, logic_name: str):
         pass
+
+
+    def add_contradict_consts(self):
+        clause_set = set()
+        for i in self._cache:
+            clause_set = clause_set.union(clause(i))
+
+        cons = set()
+        for i in clause_set:
+            if isinstance(i, BinaryFormula) and not isinstance(i, Implies) and not isinstance(i, Neq):
+                if len(get_vars(i)) > 0:
+                    cons.add(i)
+
+        cons_list = list(cons)
+        for i in range(len(cons_list)):
+            cur_const = cons_list[i]
+            for j in range(i+1, len(cons_list)):
+                flag = False
+                comp_const = cons_list[j]
+                if len(get_vars(cur_const.left)) > 0:
+                    if str(cur_const.left) == str(comp_const.left):
+                        if isinstance(cur_const, Eq) and isinstance(comp_const, Eq):
+                            if not str(cur_const.right) == str(comp_const.right):
+                                flag = True
+                        elif type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
+                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.right)) == 0:
+                                if int(parse_expr(infix(cur_const.right))) < int(parse_expr(infix(comp_const.right))):
+                                    flag = True
+                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
+                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.right)) == 0:
+                                if int(parse_expr(infix(cur_const.right))) > int(parse_expr(infix(comp_const.right))):
+                                    flag = True
+                    elif str(cur_const.left) == str(comp_const.right):
+                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
+                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.left)) == 0:
+                                if int(parse_expr(infix(cur_const.right))) < int(parse_expr(infix(comp_const.left))):
+                                    flag = True
+                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
+                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.left)) == 0:
+                                if int(parse_expr(infix(cur_const.right))) > int(parse_expr(infix(comp_const.left))):
+                                    flag = True
+                elif len(get_vars(cur_const.right)) > 0:
+                    if str(cur_const.right) == str(comp_const.left):
+                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Lt, Leq]:
+                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.right)) == 0:
+                                if int(parse_expr(infix(cur_const.left))) > int(parse_expr(infix(comp_const.right))):
+                                    flag = True
+                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Gt, Geq]:
+                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.right)) == 0:
+                                if int(parse_expr(infix(cur_const.left))) < int(parse_expr(infix(comp_const.right))):
+                                    flag = True
+                    elif str(cur_const.right) == str(comp_const.right):
+                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
+                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.left)) == 0:
+                                if int(parse_expr(infix(cur_const.left))) > int(parse_expr(infix(comp_const.left))):
+                                    flag = True
+                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
+                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.left)) == 0:
+                                if int(parse_expr(infix(cur_const.left))) < int(parse_expr(infix(comp_const.left))):
+                                    flag = True
+                if flag:
+                    self._cache.append(Or([Not(cur_const), Not(comp_const)]))
 
 
 @singledispatch

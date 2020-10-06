@@ -4,7 +4,7 @@ from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 
 # TODO: why attribute error occured here?
-from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics, get_vars
+from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics
 
 class Model:
     def __init__(self):
@@ -112,20 +112,13 @@ class StlMC(Model):
                 end_vector.append(Real(dyn_var_id + "_" + str(bound) + "_t"))
                 index += 1
             new_dynamics = make_new_dynamics(dynamics, bound, self.mode_var_dict, self.range_dict, self.const_dict)
-            constant_consts = list()
-
-            if isinstance(new_dynamics, Ode):
-                for cur_ode in range(len(new_dynamics.exps)):
-                    cur_flow = new_dynamics.exps[cur_ode]
-                    if len(get_vars(cur_flow)) == 0:
-                        constant_consts.append(Eq(end_vector[cur_ode], start_vector[cur_ode] + cur_flow * Real("time_" + str(bound))))
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(mode_number) + "_" + str(bound))
             #self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
             integral_children.append(And(
                 #[bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
-                [integral, *mode_const_bound, *constant_consts]))
+                [integral, *mode_const_bound]))
             mode_number += 1
         return integral_children, integral_object_list
 
@@ -183,12 +176,12 @@ class StlMC(Model):
             if len(invariant_sub_children) > 0:
                 invariant_children.append(And(invariant_sub_children))
             else:
-                invariant_children.append(And([BoolVal("True")]))
+                invariant_children.append(BoolVal("True"))
             index += 1
-        #if len(invariant_children) > 0:
-        return invariant_children
-        #else:
-        #    return [BoolVal("True")]
+        if len(invariant_children) > 0:
+            return invariant_children
+        else:
+            return [BoolVal("True")]
 
     def make_jump_consts(self, bound):
 

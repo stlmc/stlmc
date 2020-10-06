@@ -1,0 +1,81 @@
+
+int m;
+[0, 10] v1;
+[0, 100] x1;
+[0, 100] y1;
+[-1, 1] phi1;
+
+[-1.5, 1.5] theta1;
+
+{
+  mode :
+	m = 1;
+  inv: 
+	x1 > 0;
+	y1 > 0;
+  flow:
+        d/dt[x1] = v1 * cos(theta1); 
+        d/dt[y1] = v1 * sin(theta1);
+        d/dt[theta1] = v1 * tan(phi1);
+        d/dt[phi1] = -0.01 * phi1;
+        d/dt[v1] = 5;
+  jump:
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 1) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 30));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 2) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 0));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 3) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = -30));
+}
+{mode:
+      m = 2;
+
+  inv:
+        x1 > 0;
+        y1 > 0;
+  flow:
+        d/dt[x1] = v1 * cos(theta1);
+        d/dt[y1] = v1 * sin(theta1);
+        d/dt[theta1] = v1 * tan(phi1);
+        d/dt[phi1] = -0.01 * phi1;
+        d/dt[v1] = -5;
+  jump:
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 1) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 30));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 2) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 0));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 3) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = -30));
+
+}
+{ 
+  mode : 
+	m = 3;
+  inv:
+        x1 > 0;
+        y1 > 0;
+  flow:
+        d/dt[x1] = v1 * cos(theta1);
+        d/dt[y1] = v1 * sin(theta1);
+        d/dt[theta1] = v1 * tan(phi1);
+        d/dt[phi1] = -0.01 * phi1;
+        d/dt[v1] = -0.1 * v1;
+  jump:
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 1) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 30));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 2) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = 0));
+        (and (x1 > 0) (y1 > 0)) =>
+         (and (m' = 3) (x1' = x1) (y1' = y1) (theta1' = theta1) (v1' = v1) (phi1' = -30));
+
+}
+
+init:
+(and (m = 1) (x1 >= 40 - 0.1) (x1 <= 40 + 0.1) (y1 = 30) (v1 = 5) (theta1 = 0) (phi1 = 0));
+
+propositions:
+p1 = x1 > 60;
+p2 = theta1 > 5;
+
+goal:
+reach (and p1 p2); 
