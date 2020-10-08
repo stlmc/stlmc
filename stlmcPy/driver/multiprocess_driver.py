@@ -51,11 +51,11 @@ def unit_run(arg: dict):
 
     if not os.path.exists(stl_file_name + ".csv"):
         with open(stl_file_name + ".csv", 'a') as csv_file:
-            csv_file.write("formula,bound,goal_generation_time,smt_solving_time,result\n")
-            csv_file.write(str(goal.get_formula()) + "," + str(cur_bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+            csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
+            csv_file.write(str(goal.get_formula()) + "," + str(cur_bound) + "," + str(size) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
     else:
         with open(stl_file_name + ".csv", 'a') as csv_file:
-            csv_file.write(str(goal.get_formula()) + "," +str(cur_bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+            csv_file.write(str(goal.get_formula()) + "," +str(cur_bound) + "," + str(size) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
 
     logger.stop_timer("goal timer")
     printer.print_normal_dark("\n> result")

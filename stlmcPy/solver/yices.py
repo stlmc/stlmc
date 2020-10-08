@@ -44,10 +44,8 @@ class YicesSolver(SMTSolver):
 
         logger.start_timer("solving timer")
         ctx.assert_formulas(yicesConsts)
-        print("start")
 
         result = ctx.check_context()
-        print("end")
 
         logger.stop_timer("solving timer")
         logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
@@ -64,7 +62,7 @@ class YicesSolver(SMTSolver):
         ctx.dispose()
 
 
-        return result, -1, m
+        return result, sizeAst(Terms.yand(yicesConsts)), m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:

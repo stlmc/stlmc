@@ -176,6 +176,6 @@ goal:
 ([] [0.0, 40.0] (d1 > 1 -> <>[0.0, 20.0) reachability)) ;
 (<> (5.0,30.0] (modeLL -> [][7.5,25) modeLL));
 (<> [0.0, 100.0) (dtwogzero or donegzero));
-reach (b1 >= 3);
+#reach (b1 >= 3);
 (<> (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD));
 

@@ -168,6 +168,7 @@ class Runner:
         Printer.verbose_on = config.verbose_flag
         for file_name in config.file_list:
             model, PD, goals = object_manager.generate_objects(file_name)
+            
             for goal in goals:
                 output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver, config.encoding)
                 logger.write_to_csv(file_name=output_file_name, overwrite=True)
@@ -203,11 +204,11 @@ class Runner:
                     print("SMT solving time : " + str(e_time2 - e_time) + ", Constraint size : " + str(size))
                     if not os.path.exists(stl_file_name + ".csv"):
                         with open(stl_file_name + ".csv", 'a') as csv_file:
-                            csv_file.write("formula,bound,goal_generation_time,smt_solving_time,result\n")
-                            csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+                            csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
+                            csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," +  str(size) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
                     else:
                         with open(stl_file_name + ".csv", 'a') as csv_file:
-                            csv_file.write(str(goal.get_formula()) + "," +str(bound) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
+                            csv_file.write(str(goal.get_formula()) + "," +str(bound) + "," + str(size) + "," + str(e_time-s_time) + "," + str(e_time2-e_time) + "," + str(result) + "\n")
 
 
                     logger.stop_timer("goal timer")

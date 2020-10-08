@@ -116,8 +116,8 @@ condition   :
             | VALUE    # constantCond
             | VARIABLE # constantCond
             | op=NOT condition  # unaryCond
-            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
             | condition op=(EQUAL | NEQ) condition    # compCond
+            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
               ;
 
