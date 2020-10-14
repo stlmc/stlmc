@@ -1,0 +1,245 @@
+# model description:
+#
+# Two cars are running in a straight road. One car
+# follows another. The following car changes its speed
+# according to the distance to the leading car.
+
+real v1;
+real v2;
+[0, 1000] x1;
+[0, 1000] x2;
+
+
+# state
+# 000: x1 = 65t, x2 = 60t (high1 and high2)
+# 001: x1 = 65t, x2 = 40t (high1 and mid2)
+# 010: x1 = 30t, x2 = 60t (mid1 and high2)
+# 011: x1 = 30t, x2 = 35t (mid1 and low2)
+# 100: x1 = 25t, x2 = 60t (low1 and high2)
+# 101: x1 = 25t, x2 = 35t (low1 and low2)
+
+# x1: 65, 30, 25
+# x2: 60, 40, 35
+{
+    mode:
+        v1 = 65 ;
+        v2 = 60 ;
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 65;
+        d/dt[x2] = 60;
+    jump:
+    	# if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+        
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        v1 = 65 ;
+        v2 = 40 ;
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 65;
+        d/dt[x2] = 40;
+    jump:
+        # if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        v1 = 30 ;
+        v2 = 60;
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 30;
+        d/dt[x2] = 60;
+    jump:
+        # if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        v1 = 30;
+        v2 = 35;
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 30;
+        d/dt[x2] = 35;
+    jump:
+        # if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+}
+{   
+    mode:
+        v1 = 25;
+        v2 = 60; 
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 25;
+        d/dt[x2] = 60;
+    jump:
+        # if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+}
+{   
+    mode: 
+        v1 = 25;
+        v2 = 35;
+    inv:
+        x2 >= x1;
+    flow:
+        d/dt[x1] = 25;
+        d/dt[x2] = 35;
+    jump:
+        # if 2 <= (x2 - x1) < 3 then, no jump occur.
+        (and ((x2 - x1) >= 2) ((x2 - x1) < 3)) =>
+          (and (v1' = 65) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 3 <= (x2 - x1) < 4 then, jump to 001 state.
+            (and ((x2 - x1) >= 3) ((x2 - x1) < 4)) =>
+              (and (v1' = 65) (v2' = 40) (x1' = x1) (x2' = x2));
+
+        # if 1 <= (x2 - x1) < 2 then, jump to 010 state.
+            (and ((x2 - x1) >= 1) ((x2 - x1) < 2)) =>
+              (and (v1' = 30) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if 4 <= (x2 - x1) < 5 then, jump to 011 state.
+            (and ((x2 - x1) >= 4) ((x2 - x1) < 5)) =>
+              (and (v1' = 30) (v2' = 35) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) < 1 then, jump to 100 state.
+            ((x2 - x1) < 1) =>
+              (and (v1' = 25) (v2' = 60) (x1' = x1) (x2' = x2));
+
+        # if (x2 - x1) >= 5 then, jump to 101 state
+            ((x2 - x1) >= 5) =>
+              (and (v1' = 25) (v2' = 35) (x1' = x1) (x2' = x2));
+}
+
+
+
+init:
+(and (v1 = 65) (v2 = 60) ((x1 >= 0) and (x1 <= 1)) (x2 <= 10) (x2 >= 3));
+
+propositions:
+disl4 = (x2 - x1) <= 4 ;
+modeMH = (and (v1 = 30) (v2 = 60)) ; 
+modeML = (and (v1 = 30) (v2 = 35)) ;
+modeLH = (and (v1 = 25) (v2 = 60)) ;
+
+goal:
+([] [0.0,20.0] (<>[0.0,5.0] (disl4))) ;
+([] [0.0,10.0] (modeMH -> <>[0.0,5.0] (~ modeMH))) ;
+([] [0.0,100.0] (x2 > x1));
+(<> [10.0,40.0] ((x2 - x1) >= 4.5) -> [][0.0, 10.0] (modeML or modeLH));
+

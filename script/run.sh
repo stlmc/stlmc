@@ -1,71 +1,108 @@
-CORE_PATH=../src/core/syntax
-model=../src/$CORE_PATH/model
-PY_DIR=../src
-TEST_DIR=../src/simpleModel
-venv=../src/venv
+#!/usr/bin/env bash
 
-auto_remove () {
-	# remove previous test directories
-	# venv: virtual python env
-	# always run this script at project root directory
-	rm -rf $venv
-	rm -rf ${model}.interp ${model}.tokens ${model}Lexer.interp ${model}Lexer.py ${model}Lexer.tokens ${model}Parser.py ${model}Visitor.py
-	rm -rf $PY_DIR/*.smt2
+# Settings/Utilities
+# ------------------
+
+# terminate on error
+set -e
+
+# error if an variable is referenced before being set
+set -u
+
+# set variables
+top_dir="$(pwd)"
+benchmark_dir="$top_dir/../benchmark"
+
+progress() { echo "===== " $@ ; }
+
+runLinear() {
+  stlmc -l 1 -u 10 -solver $2 -logic "linear" \
+  "$benchmark_dir/model/linear/$1Linear.model" -visualize true -log true
 }
 
-install_env () {
-	# create and start virtual env
-	# setting environment variable
-	virtualenv $venv
-	. $venv/bin/activate
-
-	# install dependency packages
-	pip install -r $PY_DIR/requirements.txt
-	rm -f $PY_DIR/*.smt2
+runPoly() {
+  stlmc -l 1 -u 10 -solver $2 -logic "nonlinear" \
+  "$benchmark_dir/model/linear/$1Poly.model" -visualize true -log true
 }
 
-antlr_setting () {
-	cd $CORE_PATH
-	# create lexer using antlr 
-	# need to install java first if you don't have one
-	java -jar antlr-4.7.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor 
-}
+runAll() {
 
-runModel () {
-    #python3 stlMC_main.py simpleModel/twoThermostatPoly.txt
-    #python3 stlMC_main.py simpleModel/twoBatteryPoly.txt
-    #python3 stlMC_main.py simpleModel/twoBatteryLinear.txt
-    #python3 stlMC_main.py simpleModel/twoWatertankLinear.txt
-    #python3 stlMC_main.py simpleModel/railroadPoly.txt
-    #python3 stlMC_main.py simpleModel/twoCarPoly.txt
-    #python3 stlMC_main.py simpleModel/twoWatertankPoly.txt
-    if [ -z "$1" ]
-    then
-        echo "no arg"
-        echo "Default simpleModel will be run."
-        echo "Usage: \n\t ./run --run some_file"
-        if [ -f $TEST_DIR/"twoThermostatPoly.txt" ]
-        then
-            python3 $PY_DIR/stlMC_main.py $TEST_DIR/"twoThermostatPoly.txt"
-        else
-            echo "twoThermostatPoly.txt not found!"
-        fi
-    else
-        if [ -f $TEST_DIR/$1".txt" ]
-        then
-            python3 $PY_DIR/stlMC_main.py $TEST_DIR/$1".txt"
-        else
-            echo "No such file"
-        fi
-    fi
-    rm -f *.smt2
+  # linear
+  runLinear railroad yices
+  runLinear railroad z3
+
+  runLinear twoBattery yices
+  runLinear twoBattery z3
+
+  runLinear twoCar yices
+  runLinear twoCar z3
+
+  runLinear twoThermostat yices
+  runLinear twoThermostat z3
+
+  runLinear twoWatertank yices
+  runLinear twoWatertank z3
+
+  # non linear
+  runPoly railroad yices
+  runPoly railroad z3
+
+  runPoly twoBattery yices
+  runPoly twoBattery z3
+
+  runPoly twoCar yices
+  runPoly twoCar z3
+
+  runPoly twoThermostat yices
+  runPoly twoThermostat z3
+
+  runPoly twoWatertank yices
+  runPoly twoWatertank z3
 }
 
 
-case $1 in 
-	-rm | --auto-remove ) auto_remove; echo "remove finished"; break;;
-	-i | --auto-install ) install_env; antlr_setting; break;;
-	-ie | --install-env ) install_env; echo "install environment finished"; break;;
-	--run ) runModel "$2"; echo "run finished"; break;;
-	-antlr | --antlr-setting ) antlr_setting; echo "antlr setting finished"; break;;
+# Main
+# ----
+
+command="$1" ; shift
+case "$command" in
+
+    benchmark) runAll                               "$@" ;;
+    railroadLinear) runLinear railroad              "$@" ;;
+    railroadPoly) runPoly railroad                  "$@" ;;
+    twoBatteryLinear) runLinear twoBattery          "$@" ;;
+    twoBatteryPoly) runPoly twoBattery              "$@" ;;
+    twoCarLinear) runLinear twoCar                  "$@" ;;
+    twoCarPoly) runPoly twoCar                      "$@" ;;
+    twoThermostatLinear) runLinear twoThermostat    "$@" ;;
+    twoThermostatPoly) runPoly twoThermostat        "$@" ;;
+    twoWatertankLinear) runLinear twoWatertank      "$@" ;;
+    twoWatertankPoly) runPoly twoWatertank          "$@" ;;
+    *)      echo "
+    usage:
+
+    $0 benchmark :
+      run all benchmark model with bound 1 to 10 using z3 and yices solver.
+    $0 railroadLinear <solver> :
+      run railroadLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 railroadPoly <solver> :
+      run railroadPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoBatteryLinear <solver> :
+      run twoBatteryLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoBatteryPoly <solver> :
+      run twoBatteryPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoCarLinear <solver> :
+      run twoCarLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoCarPoly <solver> :
+      run twoCarPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoThermostatLinear <solver> :
+      run twoThermostatLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoThermostatPoly <solver> :
+      run twoThermostatPoly benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoWatertankLinear <solver> :
+      run twoWatertankLinear benchmark model with bound 1 to 10 using a <solver> option.
+    $0 twoWatertankPoly <solver> :
+      run twoWatertankPoly benchmark model with bound 1 to 10 using a <solver> option.
+
+" ;;
 esac

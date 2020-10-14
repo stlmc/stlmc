@@ -1,0 +1,114 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+
+bool a;
+[0, 10] x1;
+bool b;
+[0, 10] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 > 0;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = (-0.5 * sqrt(2 * 9.806) * sqrt(x1)) / 8 ;
+        d/dt[x2] = (0.5 * sqrt(2 * 9.806) * (sqrt(x1) - sqrt(x2))) / 9 ;
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 > 0;
+        (x2 < 9);
+    flow:
+        d/dt[x1] = (-0.5 * sqrt(2 * 9.806) * sqrt(x1)) / 8 ;
+        d/dt[x2] = (3 + 0.5 * sqrt(2 * 9.806) * (sqrt(x1) - sqrt(x2))) / 9;
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 < 8;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = (5 - 0.5 * sqrt(2 * 9.806) * sqrt(x1)) / 8 ;
+        d/dt[x2] = (0.5 * sqrt(2 * 9.806) * (sqrt(x1) - sqrt(x2))) / 9 ; 
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 < 8;
+        (x2 < 9);
+    flow:
+        d/dt[x1] = (5 - 0.5 * sqrt(2 * 9.806) * sqrt(x1)) / 8 ;
+        d/dt[x2] = (3 + 0.5 * sqrt(2 * 9.806) * (sqrt(x1) - sqrt(x2))) / 9;
+    jump:
+        (and (x1 >= 5) (x2 >= 5)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= 5) (x2 < 5)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 >= 5)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 5) (x2 < 5)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+init:
+(and (a = true) (b = true) (x1 <= 5 + 0.1) (x1 >= 5 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1));
+
+propositions:
+reachability = x1 >= 5.6 ;
+x1T = x1 > 6 ;
+x1l4 = x1 < 4.9 ;
+x2T = x2 > 6;
+p1 = x1 < 4.9;
+p2 = x1 > 5.1;
+q1 = x2 < 4.9;
+q2 = x2 > 5.1;
+
+
+goal:
+reach x1 > 7; 
+#reach reachability;
+#([] [0.0, 50.0] reachability) ;
+#(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1 < 3))) ;
+#([] [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
+#([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
+
+

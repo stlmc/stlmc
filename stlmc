@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+from stlmcPy.driver.base_driver import *
+
+
+if __name__ == '__main__':
+    try:
+        # default driver factory
+        driver_factory = DriverFactory()
+
+        stlmc = StlModelChecker()
+        stlmc.create_simulation_env(driver_factory)
+        stlmc.run()
+    except SystemExit:
+        print("System error")

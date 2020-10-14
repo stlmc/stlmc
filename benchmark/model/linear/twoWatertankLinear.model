@@ -1,0 +1,105 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+
+bool a;
+[0, 10] x1;
+bool b;
+[0, 10] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 > 0;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = -0.2;
+        d/dt[x2] = -0.3;
+    jump:
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 >= 1)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 < 1)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 > 0;
+        (x2 < 8);
+    flow:
+        d/dt[x1] = -0.2;
+        d/dt[x2] = 0.6;
+    jump:
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 >= 1)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 < 1)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 < 8;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = 0.5;
+        d/dt[x2] = -0.3;
+    jump:
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 >= 1)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 < 1)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 < 8;
+        (x2 < 8);
+    flow:
+        d/dt[x1] = 0.5;
+        d/dt[x2] = 0.6;
+    jump:
+        (and (x1 >= (x2 - 1)) (x2 >= 1)) =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 >= 1)) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+        (and (x1 < 1) (x2 < 1)) =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+init:
+(and (not(a)) not(b) ((x1 <= 5 + 0.1) and (x1 >= 5 - 0.1)) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1));
+
+propositions:
+reachability = x1 >= 5.6 ;
+x1T = a ;
+x1l4 = x1 < 4.9 ;
+x2T = b;
+
+goal:
+([] [0.0, 50.0] reachability) ; 
+(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1 < 3))) ;
+([] [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
+([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
+

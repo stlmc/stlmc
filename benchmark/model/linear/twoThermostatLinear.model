@@ -1,0 +1,112 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
+bool a;
+[-20, 100] x1;
+bool b;
+[-20, 100] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 > 0;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = -0.6;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          ((~ a') and (not b'));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 > 0;
+        (x2 < 50);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = 1;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 < 50;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = -0.6;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 < 50;
+        (x2 < 50);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = 1;
+    jump:
+        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+init:
+(and (not(a)) not(b) ((x1 <= 20 + 0.1) and (x1 >= 20 - 0.1)) (x2 <= 20 + 3.5) (x2 >= 20 + 3));
+
+propositions:
+reachability = x1 >= 22.5 ;
+x2l20 = x2 <= 20 ;
+x1l21 = x1 <= 21;
+x1T = a ;
+x2T = b ;
+
+goal:
+(<> [0.0, 40.0] (reachability)) ;
+([] [0.0, 20.0] (x2l20 U[2.0, 12.0) x1l21)) ;
+(<> [0.0, 10.0] (x2l20 U[0.0, 5.0] (x1T and x2T))) ;
+(<> [0.0, 20.0] ((~x1T or x1l21) -> <>[1.0, 5.0] (x1T))) ;
+

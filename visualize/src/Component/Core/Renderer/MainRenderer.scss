@@ -23,29 +23,21 @@
 }
 
 // for renderer class
-#dataCanvasXaxisGrid {
+.XaxisGrid {
     line{
         stroke: rgb(214, 214, 214);
     }
     text { display: none; }
 }
 
-#dataCanvasYaxisGrid {
+.YaxisGrid {
     line{
         stroke: rgb(214, 214, 214);
     }
     text { display: none; }
 }
 
-#propCanvasIntervalLines {
-    line{
-        stroke: black;
-        stroke-dasharray: 4px;
-    }
-    text { display: none; }
-}
-
-#propCanvasIntervalLinesBase {
+#propCanvasIntervalLines, #modeCanvasIntervalLines{
     line{
         stroke: black;
         stroke-dasharray: 4px;

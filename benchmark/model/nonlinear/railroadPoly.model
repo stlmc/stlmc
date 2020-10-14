@@ -1,0 +1,99 @@
+# model description:
+#
+# There exist a train and a crossing barrier on a
+# circular track. The train is moving around the track.
+# The barrier closes or opens depending on the distance
+# to the train. The goal of the barrier is to prevent others
+# from entering the track when the train passes by.
+
+real vStart;
+real vacc;
+[-20, 100] tx;
+[0, 90] bx;
+[-50, 50] vx;
+{
+    mode:
+        vacc = 0;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
+        (and (-5 <= tx) (tx < 0)) =>
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (-10 <= tx) (tx < -5)) =>
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+}
+{
+    mode:
+        vacc = 5;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
+        (and (-5 <= tx) (tx < 0)) =>
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (-10 <= tx) (tx < -5)) =>
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+}
+{
+    mode:
+        vacc = 10;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
+        (and (-5 <= tx) (tx < 0)) =>
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (-10 <= tx) (tx < -5)) =>
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+}
+{
+    mode:
+        vacc = -5;
+    inv:
+    flow:
+        d/dt[tx] = -5 ;
+        d/dt[bx] = vStart ;
+        d/dt[vx] = vacc ;
+    jump:
+        (and (40 <= tx) (tx < 50)) =>
+          (and (vacc' = 5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (20 <= tx) (tx < 30)) =>
+          (and (vacc' = 10) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx)) ;
+        (and (-5 <= tx) (tx < 0)) =>
+          (and (vacc' = -5) (vStart' = vx) (bx' = bx) (tx' = tx) (vx' = vx));
+        (and (-10 <= tx) (tx < -5)) =>
+          (and (vacc' = 0) (vStart' = vx) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+}
+init:
+(and (vacc = 0) (vStart = vx) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
+
+propositions:
+reachability = tx < 0 ;
+barg80 = bx >= 80;
+barl60 = bx < 40;
+
+goal:
+(<> (0.0,50.0) reachability);
+([] [20.0,40.0] (barg80 -> (<>[1.0,6.0] reachability)));
+([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+([] [10.0,60.0] (barg80 -> ([][20.0,40.0] barl40)));
+

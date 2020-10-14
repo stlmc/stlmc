@@ -1,3 +1,6 @@
+*.output
+*.csv
+*.sh
 *.interp
 *.tokens
 *Parser.py
@@ -9,12 +12,14 @@ src/run.sh
 __pycache__
 *.json
 data/
+reports/
 
 # Virtual Env for python
 venv/
 
 # NPM dependencies
 package-lock.json
+package-electron.json
 node_modules/
 
 # WebStorm config file
@@ -22,3 +27,8 @@ node_modules/
 
 # unignored data
 !visualize/golang/data/
+!visualize/package.json
+!visualize/tsconfig.json
+!visualize/src/.option.json
+# log
+log/

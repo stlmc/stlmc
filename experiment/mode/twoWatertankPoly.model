@@ -1,0 +1,92 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+
+real r;
+[0, 10] x1;
+[0, 10] x2;
+{
+    mode:
+        r >= 6;
+    inv:
+        x1 > 0;
+        (x2 > 0);
+	x1 > x2;
+    flow:
+        d/dt[x1] = -2 * 9.806 / 2 * x1 / (2 * 8) ; 
+        d/dt[x2] = (2 * 9.806 / 2 * (x1 - x2)) / (2 * 9) ;
+    jump:
+        ((x1 - x2) >= 5) =>
+          (and (r' = 5) (x1' = x1) (x2' = x2));
+        (and ((x1 - x2) < 4) ((x1 - x2) >= 3)) =>
+          (and (r' = 3) (x1' = x1) (x2' = x2));
+        ((x1 - x2) < 2) =>
+          (and (r' = 2) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        r = 5;
+    inv:
+        x1 > 0;
+        (x2 < 9);
+    flow:
+        d/dt[x1] = -0.025 * 2 * 9.806 / 2 * x1 / (2 * 8) ;
+        d/dt[x2] = (0.015 + 2 * 9.806 / 2 * (x1 - x2)) / (2 * 9) ;
+    jump:
+        ((x1 - x2) > 4) =>
+          (and (r' = 3) (x1' = x1) (x2' = x2));
+        ((x1 - x2) < 2) =>
+          (and (r' = 2) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        r = 3;
+    inv:
+        x1 < 8;
+        (x2 > 0);
+    flow:
+        d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * x1) / (2 * 8) ; 
+        d/dt[x2] = (0.025 * 2 * 9.806 / 2 * (x1 - x2)) / (2 * 9) ; 
+    jump:
+        ((x1 - x2) >= 6) =>
+          (and (r' = 6) (x1' = x1) (x2' = x2));
+        (and ((x1 - x2) < 5) ((x1 - x2) > 4)) =>
+          (and (r' = 5) (x1' = x1) (x2' = x2));
+        ((x1 - x2) < 2) =>
+          (and (r' = 2) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+	r = 2;
+    inv:
+        x1 < 9;
+        (x2 < 8);
+    flow:
+        d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * x1) / (2 * 8) ;
+        d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (x1 - x2)) / (2 * 9);
+    jump:
+        ((x1 - x2) >= 6) =>
+          (and (r' = 6) (x1' = x1) (x2' = x2));
+        (and ((x1 - x2) < 5) ((x1 - x2) > 4)) =>
+          (and (r' = 5) (x1' = x1) (x2' = x2));
+}
+init:
+(and (r > 6) (r < 7) (x1 <= 7 + 0.1) (x1 >= 7 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1));
+
+propositions:
+reachability = x1 >= 5.6 ;
+x1T = x1 > 6 ;
+x1l4 = x1 < 4.9 ;
+x2T = x2 > 6;
+
+goal:
+reach reachability;
+#(<> [0.0, 50.0] reachability) ;
+#(<> [5.0, 15.0] (~x1T -> <>[0.0, 7.0] (x1 < 3))) ;
+#([] [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
+#([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
+
+

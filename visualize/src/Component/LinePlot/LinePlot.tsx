@@ -3,43 +3,59 @@ import lineplotStyle from './style/LinePlot.module.scss';
 import styleVariable from './style/variable.module.scss';
 import './style/LinePlotStyle.scss';
 import '../../Style/scss/main.scss';
-import {margin, size} from '../Core/Util/Util';
+import {margin, PropData, size} from '../Core/Util/Util';
+import {ModeRenderer} from '../Core/Renderer/ModeRenderer';
 import {Renderer} from '../Core/Renderer/MainRenderer';
 import {PropositionRenderer} from '../Core/Renderer/PropositionRenderer';
-import {Json, WorkspaceJson} from '../Core/Util/DataParser';
+import {Json, Mode, Proposition} from '../Core/Util/DataParser';
 import Select from 'react-select';
 import {ActionMeta, ValueType} from 'react-select/src/types';
-import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import "react-tabs/style/react-tabs.css";
-import * as child from 'child_process';
+import Axios, {AxiosInstance} from "axios";
+import {Button, Form, Modal, Spinner} from 'react-bootstrap';
+import $ from 'jquery';
+import {ModeState, PropState} from "../Core/Data";
 
 
-//import {ipcRenderer} from 'electron';
-// Tell main process to show the menu when demo button is clicked
-/*
-const contextMenuBtn = document.getElementById('context-menu');
-
-contextMenuBtn!.addEventListener('click', () => {
-    ipcRenderer.send('show-context-menu');
-});*/
 /*
  * Props and State
  */
 interface Props {
+    url: string;
 }
 
-interface Popup {
-    isEnabled: boolean;
+
+interface WorkspaceData {
+    title: string;
+    uid: number;
 }
 
+interface ServerError {
+    message: string;
+    error: boolean;
+}
+
+
+// State contains many useful
 interface State {
-    popup: Popup;
-    selectedVariables: string[];
-    allVariables: string[];
-    isRedraw: boolean;
+    model: WorkspaceData[];
+    isOptionAlive: boolean;
+    selectedValue: string;
+    propState: PropState;
+    modeState: ModeState;
 
-    selectedProps: string[];
-    allProps: string[];
+    isCounterExm: boolean;
+
+    graphNum: number;
+
+    xlist: number[];
+    toggle: Map<number, boolean>;
+
+    isToggleChanged: boolean;
+
+    serverError: ServerError;
+    isShutDown: boolean;
+    isLoadingReset: boolean;
 }
 
 /*
@@ -51,410 +67,566 @@ class LinePlot extends React.Component<Props, State> {
 
     private width: number = parseFloat(styleVariable.width.replace("px", ""));
     private height: number = parseFloat(styleVariable.height.replace("px", ""));
-    private width_viewer: number = parseFloat(styleVariable.width_viewer.replace("px", ""));
-    private height_viewer: number = parseFloat(styleVariable.height_viewer.replace("px", ""));
-    private width_controller: number = parseFloat(styleVariable.width_controller.replace("px", ""));
-    private height_controller: number = parseFloat(styleVariable.height_controller.replace("px", ""));
 
     private margin_viewer_top: number = parseFloat(styleVariable.margin_viewer_top.replace("px", ""));
     private margin_viewer_right: number = parseFloat(styleVariable.margin_viewer_right.replace("px", ""));
     private margin_viewer_bottom: number = parseFloat(styleVariable.margin_viewer_bottom.replace("px", ""));
     private margin_viewer_left: number = parseFloat(styleVariable.margin_viewer_left.replace("px", ""));
 
-    private margin_controller_top: number = parseFloat(styleVariable.margin_controller_top.replace("px", ""));
-    private margin_controller_right: number = parseFloat(styleVariable.margin_controller_right.replace("px", ""));
-    private margin_controller_bottom: number = parseFloat(styleVariable.margin_controller_bottom.replace("px", ""));
-    private margin_controller_left: number = parseFloat(styleVariable.margin_controller_left.replace("px", ""));
 
-    private renderer: Renderer = new Renderer(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "#graph"
-    );
-
-
+    private renderers: Renderer[] = [];
     private propRenderers: PropositionRenderer[] = [];
+    private modeRenderers: ModeRenderer[] = [];
+    private instance: AxiosInstance;
 
-    private propRenderer: PropositionRenderer = new PropositionRenderer(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "#graph"
-    );
+    private njson = new Json();
 
-    private propRenderer2: PropositionRenderer = new PropositionRenderer(
-        new size(
-            this.width,
-            this.height,
-            this.width_viewer,
-            this.height_viewer,
-            this.width_controller,
-            this.height_controller
-        ),
-        new margin(
-            this.margin_viewer_top,
-            this.margin_viewer_right,
-            this.margin_viewer_bottom,
-            this.margin_viewer_left
-        ),
-        new margin(
-            this.margin_controller_top,
-            this.margin_controller_right,
-            this.margin_controller_bottom,
-            this.margin_controller_left
-        ),
-        // need to concat . before string of className for d3.js
-        // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-        "#graph",
-        1
+    private base_margin = new margin(
+        this.margin_viewer_top,
+        this.margin_viewer_right,
+        this.margin_viewer_bottom,
+        this.margin_viewer_left
     );
 
 
-    private json = new Json("");
-    private workspace_info = new WorkspaceJson(require('../../DataDir/.workspace_info.json'));
-
-    // this will get error if change './data/test.json' to this.props.jsonpath
     state: State = {
-        popup: {
-            isEnabled: true,
-        },
-        selectedVariables: [],
-        allVariables: [],
-        isRedraw: false,
+        isCounterExm: false,
+        selectedValue: "",
+        isOptionAlive: false,
+        graphNum: 0,
+        model: [],
 
-        selectedProps: [],
-        allProps: [],
+
+        propState: {
+            isEnabled: new Map<number, boolean>(),
+            numOfGraph: 0,
+            propRenderers: [],
+            propMap: new Map<number, Proposition>(),
+            propData: new PropData(),
+        },
+
+        modeState: {
+            isEnabled: new Map<number, boolean>(),
+            numOfGraph: 0,
+            modeMap: new Map<number, Mode>(),
+        },
+
+        toggle: new Map<number, boolean>(),
+        isToggleChanged: false,
+        xlist: [],
+        serverError: {
+            message: "",
+            error: false,
+        },
+        isShutDown: false,
+        isLoadingReset: false,
     };
 
     constructor(props: Props) {
         super(props);
-        this.onPopupChange = this.onPopupChange.bind(this);
-        this.onPopupClick = this.onPopupClick.bind(this);
-        this.onPropSelect = this.onPropSelect.bind(this);
-        this.onPropListSelect = this.onPropListSelect.bind(this);
-        this.onVariablesChange = this.onVariablesChange.bind(this);
+
+        // Set config defaults when creating the instance
+        this.onModelListSelect = this.onModelListSelect.bind(this);
         this.onResetButtonClick = this.onResetButtonClick.bind(this);
+        this.onOffButtonClick = this.onOffButtonClick.bind(this);
+        this.instance = Axios.create({baseURL: this.props.url});
+        this.Item = this.Item.bind(this);
+        this.ItemList = this.ItemList.bind(this);
+        this.Main = this.Main.bind(this);
+        this.ShutDown = this.ShutDown.bind(this);
+        this.LoadingBtn = this.LoadingBtn.bind(this);
     }
 
-    componentDidMount() {
+    async componentDidMount() {
+        // get file_list
+        await this.instance.get(`/file_list`)
+            .catch((error) => {
+                console.log(error);
+                this.setState({
+                    serverError: {
+                        error: true,
+                        message: error,
+                    }
+                })
+            }).then((response) => {
+                if (response) {
+                    this.setState({
+                        model:
+                            response.data.file_list.map((v: string) => {
+                                let [title, uid] = Object.values(v);
+                                let workspace: WorkspaceData = {
+                                    title: title,
+                                    uid: parseInt(uid),
+                                };
+                                return workspace;
+                            }),
+                    })
+                }
+            })
 
-        console.log("workspace");
-        console.log(require('../../DataDir/.workspace_info.json'));
 
-        // must invoke setdata() before draw()
-        this.renderer.setdata(this.json);
-        //this.propRenderer.setdata(this.json);
-        //this.propRenderer2.setdata(this.json);
-        this.setState({
-            selectedVariables: this.json.variables,
-            allVariables: this.json.variables,
-            isRedraw: false,
-
-            selectedProps: this.json.propNames,
-            allProps: this.json.propNames,
-        })
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any): void {
-        console.log("ComponentUpdate");
-        console.log(this.state.selectedVariables);
-        this.renderer.selectedVariables = this.state.selectedVariables;
+        if (this.state.serverError.error) {
+            this.setState({
+                serverError: {
+                    error: false,
+                    message: "",
+                }
+            });
+        }
 
-        console.log(this.state.isRedraw);
-        // redraw whole thing.
-        this.renderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
-        this.renderer.resize(this.json.propNames.length);
-        //this.propRenderer.reload(this.json.isEmpty(), this.json.propNames[0], this.state.isRedraw);
-        //this.propRenderer2.reload(this.json.isEmpty(), this.json.propNames[1], this.state.isRedraw);
-        for (let e = 0; e < this.state.selectedProps.length; e++) {
-            this.propRenderers[e].reload(this.json.isEmpty(), this.state.selectedProps[e], this.state.isRedraw);
+        if (!this.njson.isEmpty()) {
+            let modeRenderersXScale = [];
+            let modeRenderersYScale = [];
+            for (let e = 0; e < this.njson.GetModeSize(); e++) {
+                let d = this.njson.GetMode(e);
+                if (d) {
+                    this.modeRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat(), d.originalData, d.type, d.min, d.max);
+                    modeRenderersXScale.push(this.modeRenderers[e].getXscale());
+                    modeRenderersYScale.push(this.modeRenderers[e].getYscale());
+                }
+
+            }
+            for (let e = 0; e < this.renderers.length; e++) {
+                let eGraph: (Map<string, [number, number][]> | undefined) = this.njson.GetDataByName(e);
+                if (eGraph) {
+                    // vardict should always exist or undefined error would occur!
+                    this.renderers[e].loadGraph(this.njson.xRange(e), this.njson.yRange(e), eGraph, this.state.xlist, this.njson.GetIntervalInfoFlat(), this.njson.variables, this.njson.GetModeSize(), modeRenderersXScale, modeRenderersYScale);
+                }
+            }
+
+
+            for (let e = 0; e < this.njson.propSize; e++) {
+                let d = this.njson.GetProp(e);
+                if (d) {
+                    this.propRenderers[e].loadGraph([this.njson.TotalMinX, this.njson.TotalMaxX], d.data, this.njson.GetIntervalInfoFlat());
+                }
+
+            }
+        } else {
+            for (let e = 0; e < this.renderers.length; e++) {
+                this.renderers[e].clear();
+            }
+            this.renderers = [];
+
+
+            for (let e = 0; e < this.propRenderers.length; e++) {
+                this.propRenderers[e].clear();
+            }
+            this.propRenderers = [];
+
+            for (let e = 0; e < this.modeRenderers.length; e++) {
+                this.modeRenderers[e].clear();
+            }
+            this.modeRenderers = [];
+        }
+
+    }
+
+    // call every other event on this action.
+    async onModelListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
+
+        let titleVal = (value2 as { value: string; label: string; })["value"];
+        console.log(titleVal);
+        let ws = this.state.model.find((value, index) => value.title == titleVal);
+
+        // if id exists.
+        if (ws != undefined) {
+            let response = await this.instance.get("/file/" + ws.uid);
+            // if no data is coming from server ...
+            if (response.data != "") {
+                this.njson.string = response.data;
+                let gs = this.njson.GetGraphSize();
+                this.renderers = [];
+                let isRedBool = new Map<number, boolean>();
+
+                let width = $(window).width();
+                if (width){
+                    width = width * 0.8 - this.base_margin.left - this.base_margin.right;
+                }
+                let newSize = new size(
+                    width,
+                    80.0
+                );
+
+                for (let e = 0; e < gs; e++) {
+                    let red = new Renderer(
+                        new size(
+                            width,
+                            this.height
+                        ), this.base_margin, e
+                    );
+                    red.graph = this.njson.GetGraph(e);
+                    this.renderers.push(red);
+                    isRedBool.set(e, true);
+                }
+
+                let isBoolean = new Map<number, boolean>();
+                this.propRenderers = [];
+                for (let e = 0; e < this.njson.propSize; e++) {
+                    let tmp_prop = new PropositionRenderer(
+                        newSize, this.base_margin, e
+                    );
+                    this.propRenderers.push(tmp_prop);
+                    isBoolean.set(e, true);
+                }
+                ;
+
+                let modeIsBoolean = new Map<number, boolean>();
+                this.modeRenderers = [];
+                for (let e = 0; e < this.njson.GetModeSize(); e++) {
+                    let md = new ModeRenderer(
+                        newSize, this.base_margin, e
+                    );
+                    this.modeRenderers.push(md);
+                    modeIsBoolean.set(e, true);
+                }
+
+                // get reloaded new variables.
+                for (let i = 0; i < this.njson.GetGraphSize() + this.njson.propSize; i++) {
+                    this.state.toggle.set(i, true);
+                }
+
+                this.setState({
+                    selectedValue: titleVal,
+                    isOptionAlive: true,
+                    isCounterExm: true,
+                    toggle: isRedBool,
+                    graphNum: this.njson.GetGraphSize(),
+                    xlist: this.njson.xlist,
+                    propState: {
+                        numOfGraph: this.njson.propSize,
+                        propData: {
+                            range: [this.njson.TotalMinX, this.njson.TotalMaxX],
+                            interval_range: this.njson.GetIntervalInfoFlat(),
+                        },
+                        propRenderers: this.propRenderers,
+                        propMap: this.njson.propMap,
+                        isEnabled: isBoolean,
+                    },
+                    modeState: {
+                        numOfGraph: this.njson.GetModeSize(),
+                        modeMap: this.njson.modeMap,
+                        isEnabled: modeIsBoolean,
+                    }
+                });
+            } else {
+
+                this.njson.clearAll();
+
+                this.setState({
+                    isCounterExm: false,
+                });
+            }
         }
     }
 
-    onPopupChange(e: React.ChangeEvent<HTMLInputElement>) {
+    async onOffButtonClick() {
+        let response = await this.instance.get(`/shutdown`);
+        if (response.data == "Shutdown called"){
+            console.log("server shutdown.. you need to restart server for progress!");
+            this.setState({isShutDown: true,});
+        }
     }
 
-    onPopupClick(e: React.MouseEvent<HTMLInputElement, MouseEvent>) {
+    async onResetButtonClick() {
+        this.setState({isLoadingReset: true});
+        let response = await this.instance.get(`/file_list`);
+        this.njson.clearAll();
         this.setState({
-            popup: {
-                isEnabled: e.currentTarget.checked
-            }
-        }, () => {
-            this.renderer.updatePopup(this.state.popup.isEnabled)
+            isOptionAlive: false,
+            isCounterExm: false,
+            model:
+                response.data.file_list.map((v: string) => {
+                    let [title, uid] = Object.values(v);
+                    let workspace: WorkspaceData = {
+                        title: title,
+                        uid: parseInt(uid),
+                    };
+                    return workspace;
+                }),
+            isLoadingReset: false,
         });
-        console.log("mouse event");
-        console.log(this.state)
+
     }
 
-    onPropSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-        //this.renderer.redrawPropCanvas((value2 as { value: string, label: string; })["value"]);
-        console.log(`action: ${actionMeta.action}`);
-        let target = (value2 as ({ value: string; label: string; }[]));
 
-        let tmp: string[] = [];
-        if (target) {
-            for (let el of target) {
-                tmp.push(el["value"])
+    Item(index: number, margin: number|undefined) {
+        let vars = this.njson.GetVar(index);
+        let isEnabled = this.state.toggle.get(index);
+        let label = "unknown";
+        if(vars){
+            label = "Var: ";
+            for (let i = 0; i < vars.length; i++){
+                if (i==0)
+                    label += vars[i];
+                else
+                    label += (", "+vars[i]);
             }
         }
-        if (actionMeta.action == "remove-value") {
-            this.setState({
-                selectedProps: tmp,
-            });
-        } else if (actionMeta.action == "select-option") {
-            this.setState({
-                selectedProps: tmp,
-            });
-        } else if (actionMeta.action == "clear") {
-            this.setState({
-                selectedProps: [],
-            });
-        }
+
+        return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
+            <Form.Row>
+                <Form.Check
+                    label={label}
+                    checked={isEnabled}
+                    onClick={() => {
+                        let newIsEnabled = this.state.toggle;
+                        if (isEnabled) {
+                            newIsEnabled.set(index, false)
+                            this.setState({
+                                toggle: newIsEnabled,
+                            });
+
+                        } else {
+                            newIsEnabled.set(index, true)
+                            this.setState({
+                                toggle: newIsEnabled,
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div id={"graph" + index} style={{display: this.state.toggle.get(index) ? 'block' : 'none'}}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+            </div>
+        )
     }
 
-    onPropListSelect(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-
-        this.json.string = require("../../DataDir/" + (value2 as { value: string; label: string; })["value"]);
-        this.renderer.setdata(this.json);
-        this.propRenderers = [];
-        for (let e = 0; e < this.json.propNames.length; e++) {
-            let pr = new PropositionRenderer(
-                new size(
-                    this.width,
-                    this.height,
-                    this.width_viewer,
-                    this.height_viewer,
-                    this.width_controller,
-                    this.height_controller
-                ),
-                new margin(
-                    this.margin_viewer_top,
-                    this.margin_viewer_right,
-                    this.margin_viewer_bottom,
-                    this.margin_viewer_left
-                ),
-                new margin(
-                    this.margin_controller_top,
-                    this.margin_controller_right,
-                    this.margin_controller_bottom,
-                    this.margin_controller_left
-                ),
-                // need to concat . before string of className for d3.js
-                // https://www.tutorialspoint.com/d3js/d3js_selections.htm
-                "#graph",
-                e
-            );
-            pr.setdata(this.json);
-            this.propRenderers.push(pr);
+    PropUI(index: number, margin: number|undefined) {
+        let prop = this.state.propState.propMap.get(index);
+        let isEnabled = this.state.propState.isEnabled.get(index);
+        let label = "unknown";
+        if (prop) {
+            label = prop.name + " : " + prop.actual;
         }
-
-        //this.propRenderer.setdata(this.json);
-        //this.propRenderer2.setdata(this.json);
-        // get reloaded new variables.
-        this.setState({
-            allVariables: this.json.variables,
-            selectedVariables: this.json.variables,
-            isRedraw: false,
-
-            allProps: this.json.propNames,
-            selectedProps: this.json.propNames,
-        });
+        return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
+            <Form.Row>
+                <Form.Check
+                    label={label}
+                    checked={isEnabled}
+                    onClick={() => {
+                        let newIsEnabled = this.state.propState.isEnabled;
+                        if (isEnabled) {
+                            newIsEnabled.set(index, false);
+                            this.setState({
+                                    propState: {
+                                        numOfGraph: this.state.propState.numOfGraph,
+                                        propMap: this.state.propState.propMap,
+                                        isEnabled: this.state.propState.isEnabled,
+                                        propData: this.state.propState.propData,
+                                        propRenderers: this.state.propState.propRenderers,
+                                    }
+                                }
+                            );
+                        } else {
+                            newIsEnabled.set(index, true);
+                            this.setState({
+                                propState: {
+                                    numOfGraph: this.state.propState.numOfGraph,
+                                    propMap: this.state.propState.propMap,
+                                    isEnabled: this.state.propState.isEnabled,
+                                    propData: this.state.propState.propData,
+                                    propRenderers: this.state.propState.propRenderers,
+                                }
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div className="svg_div" id={"proposition" + index}
+                         style={{display: this.state.propState.isEnabled.get(index) ? 'block' : 'none'}}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+            </div>
+        )
     }
 
-    // This will get multiple choices.
-    onVariablesChange(value2: ValueType<{ value: string; label: string; }>, actionMeta: ActionMeta) {
-        console.log(`action: ${actionMeta.action}`);
-        let target = (value2 as ({ value: string; label: string; }[]));
+    ModeUI(index: number, margin: number|undefined) {
 
-        let tmp: string[] = [];
-        if (target) {
-            for (let el of target) {
-                tmp.push(el["value"])
-            }
+        let label = "unknown";
+        let mod = this.state.modeState.modeMap.get(index);
+        if (mod) {
+            label = mod.name + " = " + mod.actual
         }
-        if (actionMeta.action == "remove-value") {
-            this.setState({
-                selectedVariables: tmp,
-                isRedraw: true,
-            });
-        } else if (actionMeta.action == "select-option") {
-            this.setState({
-                selectedVariables: tmp,
-                isRedraw: true,
-            });
-        } else if (actionMeta.action == "clear") {
-            this.setState({
-                selectedVariables: [],
-                isRedraw: true,
-            });
-        }
+        let isBool = this.state.modeState.isEnabled.get(index);
+
+        return (
+            <div style={{marginLeft: margin, marginRight: margin}}>
+            <Form.Row>
+                <Form.Check
+                    label={label}
+                    checked={isBool}
+                    onClick={() => {
+                        let newIs = this.state.modeState.isEnabled;
+                        if (isBool) {
+                            newIs.set(index, false);
+                            this.setState({
+                                modeState: {
+                                    isEnabled: newIs,
+                                    modeMap: this.state.modeState.modeMap,
+                                    numOfGraph: this.state.modeState.numOfGraph,
+                                }
+                            });
+
+                        } else {
+                            newIs.set(index, true);
+                            this.setState({
+                                modeState: {
+                                    isEnabled: newIs,
+                                    modeMap: this.state.modeState.modeMap,
+                                    numOfGraph: this.state.modeState.numOfGraph,
+                                }
+                            });
+                        }
+                    }
+                    }
+                />
+                <Form.Row>
+                    <div className="svg_div" id={"mode" + index}
+                         style={{display: this.state.modeState.isEnabled.get(index) ? 'block' : 'none'}}>
+                        <span></span>
+                    </div>
+                </Form.Row>
+            </Form.Row>
+            </div>
+        )
     }
 
-    // https://stackoverflow.com/questions/23450534/how-to-call-a-python-function-from-node-js
-    onResetButtonClick(){
-        console.log("reset called");
+    ItemList() {
+        let res = [];
+        let res2 = [];
+        let res3 = [];
+        let margin = $(window).width();
+        if (margin){
+            margin = margin * 0.1 + this.base_margin.left;
+        }
 
+        for (let i = 0; i < this.state.graphNum; i++) {
+            res.push(this.Item(i, margin));
+        }
+        for (let i = 0; i < this.njson.propSize; i++) {
+            res2.push(this.PropUI(i, margin));
+        }
 
-        // Parameters passed in spawn -
-        // 1. type_of_script
-        // 2. list containing Path of the script
-        //    and arguments for the script
+        for (let i = 0; i < this.njson.GetModeSize(); i++) {
+            res3.push(this.ModeUI(i, margin));
+        }
+        return (
+            <Form>
+                {res3}
+                {res}
+                {res2}
+            </Form>
+        )
 
-        // E.g : http://localhost:3000/name?firstname=Mike&lastname=Will
-        // so, first name = Mike and last name = Will
-        //let process = spawn('python3',["../../../py/workspace.py"] );
-        let process = child.spawn('ls');
-        // Takes stdout data from script which executed
-        // with arguments and send this data to res object
-        process.stdout.on('data', (data: { toString: () => void; }) => {
-            console.log(data.toString());
-        } )
-        this.workspace_info.load(require('../../DataDir/.workspace_info.json'));
+    }
 
+    Main() {
+        return (
+            <div>
+                {!this.njson.isEmpty() ? (
+                    <div>
+                        <div className="row basic_box">
+                            <div className="col-md-12">
+                                <this.ItemList/>
+                            </div>
+                        </div>
+                    </div>) : (
+                    <div className="row line_plot_div">
+                        <div className="col-md-1"/>
+                        <div className="col-md-10 alert alert-warning" role="alert">
+                            No counter example, nothing to show!
+                        </div>
+                        <div className="col-md-1"/>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    ShutDown(){
+        return (
+            <Modal
+                show={this.state.isShutDown}
+                size="lg"
+                aria-labelledby="contained-modal-title-vcenter"
+                centered
+                keyboard={false}
+                backdrop={'static'}
+            >
+                <Modal.Header>
+                    <Modal.Title id="contained-modal-title-vcenter">
+                        Visualize Server shutdown
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>
+                        Visualize server has been successfully shutdowned. Restart the server to use visualization.
+                    </p>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+
+    LoadingBtn(){
+        return(
+            <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+            />
+        )
     }
 
     render() {
-        let options = this.state.allVariables.map((v) => {
-            return ({value: v, label: v})
-        });
-        let selected = this.state.selectedVariables.map((v) => {
-            return ({value: v, label: v})
-        });
-        let props = [{value: "All", label: "All"}].concat(this.state.allProps.map(
-            (v) => {
-                //this.json.proposition_names[v]
-                return ({
-                    value: v,
-                    label: (v + " = (" + this.json.proposition_names[v] + ")")
-                });
-            }));
-        let selectedProps = this.state.selectedProps.map((v) => {
-            return ({value: v, label: v})
-        });
+        let selected = this.state.selectedValue;
+        let select = this.state.isOptionAlive ? {value: selected, label: selected} : null;
         // TODO: Update precision of graph after update.
         return (
             <div>
                 <div className="row">
+                    <div className="col-md-11"/>
+                    <div className="col-md-1">
+                        <Button variant="outline-danger" onClick={this.onOffButtonClick} id="non-outline">off</Button>
+                    </div>
+                </div>
+                <div className="row">
                     <div className="col-md-1"/>
                     <div className="col-md-10">
                         <label>Models</label>
-                        <Select isSearchable={true} options={this.workspace_info.file_list.map(
+                        <Select isSearchable={true} value={select} options={this.state.model.map(
                             (v) => {
-                                return ({value: v, label: v});
+                                return ({value: v.title, label: v.title});
                             }
-                        )} onChange={this.onPropListSelect}/>
+                        )} onChange={this.onModelListSelect} />
                     </div>
                     <div className="col-md-1">
-                        <button onClick={this.onResetButtonClick}>reset</button>
                     </div>
                 </div>
-
-                {!this.json.isEmpty() ?
-                    (
-                        <div>
-                            <div className="row basic_box">
-                                <div className="col-md-12">
-                                    <div className="row">
-                                        <div className="col-md-1"/>
-                                        <div className="col-md-10">
-                                            <label>Variables</label>
-                                            <Select className="select_theme" options={options}
-                                                    onChange={this.onVariablesChange}
-                                                    value={selected}
-                                                    isMulti={true} isSearchable={true}
-                                                    closeMenuOnSelect={false}>
-                                            </Select>
-                                        </div>
-                                        <div className="col-md-1"/>
-                                    </div>
-
-                                    <div className="row line_plot_container">
-                                        <div className="col-md-1"/>
-                                        <div className="col-md-10">
-                                            <label>Propositions</label>
-                                            <Select isSearchable={true} options={props}
-                                                    onChange={this.onPropSelect}
-                                                    value={selectedProps}
-                                                    isMulti={true}
-                                                    closeMenuOnSelect={false}/>
-                                        </div>
-                                        <div className="col-md-1"/>
-                                    </div>
-
-                                    <div className="row basic_box">
-                                        <div className="col-md-1"/>
-                                        <div className="col-md-7"/>
-                                        <div className="col-md-4">
-                                            <div className="form-check text-right">
-                                                <label>Enabled Popups &nbsp;
-                                                    <input className="form-check-input" type="checkbox"
-                                                           checked={this.state.popup.isEnabled} onClick={this.onPopupClick}
-                                                           onChange={this.onPopupChange}/>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="row">
-                                        <div className="svg_div" id="graph">
-                                            <span></span>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-
-
-                        </div>
-                    )
-                    : (
-                        <div className="row line_plot_div">
-                            <div className="col-md-1"/>
-                            <div className="col-md-10 alert alert-warning" role="alert">
-                                Nothing to show!
-                            </div>
-                            <div className="col-md-1"/>
-                        </div>
-                    )}
+                <div className="row items-7">
+                    <div className="col-md-10"/>
+                    <div className="col-md-1 text-right">
+                        <Button variant="outline-dark" onClick={this.onResetButtonClick} id="non-outline">
+                            {this.state.isLoadingReset ? <this.LoadingBtn/> : "reset"}
+                        </Button>
+                    </div>
+                    <div className="col-md-1"/>
+                </div>
+                {this.state.isShutDown ? <this.ShutDown/> : <this.Main/>}
             </div>);
     }
 }
