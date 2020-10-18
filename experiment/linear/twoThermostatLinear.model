@@ -93,16 +93,14 @@ init:
 
 propositions:
 reachability = x1 >= 21;
-p = x2 > 19 ;
-q = x1 <= 21;
-x1T = x1 > 27 ;
-x2T = x2 > 27 ;
+p = x2 > 24 ;
+q = x1 < 22;
+r = x1 < 20;
+s = x2 > 19;
 
 goal:
-#(<> [0.0, 40.0] p);
-#reach reachability;
-#([] [0.0, 40.0] (reachability)) ;
-#(p R[0.0, 12.0) q) ;
-(<> [0.0, 10.0] (x2l20 U[0.0, 5.0] (and x1T x2T))) ;
-(<> [0.0, 20.0] ((or ~x1T x1l21) -> <>[1.0, 5.0] (x1T))) ;
+(<> [0.0, 40.0] p);  # false
+([] [10, 30] q); # true
+([] [0, 10] ((~ a) U [0, 15) r)); # false
+(<> (5, 30) (s R [0, 30] b)); # true
 

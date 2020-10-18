@@ -83,8 +83,10 @@ def genPartition(baseP, sepMap, subFormula):
             tau_abstraction[Bool("newTau_" + str(count) + "_" + str(left_max - 1))] = Or(sub_left)
             count += 1
             tau_abstraction[Bool("newTau_" + str(count) + "_" + str(right_max - 1))] = Or(sub_right)
-            consts.append(Or([change_point, Bool("newTau_" + str(count - 1) + "_" + str(left_max - 1))]))
-            consts.append(Or([change_point, Bool("newTau_" + str(count) + "_" + str(right_max - 1))]))
+            #consts.append(Or([change_point, Bool("newTau_" + str(count - 1) + "_" + str(left_max - 1))]))
+            #consts.append(Or([change_point, Bool("newTau_" + str(count) + "_" + str(right_max - 1))]))
+            consts.append(Or([change_point, Or(sub_left)]))
+            consts.append(Or([change_point, Or(sub_right)]))
 
             count += 1
 
@@ -121,7 +123,7 @@ def _(formula, baseCase, result, sepMap):
 @_guess.register(Not)
 def _(formula, baseCase, result, sepMap):
     _guess(formula.child, baseCase, result, sepMap)
-    # result[formula] = result[formula.child]
+
     result[formula] = set(baseCase)
 
 
@@ -129,7 +131,7 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     for c in formula.children:
         _guess(c, baseCase, result, sepMap)
-    # result[formula] = set(itertools.chain.from_iterable([result[c] for c in formula.children]))
+
     result[formula] = set(baseCase)
 
 
@@ -137,7 +139,7 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     _guess(formula.left, baseCase, result, sepMap)
     _guess(formula.right, baseCase, result, sepMap)
-    # result[formula] = result[formula.left] | result[formula.right]
+
     result[formula] = set(baseCase)
 
 
@@ -145,11 +147,8 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     _guess(formula.child, baseCase, result, sepMap)
 
-    # p = result[formula.child]
-    # sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
     sepMap[formula] = baseCase
 
-    # result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
     result[formula] = set(baseCase)
 
 
@@ -157,10 +156,7 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     _guess(formula.left, baseCase, result, sepMap)
     _guess(formula.right, baseCase, result, sepMap)
-
-    # p = result[formula.left] | result[formula.right]
-    # sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
+    
     sepMap[formula] = baseCase
 
-    # result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
     result[formula] = set(baseCase)

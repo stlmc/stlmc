@@ -56,14 +56,6 @@ class StlConfiguration:
                                  help='turn on verbose message logging (default: false)')
         self.parser.add_argument('-debug', type=string_to_bool,
                                  help='turn on debug message logging (default: false)')
-        # self.parser.add_argument('-logic', type=str,
-        #                          help='run the SMT solver using given given logic (default: QF-NRA)')
-        # self.parser.add_argument('-visualize', type=self.str2bool,
-        #                          help='if a objects have a counterexample, generate json format file for the trace of the counterexample (default: false)')
-        # self.parser.add_argument('-log', type=self.str2bool,
-        #                          help='save results of execution in report.txt (default: false)')
-        # self.parser.add_argument('-onlySTL', type=self.str2bool,
-        #                          help='consider only STL constraints (default: false)')
         self.parser.add_argument('-delta', type=float,
                                  help='delta for invariant condition (default: 0)')
         self._args = None
@@ -73,7 +65,7 @@ class StlConfiguration:
         self._step = 1
         self._solver = "z3"
         self._optimize_flags = list()
-        self._solver_list = ["z3", "dreal", "hylaa", "yices", "hylaa-unsat-core", "hylaa-reduction"]
+        self._solver_list = ["z3", "dreal", "yices"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
@@ -173,12 +165,11 @@ class Runner:
                 output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver, config.encoding)
                 logger.write_to_csv(file_name=output_file_name, overwrite=True)
                 key_index = file_name.rfind("/")
-                stl_file_name = str(file_name[key_index+1:]) + "_" + str(goal.get_formula()) + "_" + config.solver
+                stl_file_name = str(file_name[key_index+1:]) + "_" + str(goal.get_formula()) + "_" + config.solver + "_" + config.encoding
                 for bound in config.bound:
                     output_file_name_bound = "{}_{}".format(output_file_name, bound)
                     logger.set_output_file_name(output_file_name_bound)
                     logger.write_to_csv(overwrite=True)
-                    # printer.print_normal("> {}\n\n".format(output_file_name))
 
                     # start logging
                     logger.reset_timer()
@@ -198,10 +189,9 @@ class Runner:
                     
                     printer.print_normal("> {}".format(config.solver))
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
-                    #result, size = solver.solve(And([goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
                     e_time2 = timer()
-                    print("SMT solving time : " + str(e_time2 - e_time) + ", Constraint size : " + str(size))
+
                     if not os.path.exists(stl_file_name + ".csv"):
                         with open(stl_file_name + ".csv", 'a') as csv_file:
                             csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
@@ -229,20 +219,9 @@ class Runner:
                     goal.clear()
                     solver.clear()
 
-                    # self.add_log_info("goal: " + str(goal.get_formula()) + ", result: " + str(result))
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
-                    # self.append_to_file(
-                    #     str(file_name) + "_###" + str(goal.get_formula()) + "_###" + config.solver + ".csv")
-                    # self.clear_log()
-
-                    # print(assignment)
-                    # if is_visualize:
-                    # integrals_list = model.get_flow_for_assignment(1)
-                    # assignment = solver.make_assignment()
-                    # print(assignment.get_assignments())
-                    # print(result)
 
 
 class DriverFactory:

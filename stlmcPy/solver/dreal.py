@@ -235,7 +235,7 @@ class dRealSolver(SMTSolver):
         batcmd = "dReal dreal_model.smt2 --short_sat --delta_heuristic --delta --sat-prep-bool"
         p = subprocess.check_output(batcmd, shell = True)
         output = p.decode("utf-8")[:-1]
-        print("dreal result : " + str(output))
+        
         if output == "unsat":
             result = True
         else:

@@ -1,4 +1,3 @@
-from stlmcPy.solver.hylaa import HylaaSolverNaive, HylaaSolverReduction, HylaaSolverUnsatCore
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 from stlmcPy.solver.dreal import dRealSolver
@@ -14,9 +13,3 @@ class SolverFactory:
             return YicesSolver()
         elif self.solver_type == 'dreal':
             return dRealSolver()
-        elif self.solver_type == 'hylaa':
-            return HylaaSolverNaive()
-        elif self.solver_type == 'hylaa-reduction':
-            return HylaaSolverReduction()
-        elif self.solver_type == 'hylaa-unsat-core':
-            return HylaaSolverUnsatCore()

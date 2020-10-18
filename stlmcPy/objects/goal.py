@@ -105,9 +105,13 @@ class PropHelper:
                 init_point_check = And([init_const_1, init_const_2, fair_const_2])
                 pos_forall_list = list()
                 neg_forall_list = list()
+                
+                start_tau = Real('tau_' + str(bound))
+                if str(bound) == "0":
+                    start_tau = RealVal("0")
                 for chi in range(len(sub_integrals_list)):
-                    pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), Real('tau_' + str(bound)), relaxed_bound_const, sub_integrals_list[chi]))
-                    neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), Real('tau_' + str(bound)), not_relaxed_bound_const, sub_integrals_list[chi]))
+                    pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const, sub_integrals_list[chi]))
+                    neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const, sub_integrals_list[chi]))
                 self.boolean_abstract[bound_applied_goal_var] = Or(pos_forall_list)
                 self.boolean_abstract[not_bound_applied_goal_var] = Or(neg_forall_list)
 
@@ -165,22 +169,19 @@ class OldStlGoal(BaseStlGoal):
         s_time1 = timer()
         (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
         e_time1 = timer()
-        #print("Partition time : " + str(e_time1 - s_time1))
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
         e_time2 = timer()
-        #print("Separtion time : " + str(e_time2 - e_time1))
+
         # set enc flags
         ENC.ENC_TYPES = "old"
         # FOL translation
         baseV = ENC.baseEncoding(partition, baseP)
         e_time3 = timer()
-        #print("Base encoding time : " + str(e_time3 - e_time2))
 
         formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
         e_time4 = timer()
-        #print("Formula valuation time : " + str(e_time4 - e_time3))
 
         total_children = list()
         total_children.extend(formulaConst)
@@ -206,19 +207,6 @@ class NewStlGoal(BaseStlGoal):
         baseV = ENC.baseEncoding(partition, baseP)
 
         (formulaConst, subFormulaMap) = ENC.valuation(fs[0], fs, ENC.Interval(True, 0.0, True, 0.0), baseV)
-        '''
-        print("fs")
-        print(fs)
-        print("baseV")
-        print(baseV)
-        print("formula constraints")
-        print(formulaConst)
-        print("subFormula map")
-        for sk in subFormulaMap:
-            print(sk)
-            print(subFormulaMap[sk])
-            print("===================")
-        '''
 
         # partition constraints
         partition_const_children, self.boolean_abstract = ENHANCED_PART.genPartition(baseP, fs[1], subFormulaMap)

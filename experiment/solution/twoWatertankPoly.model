@@ -17,17 +17,16 @@ real startX2;
     inv:
         x1 > 0;
         (x2 > 0);
+	(x1 > x2);
     flow:
         d/dt[x1] = -0.025 * 2 * 9.806 / 2 * startX1 / (2 * 8) ; 
         d/dt[x2] = (0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ;
     jump:
-        (and (x1 >= 5) (x2 >= 5)) =>
-          (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 >= 5) (x2 < 5)) =>
+	(and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 >= 5)) =>
+        (and (x1 < 1) (x2 >= 1.5)) =>
           (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 < 5)) =>
+        (and (x1 < 1) (x2 < 1)) =>
           (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
 
 }
@@ -42,13 +41,11 @@ real startX2;
         d/dt[x1] = -0.025 * 2 * 9.806 / 2 * startX1 / (2 * 8) ;
         d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ;
     jump:
-        (and (x1 >= 5) (x2 >= 5)) =>
+       (and (x1 >= (x2 - 1)) (x2 >= 1.5)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 >= 5) (x2 < 5)) =>
-          (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 >= 5)) =>
+	(and (x1 < 1) (x2 >= 1.5)) =>
           (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 < 5)) =>
+        (and (x1 < 1) (x2 < 1)) =>
           (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
 }
 {
@@ -62,13 +59,11 @@ real startX2;
         d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * startX1) / (2 * 8) ; 
         d/dt[x2] = (0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9) ; 
     jump:
-        (and (x1 >= 5) (x2 >= 5)) =>
+        (and (x1 >= (x2 - 1)) (x2 >= 1.5)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 >= 5) (x2 < 5)) =>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 >= 5)) =>
-          (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 < 5)) =>
+        (and (x1 < 1) (x2 < 1)) =>
           (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
 }
 {
@@ -82,29 +77,24 @@ real startX2;
         d/dt[x1] = (0.025 - 0.025 * 2 * 9.806 / 2 * startX1) / (2 * 8) ;
         d/dt[x2] = (0.015 + 0.025 * 2 * 9.806 / 2 * (startX1 - startX2)) / (2 * 9);
     jump:
-        (and (x1 >= 5) (x2 >= 5)) =>
+        (and (x1 >= (x2 - 1)) (x2 >= 1.5)) =>
           (and (not a') (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 >= 5) (x2 < 5)) =>
+        (and (x1 >= (1 - x2)) (x2 < 1)) =>
           (and (not a') b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 >= 5)) =>
+        (and (x1 < 1) (x2 >= 1.5)) =>
           (and a' (not b') (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 < 5) (x2 < 5)) =>
-          (and a' b' (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
 }
 init:
 (and (a = false) (b = false) (x1 <= 5 + 0.1) (x1 >= 5 - 0.1) (x2 <= 5 + 0.1) (x2 >= 5 - 0.1) (startX1 = x1) (startX2 = x2));
 
 propositions:
-reachability = x1 >= 5.6 ;
-x1T = x1 > 8 ;
-x1l4 = x1 < 4.9 ;
-x2T = x2 > 8;
+x1g2 = x1 > 2;
+x1l4 = x1 < 4;
+x2l4 = x2 < 4;
+x2g6 = x2 > 6;
 
 goal:
-(x1 > 3.9 R[0.0, 40.0] x2 < 4.9);
-reach reachability;
-([] [0.0, 50.0] ~reachability) ;
-(<> [5.0, 15.0] (x1T -> <>[0.0, 7.0] (x1 < 3))) ;
-(<> [0.0, 10.0] ((x2 < 4) -> <> [0.0, 10.0] x2T)) ;
-([] [0.0, 20.0] (x2T -> <>[0.0, 5.0] ~x2T)) ;
-
+([] [0, 50] x1g2); # true
+(~a U [0, 30) x1l4); # false
+(<> [0, 40] ((x1 > 3) R [0, 40) a)); # true
+([] [5, 30] (<> (0, 15] x2g6)); # false

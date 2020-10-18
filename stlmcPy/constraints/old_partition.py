@@ -42,7 +42,6 @@ def _(formula, baseCase, result, sepMap):
 def _(formula, baseCase, result, sepMap):
     _guess(formula.child, baseCase, result, sepMap)
     result[formula] = result[formula.child]
-    # result[formula] = set(baseCase)
 
 
 @_guess.register(MultinaryFormula)
@@ -50,7 +49,6 @@ def _(formula, baseCase, result, sepMap):
     for c in formula.children:
         _guess(c, baseCase, result, sepMap)
     result[formula] = set(itertools.chain.from_iterable([result[c] for c in formula.children]))
-    # result[formula] = set(baseCase)
 
 
 @_guess.register(Implies)
@@ -58,7 +56,6 @@ def _(formula, baseCase, result, sepMap):
     _guess(formula.left, baseCase, result, sepMap)
     _guess(formula.right, baseCase, result, sepMap)
     result[formula] = result[formula.left] | result[formula.right]
-    # result[formula] = set(baseCase)
 
 
 @_guess.register(UnaryTemporalFormula)
@@ -67,10 +64,8 @@ def _(formula, baseCase, result, sepMap):
 
     p = result[formula.child]
     sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
-    # sepMap[formula] = baseCase
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
-    # result[formula] = set(baseCase)
     _addConstOrd(sepMap[formula], genVar, const)
     _addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.gtime, formula.ltime, const)
@@ -83,10 +78,8 @@ def _(formula, baseCase, result, sepMap):
 
     p = result[formula.left] | result[formula.right]
     sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
-    # sepMap[formula] = baseCase
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
-    # result[formula] = set(baseCase)
     _addConstOrd(sepMap[formula], genVar, const)
     _addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.gtime, formula.ltime, const)

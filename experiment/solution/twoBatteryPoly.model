@@ -179,6 +179,7 @@ bool c;
 init:
 (and (a = false) (b = false) (c = false) (g1 > 8) (g1 < 9) (d1 >= 0) (d1 < 0.4) (g2 > 7) (g2 < 8) (d2 >= 0) (d2 < 0.4) (startd1 = d1) (startd2 = d2)) ;
 
+
 propositions:
 reachability = g2 < 6 ;
 modeLL = (d1 > 0.3);
@@ -187,10 +188,7 @@ dtwogzero = d2 > 0.2;
 modeDD = (d1 < 0.1);
 
 goal:
-#([] [0.0, 40.0] (d1 > 1 -> <>[0.0, 20.0) reachability)) ;
-#(<> (5.0,30.0] (modeLL -> [][7.5,25) modeLL));
-(<> [0.0, 100.0) (dtwogzero or donegzero));
-#reach (b1 >= 3);
-(<> (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD));
-
-
+([] [0.0, 40.0] (reachability -> <>[0.0, 20.0) (d2 > 0))) ; # true
+((g2 > 0.5) R [0, 40] (b2 = 3)); # true
+(<> [0.0, 100.0) donegzero); # false
+(<> (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD)); # false

@@ -27,17 +27,8 @@ class Z3Solver(SMTSolver):
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
         logger = self.logger
-        '''
-        if logic != "NONE":
-            solver = z3.SolverFor(logic)
-        else:
-            solver = z3.Solver()
-        '''
+        
         solver = z3.Solver()
-
-        # solver.set("timeout", timeout * 1000)
-        # target_z3_simplify = z3.simplify(z3.And(*z3Consts))
-        # solver.add(target_z3_simplify)
 
         logger.start_timer("solving timer")
         solver.add(consts)
@@ -55,13 +46,12 @@ class Z3Solver(SMTSolver):
         else:
             m = None
             result = True if str_result == "unsat" else "Unknown"
-        #result = False
+        
         return result, sizeAst(z3.And(self._cache)), m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-        #self.add_contradict_consts()
         result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
 
@@ -69,9 +59,6 @@ class Z3Solver(SMTSolver):
         self._cache = list()
 
     def result_simplify(self):
-        print("z3 size")
-        print(sizeAst(z3.And(self._cache)))
-        print(z3.simplify(z3.And(self._cache)))
         return z3.simplify(z3.And(self._cache))
 
     def simplify(self, consts):
@@ -177,8 +164,6 @@ class Z3Assignment(Assignment):
         op_dict = {'bool': BoolVal, 'int': IntVal, 'real': RealVal}
         for d in self._z3_model.decls():
             var_type_str = str(d.range()).lower()
-            # bound_index = d.name().find('_')
-            # var_str = d.name()[0:bound_index]
             new_var = op_var_dict[var_type_str](d.name())
             z3_val = self._z3_model[d]
             new_dict[new_var] = op_dict[var_type_str](str(z3_val))
@@ -192,32 +177,7 @@ class Z3Assignment(Assignment):
     def z3eval(self, const):
         if self._z3_model is None:
             raise NotSupportedError("Z3 has no model")
-        # print("z3Obj")
-        # print(z3Obj(const))
-        # print(self._z3_model)
         return self._z3_model.eval(const)
-
-    # def get_assignments(self):
-    #     if self._z3_model is not None:
-    #         substitute_dict = self.solver_model_to_generalized_model()
-    #
-    #         current_mode_var_list = list()
-    #         # find currentMode_i = k
-    #         # i: bound info, k: mode module number
-    #         for d in self._z3_model.decls():
-    #             if "currentMode" in d.name():
-    #                 bound_str = remove_prefix(d.name(), "currentMode_")
-    #                 i = int(bound_str)
-    #                 k = self._z3_model[d].as_long()
-    #                 specific_integral = get_integral(self.integrals_list, i, k)
-    #                 # print(specific_integral)
-    #                 for exp in specific_integral.dynamics.exps:
-    #                     new_exp = substitution(exp, substitute_dict)
-    #                     # print(new_exp)
-    #             # print("%s = %s" % (d.name(), self._z3_model[d]))
-    #         # print(self._z3_model)
-    #         return None
-    #     return None
 
 
 @singledispatch
@@ -264,6 +224,7 @@ def _(dyn: Function):
         new_exp_const = Eq(new_end_var, exp)
         dyn_const_children.append(new_exp_const)
         index += 1
+    
     return And(dyn_const_children)
 
 
@@ -271,6 +232,7 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
+    
     return And([forall.const,
                 substitution_zero2t(forall.const),
                 Implies(Eq(forall.const.left, RealVal('0')),
@@ -469,7 +431,7 @@ def _(const: Integral):
 
 @z3Obj.register(Forall)
 def _(const: Forall):
-    bound_str = const.start_tau.id[3:]
+    bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
     
     if len(get_vars(const.const)) == 0:
         return z3Obj(const.const)
@@ -477,33 +439,23 @@ def _(const: Forall):
     new_forall_const = const.const
     cur_mode = const.current_mode_number
     result = list()
-    #print("forall part")
-    #print(const.const)
     if isinstance(const.const, Bool):
-        #print("direct boolean variable")
         return z3Obj(const.const)
     if get_vars(const.const) is None:
-        #print("zero variables")
         return const.const
     if isinstance(const.const, Not):
-        #print("not type")
         if isinstance(const.const.child, Bool):
-            #print("boolean in not")
             return z3.Not(z3Obj(const.const.child))
+        if isinstance(const.const.child, Not):
+            return z3Obj(const.const.child.child)
         reduced_const = reduce_not(const.const)
         new_const = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
-        #print("ent not part")
-        #print(new_const)
         return new_const
     elif isinstance(const.const, Implies):
         left = reduce_not(Not(const.const.left))
         right = const.const.right
         left_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, left, const.integral))
         right_new = z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, right, const.integral))
-        #print("Implies")
-        #print(left_new)
-        #print(right_new)
-        #print("or combine")
         return z3.Or([left_new, right_new])
     elif isinstance(const.const, And) or isinstance(const.const, Or):
         op_dict = {And: z3.And, Or: z3.Or}
@@ -515,8 +467,6 @@ def _(const: Forall):
                 result.append(z3Obj(c))
             else:
                 result.append(z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
-        #print("const and or or type")
-        #print(result)
         return op_dict[const.const.__class__](result)
     elif not isinstance(const.const, Bool):
         op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
@@ -526,6 +476,4 @@ def _(const: Forall):
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
     new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
-    #print("else part")
-    #print(new_const)
     return z3.And(z3Obj(new_const))

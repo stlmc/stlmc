@@ -164,13 +164,6 @@ class StlMC(Model):
                 bound_applied_const = substitution(const, new_substitute_dict)
                 end_const = substitution(const,new_substitute_dict_t)
 
-                '''
-                self.boolean_abstract[Bool(inv_boolean)] = Forall(integral.current_mode_number,
-                                                                  Real('tau_' + str(bound + 1)),
-                                                                  Real('tau_' + str(bound)),
-                                                                  bound_applied_const, integral)
-                invariant_sub_children.extend([Bool(inv_boolean), bound_applied_const])
-                '''
                 forall_obj = Forall(integral.current_mode_number,
                                              Real('tau_' + str(bound + 1)),
                                              Real('tau_' + str(bound)),
@@ -185,10 +178,7 @@ class StlMC(Model):
             else:
                 invariant_children.append(And([BoolVal("True")]))
             index += 1
-        #if len(invariant_children) > 0:
         return invariant_children
-        #else:
-        #    return [BoolVal("True")]
 
     def make_jump_consts(self, bound):
 

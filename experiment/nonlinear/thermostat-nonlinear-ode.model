@@ -95,7 +95,7 @@ x2T = x2 > 27 ;
 
 goal:
 #<>[0.0, 30.0] x1l21;
-([][0.0, 40.0] x1 > 18);  # True
+([][0.0, 40.0] (x1 = 18));  # True
 #<>[0.0, 30.0] x1 < 23;    # True
 #reach reachability;
 #(<> [0.0, 40.0] (reachability)) ;

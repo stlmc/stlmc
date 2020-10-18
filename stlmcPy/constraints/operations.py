@@ -611,13 +611,7 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
-    '''
-    print("diff")
-    print(alpha)
-    print(exp)
-    print(new_exp)
-    print(diff_aux(new_exp))
-    '''
+    
     return diff_aux(new_exp)
 
 
@@ -631,7 +625,12 @@ def make_diff_mapping(integral: Integral):
             one_var = integral.end_vector[0].id
             bound_start = one_var.find("_") + 1
             bound_end = one_var.rfind("_")
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real('tau_' + one_var[bound_start:bound_end]))
+            cur_bound = one_var[bound_start:bound_end]
+            cur_dur_start = Real("tau_" + cur_bound)
+            if cur_bound == "0":
+                cur_dur_start = RealVal("0")
+            cur_dur_end = Real("tau_" + str(int(cur_bound) + 1))
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
     return new_dict
 
 
@@ -817,7 +816,6 @@ def _(const: Not):
     if isinstance(child, Bool):
         return Bool("not@"+child.id)
     return const
-    # raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
 
 @reduce_not.register(And)
@@ -997,18 +995,6 @@ def make_boolean_abstract_consts(props: dict()):
 @singledispatch
 def infix(const: Constraint):
     return str(const)
-
-'''
-# assumption: no mode variable exists
-@infix.register(Real)
-def _(const: Real):
-    if "tau" in const.id:
-        return const.id
-    index = const.id.find("_")
-    if index == -1:
-        return const.id
-    return const.id[:index]
-'''
 
 @infix.register(Variable)
 def _(const: Variable):

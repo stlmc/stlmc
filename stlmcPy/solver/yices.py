@@ -31,7 +31,7 @@ class YicesSolver(SMTSolver):
 
         cfg = Config()
 
-        # TODO : current logic input is LRA, it should be QF_LRA
+        # TODO : current logic input is LRA, it should be QF_NRA
         if logic != "NONE":
             cfg.default_config_for_logic('QF_NRA')
         else:
@@ -67,7 +67,6 @@ class YicesSolver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
             self._cache.append(yicesObj(all_consts))
-        #self.add_contradict_consts()
         result, size, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
@@ -240,7 +239,6 @@ def make_forall_consts(forall: Forall):
         return make_forall_consts_aux(forall)
 
 
-# return the size of the Z3 constraint
 def sizeAst(node: Terms):
     if node == Terms.NULL_TERM:
         return 0
@@ -437,7 +435,7 @@ def _(const: Integral):
 
 @yicesObj.register(Forall)
 def _(const: Forall):
-    bound_str = const.start_tau.id[3:]
+    bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
 
     if len(get_vars(const.const)) == 0:
         return yicesObj(const.const)
@@ -450,6 +448,8 @@ def _(const: Forall):
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
             return "(not " + yicesObj(const.const.child) +")"
+        if isinstance(const.const.child, Not):
+            return yicesObj(const.const.child.child)
         reduced_const = reduce_not(const.const)
         new_const = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
         return new_const
@@ -463,11 +463,11 @@ def _(const: Forall):
         result = list()
         for c in const.const.children:
             if isinstance(c, Bool):
-                result.append(yicesOjb(c))
+                result.append(yicesObj(c))
             elif get_vars(c) is None:
                 result.append(yicesObj(c))
             else:
-                result.append(yicesObjObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+                result.append(yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
 
         if isinstance(const.const, Or):
             return '(or ' + ' '.join(result) + ')'
