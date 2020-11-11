@@ -119,6 +119,10 @@ class StlMC(Model):
                     cur_flow = new_dynamics.exps[cur_ode]
                     if len(get_vars(cur_flow)) == 0:
                         constant_consts.append(Eq(end_vector[cur_ode], start_vector[cur_ode] + cur_flow * Real("time_" + str(bound))))
+                        if bound == 0:
+                            constant_consts.append(Eq(Real("time_0"), Real("tau_0")))
+                        else:
+                            constant_consts.append(Eq(Real("time_" + str(bound)), (Real("tau_" + str(bound + 1)) - Real("tau_" + str(bound)))))
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(mode_number) + "_" + str(bound))
             #self.boolean_abstract[bool_integral] = integral
@@ -278,6 +282,5 @@ class StlMC(Model):
                 sub_result.append(And(cur))
             result_child.append(Or(sub_result))
 
-        
 
         return And(result_child)

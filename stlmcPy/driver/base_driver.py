@@ -186,10 +186,13 @@ class Runner:
                     boolean_abstract.update(goal_boolean_abstract)
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                     e_time = timer()
+
                     
                     printer.print_normal("> {}".format(config.solver))
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
+
+                    print("Constraint size : " + str(size))
                     e_time2 = timer()
 
                     if not os.path.exists(stl_file_name + ".csv"):

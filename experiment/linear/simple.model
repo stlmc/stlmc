@@ -1,0 +1,45 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
+# const real xxx = 1;
+bool a;
+[-20, 100] x;
+{
+    mode:
+        a = false;
+    inv:
+    flow:
+        d/dt[x] = -0.4;
+    jump:
+        (x <= 19) => 
+          (and (a' = true) (x' = x));
+}
+{
+    mode:
+        a = true;
+    inv:
+    flow:
+        d/dt[x] = 0.4;
+    jump:
+        (x <= 22) =>
+          (and (a' = false) (x' = x));
+}
+
+init:
+(and (not(a)) (x <= 20 + 0.1) (x >= 20 - 0.1));
+
+propositions:
+p = x >= 21;
+q = x < 22;
+
+goal:
+#(<> [0.0, 40.0] p);  # false
+#([] [10, 30] q); # true
+#(([] [10, 30] p) U [0, 15) q); # false
+p U [0, 15) q;
+

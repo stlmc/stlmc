@@ -1,0 +1,14 @@
+(= chi_2_1 (or (and (>= 0 (- 0 30.0)) (<= 0 (- 0 5.0)) chi_1_1) 
+		(or (and (> 0 (- 0 30.0)) (< 0 (- tau_1 5.0)) chi_1_2) 
+		 	(or (and (>= 0 (- tau_1 30.0)) (<= 0 (- tau_1 5.0)) chi_1_3) 
+				(or (and (> 0 (- tau_1 30.0)) (< 0 (- tau_2 5.0)) chi_1_4) 
+					(or (and (>= 0 (- tau_2 30.0)) (<= 0 (- tau_2 5.0)) chi_1_5) 
+						(or (and (> 0 (- tau_2 30.0)) (< 0 (- tau_3 5.0)) chi_1_6) False)))))))
+
+
+(= chi_1_5 (and (or (not (and (> tau_2 (- tau_2 15.0)) (<= tau_2 (- tau_2 0.0)))) not@x2g6_2) 
+		     (and (or (not (and (> tau_2 (- tau_2 15.0)) (< tau_2 (- tau_3 0.0)))) not@x2g6_2) True)))
+(= chi_1_6 (and (or (not (and (> (/ (+ tau_2 tau_3) 2) (- tau_2 15.0)) (< (/ (+ tau_2 tau_3) 2) (- tau_3 0.0)))) not@x2g6_2) True))
+
+
+

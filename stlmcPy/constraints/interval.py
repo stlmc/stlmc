@@ -34,12 +34,20 @@ def intervalConstC(j: Interval, k: Interval, i: Interval):
 
 
 def aux_inInterval(x: Constraint, j: Interval):
-    cl = x >= RealVal(j.left) if j.left_end else x > RealVal(j.left)
-
-    if math.isfinite(j.right):
-        return And([cl, x <= RealVal(j.right) if j.right_end else x < RealVal(j.right)])
+    if isinstance(j.left, float):
+        left = RealVal(str(j.left))
     else:
-        return cl
+        left = j.left
+
+    if isinstance(j.right, float):
+        right = RealVal(str(j.right))
+    else:
+        right = j.right
+    cl = x >= left if j.left_end else x > left
+    if isinstance(j.right, float):
+        if not math.isfinite(j.right):
+            return cl
+    return And([cl, x <= right if j.right_end else x < right])
 
 
 @singledispatch
@@ -91,6 +99,30 @@ def subInterval(i: Interval, j: Interval):
 
     return And(const)
 
+def minusInterval(i: Interval, j: Interval):
+    left_end = False
+    right_end = False
+    if i.left_end and j.left_end:
+        left_end = True
+    if i.right_end and j.right_end:
+        right_end = True
+
+    i_left_val = i.left
+    if isinstance(i.left, float):
+        i_left_val = RealVal(str(i.left))
+    i_right_val = i.right
+    if isinstance(i.right,float):
+        i_right_val = RealVal(str(i.right))
+
+    j_left_val = j.left
+    if isinstance(j.left, float):
+        j_left_val = RealVal(str(j.left))
+    i_right_val = i.right
+    if isinstance(j.right,float):
+        j_right_val = RealVal(str(j.right))
+    left = i_left_val - j_right_val
+    right = i_right_val - j_left_val
+    return Interval(left_end, left, right_end, right)
 
 def intervalConst(j: Interval, k: Interval, i: Interval):
     const = []

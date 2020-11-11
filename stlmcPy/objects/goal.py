@@ -199,24 +199,27 @@ class NewStlGoal(BaseStlGoal):
 
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
-        fs = SEP.fullSeparation(negFormula, sepMap)
+        sub_list = list(partition.keys())
+        consts = list()
 
-        # set enc flags
-        ENC.ENC_TYPES = "new"
+        (var_point, var_interval) = SEP.make_time_list(bound)
+        id_match_dict = dict()
+        for s in range(len(sub_list)):
+            if isinstance(sub_list[s], Bool):
+                id_match_dict[sub_list[s]] = sub_list[s]
+            else:
+                id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
+        
+        for s in range(len(sub_list)):
+            consts.extend(SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
+            consts.extend(ENHANCED_PART.genPartition(sub_list[s], sub_list, bound))
 
-        baseV = ENC.baseEncoding(partition, baseP)
+        str_list = [str(c) for c in sub_list]
+        form_index = str_list.index(str(negFormula))
 
-        (formulaConst, subFormulaMap) = ENC.valuation(fs[0], fs, ENC.Interval(True, 0.0, True, 0.0), baseV)
+        consts.append(Bool("chi_" + str(form_index) + "_1"))
 
-        # partition constraints
-        partition_const_children, self.boolean_abstract = ENHANCED_PART.genPartition(baseP, fs[1], subFormulaMap)
-
-        part_const = And(partition_const_children)
-        total_children = list()
-        total_children.extend(formulaConst)
-        total_children.append(part_const)
-
-        return total_children
+        return consts
 
 
 class ReachGoal(Goal):

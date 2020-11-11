@@ -45,9 +45,9 @@ q = x1 <= 21;
 x1T = x1 > 27 ;
 
 goal:
-#(<> [10.0, 25) reachability); # false
-#((x1 < 23) R [4.0, 8.0] a); # true
-#<> [0.0, 30.0] ((~ a) U [5.0, 15.0] (x1 < 18)); # false
+(<> [10.0, 25) reachability); # false
+((x1 < 23) R [4.0, 8.0] a); # true
+<> [0.0, 30.0] ((~ a) U [5.0, 15.0] (x1 < 18)); # false
 [] [0, 20] ((x1 > 27) -> <> [0, 10) (~ a));
 
 #reach reachability;
