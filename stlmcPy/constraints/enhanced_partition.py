@@ -89,6 +89,8 @@ def _(f: BinaryTemporalFormula, sub_list, k):
 
 def genPartition(subform, subformula_list, bound):
     consts = []
+    tau_abstraction = dict()
+    count = 0
     if isinstance(subform, BinaryTemporalFormula) or isinstance(subform, UnaryTemporalFormula): 
         for k in range(1, bound + 2):
             left_chi = _checkStable(subform, subformula_list, k) 
@@ -113,14 +115,17 @@ def genPartition(subform, subformula_list, bound):
 
                     right_chi.append(Eq(time_k - t, Real("tau_" + str(j))))
 
+                tau_abstraction[Bool("newTau_" + str(count) + "_" + str(k - 1))] = Or(right_chi)
 
                 if k >= (bound + 1):
-                    consts.append(Or(right_chi))
+                    consts.append(Bool("newTau_" + str(count) + "_" + str(k - 1)))
                 else:
-                    right_list.append(Or(right_chi))
+                    right_list.append(Bool("newTau_" + str(count) + "_" + str(k - 1)))
+                count += 1
+
             if k < bound + 1:
                 consts.append(Implies(left_chi, And(right_list)))
-    return consts
+    return consts, tau_abstraction
 
 
 

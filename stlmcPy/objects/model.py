@@ -125,11 +125,11 @@ class StlMC(Model):
                             constant_consts.append(Eq(Real("time_" + str(bound)), (Real("tau_" + str(bound + 1)) - Real("tau_" + str(bound)))))
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(mode_number) + "_" + str(bound))
-            #self.boolean_abstract[bool_integral] = integral
+            self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
             integral_children.append(And(
-                #[bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
-                [integral, *mode_const_bound, *constant_consts]))
+                [bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
+                #[integral, *mode_const_bound, *constant_consts]))
             mode_number += 1
         return integral_children, integral_object_list
 
@@ -166,14 +166,19 @@ class StlMC(Model):
                 inv_boolean = bound_applied_inv_var.id[:key_index + 1] + str(index) + str(
                     bound_applied_inv_var.id[key_index + 1]) + "_" + bound_applied_inv_var.id[-1]
                 bound_applied_const = substitution(const, new_substitute_dict)
-                end_const = substitution(const,new_substitute_dict_t)
+                self.boolean_abstract[Bool(inv_boolean)] = Forall(integral.current_mode_number,
+                                                                  Real('tau_' + str(bound + 1)),
+                                                                  Real('tau_' + str(bound)),
+                                                                  bound_applied_const, integral)
+                #end_const = substitution(const,new_substitute_dict_t)
 
-                forall_obj = Forall(integral.current_mode_number,
-                                             Real('tau_' + str(bound + 1)),
-                                             Real('tau_' + str(bound)),
-                                             bound_applied_const, integral)
-                invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
-                #invariant_sub_children.extend([forall_obj, bound_applied_const])
+                #forall_obj = Forall(integral.current_mode_number,
+                #                             Real('tau_' + str(bound + 1)),
+                #                             Real('tau_' + str(bound)),
+                #                             bound_applied_const, integral)
+                #invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
+                invariant_sub_children.extend([Bool(inv_boolean), bound_applied_const])
+
             if len(inv_prop_dict) > 0:
                 pass
                 #invariant_sub_children.extend(mode_const_bound)
@@ -183,6 +188,7 @@ class StlMC(Model):
                 invariant_children.append(And([BoolVal("True")]))
             index += 1
         return invariant_children
+
 
     def make_jump_consts(self, bound):
 
@@ -281,6 +287,5 @@ class StlMC(Model):
             for cur in sub_chi:
                 sub_result.append(And(cur))
             result_child.append(Or(sub_result))
-
 
         return And(result_child)
