@@ -389,7 +389,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             try:
                 logger.start_timer("hylaa timer")
                 hylaa_result = self.gen_and_run_hylaa_ha(max_literal_set_list, max_bound, mapping_info,
-                                                         new_alpha, tau_guard_list)
+                                                          tau_guard_list)
                 # hylaa_result = True
                 logger.stop_timer("hylaa timer")
                 logger.add_info("hylaa time", logger.get_duration_time("hylaa timer"))
@@ -424,7 +424,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         # TODO: replace -1 to formula size
         return hylaa_result, -1
 
-    def gen_and_run_hylaa_ha(self, s_f_list, max_bound, sigma, alpha, tau_guard_list):
+    def gen_and_run_hylaa_ha(self, s_f_list, max_bound, sigma, tau_guard_list):
         new_s_f_list = list()
         printer = Printer()
         printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
