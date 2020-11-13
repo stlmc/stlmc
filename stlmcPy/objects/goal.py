@@ -20,6 +20,7 @@ class Goal:
             time_const_children.append(chi)
             if k < bound + 1:
                 time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+        time_const_children.append(Eq(Real('tau_' + str(bound + 1)), RealVal(str(time_bound))))
         return time_const_children
 
     @abc.abstractmethod
@@ -209,7 +210,6 @@ class NewStlGoal(BaseStlGoal):
                 id_match_dict[sub_list[s]] = sub_list[s]
             else:
                 id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
-        
         for s in range(len(sub_list)):
             consts.extend(SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
             consts.extend(ENHANCED_PART.genPartition(sub_list[s], sub_list, bound))

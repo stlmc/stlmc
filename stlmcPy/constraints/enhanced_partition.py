@@ -114,27 +114,12 @@ def genPartition(subform, subformula_list, bound):
                     right_chi.append(Eq(time_k - t, Real("tau_" + str(j))))
 
 
-                '''
-
-                right_term = Or(right_chi)
-                if isinstance(subform, GloballyFormula):
-                    right_term = Not(Or(right_chi))
-
-
-                if k >= (bound + 1):
-                    consts.append(right_term)
-                else:
-                    if isinstance(subform, GloballyFormula):
-                        consts.append(left_chi)
-                        consts.append(right_term)
-                    else:
-                        consts.append(Implies(left_chi, right_term))
-                '''
                 if k >= (bound + 1):
                     consts.append(Or(right_chi))
                 else:
                     right_list.append(Or(right_chi))
-            consts.append(Implies(left_chi, And(right_list)))
+            if k < bound + 1:
+                consts.append(Implies(left_chi, And(right_list)))
     return consts
 
 

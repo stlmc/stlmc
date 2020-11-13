@@ -189,6 +189,10 @@ class Runner:
 
                     
                     printer.print_normal("> {}".format(config.solver))
+                    list_const = [model_const, goal_const, boolean_abstract_consts]
+                    for c in list_const:
+                        for child in c.children:
+                            print(child)
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
                                                 model.range_dict, boolean_abstract)
 
