@@ -474,6 +474,6 @@ def _(const: Forall):
         new_forall_child_const = reverse_inequality(op_dict[const.const.__class__](exp, RealVal('0')))
         new_forall_const = make_forall_consts(
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
-    new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
+    new_const = And([Eq(Real("currentMode_" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
     return z3.And(z3Obj(new_const))

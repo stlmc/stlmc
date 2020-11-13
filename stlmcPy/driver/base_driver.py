@@ -65,7 +65,7 @@ class StlConfiguration:
         self._step = 1
         self._solver = "z3"
         self._optimize_flags = list()
-        self._solver_list = ["z3", "dreal", "yices"]
+        self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
@@ -191,6 +191,7 @@ class Runner:
                     printer.print_normal("> {}".format(config.solver))
                     
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+
                                                 model.range_dict, boolean_abstract)
 
                     print("Constraint size : " + str(size))

@@ -51,6 +51,7 @@ class UnsatCoreBuilder(StrategyBuilder):
         c_sat = set()
         c_unsat = set()
         total = dict()
+        
         for c_elem in c:
             vs = get_vars(c_elem)
             flag = True
@@ -84,6 +85,7 @@ class UnsatCoreBuilder(StrategyBuilder):
         max_literal_set_list = list()
         reach_min_bound = 1000000
         is_reach = False
+        
         for i in range(max_bound + 1):
             forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(c, i)
             new_set = set()
@@ -112,7 +114,7 @@ class UnsatCoreBuilder(StrategyBuilder):
             if not optimize:
                 for se in new_set:
                     if isinstance(se, Bool):
-                        if "newTau#" in se.id:
+                        if "newTau" in se.id:
                             s_diff.add(se)
             if is_reach:
                 for se in new_set:
@@ -190,7 +192,7 @@ def unit_split(given_set: set, i: int):
     for c in given_set:
         var_set = get_vars(c)
         for var in var_set:
-            start_index = int(var.id.find("#"))
+            start_index = int(var.id.find("_"))
             s_index = int(var.id.find("_"))
             e_index = int(var.id.rfind("_"))
             bound_index = int(var.id.rfind("_"))
@@ -224,7 +226,7 @@ def unit_split(given_set: set, i: int):
             tau_set.add(c)
             s_diff.add(c)
         elif isinstance(c, Bool):
-            if "newTau#" in c.id and int(c.id[-1]) == i:
+            if "newTau" in c.id and int(c.id[-1]) == i:
                 tau_set.add(c)
                 s_diff.add(c)
 
@@ -254,7 +256,7 @@ def unit_split(given_set: set, i: int):
             e_index = int(var.id.rfind("_"))
             end_index = int(var.id.rfind("_"))
             if not (s_index == e_index or "newIntegral" in var.id or "invAtomicID" in var.id
-                    or "newPropDecl" in var.id or "newTau" in var.id or "reach_goal" in var.id):
+                    or "newPropDecl" in var.id or "newTau" in var.id or "reach_goal" in var.id or "chi" in var.id):
                 bound = int(var.id[start_index + 1:end_index])
                 last_str = var.id[-1]
                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):

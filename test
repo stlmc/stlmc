@@ -1,14 +1,16 @@
-(= chi_2_1 (or (and (>= 0 (- 0 30.0)) (<= 0 (- 0 5.0)) chi_1_1) 
-		(or (and (> 0 (- 0 30.0)) (< 0 (- tau_1 5.0)) chi_1_2) 
-		 	(or (and (>= 0 (- tau_1 30.0)) (<= 0 (- tau_1 5.0)) chi_1_3) 
-				(or (and (> 0 (- tau_1 30.0)) (< 0 (- tau_2 5.0)) chi_1_4) 
-					(or (and (>= 0 (- tau_2 30.0)) (<= 0 (- tau_2 5.0)) chi_1_5) 
-						(or (and (> 0 (- tau_2 30.0)) (< 0 (- tau_3 5.0)) chi_1_6) False)))))))
+(and (and (and (not a_0) (not b_0) (<= x1_0_0 (+ 20 0.1)) (>= x1_0_0 (- 20 0.1)) (<= x2_0_0 (+ 20 3.5)) (>= x2_0_0 (+ 20 3))) 
+	(and (>= x1_0_0 -20.0) (<= x1_0_0 100.0) (>= x1_0_t -20.0) (<= x1_0_t 100.0) (>= x2_0_0 -20.0) (<= x2_0_0 100.0) (>= x2_0_t -20.0) (<= x2_0_t 100.0)) 
+	(or (and newIntegral_0_0 (= a_0 False) (= b_0 False) (= currentMode_0 0) invAtomicID_01_0 (>= x1_0_0 19.5) invAtomicID_02_0 (>= x2_0_0 19.5) 
+		(or (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (<= x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 False) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) 
+			(and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 True) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (<= x2_0_t (/ (+ x1_0_t x2_0_t) 2))) (= a_1 True) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (= a_1 a_0) (= b_1 b_0) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)))) 
+		(and newIntegral_1_0 (= a_0 False) (= b_0 True) (= currentMode_0 1) invAtomicID_11_0 (>= x1_0_0 19.5) invAtomicID_12_0 (<= x2_0_0 21) (or (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 False) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 True) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (<= x2_0_t (/ (+ x1_0_t x2_0_t) 2))) (= a_1 True) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (= a_1 a_0) (= b_1 b_0) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)))) 
+		(and newIntegral_2_0 (= a_0 True) (= b_0 False) (= currentMode_0 2) invAtomicID_21_0 (<= x1_0_0 21) invAtomicID_22_0 (>= x2_0_0 19.5) (or (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 False) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (<= x2_0_t (/ (+ x1_0_t x2_0_t) 2))) (= a_1 False) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (<= x2_0_t (/ (+ x1_0_t x2_0_t) 2))) (= a_1 True) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (= a_1 a_0) (= b_1 b_0) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)))) 
+		(and newIntegral_3_0 (= a_0 True) (= b_0 True) (= currentMode_0 3) invAtomicID_31_0 (<= x1_0_0 21) invAtomicID_32_0 (<= x2_0_0 21) (or (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 False) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (> x1_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5)) (<= x2_0_t (/ (+ x1_0_t x2_0_t) 2))) (= a_1 False) (= b_1 True) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (and (<= x1_0_t (/ (+ x1_0_t x2_0_t) 2)) (> x2_0_t (+ (/ (+ x1_0_t x2_0_t) 2) 0.5))) (= a_1 True) (= b_1 False) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t)) (and (= a_1 a_0) (= b_1 b_0) (= x1_1_0 x1_0_t) (= x2_1_0 x2_0_t))))) 
 
-
-(= chi_1_5 (and (or (not (and (> tau_2 (- tau_2 15.0)) (<= tau_2 (- tau_2 0.0)))) not@x2g6_2) 
-		     (and (or (not (and (> tau_2 (- tau_2 15.0)) (< tau_2 (- tau_3 0.0)))) not@x2g6_2) True)))
-(= chi_1_6 (and (or (not (and (> (/ (+ tau_2 tau_3) 2) (- tau_2 15.0)) (< (/ (+ tau_2 tau_3) 2) (- tau_3 0.0)))) not@x2g6_2) True))
+     (and (>= x1_1_0 -20.0) (<= x1_1_0 100.0) (>= x1_1_t -20.0) (<= x1_1_t 100.0) (>= x2_1_0 -20.0) (<= x2_1_0 100.0) (>= x2_1_t -20.0) (<= x2_1_t 100.0)) 
+	(or (and newIntegral_0_1 (= a_1 False) (= b_1 False) (= currentMode_1 0) invAtomicID_01_1 (>= x1_1_0 19.5) invAtomicID_02_1 (>= x2_1_0 19.5)) 
+	     (and newIntegral_1_1 (= a_1 False) (= b_1 True) (= currentMode_1 1) invAtomicID_11_1 (>= x1_1_0 19.5) invAtomicID_12_1 (<= x2_1_0 21)) 
+		(and newIntegral_2_1 (= a_1 True) (= b_1 False) (= currentMode_1 2) invAtomicID_21_1 (<= x1_1_0 21) invAtomicID_22_1 (>= x2_1_0 19.5)) (and newIntegral_3_1 (= a_1 True) (= b_1 True) (= currentMode_1 3) invAtomicID_31_1 (<= x1_1_0 21) invAtomicID_32_1 (<= x2_1_0 21)))) (and (and (and (implies p_0 (> x2_0_0 (- 24 0))) (implies not@p_0 (<= x2_0_0 (+ 24 0))) (or p_0 not@p_0)) (and (implies p_1 (> x2_1_0 (- 24 0))) (implies not@p_1 (<= x2_1_0 (+ 24 0))) (or p_1 not@p_1))) (>= tau_1 0) (<= tau_1 1) (< tau_1 tau_2) (>= tau_2 0) (<= tau_2 1) (= chi_1_1 (and (or (not (and (>= 0 (- 0 40.0)) (<= 0 (- 0 0.0)))) not@p_0) (and (or (not (and (> 0 (- 0 40.0)) (< 0 (- tau_1 0.0)))) not@p_0) (and (or (not (and (>= 0 (- tau_1 40.0)) (<= 0 (- tau_1 0.0)))) not@p_1) (and (or (not (and (> 0 (- tau_1 40.0)) (< 0 (- tau_2 0.0)))) not@p_1) True))))) (implies (!= not@p_0 not@p_1) (and newTau_0_0 newTau_1_0)) newTau_2_1 newTau_3_1 chi_1_1))
 
 
 
