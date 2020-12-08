@@ -1,3 +1,5 @@
+from stlmcPy.solver.flowstar import FlowStarSolverUnsatCore
+from stlmcPy.solver.spaceex import SpaceExSolverUnsatCore, SpaceExSolverNaive
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 from stlmcPy.solver.dreal import dRealSolver
@@ -20,3 +22,7 @@ class SolverFactory:
             return HylaaSolverReduction()
         elif self.solver_type == 'hylaa-unsat-core':
             return HylaaSolverUnsatCore()
+        elif self.solver_type == 'spaceex':
+            return SpaceExSolverUnsatCore()
+        elif self.solver_type == 'flowstar':
+            return FlowStarSolverUnsatCore()

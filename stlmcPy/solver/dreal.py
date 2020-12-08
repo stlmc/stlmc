@@ -232,7 +232,7 @@ class dRealSolver(SMTSolver):
             model_file.write("(check-sat)\n")
             model_file.write("(exit)\n")
 
-        batcmd = "dReal dreal_model.smt2 --short_sat --delta_heuristic --delta --sat-prep-bool"
+        batcmd = "./dreal/dReal dreal_model.smt2 --short_sat --delta_heuristic --delta --sat-prep-bool"
         p = subprocess.check_output(batcmd, shell = True)
         output = p.decode("utf-8")[:-1]
         

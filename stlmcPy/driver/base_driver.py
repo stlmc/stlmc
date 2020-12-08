@@ -65,13 +65,13 @@ class StlConfiguration:
         self._step = 1
         self._solver = "z3"
         self._optimize_flags = list()
-        self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction"]
+        self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction", "spaceex", "flowstar"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
         self._verbose = False
         self._debug = False
-        self._timebound = 1
+        self._timebound = 60
 
     def parse(self):
         self._args = self.parser.parse_args()

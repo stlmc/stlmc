@@ -18,7 +18,9 @@ class Interval:
             ']' if self.right_end else ')')
 
     def __eq__(self, other):
-        return isinstance(other, Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
+        return isinstance(other,
+                          Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
+
 
 universeInterval = Interval(True, 0.0, False, float('inf'))
 
@@ -192,7 +194,6 @@ class BinaryFormula(Formula, Binary):
         Binary.__init__(self, left, right)
         self._range = False
 
-
     def __repr__(self):
         return Binary.__repr__(self)
 
@@ -328,12 +329,14 @@ class Neg(UnaryExpr):
     def __repr__(self):
         return "(- " + Unary.__repr__(self) + ")"
 
+
 class Sqrt(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
 
     def __repr__(self):
         return "(sqrt (" + Unary.__repr__(self) + "))"
+
 
 class Sin(UnaryExpr):
     def __init__(self, child):
@@ -342,12 +345,14 @@ class Sin(UnaryExpr):
     def __repr__(self):
         return "(sin (" + Unary.__repr__(self) + "))"
 
+
 class Cos(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
 
     def __repr__(self):
         return "(cos (" + Unary.__repr__(self) + "))"
+
 
 class Tan(UnaryExpr):
     def __init__(self, child):
@@ -356,6 +361,7 @@ class Tan(UnaryExpr):
     def __repr__(self):
         return "(tan (" + Unary.__repr__(self) + "))"
 
+
 class Arcsin(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
@@ -363,12 +369,14 @@ class Arcsin(UnaryExpr):
     def __repr__(self):
         return "(arcsin (" + Unary.__repr__(self) + "))"
 
+
 class Arccos(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
 
     def __repr__(self):
         return "(arccos (" + Unary.__repr__(self) + "))"
+
 
 class Arctan(UnaryExpr):
     def __init__(self, child):
@@ -390,6 +398,12 @@ class Dynamics:
     def __init__(self, vars: list, exps: list):
         self.vars = vars
         self.exps = exps
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
     def __repr__(self):
         repr_str = "["
@@ -467,7 +481,6 @@ class Gt(BinaryFormula):
 
     def __hash__(self):
         return hash(str(self))
-
 
 
 class Geq(BinaryFormula):

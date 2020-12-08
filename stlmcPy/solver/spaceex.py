@@ -8,15 +8,11 @@ from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, S
     Unequality
 from sympy.core import relational
 
-from hylaa import symbolic, lputil
-from hylaa.core import Core
-
-from hylaa.settings import HylaaSettings
-from hylaa.stateset import StateSet
-from hylaa.stlmc_core import HylaaRawSolver, HylaaConverter
+from spaceex.core import Spaceex, TestSpaceex
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, infix
 from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
@@ -27,8 +23,117 @@ from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
 
 
+
+class SpaceExConverter(AbstractConverter):
+    def __init__(self):
+        self.var_set = set()
+
+    def convert(self, ha: HybridAutomaton):
+
+        mode_map = dict()
+        # for mode
+        vars = dict()
+        vars_dyn = dict()
+
+        # for dynamics, key: old variable, value: new variable
+        vars_old_new_map = dict()
+
+        # get all variables and specify their types
+        for m in ha.modes:
+            if ha.modes[m].dynamics is not None:
+                for i, v in enumerate(ha.modes[m].dynamics.vars):
+                    newv = remove_index(v)
+                    vars_old_new_map[v] = newv
+                    self.var_set.add(newv)
+                    # do we need do check this?
+                    if isinstance(ha.modes[m].dynamics.exps[i], RealVal):
+                        vars[newv] = "const"
+                    else:
+                        vars[newv] = "any"
+                    vars_dyn[newv] = spaceExinfix(ha.modes[m].dynamics.exps[i])
+
+        var_str = ""
+        for v in vars:
+            var_str += "\t\t<param name=\"{}\" type=\"{}\" local=\"false\" d1=\"1\" d2=\"1\" dynamics=\"any\" />\n".format(
+                v.id, v.type)
+
+        var_str_with_label = var_str
+        for t in ha.trans:
+            var_str_with_label += "\t\t<param name=\"{}\" type=\"label\" local=\"true\" />\n".format(t)
+
+        mode_str = ""
+
+        for i, m in enumerate(ha.modes):
+            mode_map[m] = i
+            loc_str_begin = "<location id=\"{}\" name=\"{}\" x=\"{}\" y=\"100\" width=\"50\" height=\"50\">\n".format(i,
+                                                                                                                      m,
+                                                                                                                      50 * i)
+            inv_str = ""
+            if ha.modes[m].invariant is not None:
+                inv_str = "<invariant>{}</invariant>\n".format(spaceExinfix(ha.modes[m].invariant))
+            f_s = list()
+            flow_str = ""
+            if ha.modes[m].dynamics is not None:
+                for j, v in enumerate(ha.modes[m].dynamics.vars):
+                    e = ha.modes[m].dynamics.exps[j]
+                    e_var_set = get_vars(e)
+                    subst_dict = dict()
+                    for e_var in e_var_set:
+                        e_var_wo_index = remove_index(e_var)
+                        subst_dict[e_var] = e_var_wo_index
+                        self.var_set.add(e_var_wo_index)
+
+                    f_s.append("{}\' == {}".format(vars_old_new_map[v].id, spaceExinfix(substitution(e, subst_dict))))
+                flow_str = "<flow>{}</flow>\n".format("&amp;".join(f_s))
+            loc_str_end = "</location>\n"
+            mode_str += loc_str_begin + inv_str + flow_str + loc_str_end
+
+        trans_str = ""
+        for i, t in enumerate(ha.trans):
+            t_str_begin = "<transition source=\"{}\" target=\"{}\">\n".format(mode_map[ha.trans[t].src.name],
+                                                                              mode_map[ha.trans[t].trg.name])
+            t_label = "<label>{}</label>\n".format(t)
+            t_label_position = "<labelposition x=\"{}\" y=\"200\" width=\"{}\" height=\"{}\"/>\n".format(50 * i, 50, 50)
+            guard_str = ""
+            if ha.trans[t].guard is not None:
+                guard_str = "<guard>{}</guard>\n".format(spaceExinfix(ha.trans[t].guard))
+            reset_str = ""
+            if ha.trans[t].reset is not None:
+                reset_str = "<assignment>{}</assignment>\n".format(spaceExinfixReset(ha.trans[t].reset))
+            t_str_end = "</transition>\n"
+            trans_str += t_str_begin + t_label + guard_str + reset_str + t_label_position + t_str_end
+
+        hybrid_automaton_component = '''<component id=\"{}\">
+        {}{}{}
+        </component>
+        '''.format(ha.name, var_str_with_label, mode_str, trans_str)
+
+        map_str = ""
+        for v_name in vars:
+            map_str += "<map key=\"{}\">{}</map>\n".format(v_name, v_name)
+            # if vars[v_name] == "any":
+            #     map_str += "<map key=\"{}\">{}</map>\n".format(v_name, v_name)
+            # elif vars[v_name] == "const":
+            #     map_str += "<map key=\"{}\">{}</map>\n".format(v_name, vars_dyn[v_name])
+
+        system_component = '''<component id=\"system\">
+        {}
+        <bind component=\"{}\" as=\"{}_system\" x=\"300\" y=\"200\">
+        {}
+        </bind>
+        </component>
+        '''.format(var_str, ha.name, ha.name, map_str)
+
+        return '''<?xml version="1.0" encoding="UTF-8"?>
+<sspaceex xmlns="http://www-verimag.imag.fr/xml-namespaces/sspaceex" version="0.2" math="SpaceEx"> 
+{}
+{}
+</sspaceex>
+        '''.format(hybrid_automaton_component, system_component)
+
+
 # builder class for hylaa
-class HylaaStrategy:
+class SpaceExStrategy:
 
     @abc.abstractmethod
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
@@ -190,7 +295,7 @@ def make_boolean_abstract(abstracted_consts):
     return boolean_abstracted, sub_dict
 
 
-class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
+class SpaceExSolver(OdeSolver, SpaceExStrategy, ABC):
     def __init__(self):
         BaseSolver.__init__(self)
         self.hylaa_core = None
@@ -216,7 +321,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         # heuristic: removing mapping constraint part.
         trans_all_consts = list()
         trans_all_consts.append(all_consts.children[0])
-        if not HylaaSolver().time_optimize:
+        if not SpaceExSolver().time_optimize:
             bef = all_consts.children[1]
             tau_condition_sub = substitution(all_consts.children[1].children[-1], tau_info)
             aft = all_consts.children[1].children[0:-1]
@@ -291,7 +396,8 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             logger.start_timer("max literal timer")
             max_literal_set_list, alpha_delta = self.perform_strategy(alpha, assignment, max_bound,
                                                                       new_abstracted_consts,
-                                                                      c, HylaaSolver().time_optimize, z3_boolean_consts,
+                                                                      c, SpaceExSolver().time_optimize,
+                                                                      z3_boolean_consts,
                                                                       boolean_sub_dict)
             logger.stop_timer("max literal timer")
             logger.add_info("preparing max literal set", logger.get_duration_time("max literal timer"))
@@ -316,60 +422,6 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
 
             max_literal_set_list = remove_mode_clauses
 
-            '''
-            is_reach = False
-            min_bound = 1000000
-            cur_min_bound = 1000000
-            print("new_alpha")
-            print(new_alpha)
-            print(max_literal_set_list)
-
-            remove_mode_clauses = list()
-            for clause_bound in max_literal_set_list:
-                s_diff = set()
-                for elem in clause_bound:
-                    if isinstance(elem, Bool):
-                        if "reach_goal_" in elem.id:
-                            is_reach = True
-                            s_diff.add(elem)
-                            index = elem.id.rfind("_")
-                            cur_min_bound = int(elem.id[index+1:])
-                            if cur_min_bound < min_bound:
-                                min_bound = cur_min_bound
-                    if isinstance(elem, Neq):
-                        s_diff.add(elem)
-                    vs = get_vars(elem)
-                    if len(vs) == 0:
-                        s_diff.add(elem)
-                    for v in vs:
-                        if v in new_alpha:
-                            s_diff.add(elem)
-                clause_bound = clause_bound.difference(s_diff)
-                remove_mode_clauses.append(clause_bound)
-
-            max_literal_set_list = remove_mode_clauses
-
-            remove_reach_clauses = list()
-
-            if is_reach:
-                remove_reach_clauses = list()
-                for clause_bound in max_literal_set_list:
-                    s_diff = set()
-                    for elem in clause_bound:
-                        print("elem : " + str(elem) +", " + str(get_max_bound(elem)))
-
-                        if get_max_bound(elem) > min_bound:
-                            s_diff.add(elem)
-                    clause_bound = clause_bound.difference(s_diff)
-                    print("cur min bound : " + str(min_bound))
-                    print(s_diff)
-                    remove_reach_clauses.append(clause_bound)
-                max_literal_set_list = remove_reach_clauses
-                max_bound = min_bound
-                print("result")
-                print(max_literal_set_list)
-            '''
-
             counter_consts_set = set()
             max_bound = -1
             for s in max_literal_set_list:
@@ -390,7 +442,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             try:
                 logger.start_timer("hylaa timer")
                 hylaa_result = self.run(max_literal_set_list, max_bound, mapping_info,
-                                                         tau_guard_list)
+                                        tau_guard_list)
                 # hylaa_result = True
                 logger.stop_timer("hylaa timer")
                 logger.add_info("hylaa time", logger.get_duration_time("hylaa timer"))
@@ -426,29 +478,8 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         return hylaa_result, -1
 
     def run(self, s_f_list, max_bound, sigma, tau_guard_list):
-        new_s_f_list = list()
-        printer = Printer()
-        printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
-        num_internal = [0 for i in range(max_bound + 1)]
-
-        for s in s_f_list:
-            new_s = set()
-            for c in s:
-                if isinstance(c, Bool):
-                    if "newTau" in c.id:
-                        index = c.id.rfind("_") + 1
-                        num_internal[int(c.id[index:])] = num_internal[int(c.id[index:])] + 1
-                new_s.add(substitution(c, sigma))
-            new_s_f_list.append(new_s)
-
-        sv = get_vars_from_set(new_s_f_list)
-
-        l_v = list()
-        for v in sv:
-            new_v = remove_index(v)
-            if new_v.id not in l_v:
-                l_v.append(new_v.id)
-
+        # printer = Printer()
+        # printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
         s_forall = list()
         s_integral = list()
         s_0 = list()
@@ -466,122 +497,114 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             s_guard.append(s_guard_i)
 
         ha = HybridAutomaton('ha')
+
         l_mode = list()
 
         for i in range(max_bound + 1):
-            l_mode.append(make_mode_property(s_integral[i], s_forall[i], i, max_bound, l_v, ha, sigma))
+            l_mode.append(make_mode_property(s_integral[i], s_forall[i], i, max_bound, ha, sigma))
 
         l_mode.append(ha.new_mode("error"))
 
         for i in range(max_bound + 1):
-            make_transition(s_f_list[i], i, max_bound, l_v, ha, l_mode[i], l_mode[i + 1])
+            make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
 
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
-        # assumption: all boundaries should be number
-        sympy_expr_list = list()
+        v_set = set()
+        for ss in s_tau:
+            for s in ss:
+                v_set.update(get_vars(s))
+        sec = SpaceExConverter()
+        c_model = sec.convert(ha)
 
-        for cc in init_set:
-            # if not isinstance(cc, Lt) or not isinstance(cc, Leq) or \
-            #         not isinstance(cc, Gt) or not isinstance(cc, Geq) or \
-            #         not isinstance(cc, Eq) or not isinstance(cc, Neq):
-            sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
+        init_children = list()
+        for c in init_set:
+            vs = get_vars(c)
+            new_dict = dict()
+            for v in vs:
+                new_dict[v] = remove_index(v)
+            init_children.append(substitution(c, new_dict))
 
-        bound_box_list = list()
-        for i in range(len(l_v)):
-            bound_box_list.append([None, None])
+        for c in v_set:
+            init_children.append(Eq(c, RealVal(0)))
+        # print(infix(And(init_children)))
 
-        for t in l_v:
-            printer.print_debug("tau setting :\n{}".format(l_v))
-            if ("tau" in t) or (HylaaSolver().time_optimize and "timeStep" in t):
-                index = find_index(l_v, Real(t))
-                printer.print_debug("{}, index => {}".format(t, index))
-                bound_box_list[index][0] = Float(0.0)
-                bound_box_list[index][1] = Float(0.0)
+        # net_v_set = set()
+        # for sf in s_f_list:
+        #     for c in sf:
+        #         vs = get_vars(c)
+        #         for v in vs:
+        #             net_v_set.add(remove_index(v))
+        #
+        # print(net_v_set)
+        sp = TestSpaceex()
+        out_var_str = ""
+        for ove_index, ovs in enumerate(sec.var_set):
+            # if first
+            if ove_index == 0:
+                out_var_str = "{}".format(ovs.id)
+            else:
+                out_var_str += ", {}".format(ovs.id)
 
-        printer.print_debug("\n\ninit constraints :")
-        printer.print_debug("* variables : {}".format(l_v))
-        for init_elem in init_set:
-            printer.print_debug("  * {}".format(init_elem))
+        conf_dict = dict()
+        conf_dict["system"] = "\"system\""
+        conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
+        conf_dict["scenario"] = "\"supp\""
+        conf_dict["directions"] = "\"uni32\""
+        conf_dict["sampling-time"] = "0.1"
+        conf_dict["time-horizon"] = "100"
+        conf_dict["iter-max"] = "10"
+        conf_dict["output-variables"] = "\"{}\"".format(out_var_str)
+        conf_dict["output-format"] = "\"TXT\""
+        conf_dict["rel-err"] = "1.0e-12"
+        conf_dict["abs-err"] = "1.0e-13"
 
-        for expr in sympy_expr_list:
-            if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
-                # left is variable
-                if expr.lhs.is_symbol:
-                    var_id = str(expr.lhs)
-                    index = find_index(l_v, Real(var_id))
-                    if bound_box_list[index][0] is None:
-                        bound_box_list[index][0] = expr.rhs
-                    else:
-                        if str(simplify(bound_box_list[index][0] <= expr.rhs)) == "True":
-                            bound_box_list[index][0] = expr.rhs
-                elif expr.rhs.is_symbol:
-                    var_id = str(expr.rhs)
-                    index = find_index(l_v, Real(var_id))
-                    if bound_box_list[index][1] is None:
-                        bound_box_list[index][1] = expr.lhs
-                    else:
-                        if str(simplify(bound_box_list[index][1] <= expr.lhs)) == "True":
-                            bound_box_list[index][1] = expr.lhs
+        conf_string = ""
+        for key in conf_dict:
+            conf_string += "{} = {}\n".format(key, conf_dict[key])
 
-            elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
-                # left is variable
-                if expr.lhs.is_symbol:
-                    var_id = str(expr.lhs)
-                    index = find_index(l_v, Real(var_id))
-                    if bound_box_list[index][1] is None:
-                        bound_box_list[index][1] = expr.rhs
-                    else:
-                        if str(simplify(bound_box_list[index][1] >= expr.rhs)) == "True":
-                            bound_box_list[index][1] = expr.rhs
-                elif expr.rhs.is_symbol:
-                    var_id = str(expr.rhs)
-                    index = find_index(l_v, Real(var_id))
-                    if bound_box_list[index][0] is None:
-                        bound_box_list[index][0] = expr.lhs
-                    else:
-                        if str(simplify(bound_box_list[index][0] >= expr.lhs)) == "True":
-                            bound_box_list[index][0] = expr.lhs
-        new_bound_box_list = list()
-        for e in bound_box_list:
-            printer.print_debug("bound box list test : {}".format(e))
-            bound_box_left = -float("inf")
-            bound_box_right = float("inf")
-            if e[0] is not None:
-                bound_box_left = float(e[0])
-            if e[1] is not None:
-                bound_box_right = float(e[1])
-            new_bound_box_list.append([bound_box_left, bound_box_right])
+        sp.run(c_model, conf_string)
+        # sp.run(infix(And(init_children)),"x1,x2,tau_1,tau_2",c_model)
+        # sp.set_system("system")
+        # sp.set_init_set(infix(And(init_children)))
+        # sp.set_scenario("supp")
+        # sp.set_directions("uni32")
+        # sp.set_sample_time("0.01")
+        # sp.set_time_horizon("10")
+        # sp.set_iter_max("5")
+        # sp.set_output_variables("x1,x2,tau_1,tau_2")
+        # sp.set_output_format("TXT")
+        # sp.set_rel_error("1.0e-12")
+        # sp.set_abs_error("1.0e-12")
+        #
+        # model_string = c_model
+        # print(model_string)
+        # sp.set_output("outout")
+        # sp.set_model(model_string)
+        # sp.run()
+        # sp.clean()
 
-        # add affine variable
-        new_bound_box_list.append([1.0, 1.0])
-        printer.print_debug("* bound : ")
-        printer.print_debug(new_bound_box_list)
+        # if core.is_counterexample:
+        #     self.hylaa_core = core
+        #     return False
+        # else:
+        #     return True
 
-        hc = HylaaConverter(l_v)
-        new_ha = hc.convert(ha)
-
-        hrs = HylaaRawSolver()
-        hrs.run(new_ha, new_bound_box_list)
-        # self.add_log_info(str(ce.counterexample))
-        if hrs.result:
-            # self.hylaa_core = core
+        if sp.result:
             return False
         else:
             return True
 
     def make_assignment(self):
-        if self.hylaa_core is not None:
-            return HylaaAssignment(self.hylaa_core.get_counterexample())
-        return HylaaAssignment(None)
+        pass
 
     def clear(self):
         pass
 
 
-class HylaaSolverNaive(HylaaSolver):
+class SpaceExSolverNaive(SpaceExSolver):
     def __init__(self, optimize=""):
-        super(HylaaSolver, self).__init__()
+        super(SpaceExSolver, self).__init__()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict):
@@ -619,9 +642,9 @@ class HylaaSolverNaive(HylaaSolver):
         return None, alpha_delta
 
 
-class HylaaSolverReduction(HylaaSolver):
+class SpaceExSolverReduction(SpaceExSolver):
     def __init__(self):
-        super(HylaaSolver, self).__init__()
+        super(SpaceExSolver, self).__init__()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict):
@@ -683,9 +706,9 @@ class HylaaSolverReduction(HylaaSolver):
         return s
 
 
-class HylaaSolverUnsatCore(HylaaSolver):
+class SpaceExSolverUnsatCore(SpaceExSolver):
     def __init__(self):
-        super(HylaaSolver, self).__init__()
+        super(SpaceExSolver, self).__init__()
         self.builder = UnsatCoreBuilder()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
@@ -703,12 +726,12 @@ class HylaaSolverUnsatCore(HylaaSolver):
         return self.builder.perform()
 
 
-class HylaaAssignment(Assignment):
-    def __init__(self, hylaa_counterexample):
-        self.hylaa_counterexample = hylaa_counterexample
+class SpaceExAssignment(Assignment):
+    def __init__(self, spaceex_counterexample):
+        self.spaceex_counterexample = spaceex_counterexample
 
     def get_assignments(self):
-        print(self.hylaa_counterexample)
+        print(self.spaceex_counterexample)
 
     def eval(self, const):
         pass
@@ -763,103 +786,13 @@ def revert_by_sigma(clauses: set, sigma: dict):
 
 
 @singledispatch
-def sympy_var(expr: relational):
-    raise NotSupportedError("cannot make box : " + str(expr))
-
-
-@sympy_var.register(Symbol)
-def _(expr: Symbol):
-    return expr
-
-
-@singledispatch
-def sympy_value(expr: relational):
-    raise NotSupportedError("cannot make box : " + str(expr))
-
-
-@sympy_value.register(Float)
-def sympy_value(expr: Float):
-    return expr
-
-
-@singledispatch
-def expr_to_sympy(const: Constraint):
-    raise NotSupportedError("cannot make it canonical : " + str(const))
-
-
-@expr_to_sympy.register(Variable)
-def _(const: Variable):
-    return symbols(const.id)
-
-
-@expr_to_sympy.register(Constant)
-def _(const: Constant):
-    return float(const.value)
-
-
-@expr_to_sympy.register(Add)
-def _(const: Add):
-    return expr_to_sympy(const.left) + expr_to_sympy(const.right)
-
-
-@expr_to_sympy.register(Sub)
-def _(const: Sub):
-    return expr_to_sympy(const.left) - expr_to_sympy(const.right)
-
-
-@expr_to_sympy.register(Mul)
-def _(const: Mul):
-    return expr_to_sympy(const.left) * expr_to_sympy(const.right)
-
-
-@expr_to_sympy.register(Div)
-def _(const: Div):
-    return expr_to_sympy(const.left) / expr_to_sympy(const.right)
-
-
-@expr_to_sympy.register(Pow)
-def _(const: Pow):
-    return expr_to_sympy(const.left) ** expr_to_sympy(const.right)
-
-
-@expr_to_sympy.register(Gt)
-def _(const: Gt):
-    return StrictGreaterThan(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@expr_to_sympy.register(Geq)
-def _(const: Geq):
-    return GreaterThan(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@expr_to_sympy.register(Lt)
-def _(const: Lt):
-    return StrictLessThan(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@expr_to_sympy.register(Leq)
-def _(const: Leq):
-    return LessThan(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@expr_to_sympy.register(Eq)
-def _(const: Eq):
-    return Equality(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@expr_to_sympy.register(Neq)
-def _(const: Neq):
-    return Unequality(expr_to_sympy(const.left), expr_to_sympy(const.right))
-
-
-@singledispatch
 def remove_index(c: Constraint) -> Variable:
     raise NotSupportedError("input should be variable type : " + str(c))
 
 
 @remove_index.register(Variable)
 def _(v: Variable) -> Variable:
-    if "tau" not in v.id:
+    if "tau" not in v.id and "_" in v.id:
         start_index = v.id.find("_")
         var_id = v.id[:start_index]
         return Real(var_id)
@@ -889,8 +822,7 @@ def find_index(input_list: list, v: Variable):
     raise NotFoundElementError(v, "index not found")
 
 
-def make_mode_property(s_integral_i, s_forall_i, i, max_bound, l_v, ha: HybridAutomaton, sigma):
-    printer = Printer()
+def make_mode_property(s_integral_i, s_forall_i, i, max_bound, ha: HybridAutomaton, sigma):
     mode_i = ha.new_mode("mode" + str(i))
     for integral in s_integral_i:
         if integral in sigma:
@@ -917,55 +849,9 @@ def make_mode_property(s_integral_i, s_forall_i, i, max_bound, l_v, ha: HybridAu
     if len(phi_forall_children) > 0:
         mode_i.set_invariant(And(phi_forall_children))
     return mode_i
-    # mode_i = ha.new_mode("mode" + str(i))
-    # l_integral = l_v.copy()
-    #
-    # for integral in s_integral_i:
-    #     index = 0
-    #     for exp in sigma[integral].dynamics.exps:
-    #         try:
-    #             k = find_index(l_v, sigma[integral].dynamics.vars[index])
-    #             l_integral[k] = infix(exp)
-    #             index += 1
-    #         except NotFoundElementError as ne:
-    #             print(ne)
-    #             raise NotSupportedError("element should be found!")
-    #
-    # for j in range(1, i + 1):
-    #     k_j = find_index(l_v, Real("tau_" + str(j)))
-    #     l_integral[k_j] = "0"
-    #
-    # for j in range(i + 1, max_bound + 2):
-    #     k_j = find_index(l_v, Real("tau_" + str(j)))
-    #     l_integral[k_j] = "1"
-    #
-    # if optimize:
-    #     l_integral[-1] = "1"
-    #
-    # printer.print_debug("\n\nmode : {}".format(mode_i.name))
-    # m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
-    # printer.print_debug("\n\n* variables : {} \n* integrals : {}".format(l_v, l_integral))
-    # mode_i.set_dynamics(m_integral)
-    #
-    # phi_forall_children = list()
-    # for c in s_forall_i:
-    #     new_c = substitution(c, sigma)
-    #     vs = get_vars(new_c)
-    #     new_dict = dict()
-    #     for v in vs:
-    #         new_dict[v] = remove_index(v)
-    #     phi_forall_children.append(reduce_not(substitution(new_c, new_dict)))
-    # printer.print_debug("* invariants : {}".format(infix(And(phi_forall_children))))
-    #
-    # if len(phi_forall_children) > 0:
-    #     m_forall, m_forall_rhs = symbolic.make_condition(l_v, infix(And(phi_forall_children)).split('&'), {},
-    #                                                      has_affine_variable=True)
-    #     mode_i.set_invariant(m_forall, m_forall_rhs)
-    #
-    # return mode_i
 
 
-def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p, mode_n):
+def make_transition(s_psi_abs_i, i, max_bound, ha: HybridAutomaton, mode_p, mode_n):
     trans_i = ha.new_transition("trans{}".format(i), mode_p, mode_n)
     s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
     # print ("reset {} ".format(s_reset_i))
@@ -1000,55 +886,6 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         phi_new_reset_children.append(reduce_not(substitution(c, new_dict)))
 
     trans_i.set_reset(And(phi_new_reset_children))
-    # trans_i = ha.new_transition(mode_p, mode_n)
-    # s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
-    #
-    # printer = Printer()
-    # guard_i_children = list(s_guard_i)
-    # tau_i_children = list(s_tau_i)
-    # total_children = list()
-    #
-    # total_children.extend(guard_i_children)
-    # total_children.extend(tau_i_children)
-    #
-    # phi_reset_children = list()
-    # for c in total_children:
-    #     vs = get_vars(c)
-    #     new_dict = dict()
-    #     for v in vs:
-    #         new_dict[v] = remove_index(v)
-    #     phi_reset_children.append(reduce_not(substitution(c, new_dict)))
-    #
-    # printer.print_debug("\n\ntransition : {}".format(trans_i))
-    # printer.print_debug("* variables : {}".format(l_v))
-    # printer.print_debug("* guard condition : ")
-    # for g_cond in infix(And(phi_reset_children)).split('&'):
-    #     printer.print_debug("  * {}".format(g_cond))
-    #
-    # m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
-    #                                                has_affine_variable=True)
-    # trans_i.set_guard(m_guard, m_guard_rhs)
-    #
-    # remove_var_dict = dict()
-    # for c in s_reset_i:
-    #     vs = get_vars(c)
-    #     for v in vs:
-    #         remove_var_dict[v] = remove_index(v)
-    #
-    # l_r = l_v.copy()
-    # for r in s_reset_i:
-    #     k = find_index(l_v, r.left)
-    #     l_r[k] = infix(substitution(r.right, remove_var_dict))
-    #
-    # if "tau" in l_v:
-    #     for j in range(1, max_bound + 1):
-    #         k_t_j = find_index(l_v, Real("tau_" + str(j)))
-    #         l_r[k_t_j] = "tau_" + str(j)
-    #
-    # printer.print_debug("* reset condition : {}".format(l_r))
-    #
-    # reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
-    # trans_i.set_reset(reset_mat)
 
 
 def z3_bool_to_const_bool(z3list):
@@ -1076,120 +913,6 @@ def gen_sigma(s: set, op: str):
         sigma[v] = c
         index += 1
     return sigma
-
-
-# def unit_split(given_set: set, i: int):
-#     forall_set = set()
-#     integral_set = set()
-#     tau_set = set()
-#     guard_set = set()
-#     reset_set = set()
-#     init_set = set()
-#
-#     s_diff = set()
-#
-#     for c in given_set:
-#         if isinstance(c, Not):
-#             s_diff.add(c)
-#
-#     given_set = given_set.difference(s_diff)
-#
-#     for c in given_set:
-#         var_set = get_vars(c)
-#         if len(var_set) == 1:
-#             for var in var_set:
-#                 start_index = int(var.id.find("_"))
-#                 if var.id[start_index:] == "_0_0" and "newTau" not in var.id and "newIntegral" not in var.id and "invAtomicID" not in var.id:
-#                     init_set.add(c)
-#                     s_diff.add(c)
-#                     break
-#
-#     given_set = given_set.difference(s_diff)
-#     s_diff = set()
-#
-#     for c in given_set:
-#         var_set = get_vars(c)
-#         for var in var_set:
-#             start_index = int(var.id.find("#"))
-#             s_index = int(var.id.find("_"))
-#             e_index = int(var.id.rfind("_"))
-#             bound_index = int(var.id.rfind("_"))
-#             if not (s_index == -1) and ((s_index == e_index and "tau" not in var.id)
-#                                         or ("invAtomicID" in var.id) or ("newPropDecl" in var.id)):
-#                 bound = int(var.id[bound_index + 1:])
-#                 if i == bound:
-#                     forall_set.add(c)
-#                     s_diff.add(c)
-#                     break
-#             elif var.id[:start_index] == "newIntegral":
-#                 bound = int(var.id[bound_index + 1:])
-#                 if i == bound:
-#                     integral_set.add(c)
-#                     s_diff.add(c)
-#                     break
-#
-#     given_set = given_set.difference(s_diff)
-#     s_diff = set()
-#
-#     for c in given_set:
-#         var_set = get_vars(c)
-#         max_bound = -1
-#         for var in var_set:
-#             start_index = int(var.id.find("_"))
-#             if var.id[:start_index] == "tau":
-#                 bound = int(var.id[start_index + 1:])
-#                 if max_bound < bound:
-#                     max_bound = bound
-#         if (max_bound == 0 and i == 0) or (max_bound != -1 and max_bound == i + 1):
-#             tau_set.add(c)
-#             s_diff.add(c)
-#         elif isinstance(c, Bool):
-#             if "newTau#" in c.id and int(c.id[-1]) == i:
-#                 tau_set.add(c)
-#                 s_diff.add(c)
-#
-#     given_set = given_set.difference(s_diff)
-#     s_diff = set()
-#
-#     for c in given_set:
-#         if isinstance(c, Eq):
-#             if isinstance(c.left, Variable):
-#                 start_index = int(c.left.id.find("_"))
-#                 end_index = int(c.left.id.rfind("_"))
-#                 if start_index < end_index:
-#                     bound = int(c.left.id[start_index + 1:end_index])
-#                     if c.left.id[end_index + 1:] == "0" and bound == i + 1:
-#                         reset_set.add(c)
-#                         s_diff.add(c)
-#
-#     given_set = given_set.difference(s_diff)
-#     s_diff = set()
-#
-#     for c in given_set:
-#         var_set = get_vars(c)
-#         flag = True
-#         for var in var_set:
-#             start_index = int(var.id.find("_"))
-#             s_index = int(var.id.find("_"))
-#             e_index = int(var.id.rfind("_"))
-#             end_index = int(var.id.rfind("_"))
-#             if not (s_index == e_index or "newIntegral" in var.id or "invAtomicID" in var.id
-#                     or "newPropDecl" in var.id or "newTau" in var.id):
-#                 bound = int(var.id[start_index + 1:end_index])
-#                 last_str = var.id[-1]
-#                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
-#                     flag = False
-#                 if isinstance(c.left, Real):
-#                     if c.left.id[e_index + 1:] == "0":
-#                         flag = False
-#                         break
-#             else:
-#                 flag = False
-#         if flag:
-#             guard_set.add(c)
-#             s_diff.add(c)
-#
-#     return forall_set, integral_set, init_set, tau_set, reset_set, guard_set
 
 
 def gen_net_assignment(mapping: dict, range_dict: dict):
@@ -1321,3 +1044,179 @@ def _(const):
     result = result.union(clause(const.left))
     result = result.union(clause(const.right))
     return result
+
+
+@singledispatch
+def spaceExinfix(const: Constraint):
+    return str(const)
+
+
+@spaceExinfix.register(Variable)
+def _(const: Variable):
+    return const.id
+
+
+@spaceExinfix.register(And)
+def _(const: And):
+    return '&amp;'.join([spaceExinfix(c) for c in const.children])
+
+
+@spaceExinfix.register(Geq)
+def _(const: Geq):
+    return spaceExinfix(const.left) + " &gt;= " + spaceExinfix(const.right)
+
+
+@spaceExinfix.register(Gt)
+def _(const: Geq):
+    return spaceExinfix(const.left) + " &gt; " + spaceExinfix(const.right)
+
+
+@spaceExinfix.register(Leq)
+def _(const: Geq):
+    return spaceExinfix(const.left) + " &lt;= " + spaceExinfix(const.right)
+
+
+@spaceExinfix.register(Lt)
+def _(const: Geq):
+    return spaceExinfix(const.left) + " &lt; " + spaceExinfix(const.right)
+
+
+@spaceExinfix.register(Eq)
+def _(const: Eq):
+    return spaceExinfix(const.left) + " == " + spaceExinfix(const.right)
+
+
+# cannot support this
+@spaceExinfix.register(Neq)
+def _(const: Geq):
+    return spaceExinfix(const.left) + " &gt;= " + spaceExinfix(const.right) + " &amp; " + spaceExinfix(
+        const.left) + " &lt; " + spaceExinfix(
+        const.right)
+
+
+@spaceExinfix.register(Add)
+def _(const: Add):
+    return "(" + spaceExinfix(const.left) + " + " + spaceExinfix(const.right) + ")"
+
+
+@spaceExinfix.register(Sub)
+def _(const: Sub):
+    return "(" + spaceExinfix(const.left) + " - " + spaceExinfix(const.right) + ")"
+
+
+@spaceExinfix.register(Neg)
+def _(const: Neg):
+    return "(-" + spaceExinfix(const.child) + ")"
+
+
+@spaceExinfix.register(Mul)
+def _(const: Mul):
+    return "(" + spaceExinfix(const.left) + " * " + spaceExinfix(const.right) + ")"
+
+
+@spaceExinfix.register(Div)
+def _(const: Div):
+    return "(" + spaceExinfix(const.left) + " / " + spaceExinfix(const.right) + ")"
+
+
+# maybe not supported
+@spaceExinfix.register(Pow)
+def _(const: Pow):
+    return "(" + spaceExinfix(const.left) + " ** " + spaceExinfix(const.right) + ")"
+
+
+@spaceExinfix.register(Forall)
+def _(const: Forall):
+    return spaceExinfix(const.const)
+
+
+### start
+
+
+@singledispatch
+def spaceExinfixReset(const: Constraint):
+    return str(const)
+
+
+@spaceExinfixReset.register(Variable)
+def _(const: Variable):
+    return const.id
+
+
+@spaceExinfixReset.register(And)
+def _(const: And):
+    return '&amp;'.join([spaceExinfixReset(c) for c in const.children])
+
+
+@spaceExinfixReset.register(Geq)
+def _(const: Geq):
+    return spaceExinfixReset(const.left) + " &gt;= " + spaceExinfixReset(const.right)
+
+
+@spaceExinfixReset.register(Gt)
+def _(const: Geq):
+    return spaceExinfixReset(const.left) + " &gt; " + spaceExinfixReset(const.right)
+
+
+@spaceExinfixReset.register(Leq)
+def _(const: Geq):
+    return spaceExinfixReset(const.left) + " &lt;= " + spaceExinfixReset(const.right)
+
+
+@spaceExinfixReset.register(Lt)
+def _(const: Geq):
+    return spaceExinfixReset(const.left) + " &lt; " + spaceExinfixReset(const.right)
+
+
+@spaceExinfixReset.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Real):
+        return "{}\' == {}".format(const.left.id, spaceExinfixReset(const.right))
+    elif isinstance(const.left, Int):
+        return "{}\' == {}".format(const.left.id, spaceExinfixReset(const.right))
+    else:
+        raise NotSupportedError()
+
+
+# cannot support this
+@spaceExinfixReset.register(Neq)
+def _(const: Geq):
+    return spaceExinfixReset(const.left) + " &gt;= " + spaceExinfixReset(const.right) + " &amp; " + spaceExinfixReset(
+        const.left) + " &lt; " + spaceExinfixReset(
+        const.right)
+
+
+@spaceExinfixReset.register(Add)
+def _(const: Add):
+    return "(" + spaceExinfixReset(const.left) + " + " + spaceExinfixReset(const.right) + ")"
+
+
+@spaceExinfixReset.register(Sub)
+def _(const: Sub):
+    return "(" + spaceExinfixReset(const.left) + " - " + spaceExinfixReset(const.right) + ")"
+
+
+@spaceExinfixReset.register(Neg)
+def _(const: Neg):
+    return "(-" + spaceExinfixReset(const.child) + ")"
+
+
+@spaceExinfixReset.register(Mul)
+def _(const: Mul):
+    return "(" + spaceExinfixReset(const.left) + " * " + spaceExinfixReset(const.right) + ")"
+
+
+@spaceExinfixReset.register(Div)
+def _(const: Div):
+    return "(" + spaceExinfixReset(const.left) + " / " + spaceExinfixReset(const.right) + ")"
+
+
+# maybe not supported
+@spaceExinfixReset.register(Pow)
+def _(const: Pow):
+    return "(" + spaceExinfixReset(const.left) + " ** " + spaceExinfixReset(const.right) + ")"
+
+
+@spaceExinfixReset.register(Forall)
+def _(const: Forall):
+    return spaceExinfixReset(const.const)

@@ -8,15 +8,11 @@ from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, S
     Unequality
 from sympy.core import relational
 
-from hylaa import symbolic, lputil
-from hylaa.core import Core
-
-from hylaa.settings import HylaaSettings
-from hylaa.stateset import StateSet
-from hylaa.stlmc_core import HylaaRawSolver, HylaaConverter
+from flowstar.core import FlowStar
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, infix
 from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
@@ -27,8 +23,126 @@ from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
 
 
+class FlowStarConverter(AbstractConverter):
+    def __init__(self, setting: dict, lv: list, init_bound):
+        self.var_set = set()
+        self.setting = setting
+
+        self.var_list_ordering = lv
+        self.init_bound = init_bound
+
+        self.setting["gnuplot octagon"] = "{}, {}".format(lv[0], lv[1])
+
+    def convert(self, ha: HybridAutomaton):
+        mode_map = dict()
+        # for mode
+        vars = dict()
+        vars_dyn = dict()
+
+        # for dynamics, key: old variable, value: new variable
+        vars_old_new_map = dict()
+
+        modes_str_list = list()
+
+        start_mode = ""
+
+        # get all variables and specify their types
+        for mode_index, m in enumerate(ha.modes):
+            if mode_index == 0:
+                start_mode = m
+
+            mode_str = "{}{{\n".format(m)
+            mode_str += "poly ode 1\n{"
+            if ha.modes[m].dynamics is not None:
+                for i, v in enumerate(ha.modes[m].dynamics.vars):
+                    newv = remove_index(v)
+                    vars_old_new_map[v] = newv
+                    self.var_set.add(newv)
+                    # do we need do check this?
+                    if isinstance(ha.modes[m].dynamics.exps[i], RealVal):
+                        vars[newv] = "const"
+                    else:
+                        vars[newv] = "any"
+
+                    e = ha.modes[m].dynamics.exps[i]
+                    e_var_set = get_vars(e)
+                    subst_dict = dict()
+                    for e_var in e_var_set:
+                        e_var_wo_index = remove_index(e_var)
+                        subst_dict[e_var] = e_var_wo_index
+                        self.var_set.add(e_var_wo_index)
+
+                    vars_dyn[newv] = infix(substitution(e, subst_dict))
+                    mode_str += "{}\' = {}\n".format(newv, vars_dyn[newv])
+            mode_str += "}\n"
+
+            mode_str += "inv {\n"
+            if ha.modes[m].invariant is not None:
+                inv = ha.modes[m].invariant
+                if isinstance(inv, And):
+                    for ee in ha.modes[m].invariant.children:
+                        ets = expr_to_sympy(ee)
+                        mode_str += "{}\n".format(expr_to_sympy_inequality(ee))
+                else:
+                    mode_str += "{}\n".format(expr_to_sympy_inequality(inv))
+
+                # for inv in whole_inv_str.split("&"):
+                #     mode_str += "{}\n".format(str(simplify(expr_to_sympy(inv))))
+            mode_str += "}\n"
+            mode_str += "}"
+            modes_str_list.append(mode_str)
+
+        modes_str = "modes {{\n {}\n}}\n".format("\n".join(modes_str_list))
+
+        var_str = "state var "
+        for i, v in enumerate(self.var_set):
+            if i == len(self.var_set) - 1:
+                var_str += v.id
+            else:
+                var_str += v.id + ", "
+
+        setting_child_str = ""
+        for k in self.setting:
+            setting_child_str += "{} {}\n".format(k, self.setting[k])
+        setting_str = "setting {{\n {} print on \n}}\n".format(setting_child_str)
+
+        trans_str_list = list()
+        for i, t in enumerate(ha.trans):
+            t_str = "{} -> {}\n".format(ha.trans[t].src.name, ha.trans[t].trg.name)
+            guard = ha.trans[t].guard
+            if guard is not None:
+                t_str += "guard {\n"
+                if isinstance(guard, And):
+                    for g in guard.children:
+                        t_str += "{}\n".format(expr_to_sympy_inequality(g))
+                else:
+                    t_str += "{}\n".format(expr_to_sympy_inequality(guard))
+                # whole_g_str = infix(ha.trans[t].guard)
+                # for g_str in whole_g_str.split("&"):
+                #     t_str += "{}\n".format(g_str)
+                t_str += "}\n"
+
+            if ha.trans[t].reset is not None:
+                t_str += "reset {\n"
+                whole_r_str = flowStarinfixReset(ha.trans[t].reset)
+                for r_str in whole_r_str.split("&"):
+                    t_str += "{}\n".format(r_str)
+                t_str += "}\n"
+            t_str += "parallelotope aggregation { }\n"
+            trans_str_list.append(t_str)
+
+        trans_str = "jumps {{\n {} \n }}\n".format("\n".join(trans_str_list))
+
+        init_str = "init {{\n {}{{".format(start_mode)
+        for iv, v in enumerate(self.var_list_ordering):
+            init_str += "{} in [{}, {}]\n".format(v, self.init_bound[iv][0], self.init_bound[iv][1])
+        init_str += "}\n}\n"
+
+        return "hybrid reachability {{\n {}\n {}\n {}\n {}\n {}\n}}\n unsafe {{\n error {{}}\n }}\n".format(var_str, setting_str, modes_str, trans_str, init_str)
+
+
 # builder class for hylaa
-class HylaaStrategy:
+class FlowStarStrategy:
 
     @abc.abstractmethod
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
@@ -190,7 +304,7 @@ def make_boolean_abstract(abstracted_consts):
     return boolean_abstracted, sub_dict
 
 
-class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
+class FlowStarSolver(OdeSolver, FlowStarStrategy, ABC):
     def __init__(self):
         BaseSolver.__init__(self)
         self.hylaa_core = None
@@ -216,7 +330,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         # heuristic: removing mapping constraint part.
         trans_all_consts = list()
         trans_all_consts.append(all_consts.children[0])
-        if not HylaaSolver().time_optimize:
+        if not FlowStarSolver().time_optimize:
             bef = all_consts.children[1]
             tau_condition_sub = substitution(all_consts.children[1].children[-1], tau_info)
             aft = all_consts.children[1].children[0:-1]
@@ -291,7 +405,8 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             logger.start_timer("max literal timer")
             max_literal_set_list, alpha_delta = self.perform_strategy(alpha, assignment, max_bound,
                                                                       new_abstracted_consts,
-                                                                      c, HylaaSolver().time_optimize, z3_boolean_consts,
+                                                                      c, FlowStarSolver().time_optimize,
+                                                                      z3_boolean_consts,
                                                                       boolean_sub_dict)
             logger.stop_timer("max literal timer")
             logger.add_info("preparing max literal set", logger.get_duration_time("max literal timer"))
@@ -316,60 +431,6 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
 
             max_literal_set_list = remove_mode_clauses
 
-            '''
-            is_reach = False
-            min_bound = 1000000
-            cur_min_bound = 1000000
-            print("new_alpha")
-            print(new_alpha)
-            print(max_literal_set_list)
-
-            remove_mode_clauses = list()
-            for clause_bound in max_literal_set_list:
-                s_diff = set()
-                for elem in clause_bound:
-                    if isinstance(elem, Bool):
-                        if "reach_goal_" in elem.id:
-                            is_reach = True
-                            s_diff.add(elem)
-                            index = elem.id.rfind("_")
-                            cur_min_bound = int(elem.id[index+1:])
-                            if cur_min_bound < min_bound:
-                                min_bound = cur_min_bound
-                    if isinstance(elem, Neq):
-                        s_diff.add(elem)
-                    vs = get_vars(elem)
-                    if len(vs) == 0:
-                        s_diff.add(elem)
-                    for v in vs:
-                        if v in new_alpha:
-                            s_diff.add(elem)
-                clause_bound = clause_bound.difference(s_diff)
-                remove_mode_clauses.append(clause_bound)
-
-            max_literal_set_list = remove_mode_clauses
-
-            remove_reach_clauses = list()
-
-            if is_reach:
-                remove_reach_clauses = list()
-                for clause_bound in max_literal_set_list:
-                    s_diff = set()
-                    for elem in clause_bound:
-                        print("elem : " + str(elem) +", " + str(get_max_bound(elem)))
-
-                        if get_max_bound(elem) > min_bound:
-                            s_diff.add(elem)
-                    clause_bound = clause_bound.difference(s_diff)
-                    print("cur min bound : " + str(min_bound))
-                    print(s_diff)
-                    remove_reach_clauses.append(clause_bound)
-                max_literal_set_list = remove_reach_clauses
-                max_bound = min_bound
-                print("result")
-                print(max_literal_set_list)
-            '''
-
             counter_consts_set = set()
             max_bound = -1
             for s in max_literal_set_list:
@@ -390,7 +451,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             try:
                 logger.start_timer("hylaa timer")
                 hylaa_result = self.run(max_literal_set_list, max_bound, mapping_info,
-                                                         tau_guard_list)
+                                        tau_guard_list)
                 # hylaa_result = True
                 logger.stop_timer("hylaa timer")
                 logger.add_info("hylaa time", logger.get_duration_time("hylaa timer"))
@@ -474,7 +535,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
         l_mode.append(ha.new_mode("error"))
 
         for i in range(max_bound + 1):
-            make_transition(s_f_list[i], i, max_bound, l_v, ha, l_mode[i], l_mode[i + 1])
+            make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
 
         forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
@@ -493,7 +554,7 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
 
         for t in l_v:
             printer.print_debug("tau setting :\n{}".format(l_v))
-            if ("tau" in t) or (HylaaSolver().time_optimize and "timeStep" in t):
+            if ("tau" in t) or ("timeStep" in t):
                 index = find_index(l_v, Real(t))
                 printer.print_debug("{}, index => {}".format(t, index))
                 bound_box_list[index][0] = Float(0.0)
@@ -554,34 +615,46 @@ class HylaaSolver(OdeSolver, HylaaStrategy, ABC):
             new_bound_box_list.append([bound_box_left, bound_box_right])
 
         # add affine variable
-        new_bound_box_list.append([1.0, 1.0])
         printer.print_debug("* bound : ")
         printer.print_debug(new_bound_box_list)
 
-        hc = HylaaConverter(l_v)
-        new_ha = hc.convert(ha)
+        # mode = ha.modes['mode0']
+        # print(l_v)
+        # print(new_bound_box_list)
 
-        hrs = HylaaRawSolver()
-        hrs.run(new_ha, new_bound_box_list)
-        # self.add_log_info(str(ce.counterexample))
-        if hrs.result:
-            # self.hylaa_core = core
+        conf_dict = dict()
+        conf_dict["fixed steps"] = "0.1"
+        # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
+        conf_dict["time"] = "100"
+        conf_dict["remainder estimation"] = "1e-2"
+        conf_dict["identity precondition"] = ""
+        conf_dict["gnuplot octagon"] = ""
+        conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
+        conf_dict["cutoff"] = "1e-12"
+        conf_dict["precision"] = "53"
+        conf_dict["output"] = "stlmcflowstar"
+        conf_dict["max jumps"] = "10"
+
+        fs = FlowStarConverter(conf_dict, l_v, new_bound_box_list)
+        model_string = fs.convert(ha)
+        flowStarRaw = FlowStar()
+        flowStarRaw.run(model_string)
+
+        if flowStarRaw.result:
             return False
         else:
             return True
 
     def make_assignment(self):
-        if self.hylaa_core is not None:
-            return HylaaAssignment(self.hylaa_core.get_counterexample())
-        return HylaaAssignment(None)
+        pass
 
     def clear(self):
         pass
 
 
-class HylaaSolverNaive(HylaaSolver):
+class FlowStarSolverNaive(FlowStarSolver):
     def __init__(self, optimize=""):
-        super(HylaaSolver, self).__init__()
+        super(FlowStarSolver, self).__init__()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict):
@@ -619,9 +692,9 @@ class HylaaSolverNaive(HylaaSolver):
         return None, alpha_delta
 
 
-class HylaaSolverReduction(HylaaSolver):
+class FlowStarSolverReduction(FlowStarSolver):
     def __init__(self):
-        super(HylaaSolver, self).__init__()
+        super(FlowStarSolver, self).__init__()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict):
@@ -683,9 +756,9 @@ class HylaaSolverReduction(HylaaSolver):
         return s
 
 
-class HylaaSolverUnsatCore(HylaaSolver):
+class FlowStarSolverUnsatCore(FlowStarSolver):
     def __init__(self):
-        super(HylaaSolver, self).__init__()
+        super(FlowStarSolver, self).__init__()
         self.builder = UnsatCoreBuilder()
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
@@ -703,7 +776,7 @@ class HylaaSolverUnsatCore(HylaaSolver):
         return self.builder.perform()
 
 
-class HylaaAssignment(Assignment):
+class FlowStarAssignment(Assignment):
     def __init__(self, hylaa_counterexample):
         self.hylaa_counterexample = hylaa_counterexample
 
@@ -784,7 +857,7 @@ def sympy_value(expr: Float):
 
 @singledispatch
 def expr_to_sympy(const: Constraint):
-    raise NotSupportedError("cannot make it canonical : " + str(const))
+    raise NotSupportedError("cannot make it canonical : {} of type {}".format(const, type(const)))
 
 
 @expr_to_sympy.register(Variable)
@@ -852,6 +925,11 @@ def _(const: Neq):
     return Unequality(expr_to_sympy(const.left), expr_to_sympy(const.right))
 
 
+@expr_to_sympy.register(Forall)
+def _(const: Forall):
+    return expr_to_sympy(const.const)
+
+
 @singledispatch
 def remove_index(c: Constraint) -> Variable:
     raise NotSupportedError("input should be variable type : " + str(c))
@@ -859,7 +937,7 @@ def remove_index(c: Constraint) -> Variable:
 
 @remove_index.register(Variable)
 def _(v: Variable) -> Variable:
-    if "tau" not in v.id:
+    if "tau" not in v.id and "_" in v.id:
         start_index = v.id.find("_")
         var_id = v.id[:start_index]
         return Real(var_id)
@@ -892,6 +970,7 @@ def find_index(input_list: list, v: Variable):
 def make_mode_property(s_integral_i, s_forall_i, i, max_bound, l_v, ha: HybridAutomaton, sigma):
     printer = Printer()
     mode_i = ha.new_mode("mode" + str(i))
+
     for integral in s_integral_i:
         if integral in sigma:
             dyns = sigma[integral].dynamics
@@ -917,55 +996,9 @@ def make_mode_property(s_integral_i, s_forall_i, i, max_bound, l_v, ha: HybridAu
     if len(phi_forall_children) > 0:
         mode_i.set_invariant(And(phi_forall_children))
     return mode_i
-    # mode_i = ha.new_mode("mode" + str(i))
-    # l_integral = l_v.copy()
-    #
-    # for integral in s_integral_i:
-    #     index = 0
-    #     for exp in sigma[integral].dynamics.exps:
-    #         try:
-    #             k = find_index(l_v, sigma[integral].dynamics.vars[index])
-    #             l_integral[k] = infix(exp)
-    #             index += 1
-    #         except NotFoundElementError as ne:
-    #             print(ne)
-    #             raise NotSupportedError("element should be found!")
-    #
-    # for j in range(1, i + 1):
-    #     k_j = find_index(l_v, Real("tau_" + str(j)))
-    #     l_integral[k_j] = "0"
-    #
-    # for j in range(i + 1, max_bound + 2):
-    #     k_j = find_index(l_v, Real("tau_" + str(j)))
-    #     l_integral[k_j] = "1"
-    #
-    # if optimize:
-    #     l_integral[-1] = "1"
-    #
-    # printer.print_debug("\n\nmode : {}".format(mode_i.name))
-    # m_integral = symbolic.make_dynamics_mat(l_v, l_integral, {}, has_affine_variable=True)
-    # printer.print_debug("\n\n* variables : {} \n* integrals : {}".format(l_v, l_integral))
-    # mode_i.set_dynamics(m_integral)
-    #
-    # phi_forall_children = list()
-    # for c in s_forall_i:
-    #     new_c = substitution(c, sigma)
-    #     vs = get_vars(new_c)
-    #     new_dict = dict()
-    #     for v in vs:
-    #         new_dict[v] = remove_index(v)
-    #     phi_forall_children.append(reduce_not(substitution(new_c, new_dict)))
-    # printer.print_debug("* invariants : {}".format(infix(And(phi_forall_children))))
-    #
-    # if len(phi_forall_children) > 0:
-    #     m_forall, m_forall_rhs = symbolic.make_condition(l_v, infix(And(phi_forall_children)).split('&'), {},
-    #                                                      has_affine_variable=True)
-    #     mode_i.set_invariant(m_forall, m_forall_rhs)
-    #
-    # return mode_i
 
 
-def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p, mode_n):
+def make_transition(s_psi_abs_i, i, max_bound, ha: HybridAutomaton, mode_p, mode_n):
     trans_i = ha.new_transition("trans{}".format(i), mode_p, mode_n)
     s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
     # print ("reset {} ".format(s_reset_i))
@@ -988,8 +1021,8 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
 
     trans_i.set_guard(And(phi_new_guard_children))
 
-    if "error" in mode_n.name:
-        mode_n.set_invariant(And(phi_new_guard_children))
+    # if "error" in mode_n.name:
+    #     mode_n.set_invariant(And(phi_new_guard_children))
 
     phi_new_reset_children = list()
     for c in s_reset_i:
@@ -1000,55 +1033,6 @@ def make_transition(s_psi_abs_i, i, max_bound, l_v, ha: HybridAutomaton, mode_p,
         phi_new_reset_children.append(reduce_not(substitution(c, new_dict)))
 
     trans_i.set_reset(And(phi_new_reset_children))
-    # trans_i = ha.new_transition(mode_p, mode_n)
-    # s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
-    #
-    # printer = Printer()
-    # guard_i_children = list(s_guard_i)
-    # tau_i_children = list(s_tau_i)
-    # total_children = list()
-    #
-    # total_children.extend(guard_i_children)
-    # total_children.extend(tau_i_children)
-    #
-    # phi_reset_children = list()
-    # for c in total_children:
-    #     vs = get_vars(c)
-    #     new_dict = dict()
-    #     for v in vs:
-    #         new_dict[v] = remove_index(v)
-    #     phi_reset_children.append(reduce_not(substitution(c, new_dict)))
-    #
-    # printer.print_debug("\n\ntransition : {}".format(trans_i))
-    # printer.print_debug("* variables : {}".format(l_v))
-    # printer.print_debug("* guard condition : ")
-    # for g_cond in infix(And(phi_reset_children)).split('&'):
-    #     printer.print_debug("  * {}".format(g_cond))
-    #
-    # m_guard, m_guard_rhs = symbolic.make_condition(l_v, infix(And(phi_reset_children)).split('&'), {},
-    #                                                has_affine_variable=True)
-    # trans_i.set_guard(m_guard, m_guard_rhs)
-    #
-    # remove_var_dict = dict()
-    # for c in s_reset_i:
-    #     vs = get_vars(c)
-    #     for v in vs:
-    #         remove_var_dict[v] = remove_index(v)
-    #
-    # l_r = l_v.copy()
-    # for r in s_reset_i:
-    #     k = find_index(l_v, r.left)
-    #     l_r[k] = infix(substitution(r.right, remove_var_dict))
-    #
-    # if "tau" in l_v:
-    #     for j in range(1, max_bound + 1):
-    #         k_t_j = find_index(l_v, Real("tau_" + str(j)))
-    #         l_r[k_t_j] = "tau_" + str(j)
-    #
-    # printer.print_debug("* reset condition : {}".format(l_r))
-    #
-    # reset_mat = symbolic.make_reset_mat(l_v, l_r, {}, has_affine_variable=True)
-    # trans_i.set_reset(reset_mat)
 
 
 def z3_bool_to_const_bool(z3list):
@@ -1321,3 +1305,178 @@ def _(const):
     result = result.union(clause(const.left))
     result = result.union(clause(const.right))
     return result
+
+
+### start
+
+
+@singledispatch
+def flowStarinfixReset(const: Constraint):
+    return str(const)
+
+
+@flowStarinfixReset.register(Variable)
+def _(const: Variable):
+    return const.id
+
+
+@flowStarinfixReset.register(And)
+def _(const: And):
+    return '&'.join([flowStarinfixReset(c) for c in const.children])
+
+
+@flowStarinfixReset.register(Geq)
+def _(const: Geq):
+    return flowStarinfixReset(const.left) + " >= " + flowStarinfixReset(const.right)
+
+
+@flowStarinfixReset.register(Gt)
+def _(const: Gt):
+    return flowStarinfixReset(const.left) + " >= " + flowStarinfixReset(const.right)
+
+
+@flowStarinfixReset.register(Leq)
+def _(const: Leq):
+    return flowStarinfixReset(const.left) + " <= " + flowStarinfixReset(const.right)
+
+
+@flowStarinfixReset.register(Lt)
+def _(const: Geq):
+    return flowStarinfixReset(const.left) + " <= " + flowStarinfixReset(const.right)
+
+
+@flowStarinfixReset.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Real):
+        return "{}\' := {}".format(const.left.id, flowStarinfixReset(const.right))
+    elif isinstance(const.left, Int):
+        return "{}\' := {}".format(const.left.id, flowStarinfixReset(const.right))
+    else:
+        raise NotSupportedError()
+
+
+# cannot support this
+@flowStarinfixReset.register(Neq)
+def _(const: Geq):
+    return flowStarinfixReset(const.left) + " >= " + flowStarinfixReset(const.right) + " & " + flowStarinfixReset(
+        const.left) + " <= " + flowStarinfixReset(
+        const.right)
+
+
+@flowStarinfixReset.register(Add)
+def _(const: Add):
+    return "(" + flowStarinfixReset(const.left) + " + " + flowStarinfixReset(const.right) + ")"
+
+
+@flowStarinfixReset.register(Sub)
+def _(const: Sub):
+    return "(" + flowStarinfixReset(const.left) + " - " + flowStarinfixReset(const.right) + ")"
+
+
+@flowStarinfixReset.register(Neg)
+def _(const: Neg):
+    return "(-" + flowStarinfixReset(const.child) + ")"
+
+
+@flowStarinfixReset.register(Mul)
+def _(const: Mul):
+    return "(" + flowStarinfixReset(const.left) + " * " + flowStarinfixReset(const.right) + ")"
+
+
+@flowStarinfixReset.register(Div)
+def _(const: Div):
+    return "(" + flowStarinfixReset(const.left) + " / " + flowStarinfixReset(const.right) + ")"
+
+
+# maybe not supported
+@flowStarinfixReset.register(Pow)
+def _(const: Pow):
+    return "(" + flowStarinfixReset(const.left) + " ** " + flowStarinfixReset(const.right) + ")"
+
+
+@flowStarinfixReset.register(Forall)
+def _(const: Forall):
+    return flowStarinfixReset(const.const)
+
+
+
+### start
+
+
+@singledispatch
+def expr_to_sympy_inequality(const: Constraint):
+    raise NotSupportedError("cannot make it canonical : {} of type {}".format(const, type(const)))
+
+
+@expr_to_sympy_inequality.register(Variable)
+def _(const: Variable):
+    return symbols(const.id)
+
+
+@expr_to_sympy_inequality.register(Constant)
+def _(const: Constant):
+    return float(const.value)
+
+
+@expr_to_sympy_inequality.register(Add)
+def _(const: Add):
+    return expr_to_sympy_inequality(const.left) + expr_to_sympy_inequality(const.right)
+
+
+@expr_to_sympy_inequality.register(Sub)
+def _(const: Sub):
+    return expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)
+
+
+@expr_to_sympy_inequality.register(Mul)
+def _(const: Mul):
+    return expr_to_sympy_inequality(const.left) * expr_to_sympy_inequality(const.right)
+
+
+@expr_to_sympy_inequality.register(Div)
+def _(const: Div):
+    return expr_to_sympy_inequality(const.left) / expr_to_sympy_inequality(const.right)
+
+
+@expr_to_sympy_inequality.register(Pow)
+def _(const: Pow):
+    return expr_to_sympy_inequality(const.left) ** expr_to_sympy_inequality(const.right)
+
+
+@expr_to_sympy_inequality.register(Gt)
+def _(const: Gt):
+    # should be StrictGreaterThan
+    # but for flowstar we use greater than
+    return GreaterThan(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Geq)
+def _(const: Geq):
+    return GreaterThan(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Lt)
+def _(const: Lt):
+    # should be StrictLessThan
+    # but for flowstar we use greater than
+    return LessThan(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Leq)
+def _(const: Leq):
+    return LessThan(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Eq)
+def _(const: Eq):
+    return Equality(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Neq)
+def _(const: Neq):
+    return Unequality(simplify(expr_to_sympy_inequality(const.left) - expr_to_sympy_inequality(const.right)), 0)
+
+
+@expr_to_sympy_inequality.register(Forall)
+def _(const: Forall):
+    return expr_to_sympy_inequality(const.const)
