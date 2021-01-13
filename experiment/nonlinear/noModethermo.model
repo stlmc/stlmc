@@ -1,8 +1,12 @@
+real sign;
+real bound;
+real cof;
 bool a;
 [-20, 100] x;
 {
     mode:
-        a = false;
+	bound < 40;
+	bound > 5;
     inv:
         x > 10;
     flow:
@@ -26,11 +30,11 @@ init:
 (and (a = false) (x <= 20 + 0.1) (x >= 20 - 0.1));
 
 propositions:
+xlt28 = x <= 28;
 xg27 = x > 27 ;
 
 goal:
-#reach x >= 26;
-#[] [0, 100] x <= 28;
-#(x > 20 R [2, 5] x < 17);
+reach x >= 26;
+[] [0, 100] xlt28;
 <> [0.0, 30.0] ((~ a) U [5.0, 15.0] (x < 18));
 

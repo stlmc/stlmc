@@ -98,7 +98,7 @@ class dRealSolver(SMTSolver):
         # continuous variables declaration
         for i in var_range_dict:
             (left_strict, lower, upper, right_strict) = var_range_dict[i]
-            range_str = left_strict + str(lower) + ", " + str(upper) + right_strict
+            range_str = "[" + str(lower) + ", " + str(upper) + "]"
             if "tau_" in i:
                 if i[i.find("_")+1:] == "1":
                     time_range = "(declare-fun time_0 () Real " + range_str + ")"
@@ -110,11 +110,12 @@ class dRealSolver(SMTSolver):
                 sub_result = "(declare-fun " + i + " () Real "
                 sub_result = sub_result + range_str + ")"
                 declare_list.append(sub_result)
-                for j in range(max_bound+1):
+                for j in range(max_bound+2):
                     sub_result = "(declare-fun " + i + "_" + str(j) + "_0 () Real " + range_str + ")"
                     declare_list.append(sub_result)
                     sub_result = "(declare-fun " + i + "_" + str(j) + "_t () Real " + range_str + ")"
-                    declare_list.append(sub_result)
+                    if j < max_bound + 1:
+                        declare_list.append(sub_result)
 
         # discrete variables declaration
         for i in discrete_vars:
@@ -322,8 +323,8 @@ def _(const: Variable):
 
 @drealObj.register(Geq)
 def _(const):
-    if const._range:
-        return "true"
+    #if const._range:
+    #    return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(>= ' + x + ' ' + y + ')'
@@ -331,8 +332,8 @@ def _(const):
 
 @drealObj.register(Gt)
 def _(const):
-    if const._range:
-        return "true"
+    #if const._range:
+    #    return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(> ' + x + ' ' + y + ')'
@@ -341,8 +342,8 @@ def _(const):
 
 @drealObj.register(Leq)
 def _(const):
-    if const._range:
-        return "true"
+    #if const._range:
+    #    return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(<= ' + x + ' ' + y + ')'
@@ -351,8 +352,8 @@ def _(const):
 
 @drealObj.register(Lt)
 def _(const):
-    if const._range:
-        return "true"
+    #if const._range:
+    #    return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(< ' + x + ' ' + y + ')'
@@ -537,6 +538,7 @@ def _(const: Forall):
 def get_bound(const):
     var_set = get_vars(const)
     cur = var_set.pop()
+    
     if cur.id.find("_") == cur.id.rfind("_"):
         return cur.id[cur.id.find("_")+1:]
     else:

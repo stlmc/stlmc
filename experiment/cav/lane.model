@@ -1,0 +1,179 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
+# const real xxx = 1;
+bool a;
+[-20, 100] x1;
+bool b;
+[-20, 100] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+	sx + 10 < 0; 
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+	d/dt[ax] = - 0.01 * sx - 0.103 + 0.84 - 0.3 * vx - 0.5 * ax;
+	d/dt[w] = -2 * w;
+	d/dt[vy] = -2 * vy;
+	d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+	sy < 12;
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
+        d/dt[w] = 3 - 0.15 * w = 0.2 - 0.01 * sy;
+        d/dt[vy] = 7.5 - 0.45 * w + 0.5 - 0.0025 * sy - 0.05 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+	vy > 0.05;
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
+        d/dt[w] = -0.1*w + 0.2 - 0.01 * sy;
+        d/dt[vy] = -0.25 * w + 0.5 - 0.025 * sy - 0.05 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) ((x2 > ((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+	vy + 0.05 < 0;
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
+        d/dt[w] = -0.1*w + 0.2 - 0.01 * sy;
+        d/dt[vy] = -0.25 * w + 0.5 - 0.025 * sy - 0.05 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) ((x2 > ((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        sy > 3.5;
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
+        d/dt[w] = 3 - 0.15 * w = 0.2 - 0.01 * sy;
+        d/dt[vy] = 7.5 - 0.45 * w + 0.5 - 0.0025 * sy - 0.05 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        sx < 10 ;
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = - 0.01 * sx - 0.103 + 0.84 - 0.3 * vx - 0.5 * ax;
+        d/dt[w] = -2 * w;
+        d/dt[vy] = -2 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+    flow:
+        d/dt[vx] = 0.1 * ax;
+        d/dt[sc] = vx - 2.5;
+        d/dt[ax] = - 0.5 * vx + 1.4 - 0.5 * ax;
+        d/dt[w] = -2 * w;
+        d/dt[vy] = -2 * vy;
+        d/dt[sy] = 0.1 *vy;
+    jump:
+        (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+}
+init:
+(and (not(a)) not(b) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 3.5) (x2 >= 20 + 3));
+
+propositions:
+reachability = x1 >= 21;
+p = x2 > 24 ;
+q = x1 < 22;
+r = x1 < 20;
+s = x2 > 19;
+
+goal:
+(<> [0.0, 40.0] p);  # false
+([] [10, 30] q); # true
+([] [0, 10] ((~ a) U [0, 15) r)); # false
+(<> (5, 30) (s R [0, 30] b)); # true
+

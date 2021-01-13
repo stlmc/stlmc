@@ -1,0 +1,32 @@
+# model description:
+#
+
+bool a;
+[0, 10] x;
+[0, 10] y;
+{
+    mode:
+        a = false;
+    inv:
+    flow:
+        d/dt[x] = 1 - 2.5 * x + x * x * y;
+        d/dt[y] = 1.5 * x - x * x * y;
+    jump:
+}
+init:
+(and (x >= 2) (x <= 3) (y >= 1) (y <= 1.5)); 
+
+propositions:
+#reachability = x1 >= 26;
+#q = x1 <= 21;
+#x1T = x1 > 27 ;
+
+goal:
+(<> [0.0, 10) v >= 0.7); # false
+#((x1 < 23) R [4.0, 8.0] a); # true
+#<> [0.0, 30.0] ((~ a) U [5.0, 15.0] (x1 < 18)); # false
+#[] [0, 20] ((x1 > 27) -> <> [0, 10) (~ a));
+
+#reach reachability;
+#<> [0.0, 50.0] x1T;
+

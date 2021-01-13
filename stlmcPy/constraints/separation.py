@@ -10,7 +10,7 @@ def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
         if "chi_" in c:
             if int(c[c.find("_")+1:]) > max:
                 max = int(c[c.find("_")+1:])
-
+    
     if not isinstance(subFormula, Bool):
         for i in range(len(var_point)):
             result.append(Eq(Bool("chi_" + str(index) + "_" + str(i+1)), _separation(subFormula, i+1, var_point, var_interval, id_match_dict)))
@@ -28,7 +28,7 @@ def make_time_list(bound):
             var_interval.append(Interval(True, RealVal("0"), True, RealVal("0")))
             point = Real("tau_" + str(i + 1))
             var_point.append(point / RealVal("2"))
-            var_interval.append(Interval(False, RealVal("0"), False, point))
+            var_interval.append(Interval(True, RealVal("0"), False, point))
             var_point.append(point)
             var_interval.append(Interval(True, point, True, point))
         else:
@@ -36,10 +36,12 @@ def make_time_list(bound):
             end =  Real("tau_" + str(i+1))
             var_point.append((start + end) / RealVal("2"))
             var_point.append(end)
-            var_interval.append(Interval(False, start, False, end))
+            var_interval.append(Interval(True, start, False, end))
             var_interval.append(Interval(True, end, True, end))
+
     var_point.append((Real("tau_" + str(bound)) + Real("tau_" + str(bound+1))) / RealVal("2"))
     var_interval.append(Interval(False, Real("tau_" + str(bound)), False,  Real("tau_" + str(bound+1))))
+
 
     return var_point, var_interval
 
@@ -52,10 +54,10 @@ def _separation(f: Formula, i, v, j, idDict):
 
 @_separation.register(Bool)
 def _(f: Bool, i, v, j, idDict):
-    if (i % 2) == 0:
-        str_id = f.id + "_" + str(int(i/2)- 1)
-    else:
-        str_id = f.id + "_" + str(int((i - 1) / 2))
+#    if (i % 2) == 0:
+#        str_id = f.id + "_" + str(int(i/2)- 1)
+#    else:
+#        str_id = f.id + "_" + str(int((i - 1) / 2))
     return Bool(str_id)
 
 @_separation.register(Constant)
@@ -64,6 +66,9 @@ def _(f: Constant, i, v, j, idDict):
 
 @_separation.register(Not)
 def _(f: Not, i, v, j, idDict):
+    if not "chi" in idDict[f.child].id:
+        str_id = idDict[f.child].id + "_" + str(i-1)
+        return Bool(str_id)
     return Not(Bool(idDict[f.child].id + "_" + str(i)))
 
 @_separation.register(Multinary)
@@ -106,11 +111,11 @@ def _(f: UntilFormula, i, k, v, j, idDict):
     if "chi" in idDict[f.left].id:
         left_ind = k
     else:
-        left_ind = int((k-1) / 2) 
+        left_ind = k - 1 
     if "chi" in idDict[f.right].id:
         right_ind = k
     else:
-        right_ind = int((k-1) / 2) 
+        right_ind = k-1 
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
     return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)])])
@@ -124,11 +129,11 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
     if "chi" in idDict[f.left].id:
         left_ind = k
     else:
-        left_ind = int((k-1) / 2) 
+        left_ind = k-1 
     if "chi" in idDict[f.right].id:
         right_ind = k
     else:
-        right_ind = int((k-1) / 2) 
+        right_ind = k-1 
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
     return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)])])
@@ -143,7 +148,7 @@ def _(f: FinallyFormula, i, k, v, j, idDict):
     if "chi" in idDict[f.child].id:
         ind = k
     else:
-        ind = int((k-1) / 2)
+        ind = k-1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
     return Or([And(and_chi), _trans(f, i, k + 1, v, j, idDict)])
 
@@ -156,7 +161,7 @@ def _(f: GloballyFormula, i, k, v, j, idDict):
     if "chi" in idDict[f.child].id:
         ind = k
     else:
-        ind = int((k-1) / 2)
+        ind = k-1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
     return And([Or(and_chi), _trans(f, i, k + 1, v, j, idDict)])
 

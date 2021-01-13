@@ -6,7 +6,7 @@
 # It is also affected by each other's room
 # temperature.
 
- const real xxx = 1;
+# const real xxx = 1;
 bool a;
 [-20, 100] x1;
 bool b;
@@ -16,11 +16,13 @@ bool b;
         a = false;
         b = false ;
     inv:
-        x1 >= 19.5;
-        (x2 >= 19.5);
+        vx <= 0;
+	vy <= 0;
     flow:
-        d/dt[x1] = xxx;
-        d/dt[x2] = -0.6;
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+	d/dt[vx] = -1.2 * vx + 0.1 * vy - 0.1;
+	d/dt[vy] = 0.1 * vx - 1.2 * vy + 1.2;
     jump:
         (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= (((x1 + x2) / 2) + 0.5))) =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
@@ -34,11 +36,13 @@ bool b;
         a = false;
         b = true;
     inv:
-        x1 >= 19.5;
-        (x2 <= 21);
+	x >= 1;
+	vy <= 0;
     flow:
-        d/dt[x1] = -0.4;
-        d/dt[x2] = 1;
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = -1.2 * vx + 0.1 * vy - 4.8;
+        d/dt[vy] = 0.1 * vx - 1.2 * vy + 0.4;
     jump:
         (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 > (((x1 + x2) / 2) + 0.5))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
@@ -53,11 +57,13 @@ bool b;
         a = true;
         b = false;
     inv:
-        x1 <= 21;
-        (x2 >= 19.5);
+        vx <= 0;;
+        y >= 1;
     flow:
-        d/dt[x1] = 0.7;
-        d/dt[x2] = -0.6;
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = -1.2 * vx + 0.1 * vy + 2.4;
+        d/dt[vy] = 0.1 * vx - 1.2 * vy - 0.2;
     jump:
         (and (x1 > (((x1 + x2) / 2) + 0.5)) ((x2 > ((x1 + x2) / 2) + 0.5))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
@@ -72,11 +78,13 @@ bool b;
         a = true;
         b = true;
     inv:
-        x1 <= 21;
-        (x2 <= 21);
+	x >= 1;
+	y >= 1;
     flow:
-        d/dt[x1] = 0.7;
-        d/dt[x2] = 1;
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = -1.2 * vx + 0.1 * vy + 3.9;
+        d/dt[vy] = 0.1 * vx - 1.2 * vy - 3.9;
     jump:
         (and (x1 > (((x1 + x2) / 2) + 0.5)) ((x2 > ((x1 + x2) / 2) + 0.5))) =>
           (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
@@ -99,9 +107,8 @@ r = x1 < 20;
 s = x2 > 19;
 
 goal:
-#(<> [0.0, 40.0] p);  # false
-#([] [10, 30] q); # true
-#([] [0, 10] ((~ a) U [0, 15) r)); # false
-#(<> (5, 30) (s R [0, 30] b)); # true
-[] (5, 30) (s U [0, 30] b);
+(<> [0.0, 40.0] p);  # false
+([] [10, 30] q); # true
+([] [0, 10] ((~ a) U [0, 15) r)); # false
+(<> (5, 30) (s R [0, 30] b)); # true
 

@@ -53,6 +53,7 @@ class YicesSolver(SMTSolver):
 
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
+            print(m.to_string(100,100,100))
             result = False
         else:
             m = None
@@ -435,7 +436,7 @@ def _(const: Integral):
 
 @yicesObj.register(Forall)
 def _(const: Forall):
-    bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
+    bound_str = str(int(const.end_tau.id[4:]) - 1)
 
     if len(get_vars(const.const)) == 0:
         return yicesObj(const.const)

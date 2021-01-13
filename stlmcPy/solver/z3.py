@@ -19,10 +19,10 @@ class Z3Solver(SMTSolver):
         self._z3_model = None
         self._cache = list()
         self._logic_list = ["LRA", "NRA"]
-        self._logic = "LRA"
+        self._logic = "NRA"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'LRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
 
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
@@ -42,6 +42,7 @@ class Z3Solver(SMTSolver):
         str_result = str(result)
         if str_result == "sat":
             m = solver.model()
+            #print(m)
             result = False
         else:
             m = None
@@ -431,7 +432,7 @@ def _(const: Integral):
 
 @z3Obj.register(Forall)
 def _(const: Forall):
-    bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
+    bound_str = str(int(const.end_tau.id[4:]) - 1) 
     
     if len(get_vars(const.const)) == 0:
         return z3Obj(const.const)

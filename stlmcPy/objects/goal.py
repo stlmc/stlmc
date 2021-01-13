@@ -12,7 +12,7 @@ class Goal:
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
         for k in range(1, bound + 2):
-            chi = Geq(Real('tau_' + str(k)), RealVal('0'))
+            chi = Gt(Real('tau_' + str(k)), RealVal('0'))
             chi._range = True
             time_const_children.append(chi)
             chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
@@ -37,11 +37,12 @@ class Goal:
 
 
 class PropHelper:
-    def __init__(self, goal: Goal, model, proposition_dict):
+    def __init__(self, goal: Goal, model, proposition_dict, bound):
         self.goal = goal
         self.model = model
         self.proposition_dict = proposition_dict
         self.boolean_abstract = dict()
+        self.bound = bound
 
     def make_integrals(self, bound):
         mode_number = 0
@@ -61,62 +62,74 @@ class PropHelper:
             mode_number += 1
         return integrals
 
-    def make_consts(self, bound, delta):
+    def make_consts(self, delta):
         result_children = list()
-        # don't do anything when there is nothing to do.
         if len(self.proposition_dict) == 0:
-            return result_children
+            pass
+        for bound in range(0, self.bound + 2):
+        # don't do anything when there is nothing to do.
+            goal_vars = get_vars(self.goal.get_formula())
 
-        goal_vars = get_vars(self.goal.get_formula())
-
-        integrals = self.make_integrals(bound)
-        substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict, "_0")
-        dynamics_list = list()
-        sub_integrals_list = list()
-        for chi in integrals:
-            new_dynamics = make_new_dynamics(chi.dynamics, bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict)
-            sub_integrals_list.append(Integral(chi.current_mode_number, chi.end_vector, chi.start_vector, new_dynamics))
-            
-
-
-
-        new_substitute_dict = substitute_dict.copy()
-        for prop_var in self.proposition_dict:
-            new_substitute_dict[prop_var] = Bool(prop_var.id + "_" + str(bound))
-
-        for goal_var in goal_vars:
-            if goal_var in self.proposition_dict:
-                index = 0
-                integral = integrals[index]
-                const = self.proposition_dict[goal_var]
-                bound_applied_goal_var = substitution(goal_var, new_substitute_dict)
-
-                bound_applied_const = substitution(const, new_substitute_dict)
-
-                relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
-
-                not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
-
-                not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
-
-                # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
-                fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
-                init_const_1 = Implies(bound_applied_goal_var, relaxed_bound_const)
-                init_const_2 = Implies(not_bound_applied_goal_var, not_relaxed_bound_const)
-                init_point_check = And([init_const_1, init_const_2, fair_const_2])
-                pos_forall_list = list()
-                neg_forall_list = list()
+            integrals = self.make_integrals(bound)
+            substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict, "_0")
+            dynamics_list = list()
+            sub_integrals_list = list()
+            for chi in integrals:
+                new_dynamics = make_new_dynamics(chi.dynamics, bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict)
+                sub_integrals_list.append(Integral(chi.current_mode_number, chi.end_vector, chi.start_vector, new_dynamics))
                 
-                start_tau = Real('tau_' + str(bound))
-                if str(bound) == "0":
-                    start_tau = RealVal("0")
-                for chi in range(len(sub_integrals_list)):
-                    pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const, sub_integrals_list[chi]))
-                    neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const, sub_integrals_list[chi]))
-                self.boolean_abstract[bound_applied_goal_var] = Or(pos_forall_list)
-                self.boolean_abstract[not_bound_applied_goal_var] = Or(neg_forall_list)
+            new_substitute_dict_point = substitute_dict.copy()
+            new_substitute_dict_interval = substitute_dict.copy()
+            for prop_var in self.proposition_dict:
+                new_substitute_dict_point[prop_var] = Bool(prop_var.id + "_" + str(2 * bound))
+                new_substitute_dict_interval[prop_var] = Bool(prop_var.id + "_" + str(2 * bound + 1))
 
-                result_children.append(init_point_check)
+
+
+            for goal_var in goal_vars:
+                if goal_var in self.proposition_dict:
+                    index = 0
+                    integral = integrals[index]
+                    const = self.proposition_dict[goal_var]
+                    bound_applied_goal_var = substitution(goal_var, new_substitute_dict_point)
+                    bound_applied_goal_interval = substitution(goal_var, new_substitute_dict_interval)
+
+                    bound_applied_const = substitution(const, new_substitute_dict_point)
+                    
+                    if isinstance(bound_applied_const, Eq):
+                        if isinstance(bound_applied_const.left, Bool) or isinstance(bound_applied_const.right, Bool):
+                            sub =list()
+                            sub.append(Eq(Bool("not@" + bound_applied_goal_var.id), Neq(bound_applied_const.left, bound_applied_const.right)))
+                            sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
+                            return sub
+
+                    relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+
+                    not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+
+                    not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
+                    not_bound_applied_goal_interval = Bool("not@" + bound_applied_goal_interval.id)
+
+                    # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
+                    fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
+                    init_const_1 = Eq(bound_applied_goal_var, relaxed_bound_const)
+                    init_const_2 = Eq(not_bound_applied_goal_var, not_relaxed_bound_const)
+                    init_point_check = And([init_const_1, init_const_2, fair_const_2])
+                    pos_forall_list = list()
+                    neg_forall_list = list()
+                    
+                    start_tau = Real('tau_' + str(bound))
+                    if str(bound) == "0":
+                        start_tau = RealVal("0")
+                    if bound < self.bound + 1:
+                        for chi in range(len(sub_integrals_list)):
+                            pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const, sub_integrals_list[chi]))
+                            neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const, sub_integrals_list[chi]))
+                        self.boolean_abstract[bound_applied_goal_interval] = Or(pos_forall_list)
+                        self.boolean_abstract[not_bound_applied_goal_interval] = Or(neg_forall_list)
+
+                    result_children.append(init_point_check)
+
         return result_children
 
 
@@ -138,14 +151,16 @@ class BaseStlGoal(Goal):
 
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
         # generate mapping constraint between model and goal
-        propHelper = PropHelper(self, model, proposition_dict)
+        propHelper = PropHelper(self, model, proposition_dict, bound)
 
         result_const = list()
-        prop_const = list()
+        prop_const = propHelper.make_consts(delta)
 
+        '''
         for k in range(bound + 1):
             mapping_consts = propHelper.make_consts(k, delta)
             prop_const.extend(mapping_consts)
+        '''
         result_const.append(And(prop_const))
 
         stl_consts_list = self.make_stl_consts(bound)
@@ -195,8 +210,6 @@ class NewStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
-        print("formula ")
-        print(negFormula)
 
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
@@ -210,6 +223,7 @@ class NewStlGoal(BaseStlGoal):
                 id_match_dict[sub_list[s]] = sub_list[s]
             else:
                 id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
+        
         for s in range(len(sub_list)):
             consts.extend(SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
             constraints, self.boolean_abstract = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
@@ -233,8 +247,8 @@ class ReachGoal(Goal):
         return self.formula
 
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
-        if len(proposition_dict) == 0:
-            return BoolVal("True"), dict()
+        #if len(proposition_dict) == 0:
+        #    return BoolVal("True"), dict()
 
         result = list()
         # return to original const
@@ -242,7 +256,7 @@ class ReachGoal(Goal):
         sub_result = list()
 
         # make goal speciific dictionary and substitute it
-        for cur_bound in range(bound, bound+1):
+        for cur_bound in range(0, bound+1):
             goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
             goal_consts = substitution(decoded_consts, goal_dict)
             #cur_bool = Bool("reach_goal_" + str(cur_bound))

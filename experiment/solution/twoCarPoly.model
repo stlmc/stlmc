@@ -9,12 +9,11 @@
 # 01: accelerate
 # 10: deaccelerate
 
-bool a;
-bool b;
-[0, 100] x1;
-[0, 100] x2;
-[0, 100] y1;
-[0, 100] y2;
+real v;
+real a;
+[-1000, 1000] x;
+[-1000, 1000] y;
+[-90, 90] theta;
 {
     mode:
         a = false;
@@ -31,8 +30,9 @@ bool b;
 
 	# v1(t) = 2 * t;
 	# v2(t) = t ** 2 / 2 + t - 1;
+	x(t) = 
 
-	# theta(t) = 0.2 * t;
+	theta(t) = vlow * 6.4 * t;
 
 
     jump: 

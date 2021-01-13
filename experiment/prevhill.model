@@ -1,0 +1,73 @@
+# Hill Climbing Car
+# 
+
+const real variance = 0.5;
+
+bool isfail;
+int a;
+real slope0;
+real slope1;
+
+[0, 1000000] v;
+[0, 1000] dl;
+[0, 5] tl;
+
+# [-0.05, 0.05] tolerance;
+
+# state
+# 1: flat
+# 2: uphill
+# 3: downhill
+# 4: fall
+
+
+{
+    # uphill
+    mode:
+        isfail = false;
+        slope0 > 0;
+    inv:
+        tl >= 0;
+        dl >= 0;
+        a <= -19 * slope0 + 30;
+    flow:
+        v(t) = a * t + v(0);
+        # d/dt[dl] = (-1) * v * (1 - slope0 * slope0 / 2);
+        dl(t) = -(t * t) +dl(0);
+        # d/dt[tl] = -1;
+        tl(t) = -t + tl(0);
+    jump:
+        (tl <= 0) =>
+         (and (isfail' = isfail) (a' = 15) (v' = v) (dl' = dl) (tl' = 5) (slope0' = slope0) (slope1' = slope1));
+        (dl <= 0) =>
+         (and (isfail' = isfail) (a' = a) (v' = v) (dl' = 1000) (tl' = tl) (slope0' = slope1) (and (slope1' < slope1 + variance) (slope1' > slope1 - variance) (slope1' < 1.0) (slope1' > -1.0)));
+
+        (a > -19 * slope0 + 30) =>
+         (and (isfail' = true) (a' = a) (v' = v) (dl' = dl) (tl' = tl) (slope0' = slope0) (slope1' = slope1));
+}
+
+{
+    # fall
+    mode:
+        isfail = true;
+    inv:
+    flow:
+        v(t) = a * t + v(0);
+        # d/dt[dl] = (-1) * v * (1 - slope0 * slope0 / 2);
+        dl(t) = -v + dl(0);
+        # d/dt[tl] = -1;
+        tl(t) = -t + tl(0);
+    jump:
+}
+
+init:
+(and (isfail = false) (v = 0) (a = 10) (dl = 1000) (tl = 5) (slope0 = 0.1) (slope1 = 0.1));
+
+propositions:
+stable = (isfail = false);
+# slopecondition = (slope0 <= 0.1);
+# slopecondition2 = (slope1 > -0.05);
+
+goal:
+(<> [0, 100] isfail);
+# ([] [0, 10] (and slopecondition slopecondition2);

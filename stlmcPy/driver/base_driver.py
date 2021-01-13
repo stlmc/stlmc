@@ -3,6 +3,7 @@ import argparse
 import os
 
 from stlmcPy.constraints.constraints import And
+from stlmcPy.objects.goal import ReachGoal
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.objects.object_factory import ObjectFactory
@@ -71,7 +72,7 @@ class StlConfiguration:
         self._gen_ce = False
         self._verbose = False
         self._debug = False
-        self._timebound = 1
+        self._timebound = 60
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -178,7 +179,7 @@ class Runner:
 
                     model_const = model.make_consts(bound)
                     s_time = timer()
-                    
+
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
                     
                     boolean_abstract = dict()
@@ -187,14 +188,16 @@ class Runner:
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                     e_time = timer()
 
-                    
                     printer.print_normal("> {}".format(config.solver))
                     
+                    #result, size = solver.solve(And([model_const]), 
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
 
                                                 model.range_dict, boolean_abstract)
+                    
+                    if isinstance(goal, ReachGoal):
+                        result = not result
 
-                    print("Constraint size : " + str(size))
                     e_time2 = timer()
 
                     if not os.path.exists(stl_file_name + ".csv"):

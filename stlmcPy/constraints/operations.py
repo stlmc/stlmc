@@ -584,8 +584,10 @@ def _(const: Lt, delta):
 
 @relaxing.register(Eq)
 def _(const: Eq, delta):
-    return And([Gt(const.left, Sub(const.right, Div(delta, RealVal('2')))),
-                Lt(const.left, Add(const.right, Div(delta, RealVal('2'))))])
+    if isinstance(const.left, Bool) or isinstance(const.right, Bool):
+        return const
+    return And([Geq(const.left, Sub(const.right, Div(delta, RealVal('2')))),
+                Leq(const.left, Add(const.right, Div(delta, RealVal('2'))))])
 
 
 @relaxing.register(Neq)
@@ -813,6 +815,8 @@ def _(const: Not):
         return UntilFormula(child.local_time, child.global_time,
                             reduce_not(Not(child.left)),
                             reduce_not(Not(child.right)))
+    if isinstance(child, Not):
+        return child.child
     if isinstance(child, Bool):
         return Bool("not@"+child.id)
     return const
