@@ -50,7 +50,6 @@ class ObjectFactory:
 
     def generate_object_manager(self):
         if self._formula_encoding == "model-with-goal":
-            print("enter")
             return OldObjectManager()
         elif self._formula_encoding == "only-goal-stl":
             return OldStlObjectManager()

@@ -1,4 +1,5 @@
 import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
+import stlmcPy.constraints.enhanced_separation as ENHANCED_SEP
 import stlmcPy.constraints.separation as SEP
 import stlmcPy.constraints.partition as PART
 from stlmcPy.constraints.constraints import *
@@ -216,7 +217,7 @@ class NewStlGoal(BaseStlGoal):
         sub_list = list(partition.keys())
         consts = list()
 
-        (var_point, var_interval) = SEP.make_time_list(bound)
+        (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
         id_match_dict = dict()
         for s in range(len(sub_list)):
             if isinstance(sub_list[s], Bool):
@@ -225,10 +226,9 @@ class NewStlGoal(BaseStlGoal):
                 id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
         
         for s in range(len(sub_list)):
-            consts.extend(SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
+            consts.extend(ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
             constraints, self.boolean_abstract = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
             consts.extend(constraints)
-
 
         str_list = [str(c) for c in sub_list]
         form_index = str_list.index(str(negFormula))

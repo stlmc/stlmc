@@ -52,8 +52,10 @@ class YicesSolver(SMTSolver):
         str_result = str(result)
 
         if result == Status.SAT:
+            '''
             m = Model.from_context(ctx, 1)
             print(m.to_string(100,100,100))
+            '''
             result = False
         else:
             m = None

@@ -179,7 +179,6 @@ class Runner:
 
                     model_const = model.make_consts(bound)
                     s_time = timer()
-
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
                     
                     boolean_abstract = dict()
