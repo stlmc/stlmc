@@ -20,10 +20,10 @@ class YicesSolver(SMTSolver):
         self._yices_model = None
         self._cache = list()
         self._logic_list = ["QF_LRA", "QF_NRA"]
-        self._logic = "QF_NRA"
+        self._logic = "QF_LRA"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_LRA')
 
     def yicescheckSat(self, consts, logic):
         assert self.logger is not None
@@ -31,11 +31,11 @@ class YicesSolver(SMTSolver):
 
         cfg = Config()
 
-        # TODO : current logic input is LRA, it should be QF_NRA
+        # TODO : current logic input is LRA, it should be QF_LRA
         if logic != "NONE":
-            cfg.default_config_for_logic('QF_NRA')
+            cfg.default_config_for_logic('QF_LRA')
         else:
-            cfg.default_config_for_logic('QF_NRA')
+            cfg.default_config_for_logic('QF_LRA')
 
         ctx = Context(cfg)
         yicesConsts = list()
@@ -52,10 +52,8 @@ class YicesSolver(SMTSolver):
         str_result = str(result)
 
         if result == Status.SAT:
-            '''
             m = Model.from_context(ctx, 1)
-            print(m.to_string(100,100,100))
-            '''
+            #print(m.to_string(100,100,100))
             result = False
         else:
             m = None
@@ -205,8 +203,12 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
+    monotone_cond =  Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
+                            Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
+
     return And([forall.const,
                 substitution_zero2t(forall.const),
+                monotone_cond,
                 Implies(Eq(forall.const.left, RealVal('0')),
                         Forall(forall.current_mode_number,
                                forall.end_tau, forall.start_tau,

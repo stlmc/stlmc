@@ -58,7 +58,7 @@ def _(f: Bool, i, v, j, idDict):
 #        str_id = f.id + "_" + str(int(i/2)- 1)
 #    else:
 #        str_id = f.id + "_" + str(int((i - 1) / 2))
-    return Bool(str_id)
+    return Bool(f.id)
 
 @_separation.register(Constant)
 def _(f: Constant, i, v, j, idDict):

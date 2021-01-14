@@ -6,7 +6,6 @@
 # It is also affected by each other's room
 # temperature.
 
- const real xxx = 1;
 bool a;
 [-20, 100] x1;
 bool b;
@@ -19,7 +18,7 @@ bool b;
         x1 >= 19.5;
         (x2 >= 19.5);
     flow:
-        d/dt[x1] = xxx;
+        d/dt[x1] = -0.4;
         d/dt[x2] = -0.6;
     jump:
         (and (x1 > (((x1 + x2) / 2) + 0.5)) (x2 <= (((x1 + x2) / 2) + 0.5))) =>
@@ -100,8 +99,7 @@ s = x2 > 19;
 
 goal:
 #(<> [0.0, 40.0] p);  # false
-#([] [10, 30] q); # true
+#([] [0, 30] q); # true
 #([] [0, 10] ((~ a) U [0, 15) r)); # false
-#(<> (5, 30) (s R [0, 30] b)); # true
-[] (5, 30) (s U [0, 30] b);
+(<> (5, 30) (s R [0, 30] b)); # true
 

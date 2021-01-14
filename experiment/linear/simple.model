@@ -13,6 +13,7 @@ bool a;
     mode:
         a = false;
     inv:
+	x > 17;
     flow:
         d/dt[x] = -0.4;
     jump:
@@ -23,6 +24,7 @@ bool a;
     mode:
         a = true;
     inv:
+        x < 23;
     flow:
         d/dt[x] = 0.4;
     jump:
@@ -35,11 +37,11 @@ init:
 
 propositions:
 p = x >= 21;
-q = x < 22;
+q = x < 24;
 
 goal:
 #(<> [0.0, 40.0] p);  # false
-#([] [10, 30] q); # true
+([] [10, 30] q); # true
 #(([] [10, 30] p) U [0, 15) q); # false
-p U [0, 15) q;
+#p U [0, 15) q;
 

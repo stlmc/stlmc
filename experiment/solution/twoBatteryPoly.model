@@ -20,8 +20,8 @@ bool c;
 	b = false;
 	c = false;
     inv:
-        #g1 > 0.5;
-        #g2 > 0.5;
+        g1 > 0.5;
+        g2 > 0.5;
     flow:
 	d1(t) = (1 - 2 * t + 2 * t * t) + 1.5 + d1(0);
 	d2(t) = (1 - 2 * t + 2 * t * t) + 1.5 + d2(0);
@@ -47,8 +47,8 @@ bool c;
         b = false;
         c = true;
     inv:
-        #g1 > 0.5;
-        #d2 > 1;
+        g1 > 0.5;
+        d2 > 1;
     flow:
 	d1(t) = (1 - 2 * t + 2 * t * t) + 3.01 + d1(0);
 	d2(t) = (1 - 2 * t + 2 * t * t) + d2(0);
@@ -74,8 +74,8 @@ bool c;
         b = true;
         c = false;
     inv:
-        #d1 > 1;
-        #g2 > 0.5;
+        d1 > 1;
+        g2 > 0.5;
     flow:
 	d1(t) = (1 - 2 * t + 2 * t * t) + d1(0);
 	d2(t) = (1 - 2 * t + 2 * t * t) + 3.01 + d2(0);
@@ -101,8 +101,8 @@ bool c;
         b = true;
         c = true;
     inv:
-        #g1 < 1;
-        #g2 > 0.5;
+        g1 < 1;
+        g2 > 0.5;
     flow:
 	d1(t) = d1(0);
 	d2(t) = (1 - 2 * t + 2 * t * t) + 3.01 + d2(0);
@@ -128,8 +128,8 @@ bool c;
         b = false;
         c = false;
     inv:
-        #g1 > 0.5;
-        #g2 < 1;
+        g1 > 0.5;
+        g2 < 1;
     flow:
 	d1(t) = (1 - 2 * t + 2 * t * t) + 3.01 + d1(0);
 	d2(t) = d2(0);
@@ -155,8 +155,8 @@ bool c;
         b = false;
         c = true;
     inv:
-        #g1 < 0.5;
-        #g2 < 0.5;
+        g1 < 0.5;
+        g2 < 0.5;
     flow:
         d/dt[d1] = 0 ; 
         d/dt[d2] = 0 ;

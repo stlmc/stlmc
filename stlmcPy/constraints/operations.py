@@ -739,6 +739,9 @@ def _(const):
 def substitution_zero2t(const: Constraint):
     return const
 
+@substitution_zero2t.register(Neg)
+def _(const):
+    return Neg(substitution_zero2t(const.child))
 
 @substitution_zero2t.register(Not)
 def _(const):
@@ -765,7 +768,7 @@ def _(const: Or):
 @substitution_zero2t.register(Variable)
 def _(const: Variable):
     op_dict = {Bool: Bool, Real: Real, Int: Int}
-    if const.id[-2:] == "_0":
+    if (not const.id.find("_") == const.id.rfind("_")) and const.id[-2:] == "_0":
         return op_dict[const.__class__](const.id[:-2] + "_t")
     return const
 

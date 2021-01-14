@@ -530,7 +530,6 @@ def _(const: Integral):
 @drealObj.register(Forall)
 def _(const: Forall):
     cur_inv = substitution_zero2t(const.const)
-
     result = "(forall_t " + str(int(const.current_mode_number) + 1) + " [0 time_" + get_bound(const.const) + "] "
     result = result + "(" + drealObj(cur_inv) + "))" 
     return result

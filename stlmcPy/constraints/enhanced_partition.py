@@ -38,10 +38,10 @@ def _(f: UnaryTemporalFormula, sub_list, k):
     right = str(2 * k + 2)
     str_id = "chi_" + form_index
 
-   # if isinstance(f.child, Bool):
+    if isinstance(f.child, Bool):
    #     left = str(int((int(left) / 2) - 1))
    #     right = str(int((int(right) / 2) - 1))
-   #     str_id = f.child.id
+        str_id = f.child.id
 
     return Neq(Bool(str_id + "_" + left), Bool(str_id + "_" + right))
 
@@ -126,7 +126,6 @@ def genPartition(subform, subformula_list, bound):
             #if k < bound + 1:
             #    consts.append(Implies(left_chi, And(right_list)))
     return consts, tau_abstraction
-
 
 
 

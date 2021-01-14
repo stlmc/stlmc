@@ -180,16 +180,34 @@ class Runner:
                     model_const = model.make_consts(bound)
                     s_time = timer()
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
+                    '''
+                    print("model")
+                    for mc in model_const.children:
+                        print(mc)
+
+                    print("goal")
+                    for gc in goal_const.children:
+                        print(gc)
+                    '''
                     
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)
                     boolean_abstract.update(goal_boolean_abstract)
+                    '''
+                    new_abstract = dict()
+                    for na in boolean_abstract.keys():
+                        if "invAtomic" in na.id:
+                            new_abstract[na] = boolean_abstract[na]
+                            break
+                    print(new_abstract)
+                    '''
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
+                    #boolean_abstract_consts = make_boolean_abstract_consts(new_abstract)
                     e_time = timer()
 
                     printer.print_normal("> {}".format(config.solver))
                     
-                    #result, size = solver.solve(And([model_const]), 
+                    #result, size = solver.solve(And([model_const,boolean_abstract_consts]), 
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
 
                                                 model.range_dict, boolean_abstract)

@@ -42,7 +42,7 @@ class Z3Solver(SMTSolver):
         str_result = str(result)
         if str_result == "sat":
             m = solver.model()
-            #print(m)
+            print(m)
             result = False
         else:
             m = None
@@ -233,9 +233,12 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
-    
+    monotone_cond =  Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')), 
+                            Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
+
     return And([forall.const,
                 substitution_zero2t(forall.const),
+                monotone_cond,
                 Implies(Eq(forall.const.left, RealVal('0')),
                         Forall(forall.current_mode_number,
                                forall.end_tau, forall.start_tau,
@@ -442,8 +445,6 @@ def _(const: Forall):
     result = list()
     if isinstance(const.const, Bool):
         return z3Obj(const.const)
-    if get_vars(const.const) is None:
-        return const.const
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
             return z3.Not(z3Obj(const.const.child))
@@ -477,4 +478,5 @@ def _(const: Forall):
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
     new_const = And([Eq(Real("currentMode_" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
+    
     return z3.And(z3Obj(new_const))

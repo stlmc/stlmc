@@ -66,7 +66,7 @@ class PropHelper:
     def make_consts(self, delta):
         result_children = list()
         if len(self.proposition_dict) == 0:
-            pass
+            return result_children
         for bound in range(0, self.bound + 2):
         # don't do anything when there is nothing to do.
             goal_vars = get_vars(self.goal.get_formula())
