@@ -313,12 +313,14 @@ class dRealSolver(SMTSolver):
         result_model.extend(bool_var_list)
 
         result_model.remove("")
-        return result, size_of_tree(consts), result_model
+        return result, result_model
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        size = 0
         if all_consts is not None:
             self._cache.append(all_consts)
-        result, size, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
+            size = size_of_tree(all_consts)
+        result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
         return result, size
 
     def make_assignment(self):

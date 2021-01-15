@@ -43,18 +43,20 @@ class Z3Solver(SMTSolver):
         str_result = str(result)
         if str_result == "sat":
             m = solver.model()
-            print(m)
+            # print(m)
             result = False
         else:
             m = None
             result = True if str_result == "unsat" else "Unknown"
         
-        return result, size_of_tree(consts), m
+        return result, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        size = 0
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
+            size = size_of_tree(all_consts)
+        result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
 
     def clear(self):

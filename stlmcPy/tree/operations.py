@@ -20,5 +20,5 @@ def size_of_tree(tree: Tree):
             for child in t.children:
                 waiting_queue.add(child)
         else:
-            raise NotSupportedError("cannot calculate size")
+            raise NotSupportedError("cannot calculate size of {}".format(t))
     return size

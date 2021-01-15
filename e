@@ -1,3 +1,6 @@
+#!/bin/bash
+# bash specific script!!
+for (( c=$1; c<=$2; c=c+$3 ))
 do
         echo "Welcome $c times"
         for (( d=1; d<=10; d=d+1 ))

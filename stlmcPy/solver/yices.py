@@ -63,12 +63,14 @@ class YicesSolver(SMTSolver):
         cfg.dispose()
         ctx.dispose()
 
-        return result, size_of_tree(consts), m
+        return result, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        size = 0
         if all_consts is not None:
             self._cache.append(yicesObj(all_consts))
-        result, size, self._yices_model = self.yicescheckSat(self._cache, self._logic)
+            size = size_of_tree(all_consts)
+        result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
     def make_assignment(self):
