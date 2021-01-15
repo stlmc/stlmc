@@ -1,7 +1,0 @@
-(= chi_1_1 (or (and (>= 0 (- 0 10.0)) (<= 0 (- 0 0.0)) isfail_0) 
-		(or (and (> 0 (- 0 10.0)) (< 0 (- tau_1 0.0)) isfail_0) 
-		    (or (and (>= 0 (- tau_1 10.0)) (<= 0 (- tau_1 0.0)) isfail_1) 
-			(or (and (> 0 (- tau_1 10.0)) (< 0 (- tau_2 0.0)) isfail_1) 
-				(or (and (>= 0 (- tau_2 10.0)) (<= 0 (- tau_2 0.0)) isfail_2) 
-					( 3 or (and (> 0 (- tau_2 10.0)) (< 0 (- tau_3 0.0)) isfail_2) False)))))))
-

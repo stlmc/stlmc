@@ -1,7 +1,31 @@
 import unittest
 
 from stlmcPy.tree.tree import Leaf, NonLeaf
-from stlmcPy.tree.operations import size_of_tree
+from stlmcPy.tree.operations import size_of_tree, new_size_of_tree
+
+
+def gen_binary_tree(depth: int):
+    width = 2 ** (depth - 1)
+    queue = list()
+    new_queue = list()
+    root = None
+    for i in range(width):
+        queue.append(Leaf())
+    while len(queue) > 0 or len(new_queue) > 0:
+        if len(queue) == 0:
+            queue = new_queue.copy()
+            new_queue.clear()
+            continue
+        if len(queue) == 1:
+            root = queue.pop(0)
+            break
+
+        left = queue.pop(0)
+        right = queue.pop(0)
+        parent = NonLeaf([left, right])
+        new_queue.append(parent)
+
+    return root
 
 
 class TreeTestCase(unittest.TestCase):
@@ -31,4 +55,13 @@ class TreeTestCase(unittest.TestCase):
         tree = NonLeaf(children)
 
         self.assertEqual(size_of_tree(tree), 2,
+                         'incorrect children size')
+
+    def test_gen_tree(self):
+        root1 = gen_binary_tree(4)
+        root2 = gen_binary_tree(5)
+        self.assertEqual(new_size_of_tree(root1), 15,
+                         'incorrect children size')
+
+        self.assertEqual(new_size_of_tree(root2), 31,
                          'incorrect children size')

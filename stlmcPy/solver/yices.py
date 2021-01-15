@@ -6,6 +6,7 @@ from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
 from timeit import default_timer as timer
 
+from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.logger import Logger
 
 from yices import *
@@ -53,17 +54,16 @@ class YicesSolver(SMTSolver):
 
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
-            #print(m.to_string(100,100,100))
+            # print(m.to_string(100,100,100))
             result = False
         else:
             m = None
             result = True if Status.UNSAT else "Unknown"
-    
+
         cfg.dispose()
         ctx.dispose()
 
-
-        return result, sizeAst(Terms.yand(yicesConsts)), m
+        return result, size_of_tree(consts), m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
@@ -89,7 +89,6 @@ class YicesSolver(SMTSolver):
     def set_logic(self, logic_name: str):
         pass
 
-
     def add_contradict_consts(self):
         clause_set = set()
         for i in self._cache:
@@ -104,7 +103,7 @@ class YicesSolver(SMTSolver):
         cons_list = list(cons)
         for i in range(len(cons_list)):
             cur_const = cons_list[i]
-            for j in range(i+1, len(cons_list)):
+            for j in range(i + 1, len(cons_list)):
                 flag = False
                 comp_const = cons_list[j]
                 if len(get_vars(cur_const.left)) > 0:
@@ -203,8 +202,8 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
-    monotone_cond =  Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
-                            Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
+    monotone_cond = Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
+                        Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
 
     return And([forall.const,
                 substitution_zero2t(forall.const),
@@ -242,16 +241,6 @@ def make_forall_consts(forall: Forall):
         return Or([first_const, second_const])
     else:
         return make_forall_consts_aux(forall)
-
-
-def sizeAst(node: Terms):
-    if node == Terms.NULL_TERM:
-        return 0
-    retval = yapi.yices_term_num_children(node)
-    if retval == -1:
-        return 0
-    else:
-        return 1 + sum([sizeAst(yapi.yices_term_child(node, c)) for c in range(retval)])
 
 
 @singledispatch
@@ -293,6 +282,7 @@ def _(const):
     y = yicesObj(const.right)
     result = '(>= ' + x + ' ' + y + ')'
     return result
+
 
 @yicesObj.register(Gt)
 def _(const):
@@ -338,6 +328,7 @@ def _(const):
     y = yicesObj(const.right)
     result = '(+ ' + x + ' ' + y + ')'
     return result
+
 
 @yicesObj.register(Sub)
 def _(const):
@@ -385,6 +376,7 @@ def _(const):
     y = yicesObj(const.right)
     result = '(/ ' + x + ' ' + y + ')'
     return result
+
 
 @yicesObj.register(Neg)
 def _(const):
@@ -437,7 +429,6 @@ def _(const: Integral):
     return yicesObj(make_dynamics_consts(const.dynamics))
 
 
-
 @yicesObj.register(Forall)
 def _(const: Forall):
     bound_str = str(int(const.end_tau.id[4:]) - 1)
@@ -452,11 +443,12 @@ def _(const: Forall):
         return yicseObj(const.const)
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
-            return "(not " + yicesObj(const.const.child) +")"
+            return "(not " + yicesObj(const.const.child) + ")"
         if isinstance(const.const.child, Not):
             return yicesObj(const.const.child.child)
         reduced_const = reduce_not(const.const)
-        new_const = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
+        new_const = yicesObj(
+            Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
         return new_const
     elif isinstance(const.const, Implies):
         left = reduce_not(Not(const.const.left))
@@ -472,7 +464,8 @@ def _(const: Forall):
             elif get_vars(c) is None:
                 result.append(yicesObj(c))
             else:
-                result.append(yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+                result.append(
+                    yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
 
         if isinstance(const.const, Or):
             return '(or ' + ' '.join(result) + ')'

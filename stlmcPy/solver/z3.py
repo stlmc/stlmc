@@ -10,6 +10,7 @@ from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
 from timeit import default_timer as timer
 
+from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.logger import Logger
 
 
@@ -48,7 +49,7 @@ class Z3Solver(SMTSolver):
             m = None
             result = True if str_result == "unsat" else "Unknown"
         
-        return result, sizeAst(z3.And(self._cache)), m
+        return result, size_of_tree(consts), m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
@@ -272,11 +273,6 @@ def make_forall_consts(forall: Forall):
         return Or([first_const, second_const])
     else:
         return make_forall_consts_aux(forall)
-
-
-# return the size of the Z3 constraint
-def sizeAst(node: z3.AstRef):
-    return 1 + sum([sizeAst(c) for c in node.children()])
 
 
 @singledispatch

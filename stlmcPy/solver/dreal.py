@@ -1,24 +1,67 @@
-from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
-    substitution_zero2t, reduce_not
-from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
-from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
-from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution_zero2t, substitution, clause, infix
-from timeit import default_timer as timer
-
-from stlmcPy.util.logger import Logger
-
-from stlmcPy.constraints.constraints import *
+import asyncio
+import os
 from functools import singledispatch
-import os 
+
 from sympy.parsing.sympy_parser import (
     parse_expr,
-    standard_transformations,
-    implicit_multiplication,
 )
 
-import subprocess
+from stlmcPy.constraints.constraints import *
+from stlmcPy.constraints.operations import get_vars, substitution_zero2t, substitution, clause, infix
+from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.solver.abstract_solver import SMTSolver
+from stlmcPy.solver.assignment import Assignment
+from stlmcPy.tree.operations import size_of_tree
+
+
+class DrealAssignment(Assignment):
+    def __init__(self, _dreal_model):
+        self._dreal_model = _dreal_model
+
+    # solver_model_to_generalized_model
+    def get_assignments(self):
+        new_dict = dict()
+        for e in self._dreal_model:
+            # filter any messages not related to assignment
+            if ":" in e and "=" in e:
+                [var_decl, value] = e.split("=")
+                [var_name, var_type] = var_decl.split(":")
+                var_name = var_name.replace(" ", "")
+                if "Bool" in var_type:
+                    val = ""
+                    if "true" in value:
+                        val = "True"
+                    elif "false" in value:
+                        val = "False"
+                    else:
+                        raise NotSupportedError("cannot make dreal assignment")
+                    new_dict[Bool(var_name)] = BoolVal(val)
+                else:
+                    # assume that dreal only returns real
+                    [lower_bound, upper_bound] = str(value).replace("[", "").replace("]", "").split(",")
+                    # we get midpoint
+                    val_float = (float(lower_bound) + float(upper_bound)) / 2
+                    val = str(format(val_float, "f"))
+                    var_name = var_name.replace("time", "tau")
+                    new_dict[Real(var_name)] = RealVal(val)
+        return new_dict
+
+
+
+
+        # for e in self._dreal_model.collect_defined_terms():
+        #     if Terms.is_real(e):
+        #         new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
+        #     elif Terms.is_int(e):
+        #         new_dict[Int(Terms.to_string(e))] = IntVal(str(self._yices_model.get_integer_value(e)))
+        #     elif Terms.is_bool(e):
+        #         new_dict[Bool(Terms.to_string(e))] = BoolVal(str(self._yices_model.get_bool_value(e)))
+        #     else:
+        #         NotSupportedError("cannot generate assignments")
+        # return new_dict
+
+    def eval(self, const):
+        pass
 
 
 class dRealSolver(SMTSolver):
@@ -36,14 +79,13 @@ class dRealSolver(SMTSolver):
         declare_list = list()
         all_vars = set()
         clause_set = set()
-        variable_range= list()
+        variable_range = list()
         for i in self._cache:
             clause_set = clause_set.union(clause(i))
 
         for c in clause_set:
             if c._range:
                 variable_range.append(c)
-       
 
         continuous_vars = set()
         time_vars = set()
@@ -66,7 +108,7 @@ class dRealSolver(SMTSolver):
             else:
                 discrete_vars.add(i)
         var_range_dict = dict()
-        
+
         for i in continuous_vars:
             var_range_dict[i.id] = ("[", -99999, 99999, "]")
         for i in time_vars:
@@ -91,41 +133,40 @@ class dRealSolver(SMTSolver):
         max_bound = -1
         for i in time_vars:
             if "tau_" in i.id:
-                cur_bound = int(i.id[i.id.find("_")+1:])
+                cur_bound = int(i.id[i.id.find("_") + 1:])
                 if cur_bound > max_bound:
                     max_bound = cur_bound - 1
 
         # continuous variables declaration
         for i in var_range_dict:
             (left_strict, lower, upper, right_strict) = var_range_dict[i]
-            range_str = "[" + str(lower) + ", " + str(upper) + "]"
+            range_str = "[{}, {}]".format(lower, upper)
             if "tau_" in i:
-                if i[i.find("_")+1:] == "1":
+                if i[i.find("_") + 1:] == "1":
                     time_range = "(declare-fun time_0 () Real " + range_str + ")"
                     declare_list.append(time_range)
-                elif int(i[i.find("_")+1:]) <= max_bound + 1:
-                    time_range = "(declare-fun time_" + str(int(i[i.find("_")+1:]) - 1) + " () Real " + range_str + ")"
+                elif int(i[i.find("_") + 1:]) <= max_bound + 1:
+                    time_range = "(declare-fun time_" + str(
+                        int(i[i.find("_") + 1:]) - 1) + " () Real " + range_str + ")"
                     declare_list.append(time_range)
             else:
                 sub_result = "(declare-fun " + i + " () Real "
                 sub_result = sub_result + range_str + ")"
                 declare_list.append(sub_result)
-                for j in range(max_bound+2):
+                for j in range(max_bound + 1):
                     sub_result = "(declare-fun " + i + "_" + str(j) + "_0 () Real " + range_str + ")"
                     declare_list.append(sub_result)
                     sub_result = "(declare-fun " + i + "_" + str(j) + "_t () Real " + range_str + ")"
-                    if j < max_bound + 1:
-                        declare_list.append(sub_result)
+                    declare_list.append(sub_result)
 
         # discrete variables declaration
         for i in discrete_vars:
-            op = {Real : "Real", Bool : "Bool", Int : "Int"}
+            op = {Real: "Real", Bool: "Bool", Int: "Int"}
             type_str = op[type(i)]
             if "currentMode_" in i.id:
                 type_str = "Int"
             sub_result = "(declare-fun " + i.id + " () " + type_str + ")"
             declare_list.append(sub_result)
-
 
         # ode declaration
         sub_dict = dict()
@@ -138,7 +179,7 @@ class dRealSolver(SMTSolver):
             sub_result = "(define-ode flow_" + str(int(cur_integral.current_mode_number) + 1) + " ("
             for i in range(len(cur_integral.dynamics.exps)):
                 cur_id = cur_integral.end_vector[i].id[0:cur_integral.end_vector[i].id.find("_")]
-                cur_exp = substitution(cur_integral.dynamics.exps[i], sub_dict) 
+                cur_exp = substitution(cur_integral.dynamics.exps[i], sub_dict)
                 sub = "(= d/dt[" + cur_id + "] (" + drealObj(cur_exp) + "))"
                 sub_result = sub_result + " " + sub
             sub_result = sub_result + "))"
@@ -159,7 +200,7 @@ class dRealSolver(SMTSolver):
         cons_list = list(cons)
         for i in range(len(cons_list)):
             cur_const = cons_list[i]
-            for j in range(i+1, len(cons_list)):
+            for j in range(i + 1, len(cons_list)):
                 flag = False
                 comp_const = cons_list[j]
                 if len(get_vars(cur_const.left)) > 0:
@@ -205,17 +246,21 @@ class dRealSolver(SMTSolver):
                                     flag = True
                 if flag:
                     self._cache.append(Or([Not(cur_const), Not(comp_const)]))
-                        
 
-
-
-
+    async def _run(self, consts, logic):
+        try:
+            return await asyncio.wait_for(self._drealcheckSat(consts, logic), timeout=100000000.0)
+        except asyncio.TimeoutError:
+            print('timeout!')
 
     def drealcheckSat(self, consts, logic):
+        return asyncio.run(self._run(consts, logic))
+
+    async def _drealcheckSat(self, consts, logic):
         declares = self.get_declared_variables(consts)
         results = list()
 
-        #self.add_contradict_consts()
+        # self.add_contradict_consts()
 
         for i in self._cache:
             results.append(drealObj(i))
@@ -233,16 +278,42 @@ class dRealSolver(SMTSolver):
             model_file.write("(check-sat)\n")
             model_file.write("(exit)\n")
 
-        batcmd = "dReal dreal_model.smt2 --short_sat --delta_heuristic --delta --sat-prep-bool"
-        p = subprocess.check_output(batcmd, shell = True)
-        output = p.decode("utf-8")[:-1]
-        
-        if output == "unsat":
+        model_file_name = "{}.smt2".format(str_file_name)
+        proc = await asyncio.create_subprocess_exec(
+            './dreal/dReal', model_file_name, "--short_sat", "--delta_heuristic", "--delta", "--sat-prep-bool",
+            "--model",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+
+        stdout, stderr = await proc.communicate()
+        stdout_str = stdout.decode()[len("Solution:\n"):-1]
+        stderr_str = stderr.decode()
+        output_str = "{}\n{}".format(stdout_str, stderr_str)
+        # print(f'[exited with {proc.returncode}]')
+        # if stdout:
+        #     print(f'[stdout]\n{stdout.decode()}')
+        # if stderr:
+        #     print(f'[stderr]\n{stderr.decode()}')
+
+        # if os.path.isfile(model_file_name):
+        #     os.remove(model_file_name)
+
+        # print(stdout.decode())
+        print(output_str)
+        if "unsat" in output_str or "\n" in output_str:
             result = True
         else:
             result = False
 
-        return result, -1, None
+        cont_var_list = stdout_str.split("\n")
+        bool_var_list = stderr_str.split("\n")
+
+        result_model = list()
+        result_model.extend(cont_var_list)
+        result_model.extend(bool_var_list)
+
+        result_model.remove("")
+        return result, size_of_tree(consts), result_model
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if all_consts is not None:
@@ -251,7 +322,7 @@ class dRealSolver(SMTSolver):
         return result, size
 
     def make_assignment(self):
-        pass
+        return DrealAssignment(self._dreal_model)
 
     def clear(self):
         self._cache = list()
@@ -281,6 +352,7 @@ def sizeAst(node: Terms):
         return 1 + sum([sizeAst(yapi.yices_term_child(node, c)) for c in range(retval)])
 '''
 
+
 @singledispatch
 def drealObj(const: Constraint):
     raise NotSupportedError('Something wrong :: ' + str(const) + ":" + str(type(const)))
@@ -308,32 +380,32 @@ def _(const: BoolVal):
 
 @drealObj.register(Variable)
 def _(const: Variable):
-    #op = {'bool': Types.bool_type(), 'real': Types.real_type(), 'int': Types.int_type()}
-    #x = Terms.new_uninterpreted_term(op[const.type], str(const.id))
+    # op = {'bool': Types.bool_type(), 'real': Types.real_type(), 'int': Types.int_type()}
+    # x = Terms.new_uninterpreted_term(op[const.type], str(const.id))
     if "tau_" in const.id:
-        cur = const.id[const.id.find("_")+1:]
-        result = Real("time_0") 
+        cur = const.id[const.id.find("_") + 1:]
+        result = Real("time_0")
         for i in range(1, int(cur)):
             result = result + Real("time_" + str(i))
         return drealObj(result)
-
 
     return str(const.id)
 
 
 @drealObj.register(Geq)
 def _(const):
-    #if const._range:
-    #    return "true"
+    if const._range:
+        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(>= ' + x + ' ' + y + ')'
     return result
 
+
 @drealObj.register(Gt)
 def _(const):
-    #if const._range:
-    #    return "true"
+    if const._range:
+        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(> ' + x + ' ' + y + ')'
@@ -342,8 +414,8 @@ def _(const):
 
 @drealObj.register(Leq)
 def _(const):
-    #if const._range:
-    #    return "true"
+    if const._range:
+        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(<= ' + x + ' ' + y + ')'
@@ -352,8 +424,8 @@ def _(const):
 
 @drealObj.register(Lt)
 def _(const):
-    #if const._range:
-    #    return "true"
+    if const._range:
+        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(< ' + x + ' ' + y + ')'
@@ -380,6 +452,7 @@ def _(const):
     y = drealObj(const.right)
     result = '(+ ' + x + ' ' + y + ')'
     return result
+
 
 @drealObj.register(Sub)
 def _(const):
@@ -428,11 +501,13 @@ def _(const):
     result = '(/ ' + x + ' ' + y + ')'
     return result
 
+
 @drealObj.register(Neg)
 def _(const):
     x = drealObj(const.child)
     result = '(- ' + str(0) + ' ' + x + ')'
     return result
+
 
 @drealObj.register(Sqrt)
 def _(const):
@@ -440,11 +515,13 @@ def _(const):
     result = '(sqrt ' + x + ')'
     return result
 
+
 @drealObj.register(Sin)
 def _(const):
     x = drealObj(const.child)
     result = '(sin ' + x + ')'
     return result
+
 
 @drealObj.register(Cos)
 def _(const):
@@ -452,11 +529,13 @@ def _(const):
     result = '(cos ' + x + ')'
     return result
 
+
 @drealObj.register(Tan)
 def _(const):
     x = drealObj(const.child)
     result = '(/ (sin ' + x + ') (cos ' + x + '))'
     return result
+
 
 @drealObj.register(Arcsin)
 def _(const):
@@ -464,11 +543,13 @@ def _(const):
     result = '(arcsin ' + x + ')'
     return result
 
+
 @drealObj.register(Arccos)
 def _(const):
     x = drealObj(const.child)
     result = '(arccos ' + x + ')'
     return result
+
 
 @drealObj.register(Arctan)
 def _(const):
@@ -515,37 +596,42 @@ def _(const):
     result = '(not ' + x + ')'
     return result
 
+
 @drealObj.register(Integral)
 def _(const: Integral):
-    setting_end = "(= " + str(const.end_vector).replace(",","") + " (integral 0. "
+    setting_end = "(= " + str(const.end_vector).replace(",", "") + " (integral 0. "
     s = const.end_vector[0].id.find("_")
     e = const.end_vector[0].id.rfind("_")
-    
-    setting_end = setting_end + "time_" + const.end_vector[0].id[s+1:e] + " " + str(const.start_vector).replace(",","") + " flow_" + str(int(const.current_mode_number) + 1) + "))"
+
+    setting_end = setting_end + "time_" + const.end_vector[0].id[s + 1:e] + " " + str(const.start_vector).replace(",",
+                                                                                                                  "") + " flow_" + str(
+        int(const.current_mode_number) + 1) + "))"
 
     return setting_end
-
 
 
 @drealObj.register(Forall)
 def _(const: Forall):
     cur_inv = substitution_zero2t(const.const)
+
     result = "(forall_t " + str(int(const.current_mode_number) + 1) + " [0 time_" + get_bound(const.const) + "] "
-    result = result + "(" + drealObj(cur_inv) + "))" 
+    result = result + "(" + drealObj(cur_inv) + "))"
     return result
+
 
 def get_bound(const):
     var_set = get_vars(const)
     cur = var_set.pop()
-    
     if cur.id.find("_") == cur.id.rfind("_"):
-        return cur.id[cur.id.find("_")+1:]
+        return cur.id[cur.id.find("_") + 1:]
     else:
-        return cur.id[cur.id.find("_")+1:cur.id.rfind("_")]
+        return cur.id[cur.id.find("_") + 1:cur.id.rfind("_")]
+
 
 @singledispatch
 def eval(const: Constraint):
     return const
+
 
 @eval.register(Add)
 def _(const: Add):
