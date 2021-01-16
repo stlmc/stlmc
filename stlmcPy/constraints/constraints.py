@@ -659,7 +659,7 @@ class FinallyFormula(UnaryTemporalFormula):
         self._str = "(<>" + UnaryTemporalFormula.__repr__(self) + ")"
 
     def __repr__(self):
-        return self._str1
+        return self._str
 
 
 class BinaryTemporalFormula(BinaryFormula):
