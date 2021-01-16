@@ -1,6 +1,7 @@
 from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 from stlmcPy.exception.exception import NotSupportedError
+from itertools import combinations
 
 
 @singledispatch
@@ -1157,3 +1158,24 @@ def _(const):
     result = result.union(clause(const.left))
     result = result.union(clause(const.right))
     return result
+
+def lower_encoding(chi, bound, lower):
+    com_list = [(chi + "_" + str(i), chi + "_" + str(i+1)) for i in range(1, 2 * (bound + 1))]
+    combi = combinations(com_list, lower)
+    result = list()
+    for i in combi:
+        rest = com_list[:]
+        sub = list()
+        for j in i:       
+            rest.remove(j)
+            sub.append(Neq(Bool(j[0]), Bool(j[1])))
+        for j in rest:
+            sub.append(Eq(Bool(j[0]), Bool(j[1])))
+        result.append(And(sub))
+    return Or(result)
+
+
+        
+
+
+

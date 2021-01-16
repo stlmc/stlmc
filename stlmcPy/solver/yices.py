@@ -69,9 +69,10 @@ class YicesSolver(SMTSolver):
         size = 0
         if all_consts is not None:
             self._cache.append(yicesObj(all_consts))
-            size = size_of_tree(all_consts)
+            #size = size_of_tree(all_consts)
         result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
-        return result, size
+        #return result, size
+        return result, -1
 
     def make_assignment(self):
         pass

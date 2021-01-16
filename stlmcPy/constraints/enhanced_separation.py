@@ -11,11 +11,10 @@ def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
             if int(c[c.find("_")+1:]) > max:
                 max = int(c[c.find("_")+1:])
     
-    if not isinstance(subFormula, Bool):
-        for i in range(len(var_point)):
-            result.append(Eq(Bool("chi_" + str(index) + "_" + str(i+1)), _separation(subFormula, i+1, var_point, var_interval, id_match_dict)))
-            if index == max:
-                break
+    for i in range(len(var_point)):
+        result.append(Eq(Bool("chi_" + str(index) + "_" + str(i+1)), _separation(subFormula, i+1, var_point, var_interval, id_match_dict)))
+        if index == max:
+            break
     return result
 
 
@@ -54,11 +53,11 @@ def _separation(f: Formula, i, v, j, idDict):
 
 @_separation.register(Bool)
 def _(f: Bool, i, v, j, idDict):
-#    if (i % 2) == 0:
-#        str_id = f.id + "_" + str(int(i/2)- 1)
-#    else:
-#        str_id = f.id + "_" + str(int((i - 1) / 2))
-    return Bool(f.id)
+    if (i % 2) == 0:
+        str_id = f.id + "_" + str(int(i/2)- 1)
+    else:
+        str_id = f.id + "_" + str(int((i - 1) / 2))
+    return Bool(f.id + "_" + str(i-1))
 
 @_separation.register(Constant)
 def _(f: Constant, i, v, j, idDict):
