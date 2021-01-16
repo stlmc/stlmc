@@ -9,7 +9,9 @@ def size_of_tree(tree: Tree):
     size = 0
     waiting_queue = set()
     waiting_queue.add(tree)
+    count = 0
     while len(waiting_queue) > 0:
+        count = count + 1
         t = waiting_queue.pop()
         if isinstance(t, Leaf):
             # print("Leaf , {}".format(id(t)))
