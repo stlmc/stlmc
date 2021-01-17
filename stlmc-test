@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-core=1
 #SBATCH -o %x.o%j
 #SBATCH -e %x.e%j
-#SBATCH --time 1:00:00
+#SBATCH --time 01:00:00
 import os
 import sys
 

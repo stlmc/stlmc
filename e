@@ -8,7 +8,7 @@ do
                 echo "Run formula $d normal"
                 sbatch ./stlmc-test ./experiment/stl/onlySTL.model -l $c -u $c -formula_num $d -formula_encoding only-goal-stl -solver yices
                 echo "Run formula $d enhanced"
-		ff="$((4 * $c))"
+		ff="$((8 * $c))"
                 sbatch ./stlmc-test ./experiment/stl/onlySTL.model -l $ff -u $ff -formula_num $d -formula_encoding only-goal-stl-enhanced -solver yices
         done
 done
