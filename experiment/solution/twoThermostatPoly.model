@@ -23,15 +23,10 @@ real startX2;
         d/dt[x1] = -0.015 * ((1 - 2 * 0.01) * startX1 + 0.01 * startX2);
         d/dt[x2] = -0.045 * ((1 - 2* 0.01) * startX2 + 0.01 * startX1);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+         x2 < 23 =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+         x1 < 19 =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-
 }
 {
     mode:
@@ -39,73 +34,67 @@ real startX2;
         b = true;
     inv:
         x1 >= 19.5;
-        (x2 <= 21);
+        (x2 <= 24);
     flow:
         d/dt[x1] = -0.015 * ((1 - 2 * 0.01) * startX1 + 0.01 * startX2);
         d/dt[x2] = 0.045 * (200 -((1 - 2 * 0.01) * startX2 + 0.01 * startX1));
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+        x1 < 20 =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        x2 > 23 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
 }
 {
     mode:
         a = true;
         b = false;
     inv:
-        x1 <= 21;
+        x1 <= 24;
         (x2 >= 19.5);
     flow:
         d/dt[x1] = 0.015 * (100 -((1 - 2 * 0.01) * startX1 + 0.01 * startX2));
         d/dt[x2] = -0.045 * ((1 - 2* 0.01) * startX2 + 0.01 * startX1);
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
-          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+        x1 > 18 =>
           (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+        x2 >= 19.5 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+
 }
 {
     mode:
         a = true;
         b = true;
     inv:
-        x1 <= 21;
-        (x2 <= 21);
+        x1 <= 24;
+        (x2 <= 24);
     flow:
         d/dt[x1] = 0.015 * (100 -((1 - 2 * 0.01) * startX1 + 0.01 * startX2));
         d/dt[x2] = 0.045 * (200 -((1 - 2 * 0.01) * startX2 + 0.01 * startX1));
     jump:
-        (and (x1 > ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
-          (and (not a') (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 > ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
+         x1 > 22 =>
           (and (a' = false) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 > ((x1 + x2) / 2))) =>
+         x2 > 22  =>
           (and (a' = true) (b' = false) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
-        (and (x1 <= ((x1 + x2) / 2)) (x2 <= ((x1 + x2) / 2))) =>
-          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2) (startX1' = x1) (startX2' = x2));
+
 }
+
+
 init:
-(and (a = false) (b = false) (x1 <= 20 + 0.1) (x1 >= 20 - 0.1) (x2 <= 20 + 0.1) (x2 >= 20 - 0.1) (startX1 = x1) (startX2 = x2));
+(and not(a) not(b) (x1 = 20) (x2 = 23) (startX1 = x1) (startX2 = x2));
 
 propositions:
 reachability = x1 >= 21;
-p = x2 > 19 ;
-q = x1 <= 21;
-x1T = x1 > 27 ;
-x2T = x2 > 27 ;
+p = x2 > 22 ;
+q = x1 < 22;
+r = x1 < 20;
+s = x2 > 19;
 
 goal:
-(<> [0.0, 40.0] p);  # false
-([] [10, 30] q); # true
-([] [0, 10] ((~ a) U [0, 15) r)); # false
-(<> (5, 30) (s R [0, 30] b)); # true
+#([][0, 20] (x1 <= 20 or x2 <= 23)); # false at bound 3
+#(<> [0.0, 40.0] p);  # true
+#([] [0, 10] (x1 > 19 -> [] [2, 5) x1 < 24)); # false at bound 4
+#(<> [0, 4] (x1 > 19 and [] [2, 10] x2 < 22)); # false at bound 4
+#([] (5, 30) (x2 <= 19 U [0, 30] x1 > 19)); # false at bound 3
+([](2, 5) (x2 < 19 R [0, 10] x1 > 18)); # true
 
