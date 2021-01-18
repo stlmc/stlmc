@@ -28,9 +28,8 @@ class Interval:
 universeInterval = Interval(True, 0.0, False, float('inf'))
 
 
-class Unary(NonLeaf):
+class Unary:
     def __init__(self, child):
-        NonLeaf.__init__(self, [child])
         self.child = child
         self._str = None
 
@@ -43,9 +42,8 @@ class Unary(NonLeaf):
         return self._str
 
 
-class Binary(NonLeaf):
+class Binary:
     def __init__(self, left, right):
-        NonLeaf.__init__(self, [left, right])
         self.left = left
         self.right = right
         self._str = None
@@ -62,9 +60,8 @@ class Binary(NonLeaf):
         return self._str
 
 
-class Multinary(NonLeaf):
+class Multinary:
     def __init__(self, children):
-        NonLeaf.__init__(self, children)
         self.children = children
         self._str = None
 
@@ -480,8 +477,9 @@ class Ode(Dynamics):
         return self._str
 
 
-class And(MultinaryFormula):
+class And(MultinaryFormula, NonLeaf):
     def __init__(self, children):
+        NonLeaf.__init__(self, children)
         MultinaryFormula.__init__(self, children)
         self._str = "(and " + MultinaryFormula.__repr__(self) + ")"
 
@@ -489,8 +487,9 @@ class And(MultinaryFormula):
         return self._str
 
 
-class Or(MultinaryFormula):
+class Or(MultinaryFormula, NonLeaf):
     def __init__(self, children):
+        NonLeaf.__init__(self, children)
         MultinaryFormula.__init__(self, children)
         self._str = "(or " + MultinaryFormula.__repr__(self) + ")"
 
@@ -498,8 +497,9 @@ class Or(MultinaryFormula):
         return self._str
 
 
-class Not(UnaryFormula):
+class Not(UnaryFormula, NonLeaf):
     def __init__(self, child):
+        NonLeaf.__init__(self, [child])
         Formula.__init__(self)
         UnaryFormula.__init__(self, child)
         self._str = "(not " + UnaryFormula.__repr__(self) + ")"
@@ -511,8 +511,9 @@ class Not(UnaryFormula):
         return hash(self._str)
 
 
-class Gt(BinaryFormula):
+class Gt(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(> " + BinaryFormula.__repr__(self) + ")"
 
@@ -523,8 +524,9 @@ class Gt(BinaryFormula):
         return hash(self._str)
 
 
-class Geq(BinaryFormula):
+class Geq(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(>= " + BinaryFormula.__repr__(self) + ")"
 
@@ -535,8 +537,9 @@ class Geq(BinaryFormula):
         return hash(self._str)
 
 
-class Lt(BinaryFormula):
+class Lt(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(< " + BinaryFormula.__repr__(self) + ")"
 
@@ -547,8 +550,9 @@ class Lt(BinaryFormula):
         return hash(self._str)
 
 
-class Leq(BinaryFormula):
+class Leq(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(<= " + BinaryFormula.__repr__(self) + ")"
 
@@ -559,8 +563,9 @@ class Leq(BinaryFormula):
         return hash(self._str)
 
 
-class Eq(BinaryFormula):
+class Eq(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(= " + BinaryFormula.__repr__(self) + ")"
 
@@ -571,8 +576,9 @@ class Eq(BinaryFormula):
         return hash(self._str)
 
 
-class Neq(BinaryFormula):
+class Neq(BinaryFormula, Leaf):
     def __init__(self, left, right):
+        Leaf.__init__(self)
         BinaryFormula.__init__(self, left, right)
         self._str = "(!= " + BinaryFormula.__repr__(self) + ")"
 
@@ -583,8 +589,9 @@ class Neq(BinaryFormula):
         return hash(self._str)
 
 
-class Implies(BinaryFormula):
+class Implies(BinaryFormula, NonLeaf):
     def __init__(self, left, right):
+        NonLeaf.__init__(self, [left, right])
         BinaryFormula.__init__(self, left, right)
         self._str = "(implies " + BinaryFormula.__repr__(self) + ")"
 
@@ -595,8 +602,9 @@ class Implies(BinaryFormula):
         return hash(self._str)
 
 
-class Integral(Formula):
+class Integral(Formula, Leaf):
     def __init__(self, current_mode_number, end_vector: list, start_vector: list, dynamics: Dynamics):
+        Leaf.__init__(self)
         Formula.__init__(self)
         self.current_mode_number = current_mode_number
         # list of variables
@@ -616,8 +624,9 @@ class Integral(Formula):
         return self._str
 
 
-class Forall(Formula):
+class Forall(Formula, Leaf):
     def __init__(self, current_mode_number, end_tau, start_tau, const, integral):
+        Leaf.__init__(self)
         Formula.__init__(self)
         self.current_mode_number = current_mode_number
         self.end_tau = end_tau
@@ -637,8 +646,9 @@ class Forall(Formula):
 # end of boolean_objects
 
 
-class UnaryTemporalFormula(UnaryFormula):
+class UnaryTemporalFormula(UnaryFormula, NonLeaf):
     def __init__(self, local_time, global_time, child):
+        NonLeaf.__init__(self, [child])
         UnaryFormula.__init__(self, child)
         self.local_time = local_time
         self.global_time = global_time
@@ -666,8 +676,9 @@ class FinallyFormula(UnaryTemporalFormula):
         return self._str
 
 
-class BinaryTemporalFormula(BinaryFormula):
+class BinaryTemporalFormula(BinaryFormula, NonLeaf):
     def __init__(self, local_time, global_time, left, right):
+        NonLeaf.__init__(self, [left, right])
         BinaryFormula.__init__(self, left, right)
         self.local_time = local_time
         self.global_time = global_time

@@ -21,10 +21,10 @@ class YicesSolver(SMTSolver):
         self._yices_model = None
         self._cache = list()
         self._logic_list = ["QF_LRA", "QF_NRA"]
-        self._logic = "QF_LRA"
+        self._logic = "QF_NRA"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_LRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
 
     def yicescheckSat(self, consts, logic):
         assert self.logger is not None
@@ -34,9 +34,9 @@ class YicesSolver(SMTSolver):
 
         # TODO : current logic input is LRA, it should be QF_LRA
         if logic != "NONE":
-            cfg.default_config_for_logic('QF_LRA')
+            cfg.default_config_for_logic('QF_NRA')
         else:
-            cfg.default_config_for_logic('QF_LRA')
+            cfg.default_config_for_logic('QF_NRA')
 
         ctx = Context(cfg)
         yicesConsts = list()
