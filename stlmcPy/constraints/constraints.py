@@ -273,6 +273,10 @@ class Variable(Leaf, Expr):
     def id(self):
         return self._str
 
+    @id.setter
+    def id(self, _id):
+        self._str = _id
+
     def __repr__(self):
         return self._str
 

@@ -245,6 +245,48 @@ def make_forall_consts(forall: Forall):
         return make_forall_consts_aux(forall)
 
 
+# def new_yicesObj(const: Constraint):
+#     queue = list()
+#     waiting_queue = list()
+#
+#     waiting_queue.append(const)
+#     queue.append((0, const, None))
+#     level = 0
+#     while len(waiting_queue) > 0:
+#         n = waiting_queue.pop(0)
+#         if isinstance(n, NonLeaf):
+#             level += 1
+#             for c in n.children:
+#                 waiting_queue.append(c)
+#                 queue.append((level, c, n))
+#
+#     indicator = False
+#     parent = None
+#     while len(queue) > 0:
+#         n, node, p = queue.pop(0)
+#         if indicator is True:
+#             assert parent is not None
+#             pass
+#         else:
+#             if isinstance(node, And):
+#
+#                 yicesargs = [yicesObj(c) for c in const.children]
+#                 if len(yicesargs) < 1:
+#                     return 'true'
+#                 elif len(yicesargs) < 2:
+#                     return yicesargs[0]
+#                 else:
+#                     result = '(and ' + ' '.join(yicesargs) + ')'
+#                     return result
+#
+#
+#
+#     return max_depth
+
+
+
+
+
 @singledispatch
 def yicesObj(const: Constraint):
     raise NotSupportedError('Something wrong :: ' + str(const) + ":" + str(type(const)))

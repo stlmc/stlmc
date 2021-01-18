@@ -1175,7 +1175,34 @@ def lower_encoding(chi, bound, lower):
     return Or(result)
 
 
+def get_max_depth(const: Constraint):
+    queue = list()
+    waiting_queue = list()
+
+    waiting_queue.append(const)
+    queue.append((0, const, None))
+    level = 0
+    while len(waiting_queue) > 0:
+        n = waiting_queue.pop(0)
+        if isinstance(n, NonLeaf):
+            level += 1
+            for c in n.children:
+                waiting_queue.append(c)
+                queue.append((level, c, n))
+
+    max_depth = 0
+    while len(queue) > 0:
+        n, node, p = queue.pop(0)
+        if n > max_depth:
+            max_depth = n
+        # print("depth: {}, {} ({}) :: parent {}\n".format(n, node, id(node), id(p)))
+    return max_depth
         
+
+def fresh_new_var():
+    new_var = Bool("")
+    new_var.id = "opt_var_{}".format(id(new_var))
+    return new_var
 
 
 
