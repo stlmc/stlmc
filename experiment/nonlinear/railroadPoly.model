@@ -6,68 +6,65 @@
 # to the train. The goal of the barrier is to prevent others
 # from entering the track when the train passes by.
 
-real m;
-[-10, 10] vacc;
+bool a;
+bool b;
 [-20, 100] tx;
+[-10, 10] vacc;
 [0, 90] bx;
 [-50, 50] vx;
 {
     mode:
-        m = 0;
+	a = false;
+	b = false;
     inv:
-	tx > 45;
+	tx > 60;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
         d/dt[vx] = vacc ;
         d/dt[vacc] = 0;
     jump:
-        (and (40 <= tx) (tx < 50)) =>
-          (and (m' = 5) (vacc' = 5) (bx' = bx) (tx' = tx) (vx' = vx));
-        (and (10 <= tx) (tx < 30)) =>
-          (and (m' = 10) (vacc' = 10) (bx' = bx) (tx' = tx) (vx' = vx)) ;
-        (and (-5 <= tx) (tx < 0)) =>
-          (and (m' = -5) (vacc' = -5) (bx' = bx) (tx' = tx) (vx' = vx));
+        tx < 80 =>
+          (and (not a') b' (bx' = bx) (tx' = tx) (vacc' = vacc) (vx' = vx));
+        tx < 70 =>
+          (and a' (not b') (bx' = bx) (tx' = tx) (vacc' = vacc) (vx' = vx));
 }
 {
     mode:
-        m = 5;
+	a = false;
+	b = true;
     inv:
-	tx > 20;
+	tx > 40;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
         d/dt[vx] = vacc ;
         d/dt[vacc] = 0;
     jump:
-        (and (10 <= tx) (tx < 30)) =>
-          (and (m' = 10) (vacc' = 10) (bx' = bx) (tx' = tx) (vx' = vx)) ;
-        (and (-5 <= tx) (tx < 0)) =>
-          (and (m' = -5) (vacc' = -5) (bx' = bx) (tx' = tx) (vx' = vx));
-        (and (85 <= bx) (tx < -8)) =>
-          (and (m' = 0) (vacc' = 0) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+        tx < 80 =>
+          (and a' (not b') (bx' = bx) (tx' = tx) (vacc' = vacc) (vx' = vx));
 }
 {
     mode:
-        m = 10;
+	a = true;
+	b = false;
     inv:
-	bx < 90;
+	tx > 10;
     flow:
         d/dt[tx] = -5 ;
         d/dt[bx] = vx ;
         d/dt[vx] = vacc ;
         d/dt[vacc] = 0;
     jump:
-        (and (40 <= tx) (tx < 50)) =>
-          (and (m' = 5) (vacc' = 5) (bx' = bx) (tx' = tx) (vx' = vx));
-        (and (-5 <= tx) (tx < 0)) =>
-          (and (m' = -5) (vacc' = -5) (bx' = bx) (tx' = tx) (vx' = vx));
-        (and (85 <= bx) (tx < -8)) =>
-          (and (m' = 0) (vacc' = 0) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+        tx < 20 =>
+          (and a' b' (bx' = bx) (tx' = tx) (vacc' = vacc) (vx' = vx));
+        tx < 0 =>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vacc' = vacc) (vx' = vx));
 }
 {
     mode:
-        m = -5;
+	a = true;
+	b = true;
     inv:
 	tx > -10;
     flow:
@@ -76,27 +73,22 @@ real m;
         d/dt[vx] = vacc ;
         d/dt[vacc] = 0;
     jump:
-        (and (40 <= tx) (tx < 50)) =>
-          (and (m' = 5) (vacc' = 5) (bx' = bx) (tx' = tx) (vx' = vx));
-        (and (10 <= tx) (tx < 30)) =>
-          (and (m' = 10) (vacc' = 10) (bx' = bx) (tx' = tx) (vx' = vx)) ;
-        (and (85 <= bx) (tx < -8)) =>
-          (and (m' = 0) (vacc' = 0) (bx' = bx) (tx' = (100 + tx)) (vx' = vx));
+        (tx < 0) =>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)) (vacc' = vacc) (vx' = vx));
 }
 init:
-(and (m > 0) (m < 0.1) (vacc > 0) (vacc < 0.1) (bx >= 0) (bx < 1) (tx >= 60) (tx <= 70) (vx <= 0.1) (vx >= 0)) ;
+(and (a = false) (b = false) (bx = 0) (tx = 90) (vacc > 0) (vacc < 0.1) (vx <= 0.1) (vx >= 0)) ;
 
 propositions:
-# new reachability
-# hylaa : 261.44 sec, stlmc : 301.56 sec
-reachability = tx < 30;
-barg80 = bx >= 80;
-barg40 = bx > 40;
+txg60 = tx < 60;
+txg10 = tx > 10;
+bxg80 = bx > 80;
 
 goal:
-#reach reachability;
-(<> (0.0,50.0) (reachability -> ~barg40));  # True
-#([] [20.0,40.0] (<>[1.0,6.0] reachability));
-#([] [3.0,50.0] (<>[5.0, 20.0] barg80));
-#([] [0.0, 50.0] (<>[0.0, 20.0) (tx < 30 -> vx > 2))); # True
+#([] [5.0,10.0) (bx < 50)); # false at bound 3
+#(tx < 50) R [10, 30] (bx < 30); # true
+#([] [0, 40] (bxg80 -> (<> [0, 20) txg10))); # true
+#(bx > 10) R [10, 40] ([] [0, 20] (tx > 80)); # true
+#<>[0, 40] (bx < 5) U [0, 40] (<> [0, 5] (tx <= 50)); # false
+#([] [20, 30] ((tx > 80) U [0, 30] (bx > 1 and bx < 3))); # false at bound 8
 
