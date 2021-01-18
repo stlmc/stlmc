@@ -180,8 +180,6 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
     abstract_dict = dict()
     abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
     abstract_dict.update(exist_dict)
-    print("abstract dict {}".format(abstract_dict))
-    print("andandand {}".format(And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])])))
 
     return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
 

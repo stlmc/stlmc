@@ -69,7 +69,7 @@ class YicesSolver(SMTSolver):
         size = 0
         if all_consts is not None:
             self._cache.append(yicesObj(all_consts))
-            size = size_of_tree(all_consts)
+            #size = size_of_tree(all_consts)
         result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
@@ -207,8 +207,8 @@ def make_forall_consts_aux(forall: Forall):
     monotone_cond = Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
                         Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
 
-    return And([forall.const,
-                substitution_zero2t(forall.const),
+    res = And([Geq(start_forall_exp, RealVal("0")),
+                Geq(end_forall_exp, RealVal("0")),
                 monotone_cond,
                 Implies(Eq(forall.const.left, RealVal('0')),
                         Forall(forall.current_mode_number,
@@ -220,6 +220,13 @@ def make_forall_consts_aux(forall: Forall):
                                forall.end_tau, forall.start_tau,
                                op_dict[forall.const.__class__](RealVal('0'), diff(start_forall_exp, forall.integral)),
                                forall.integral))])
+    '''
+    print("forall")
+    print(forall)
+    print(res)
+    '''
+
+    return res
 
 
 def make_forall_consts(forall: Forall):
@@ -246,6 +253,16 @@ def make_forall_consts(forall: Forall):
 
 
 # def new_yicesObj(const: Constraint):
+#     indicator = False
+#     indicator_depth = -1
+#     parent = None
+#
+#     def turn_off_indicator():
+#         return False, -1, None
+#
+#     def turn_on_indicator(_ind: bool, _ind_depth: int, _parent):
+#         return _ind, _ind_depth, _parent
+#
 #     queue = list()
 #     waiting_queue = list()
 #
@@ -260,30 +277,126 @@ def make_forall_consts(forall: Forall):
 #                 waiting_queue.append(c)
 #                 queue.append((level, c, n))
 #
-#     indicator = False
-#     parent = None
+#     result = ""
+#     is_first = True
+#     l = None
 #     while len(queue) > 0:
 #         n, node, p = queue.pop(0)
+#         print("node is {}\n".format(node))
 #         if indicator is True:
-#             assert parent is not None
-#             pass
+#             # assert parent is not None
+#             if parent is p and indicator_depth == n and node in l:
+#                 if isinstance(node, Variable):
+#                     result += "{} ".format(node.id)
+#                 elif isinstance(node, Constant):
+#                     if node.value == 'True':
+#                         result += 'true '
+#                     elif node.value == 'False':
+#                         result += 'false '
+#                     else:
+#                         result += "{} ".format(node.value)
+#             else:
+#                 assert l is not None
+#
+#                 indicator, indicator_depth, parent = turn_off_indicator()
+#                 result += ")"
 #         else:
 #             if isinstance(node, And):
-#
-#                 yicesargs = [yicesObj(c) for c in const.children]
-#                 if len(yicesargs) < 1:
-#                     return 'true'
-#                 elif len(yicesargs) < 2:
-#                     return yicesargs[0]
+#                 l = node.children
+#                 if len(node.children) < 1:
+#                     result += 'true'
+#                 elif len(node.children) < 2:
+#                     result += "{}".format(node.children[0])
 #                 else:
-#                     result = '(and ' + ' '.join(yicesargs) + ')'
-#                     return result
+#                     indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#                     result += '(and '
+#             elif isinstance(node, Or):
+#                 l = node.children
+#                 if len(node.children) < 1:
+#                     result += 'true'
+#                 elif len(node.children) < 2:
+#                     result += "{}".format(node.children[0])
+#                 else:
+#                     indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#                     result += '(or '
+#             elif isinstance(node, Gt):
+#                 l = node.children
+#                 result += '(> '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Geq):
+#                 l = node.children
+#                 result += '(>= '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Lt):
+#                 l = node.children
+#                 result += '(< '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Leq):
+#                 l = node.children
+#                 result += '(<= '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Eq):
+#                 l = node.children
+#                 result += '(= '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Add):
+#                 l = node.children
+#                 result += '(+ '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Sub):
+#                 l = node.children
+#                 result += '(- '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Mul):
+#                 l = node.children
+#                 result += '(* '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Div):
+#                 l = node.children
+#                 result += '(/ '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Neg):
+#                 l = node.children
+#                 result += '(- '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Pow):
+#                 # n1, node1, p1 = queue.pop(0)
+#                 # n2, node2, p2 = queue.pop(0)
+#                 # assert n1 == n2 and p1 is p2 and n1 is node.left and n2 is node.right
+#                 #
+#                 # cfg = Config()
+#                 # cfg.default_config_for_logic('QF_LRA')
+#                 # ctx = Context(cfg)
+#                 # red_val = Terms.new_uninterpreted_term(Types.real_type(), 'red')
+#                 # red = Terms.parse_term('(= red ' + y + ')')
+#                 # ctx.assert_formulas([red])
+#                 # status = ctx.check_context()
+#                 #
+#                 # if status == Status.SAT:
+#                 #     model = Model.from_context(ctx, 1)
+#                 #     yval = str(model.get_value(red_val))
+#                 # else:
+#                 #     raise NotSupportedError("something wrong in divisor of power")
+#                 # cfg.dispose()
+#                 # ctx.dispose()
+#                 # result = '(^ ' + x + ' ' + yval + ')'
+#                 # return result
+#                 pass
+#             elif isinstance(node, Implies):
+#                 l = node.children
+#                 result += '(=> '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Not):
+#                 l = node.children
+#                 result += '(not '
+#                 indicator, indicator_depth, parent = turn_on_indicator(True, n, p)
+#             elif isinstance(node, Integral):
+#                 queue.insert(0, make_dynamics_consts(node.dynamics))
+#             else:
+#                 pass
+#     return result
 #
 #
-#
-#     return max_depth
-
-
 
 
 
@@ -470,7 +583,9 @@ def _(const):
 
 @yicesObj.register(Integral)
 def _(const: Integral):
-    return yicesObj(make_dynamics_consts(const.dynamics))
+    res = yicesObj(make_dynamics_consts(const.dynamics))
+
+    return res
 
 
 @yicesObj.register(Forall)

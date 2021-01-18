@@ -60,6 +60,7 @@ class PropHelper:
                 flow_var_id = dynamics.vars[index].id
                 start_vector.append(Real(flow_var_id + "_" + str(bound) + "_0"))
                 end_vector.append(Real(flow_var_id + "_" + str(bound) + "_t"))
+                index += 1
             integral = Integral(mode_number, end_vector, start_vector, dynamics)
             integrals.append(integral)
             mode_number += 1
@@ -119,7 +120,7 @@ class PropHelper:
                     fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
                     init_const_1 = Eq(bound_applied_goal_var, relaxed_bound_const)
                     init_const_2 = Eq(not_bound_applied_goal_var, not_relaxed_bound_const)
-                    init_point_check = [init_const_1, init_const_2, fair_const_2]
+                    init_point_check = And([init_const_1, init_const_2, fair_const_2])
                     pos_forall_list = list()
                     neg_forall_list = list()
 
@@ -136,7 +137,9 @@ class PropHelper:
                     self.boolean_abstract[bound_applied_goal_interval] = Or(pos_forall_list)
                     self.boolean_abstract[not_bound_applied_goal_interval] = Or(neg_forall_list)
 
-                    result_children.extend(init_point_check)
+                    result_children.append(Or([bound_applied_goal_interval, not_bound_applied_goal_interval]))
+
+                    result_children.append(init_point_check)
 
         return result_children
 
@@ -230,21 +233,17 @@ class NewStlGoal(BaseStlGoal):
         for s in range(len(sub_list)):
             id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
 
-        print("id match dict {}".format(id_match_dict))
         for sub in id_match_dict:
             if isinstance(sub, Bool):
                 sub_const = lower_encoding(id_match_dict[sub].id, bound, 2)
 
-        # for s in range(len(sub_list)-3, len(sub_list)-2):
         for s in range(len(sub_list)):
             constraints, ba = ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict)
             consts.extend(constraints)
             self.boolean_abstract.update(ba)
-            consts.extend(ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
             constraints, ba = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
             consts.extend(constraints)
             self.boolean_abstract.update(ba)
-            # consts.extend(constraints)
 
         str_list = [str(c) for c in sub_list]
         form_index = str_list.index(str(negFormula))

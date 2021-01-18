@@ -471,6 +471,7 @@ def _(cur_inv_const: BinaryFormula, inv_prop_dict: dict):
     inv_prop_dict[new_var] = cur_inv_const
     return new_var, inv_prop_dict
 
+
 def get_max_bound(literal):
     max_bound = -1
     bound = -1
@@ -484,13 +485,14 @@ def get_max_bound(literal):
             s_index = int(v.id.find("_"))
             e_index = int(v.id.rfind("_"))
             if s_index == e_index:
-                bound = int(v.id[s_index+1:]) - 1
+                bound = int(v.id[s_index + 1:]) - 1
             else:
                 if "_0_0" in v.id or "_t" in v.id:
-                    bound = int(v.id[s_index+1:e_index])
+                    bound = int(v.id[s_index + 1:e_index])
             if max_bound < bound:
                 max_bound = bound
     return max_bound
+
 
 @singledispatch
 def get_vars(const: Constraint):
@@ -614,7 +616,7 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
-    
+
     return diff_aux(new_exp)
 
 
@@ -633,7 +635,9 @@ def make_diff_mapping(integral: Integral):
             if cur_bound == "0":
                 cur_dur_start = RealVal("0")
             cur_dur_end = Real("tau_" + str(int(cur_bound) + 1))
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
+            # new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real("tau"))
+        index += 1
     return new_dict
 
 
@@ -740,9 +744,11 @@ def _(const):
 def substitution_zero2t(const: Constraint):
     return const
 
+
 @substitution_zero2t.register(Neg)
 def _(const):
     return Neg(substitution_zero2t(const.child))
+
 
 @substitution_zero2t.register(Not)
 def _(const):
@@ -822,7 +828,7 @@ def _(const: Not):
     if isinstance(child, Not):
         return child.child
     if isinstance(child, Bool):
-        return Bool("not@"+child.id)
+        return Bool("not@" + child.id)
     return const
 
 
@@ -850,6 +856,7 @@ def _(const: Eq):
 def _(const: Neq):
     return Neq(reduce_not(const.left), reduce_not(const.right))
 
+
 @reduce_not.register(FinallyFormula)
 def _(const: FinallyFormula):
     return FinallyFormula(const.local_time, const.global_time, reduce_not(const.child))
@@ -872,6 +879,7 @@ def _(const: ReleaseFormula):
     return ReleaseFormula(const.local_time, const.global_time,
                           reduce_not(const.left),
                           reduce_not(const.right))
+
 
 @singledispatch
 def get_boolean_abstraction(const: Constraint):
@@ -1004,6 +1012,7 @@ def make_boolean_abstract_consts(props: dict()):
 def infix(const: Constraint):
     return str(const)
 
+
 @infix.register(Variable)
 def _(const: Variable):
     return const.id
@@ -1080,6 +1089,7 @@ def _(const: Pow):
 def _(const: Forall):
     return infix(const.const)
 
+
 @singledispatch
 def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
     new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
@@ -1112,6 +1122,7 @@ def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
         new_var = substitution(var, new_vars_dict)
         new_vars.append(new_var)
     return Function(new_vars, new_exps)
+
 
 @singledispatch
 def clause(const: Constraint):
@@ -1159,14 +1170,15 @@ def _(const):
     result = result.union(clause(const.right))
     return result
 
+
 def lower_encoding(chi, bound, lower):
-    com_list = [(chi + "_" + str(i), chi + "_" + str(i+1)) for i in range(1, 2 * (bound + 1))]
+    com_list = [(chi + "_" + str(i), chi + "_" + str(i + 1)) for i in range(1, 2 * (bound + 1))]
     combi = combinations(com_list, lower)
     result = list()
     for i in combi:
         rest = com_list[:]
         sub = list()
-        for j in i:       
+        for j in i:
             rest.remove(j)
             sub.append(Neq(Bool(j[0]), Bool(j[1])))
         for j in rest:
@@ -1197,12 +1209,9 @@ def get_max_depth(const: Constraint):
             max_depth = n
         # print("depth: {}, {} ({}) :: parent {}\n".format(n, node, id(node), id(p)))
     return max_depth
-        
+
 
 def fresh_new_var():
     new_var = Bool("")
     new_var.id = "opt_var_{}".format(id(new_var))
     return new_var
-
-
-
