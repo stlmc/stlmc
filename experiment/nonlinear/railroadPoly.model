@@ -94,9 +94,9 @@ barg80 = bx >= 80;
 barg40 = bx > 40;
 
 goal:
-#reach reachability;
+reach reachability;
 (<> (0.0,50.0) (reachability -> ~barg40));  # True
-#([] [20.0,40.0] (<>[1.0,6.0] reachability));
-#([] [3.0,50.0] (<>[5.0, 20.0] barg80));
-#([] [0.0, 50.0] (<>[0.0, 20.0) (tx < 30 -> vx > 2))); # True
+([] [20.0,40.0] (<>[1.0,6.0] reachability));
+([] [3.0,50.0] (<>[5.0, 20.0] barg80));
+([] [0.0, 50.0] (<>[0.0, 20.0) (tx < 30 -> vx > 2))); # True
 

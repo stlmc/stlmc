@@ -173,9 +173,9 @@ dtwogzero = d2 > 0.2;
 modeDD = (d1 < 0.1); 
 
 goal:
-#([] [0.0, 40.0] (reachability -> <>[0.0, 20.0) (d2 > 0))) ; # true
-#((g2 > 0.5) R [0, 40] (b2 = 3)); # true
-#(<> [0.0, 100.0) donegzero); # false
+([] [0.0, 40.0] (reachability -> <>[0.0, 20.0) (d2 > 0))) ; # true
+((g2 > 0.5) R [0, 40] (b2 = 3)); # true
+(<> [0.0, 100.0) donegzero); # false
 (<> (10.0,50.0] ((g2 >= 0) U(1.0,15.0) modeDD)); # false
 
 
