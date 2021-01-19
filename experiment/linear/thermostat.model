@@ -1,0 +1,98 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
+bool a;
+[-20, 100] x1;
+bool b;
+[-20, 100] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 >= 19.5;
+        (x2 >= 19.5);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = -0.6;
+    jump:
+         x2 < 23 =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+         x1 < 19 =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 >= 19.5;
+        (x2 <= 24);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = 1;
+    jump:
+        x1 < 20 =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+        x2 > 23 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 <= 24;
+        (x2 >= 19.5);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = -0.6;
+    jump:
+        x1 > 18 =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+        x2 >= 19.5 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 <= 24;
+        (x2 <= 24);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = 1;
+    jump:
+         x1 > 22 =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+         x2 > 22  =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+
+}
+
+
+init:
+(and not(a) not(b) (x1 = 20) (x2 = 23));
+
+propositions:
+reachability = x1 >= 21;
+p = x2 > 22 ;
+q = x1 < 22;
+r = x1 < 20;
+s = x2 > 19;
+
+goal:
+([][0, 20] (x1 <= 20 or x2 <= 23)); # false at bound 3
+(<> [0.0, 40.0] p);  # true
+([] [0, 10] (x1 > 19 -> [] [2, 5) x1 < 24)); # false at bound 4
+(<> [0, 4] (x1 > 19 and [] [2, 10] x2 < 22)); # false at bound 4
+([] (5, 30) (x2 <= 19 U [0, 30] x1 > 19)); # false at bound 3
+([](2, 5) (x2 < 19 R [0, 10] x1 > 18)); # true
+

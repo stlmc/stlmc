@@ -25,9 +25,9 @@ bool b;
         d/dt[tx] = -30;
         d/dt[bx] = 0;
     jump:
-        (and (70 <= tx) (tx <= 75)) =>
+        tx < 80 =>
           (and (not a') b' (bx' = bx) (tx' = tx));
-        (and (60 <= tx) (tx < 70)) =>
+        tx < 70 =>
           (and a' (not b') (bx' = bx) (tx' = tx));
 }
 {
@@ -40,7 +40,7 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = 5;
     jump:
-        (tx < 50) =>
+        tx < 80 =>
           (and a' (not b') (bx' = bx) (tx' = tx));
 }
 {
@@ -53,9 +53,9 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = 10;
     jump:
-        (and (-5 <= tx) (tx < 5) (bx <= 80)) =>
+        tx < 20 =>
           (and a' b' (bx' = bx) (tx' = tx));
-        (and (bx > 85) (tx < -8)) =>
+        tx < 0 =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
 }
 {
@@ -68,20 +68,22 @@ bool b;
         d/dt[tx] = -5;
         d/dt[bx] = -5;
     jump:
-        (bx > 85) =>
+        (tx < 0) =>
           (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
 }
 init:
-(and (a = false) (b = false) (bx >= 0) (bx < 1) (tx >= 85) (tx <= 90)) ;
+(and (a = false) (b = false) (bx = 0) (tx = 90)) ;
 
 propositions:
-txg60 = tx > 60;
+txg60 = tx < 60;
 txg10 = tx > 10;
 bxg80 = bx > 80;
 
 goal:
-([] [0.0,50.0) (tx > 0)); # true
-(<> [0, 20] (tx < -5)); # false
+([] [5.0,10.0) (bx < 50)); # false at bound 3
+(tx < 50) R [10, 30] (bx < 30); # true
 ([] [0, 40] (bxg80 -> (<> [0, 20) txg10))); # true
-(bx < 10) U [10, 40] (<> [0, 20] (tx < 40)); # false
+(bx > 10) R [10, 40] ([] [0, 20] (tx > 80)); # true
+<>[0, 40] (bx < 5) U [0, 40] (<> [0, 5] (tx <= 50)); # false
+([] [20, 30] ((tx > 80) U [0, 30] (bx > 1 and bx < 3))); # false at bound 8
 

@@ -1,6 +1,8 @@
 
 bool dx;
 bool dy;
+[-20, 20] vx;
+[-20, 20] vy;
 [0, 100] x;
 [0, 100] y;
 # zone 1
@@ -12,11 +14,13 @@ bool dy;
     inv:
         y >= 50;
     flow:
-        x(t) = 0.5*t - 0.5 * t * t + x(0);
-        y(t) = 0.5*t - 0.5 * t * t + y(0);
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+	d/dt[vx] = -0.3;
+	d/dt[vy] = -0.7;
     jump:
         (and (x <= 50) (y <= 50)) =>
-          (and (dx' = true) (dy' = false) (x' = x) (y' = y));
+          (and (dx' = true) (dy' = false) (x' = x) (y' = y) (vx' = vx) (vy' = vy));
 }
 # zone 2
 #   x: decrease, y: increase
@@ -27,11 +31,13 @@ bool dy;
     inv:
         x >= 50;
     flow:
-        x(t) = 0.5*t - 0.5 * t * t + x(0);
-        y(t) = 0.5*t + 0.5 * t * t + y(0);
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = -0.7;
+        d/dt[vy] = 0.3;
     jump:
         (and (x <= 50) (y >= 50)) =>
-          (and (dx'= false) (dy' = false) (x' = x) (y' = y));
+          (and (dx'= false) (dy' = false) (x' = x) (y' = y) (vx' = vx) (vy' = vy));
 }
 # zone 3
 #   x: increase, y: decrease
@@ -42,11 +48,13 @@ bool dy;
     inv:
 	x < 50;
     flow:
-        x(t) = 0.5*t + t * t + x(0);
-        y(t) = 0.5*t + t * t + y(0);
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = 0.7;
+        d/dt[vy] = -0.3;
     jump:
         (and (x >= 50) (y <= 50)) =>
-          (and (dx' = true) (dy' = true) (x' = x) (y' = y));
+          (and (dx' = true) (dy' = true) (x' = x) (y' = y) (vx' = vx) (vy' = vy));
 }
 # zone 4
 #   x: increase, y: increase
@@ -57,16 +65,18 @@ bool dy;
     inv:
         y <= 50;
     flow:
-        x(t) = 0.5*t + t * t + x(0);
-        y(t) = 0.5*t + 0.5 * t * t + y(0);
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = 0.3;
+        d/dt[vy] = 0.7;
     jump:
         (and (x >= 50) (y >= 50)) =>
-          (and (dx'= false) (dy' = true) (x' = x) (y' = y));
+          (and (dx'= false) (dy' = true) (x' = x) (y' = y) (vx' = vx) (vy' = vy));
 }
 
 
 init:
-(and (not(dx)) not(dy) (x <= 40) (x >= 30) (y <= 80) (y >= 70));
+(and (not(dx)) not(dy) (x = 30) (y = 70) (vx = 0) (vy = 0));
 
 propositions:
 xg80 = x > 50;
@@ -78,7 +88,7 @@ goal:
 [] [0, 50] (x <= 50 or y <= 50); # false at bound 3
 ([] [20, 40] x > 50); # true
 (<> [0, 40) (x > 50 -> [] [0, 20] x >= 50)); # true
-((x >= 50) R [5, 100) (y <= 70)); # true
-([] [20, 30] ((x < 20) or <> [50, 60] xg80)); # true 
+(x >= 50) R [5, 100) (y <= 70); # true
+([] [20, 30] ((x < 20) or <> [50, 60] xg80)); # false at bound 15
 
 

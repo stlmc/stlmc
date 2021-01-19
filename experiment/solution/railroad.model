@@ -13,8 +13,8 @@ bool b;
 [-50, 50] vx;
 {
     mode:
-        a = false;
-        b = false;
+	a = false;
+	b = false;
     inv:
 	tx > 60;
     flow:
@@ -29,8 +29,8 @@ bool b;
 }
 {
     mode:
-        a = false;
-        b = true;
+	a = false;
+	b = true;
     inv:
 	tx > 40;
     flow:
@@ -43,8 +43,8 @@ bool b;
 }
 {
     mode:
-        a = true;
-        b = false;
+	a = true;
+	b = false;
     inv:
 	tx > 10;
     flow:
@@ -59,8 +59,8 @@ bool b;
 }
 {
     mode:
-        a = true;
-        b = true;
+	a = true;
+	b = true;
     inv:
 	tx > -10;
     flow:
@@ -80,10 +80,10 @@ txg10 = tx > 10;
 bxg80 = bx > 80;
 
 goal:
-#([] [5.0,10.0) (bx < 50)); # false at bound 3
-#(tx < 50) R [10, 30] (bx < 30); # true
-#([] [0, 40] (bxg80 -> (<> [0, 20) txg10))); # true
-#(bx > 10) R [10, 40] ([] [0, 20] (tx > 80)); # true
-#<>[0, 40] (bx < 5) U [0, 40] (<> [0, 5] (tx <= 50)); # false
-#([] [20, 30] ((tx > 80) U [0, 30] (bx > 1 and bx < 3))); # false at bound 8
+([] [5.0,10.0) (bx < 50)); # false at bound 3
+(tx < 50) R [10, 30] (bx < 30); # true
+([] [0, 40] (bxg80 -> (<> [0, 20) txg10))); # true
+(bx > 10) R [10, 40] ([] [0, 20] (tx > 80)); # true
+<>[0, 40] (bx < 5) U [0, 40] (<> [0, 5] (tx <= 50)); # false
+([] [20, 30] ((tx > 80) U [0, 30] (bx > 1 and bx < 3))); # false at bound 8
 
