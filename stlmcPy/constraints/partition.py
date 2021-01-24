@@ -20,7 +20,8 @@ def guessPartition(formula, baseCase):
     genVar = generate_id(0, "TauIndex")
 
     # add order constraints based on base partition (ex . tau_0 < tau_1 ...) to bConst
-    _addConstOrd(baseCase, genVar, bConst, True)
+    #_addConstOrd(baseCase, genVar, bConst, True)
+
     _guess(formula, baseCase, genVar, result, sepMap, bConst)
 
     return (result, sepMap, bConst)
@@ -70,8 +71,8 @@ def _(formula, baseCase, genVar, result, sepMap, const):
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
 
-    _addConstOrd(sepMap[formula], genVar, const)
-    # _addConstEqu(sepMap[formula], p, const)
+    #_addConstOrd(sepMap[formula], genVar, const)
+    #_addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.global_time, formula.local_time, const)
 
 
@@ -85,8 +86,8 @@ def _(formula, baseCase, genVar, result, sepMap, const):
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
 
-    _addConstOrd(sepMap[formula], genVar, const)
-    # _addConstEqu(sepMap[formula], p, const)
+    #_addConstOrd(sepMap[formula], genVar, const)
+    #_addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.global_time, formula.local_time, const)
 
 
@@ -108,12 +109,12 @@ def _addConstEqu(wl, yl, const):
 # result[formula], result[formula.child], formula.gtime, formula.ltime, const)
 def _addConstPar(wl, yl, k: Interval, i: Interval, const):
     def _constEnd(w, y):
-        arg = [w == RealVal("0")] + [Implies(Geq(y - RealVal(str(e)), RealVal("0")), w == y - RealVal(str(e))) for e in
-                                     [i.left, i.right] if math.isfinite(e)]
+        arg = [w == RealVal("0")] + [Implies(Geq(y - RealVal(str(e)), RealVal("0")), w == y - RealVal(str(e))) for e in [i.left, i.right] if math.isfinite(e)]
         return Or(arg)
 
     all_vars_list = list(wl)
-    all_vars_list = sorted(all_vars_list, key=lambda x: int(x.id[8:]))
+    all_vars_list = sorted(all_vars_list, key= lambda x: int(x.id[8:]))
+
     for w in range(len(all_vars_list) - 1):
         const.append(all_vars_list[w] <= all_vars_list[w + 1])
     for w in all_vars_list:
@@ -122,21 +123,11 @@ def _addConstPar(wl, yl, k: Interval, i: Interval, const):
         for y in yl:
             for e in [i.left, i.right]:
                 if math.isfinite(e):
-                    arg_list.extend(
-                        [And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0"), w == y - RealVal(str(e))])])
+                    arg_list.extend([And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0"), w == y - RealVal(str(e))])])
 
         const.append(Or(arg_list))
-    for w in all_vars_list:
-        for y in yl:
-            const.append(_constEnd(w, y))
-    for y in yl:
-        for e in [i.left, i.right]:
-            arg_list = list()
-            if math.isfinite(e):
-                for w in all_vars_list:
-                    arg_list.append(Eq(w, y - RealVal(str(e))))
-                const.append(Implies(Geq(y - RealVal(str(e)), RealVal("0")), Or(arg_list)))
 
     const.extend([Implies(And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0")]),
                           Or([w == y - RealVal(str(e)) for w in wl])) \
                   for y in yl for e in [i.left, i.right] if math.isfinite(e)])
+
