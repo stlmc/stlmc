@@ -178,23 +178,24 @@ class Runner:
                 # for goal in goals:
                 output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver,
                                                                  config.encoding)
-                logger.write_to_csv(file_name=output_file_name, overwrite=True)
+                # logger.write_to_csv(file_name=output_file_name, overwrite=True)
                 key_index = file_name.rfind("/")
                 stl_file_name = str(file_name[key_index + 1:]) + "_" + str(
                     goal.get_formula()) + "_" + config.solver + "_" + config.encoding
                 for bound in config.bound:
-                    output_file_name_bound = "{}_{}".format(output_file_name, bound)
-                    logger.set_output_file_name(output_file_name_bound)
-                    logger.write_to_csv(overwrite=True)
+                    # output_file_name_bound = "{}_{}".format(output_file_name, bound)
+                    # logger.set_output_file_name(output_file_name_bound)
+                    # logger.write_to_csv(overwrite=True)
 
                     # start logging
                     logger.reset_timer()
-                    logger.start_timer("goal timer")
-                    logger.add_info("bound", bound)
+                    # logger.add_info("bound", bound)
 
                     model_const = model.make_consts(bound)
-                    s_time = timer()
+
+                    logger.start_timer("goal timer")
                     goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
+
                     '''
                     print("model")
                     for mc in model_const.children:
@@ -211,8 +212,7 @@ class Runner:
                     boolean_abstract.update(model.boolean_abstract)
                     boolean_abstract.update(goal_boolean_abstract)
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-
-                    e_time = timer()
+                    logger.stop_timer("goal timer")
 
                     printer.print_normal("> {}".format(config.solver))
 
@@ -230,30 +230,30 @@ class Runner:
                     if isinstance(goal, ReachGoal):
                         result = not result
 
-                    e_time2 = timer()
+                    # e_time2 = timer()
 
-                    if not os.path.exists(stl_file_name + ".csv"):
-                        with open(stl_file_name + ".csv", 'a') as csv_file:
-                            csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
-                            csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
-                                e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
-                    else:
-                        with open(stl_file_name + ".csv", 'a') as csv_file:
-                            csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
-                                e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
+                    # if not os.path.exists(stl_file_name + ".csv"):
+                    #     with open(stl_file_name + ".csv", 'a') as csv_file:
+                    #         csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
+                    #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
+                    #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
+                    # else:
+                    #     with open(stl_file_name + ".csv", 'a') as csv_file:
+                    #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
+                    #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
 
-                    logger.stop_timer("goal timer")
+                    # logger.stop_timer("goal timer")
                     printer.print_normal_dark("\n> result")
-                    printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result,
-                                                                                                    logger.get_duration_time(
-                                                                                                        "goal timer")))
+                    smt_time = logger.get_duration_time("solving timer")
+                    goal_time = logger.get_duration_time("goal timer")
+                    printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
                     printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
                     printer.print_line()
 
-                    logger.add_info("result", result)
-                    logger.add_info("total", logger.get_duration_time("goal timer"))
-                    logger.write_to_csv(clear_after_write=False)
-                    logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
+                    # logger.add_info("result", result)
+                    # logger.add_info("total", logger.get_duration_time("goal timer"))
+                    # logger.write_to_csv(clear_after_write=False)
+                    # logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
 
                     model.clear()
                     goal.clear()

@@ -49,7 +49,8 @@ class YicesSolver(SMTSolver):
         result = ctx.check_context()
 
         logger.stop_timer("solving timer")
-        logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        # logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+
         str_result = str(result)
 
         if result == Status.SAT:
