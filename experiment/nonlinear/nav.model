@@ -1,0 +1,101 @@
+bool dx;
+bool dy;
+[-20, 20] vx;
+[-20, 20] vy;
+[0, 100] x;
+[0, 100] y;
+# zone 1
+#   x: decrease, y: decrease
+{
+    mode:
+        dx = false;
+        dy = false;
+    inv:
+        y >= 50;
+#        vx > -10;
+#        vy > -10;
+    flow:
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = 0.02 * vx + 0.02 * vy - 0.1;
+        d/dt[vy] = 0.02 * vx + 0.05 * vy - 0.3;
+    jump:
+        (and (x <= 50) (y <= 50)) =>
+          (and (dx' = true) (dy' = false) (x' = x) (y' = y) (vx' = 0) (vy' = 0));
+}
+# zone 2
+#   x: decrease, y: increase
+{
+    mode:
+        dx = false;
+        dy = true;
+    inv:
+        x >= 50;
+#        vx > -10;
+#        vy < 10;
+    flow:
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+        d/dt[vx] = 0.02 * vx - 0.06 * vy - 0.3; 
+        d/dt[vy] = 0.1 * vx + 0.02 * vy + 0.1;
+    jump:
+        (and (x <= 50) (y >= 50)) =>
+          (and (dx'= false) (dy' = false) (x' = x) (y' = y) (vx' = 0) (vy' = 0));
+}
+# zone 3
+#   x: increase, y: decrease
+{
+    mode:
+	dx = true;
+	dy = false;
+    inv:
+	x < 50;
+#        vx < 20;
+#        vy > -10;
+    flow:
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+       d/dt[vx] = 0.02 * vx + 2 * vy - 0.3; 
+        d/dt[vy] = 0.1 * vx + 0.12 * vy - 0.2;
+    jump:
+        (and (x >= 50) (y <= 50)) =>
+          (and (dx' = true) (dy' = true) (x' = x) (y' = y) (vx' = 0) (vy' = 0));
+}
+# zone 4
+#   x: increase, y: increase
+{
+    mode:
+        dx = true;
+        dy = true;
+    inv:
+        y <= 50;
+#        vx < 10;
+#        vy < 20;
+    flow:
+        d/dt[x] = vx;
+        d/dt[y] = vy;
+	d/dt[vx] = 0.02 * vx + 0.02 * vy + 0.1;
+	d/dt[vy] = 0.04 * vx + 0.04 * vy + 0.3;
+    jump:
+        (and (x >= 50) (y >= 50)) =>
+          (and (dx'= false) (dy' = true) (x' = x) (y' = y) (vx' = 0) (vy' = 0));
+}
+
+
+init:
+(and (not(dx)) not(dy) (x = 30) (y = 70) (vx = -8) (vy = -8));
+
+propositions:
+xg80 = x > 60;
+yl50 = y < 50;
+xg60 = x > 60;
+xg70 = x > 70;
+
+# timebound 20
+goal:
+<>[4, 10] (x < 10); # false at bound 11
+([] [2, 14] x > 50); # true
+(<> [0, 4) (x > 50 -> [] [0, 10] x >= 50)); # true
+(x >= 50) R [0, 15) (y <= 70); # true
+(<> [0, 10] ([] [0, 10] xg80)); # false at bound 17
+

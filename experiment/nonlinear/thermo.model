@@ -1,0 +1,41 @@
+bool a;
+[-20, 100] x;
+{
+    mode:
+        a = false;
+    inv:
+        x >= 19.5;
+    flow:
+        d/dt[x] = -0.15 * x;
+    jump:
+        (x < 19) =>
+          (and (a') (x' = x));
+}
+{
+    mode:
+        a = true;
+    inv:
+        x <= 24;
+    flow:
+        d/dt[x] = 1.2 * x;
+    jump:
+        (x > 18) =>
+          (and (not a') (x' = x));
+}
+init:
+(and (a = false) (x = 20));
+
+propositions:
+reachability = x < 22;
+q = x <= 21;
+xT = x > 27 ;
+
+#timebound 20
+goal:
+[][0, 20] x < 21; # true
+([] (5, 10) (x <= 19 U [5, 10] x > 20)); #true
+(<> [10.0, 15) reachability); # false
+([](2, 5) (x < 19 R [0, 10] x > 18)); # true
+((x < 23) R [4.0, 8.0] a); # true
+
+

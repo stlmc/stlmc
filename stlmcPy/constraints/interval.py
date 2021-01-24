@@ -126,27 +126,19 @@ def minusInterval(i: Interval, j: Interval):
 
 def intervalConst(j: Interval, k: Interval, i: Interval):
     const = []
-    if not isinstance(j.right, float) or math.isfinite(j.right):
-        mid = (_real(j.left) + _real(j.right)) / RealVal("2")
-    else:
-        mid = (_real(j.left) + RealVal("1"))
-
-    if isinstance(j.left, Real) or isinstance(j.left, RealVal) \
-            or isinstance(j.left, Int) or isinstance(j.left, IntVal):
-        const.append(_real(j.left) >= RealVal("0"))
 
     if math.isfinite(i.right):
         if j.left_end and not (k.left_end and i.right_end):
-            const.append(mid > (_real(k.left) - _real(i.right)))
+            const.append(_real(j.left) > (_real(k.left) - _real(i.right)))
         else:
-            const.append(mid >= (_real(k.left) - _real(i.right)))
+            const.append(_real(j.left) >= (_real(k.left) - _real(i.right)))
 
     if not isinstance(j.right, float) or math.isfinite(j.right):
         if not isinstance(k.right, float) or math.isfinite(k.right):
             if j.right_end and not (k.right_end and i.left_end):
-                const.append(mid < (_real(k.right) - _real(i.left)))
+                const.append(_real(j.right) < (_real(k.right) - _real(i.left)))
             else:
-                const.append(mid <= (_real(k.right) - _real(i.left)))
+                const.append(_real(j.right) <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
             return And([BoolVal("False")])

@@ -55,10 +55,10 @@ class Z3Solver(SMTSolver):
         size = 0
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-            #size = size_of_tree(all_consts)
+            size = size_of_tree(all_consts)
         result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
-        #return result, size
-        return result, -1
+        return result, size
+        # return result, -1
 
     def clear(self):
         self._cache = list()

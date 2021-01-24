@@ -1,0 +1,49 @@
+# model description:
+#
+# Two water tanks are connected by a single pipe.
+# The water level of each tank is separately controlled
+# by each pump and is affected by the adjacent water level.
+# time bound : 1
+
+bool a;
+[0, 10] x;
+{
+    mode:
+        a = false;
+    inv:
+        x > 1;
+    flow:
+        d/dt[x] = (-2 * sqrt(2 * 9.806) * sqrt(x))  ;
+    jump:
+        (x < 5) =>
+          (and a' (x' = x));
+
+}
+{
+    mode:
+        a = true;
+    inv:
+        x < 8;
+    flow:
+        d/dt[x] = (sqrt(2 * 9.806) * sqrt(x)) ;
+    jump:
+        (x >= 2)  =>
+          (and (not a') (x' = x));
+}
+init:
+(and (a = false) (x = 5));
+
+propositions:
+reachability = x >= 5.6 ;
+
+
+#timebound 20
+goal:
+([] [5.0, 15.0) x < 6); # false at bound 2 
+([] [2, 4] x > 5.5); # true
+((x < 7) U (10, 20] (x > 3)); # false
+([] [0, 4] ((x > 3) R [1, 4) x < 4)); # true
+([] [5, 10] (<> (0, 5] reachability));
+
+
+

@@ -531,7 +531,7 @@ def _(const: Integral):
         result.add(ev)
     for sv in const.start_vector:
         result.add(sv)
-    result.add(const)
+    # result.add(const)
     return result
 
 
@@ -624,7 +624,7 @@ def make_diff_mapping(integral: Integral):
     new_dict = dict()
     index = 0
     for dyn_var in integral.start_vector:
-        if not isinstance(integral.dynamics, Ode):
+        if isinstance(integral.dynamics, Ode):
             new_dict[dyn_var] = integral.dynamics.exps[index]
         else:
             one_var = integral.end_vector[0].id
@@ -636,7 +636,7 @@ def make_diff_mapping(integral: Integral):
                 cur_dur_start = RealVal("0")
             cur_dur_end = Real("tau_" + str(int(cur_bound) + 1))
             # new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real("tau"))
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], cur_dur_start)
         index += 1
     return new_dict
 
@@ -879,6 +879,68 @@ def _(const: ReleaseFormula):
     return ReleaseFormula(const.local_time, const.global_time,
                           reduce_not(const.left),
                           reduce_not(const.right))
+@singledispatch
+def bound_tau_max(const: Constraint, tb):
+    return const
+
+@bound_tau_max.register(And)
+def _(const: And, tb):
+    return And([bound_tau_max(c, tb) for c in const.children])
+
+
+@bound_tau_max.register(Or)
+def _(const: Or, tb):
+    return Or([bound_tau_max(c, tb) for c in const.children])
+
+
+@bound_tau_max.register(Implies)
+def _(const: Implies, tb):
+    return Implies(bound_tau_max(const.left, tb), reduce_not(const.right, tb))
+
+
+@bound_tau_max.register(Eq)
+def _(const: Eq, tb):
+    return Eq(bound_tau_max(const.left, tb), reduce_not(const.right, tb))
+
+
+@bound_tau_max.register(Neq)
+def _(const: Neq, tb):
+    return Neq(bound_tau_max(const.left, tb), reduce_not(const.right, tb))
+
+
+@bound_tau_max.register(FinallyFormula)
+def _(const: FinallyFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+
+    return FinallyFormula(const.local_time, bound_interval, bound_tau_max(const.child, tb))
+
+
+@bound_tau_max.register(GloballyFormula)
+def _(const: GloballyFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+    return GloballyFormula(const.local_time, bound_interval, bound_tau_max(const.child, tb))
+
+
+@bound_tau_max.register(UntilFormula)
+def _(const: UntilFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+    return UntilFormula(const.local_time, bound_interval,
+                        bound_tau_max(const.left, tb),
+                        bound_tau_max(const.right, tb))
+
+
+@bound_tau_max.register(ReleaseFormula)
+def _(const: ReleaseFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, Treu, RealVal(str(tb)))
+    return And([ReleaseFormula(const.local_time, bound_interval,
+                          bound_tau_max(const.left, tb),
+                          bound_tau_max(const.right, tb)),
+                FinallyFormula(Interval(True, 0, False, inf), bound_interval, bound_tau_max(const.left))])
+
 
 
 @singledispatch
@@ -1001,9 +1063,11 @@ def generate_id(initial, gid='v'):
         counter += 1
 
 
-def make_boolean_abstract_consts(props: dict()):
+def make_boolean_abstract_consts(props: dict):
     result = list()
-    for p in props:
+    all_vars_list = props.keys()
+    all_vars_list = sorted(all_vars_list, key= lambda x: x.id)
+    for p in all_vars_list:
         result.append(Eq(p, props[p]))
     return And(result)
 

@@ -66,12 +66,12 @@ def _(formula, baseCase, genVar, result, sepMap, const):
     _guess(formula.child, baseCase, genVar, result, sepMap, const)
 
     p = result[formula.child]
-    sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
+    sepMap[formula] = list(p)
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
 
     _addConstOrd(sepMap[formula], genVar, const)
-    _addConstEqu(sepMap[formula], p, const)
+    # _addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.global_time, formula.local_time, const)
 
 
@@ -81,11 +81,12 @@ def _(formula, baseCase, genVar, result, sepMap, const):
     _guess(formula.right, baseCase, genVar, result, sepMap, const)
 
     p = result[formula.left] | result[formula.right]
-    sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
+    sepMap[formula] = list(p)
 
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
+
     _addConstOrd(sepMap[formula], genVar, const)
-    _addConstEqu(sepMap[formula], p, const)
+    # _addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.global_time, formula.local_time, const)
 
 
@@ -107,22 +108,35 @@ def _addConstEqu(wl, yl, const):
 # result[formula], result[formula.child], formula.gtime, formula.ltime, const)
 def _addConstPar(wl, yl, k: Interval, i: Interval, const):
     def _constEnd(w, y):
-        arg = [w == RealVal("0")] + [w == y - RealVal(str(e)) for e in [i.left, i.right] if math.isfinite(e)]
+        arg = [w == RealVal("0")] + [Implies(Geq(y - RealVal(str(e)), RealVal("0")), w == y - RealVal(str(e))) for e in
+                                     [i.left, i.right] if math.isfinite(e)]
         return Or(arg)
-    arg_list = list()
-    for w in wl:
-        for y in yl:
-            arg_list.append(And([inInterval(y, k), _constEnd(w, y)]))
 
-        for e in [k.left, k.right]:
-            if math.isfinite(e):
-                arg_list.append(_constEnd(w, RealVal(str(e))))
+    all_vars_list = list(wl)
+    all_vars_list = sorted(all_vars_list, key=lambda x: int(x.id[8:]))
+    for w in range(len(all_vars_list) - 1):
+        const.append(all_vars_list[w] <= all_vars_list[w + 1])
+    for w in all_vars_list:
+        arg_list = list()
+        arg_list.append(Eq(w, RealVal("0")))
+        for y in yl:
+            for e in [i.left, i.right]:
+                if math.isfinite(e):
+                    arg_list.extend(
+                        [And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0"), w == y - RealVal(str(e))])])
 
         const.append(Or(arg_list))
-        const.append(w >= RealVal("0"))
+    for w in all_vars_list:
+        for y in yl:
+            const.append(_constEnd(w, y))
+    for y in yl:
+        for e in [i.left, i.right]:
+            arg_list = list()
+            if math.isfinite(e):
+                for w in all_vars_list:
+                    arg_list.append(Eq(w, y - RealVal(str(e))))
+                const.append(Implies(Geq(y - RealVal(str(e)), RealVal("0")), Or(arg_list)))
+
     const.extend([Implies(And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0")]),
                           Or([w == y - RealVal(str(e)) for w in wl])) \
                   for y in yl for e in [i.left, i.right] if math.isfinite(e)])
-    const.extend([Implies(RealVal(str(e1)) - RealVal(str(e2)) >= RealVal("0"),
-                          Or([w == RealVal(str(e1)) - RealVal(str(e2)) for w in wl])) \
-                  for e1 in [k.left, k.right] if math.isfinite(e1) for e2 in [i.left, i.right] if math.isfinite(e2)])

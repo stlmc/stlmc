@@ -1,18 +1,16 @@
-from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
-    substitution_zero2t, reduce_not, clause
-from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.solver.assignment import Assignment, remove_prefix, get_integral
-from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
-from stlmcPy.constraints.constraints import *
-from timeit import default_timer as timer
-
-from stlmcPy.tree.operations import size_of_tree
-from stlmcPy.util.logger import Logger
+import asyncio
+import os
+import random
+from functools import singledispatch
 
 from yices import *
-import yices_api as yapi
+
 from stlmcPy.constraints.constraints import *
-from functools import singledispatch
+from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
+    substitution_zero2t, reduce_not
+from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.solver.abstract_solver import SMTSolver
+from stlmcPy.tree.operations import size_of_tree
 
 
 class YicesSolver(SMTSolver):
@@ -26,50 +24,97 @@ class YicesSolver(SMTSolver):
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
 
+    def get_declared_variables(self, consts):
+        declare_list = list()
+        all_vars = set()
+
+        for i in consts:
+            all_vars = all_vars.union(get_vars(i))
+
+        all_vars_list = list(all_vars)
+        all_vars_list = sorted(all_vars_list, key=lambda x: x.id)
+
+        # variables declaration
+        for i in all_vars_list:
+            op = {Real: "Real", Bool: "Bool", Int: "Int"}
+            if type(i) in op:
+                type_str = op[type(i)]
+                sub_result = "(declare-fun " + i.id + " () " + type_str + ")"
+                declare_list.append(sub_result)
+        # sub_result = "(declare-fun tau () Real)"
+        # declare_list.append(sub_result)
+
+        return declare_list
+
+    async def _run(self, consts, logic):
+        try:
+            return await asyncio.wait_for(self._yicescheckSat(consts, logic), timeout=100000000.0)
+        except asyncio.TimeoutError:
+            print('timeout!')
+
     def yicescheckSat(self, consts, logic):
+        return asyncio.run(self._run(consts, logic))
+
+    async def _yicescheckSat(self, consts, logic):
         assert self.logger is not None
         logger = self.logger
 
-        cfg = Config()
+        declares = self.get_declared_variables(consts)
+        results = list()
 
-        # TODO : current logic input is LRA, it should be QF_LRA
-        if logic != "NONE":
-            cfg.default_config_for_logic('QF_NRA')
-        else:
-            cfg.default_config_for_logic('QF_NRA')
+        for c in consts:
+            results.append(yicesObj(c))
 
-        ctx = Context(cfg)
-        yicesConsts = list()
-        for i in range(len(consts)):
-            yicesConsts.append(Terms.parse_term(consts[i]))
+        str_file_name = "yices_model" + str(random.random())
+        with open(str_file_name + ".smt2", 'w') as model_file:
+            model_file.write("(set-logic {})\n".format(self._logic))
+            model_file.write("\n".join(declares))
+            model_file.write("\n")
+            assertion = "(assert (and"
+            for i in results:
+                assertion = assertion + " " + i
+            assertion = assertion + "))"
+            model_file.write(assertion + "\n")
+            model_file.write("(check-sat)\n")
+            model_file.write("(get-model)\n")
+            model_file.write("(exit)\n")
+
+        model_file_name = "{}.smt2".format(str_file_name)
+        proc = await asyncio.create_subprocess_exec(
+            'yices-smt2', model_file_name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
 
         logger.start_timer("solving timer")
-        ctx.assert_formulas(yicesConsts)
-
-        result = ctx.check_context()
-
+        stdout, stderr = await proc.communicate()
         logger.stop_timer("solving timer")
-        # logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        stdout_str = stdout.decode()[len("Solution:\n"):-1]
+        stderr_str = stderr.decode()
+        # output_str = "{}\n{}".format(stdout_str, stderr_str)
+        output_str = stdout.decode()
 
-        str_result = str(result)
+        # if os.path.isfile(model_file_name):
+        #     os.remove(model_file_name)
+        '''
+        batcmd = "yices-smt2 " + model_file_name
+        p = subprocess.check_output(batcmd, shell = True)
+        output_str = p.decode("utf-8")[:-1]
+        print(output_str)
+        '''
 
-        if result == Status.SAT:
-            m = Model.from_context(ctx, 1)
-            # print(m.to_string(100,100,100))
-            result = False
+        if "unsat" in output_str:
+            result = "True"
+        elif "sat" in output_str:
+            result = "False"
         else:
-            m = None
-            result = True if Status.UNSAT else "Unknown"
+            result = "Unknown"
 
-        cfg.dispose()
-        ctx.dispose()
-
-        return result, m
+        return result, None
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         size = 0
         if all_consts is not None:
-            self._cache.append(yicesObj(all_consts))
+            self._cache.append(all_consts)
             size = size_of_tree(all_consts)
         result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
@@ -88,70 +133,6 @@ class YicesSolver(SMTSolver):
 
     def add(self, const):
         pass
-
-    def set_logic(self, logic_name: str):
-        pass
-
-    def add_contradict_consts(self):
-        clause_set = set()
-        for i in self._cache:
-            clause_set = clause_set.union(clause(i))
-
-        cons = set()
-        for i in clause_set:
-            if isinstance(i, BinaryFormula) and not isinstance(i, Implies) and not isinstance(i, Neq):
-                if len(get_vars(i)) > 0:
-                    cons.add(i)
-
-        cons_list = list(cons)
-        for i in range(len(cons_list)):
-            cur_const = cons_list[i]
-            for j in range(i + 1, len(cons_list)):
-                flag = False
-                comp_const = cons_list[j]
-                if len(get_vars(cur_const.left)) > 0:
-                    if str(cur_const.left) == str(comp_const.left):
-                        if isinstance(cur_const, Eq) and isinstance(comp_const, Eq):
-                            if not str(cur_const.right) == str(comp_const.right):
-                                flag = True
-                        elif type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
-                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.right)) == 0:
-                                if int(parse_expr(infix(cur_const.right))) < int(parse_expr(infix(comp_const.right))):
-                                    flag = True
-                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
-                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.right)) == 0:
-                                if int(parse_expr(infix(cur_const.right))) > int(parse_expr(infix(comp_const.right))):
-                                    flag = True
-                    elif str(cur_const.left) == str(comp_const.right):
-                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
-                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.left)) == 0:
-                                if int(parse_expr(infix(cur_const.right))) < int(parse_expr(infix(comp_const.left))):
-                                    flag = True
-                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
-                            if len(get_vars(cur_const.right)) == 0 and len(get_vars(comp_const.left)) == 0:
-                                if int(parse_expr(infix(cur_const.right))) > int(parse_expr(infix(comp_const.left))):
-                                    flag = True
-                elif len(get_vars(cur_const.right)) > 0:
-                    if str(cur_const.right) == str(comp_const.left):
-                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Lt, Leq]:
-                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.right)) == 0:
-                                if int(parse_expr(infix(cur_const.left))) > int(parse_expr(infix(comp_const.right))):
-                                    flag = True
-                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Gt, Geq]:
-                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.right)) == 0:
-                                if int(parse_expr(infix(cur_const.left))) < int(parse_expr(infix(comp_const.right))):
-                                    flag = True
-                    elif str(cur_const.right) == str(comp_const.right):
-                        if type(cur_const) in [Lt, Leq] and type(comp_const) in [Gt, Geq]:
-                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.left)) == 0:
-                                if int(parse_expr(infix(cur_const.left))) > int(parse_expr(infix(comp_const.left))):
-                                    flag = True
-                        elif type(cur_const) in [Gt, Geq] and type(comp_const) in [Lt, Leq]:
-                            if len(get_vars(cur_const.left)) == 0 and len(get_vars(comp_const.left)) == 0:
-                                if int(parse_expr(infix(cur_const.left))) < int(parse_expr(infix(comp_const.left))):
-                                    flag = True
-                if flag:
-                    self._cache.append(Or([Not(cur_const), Not(comp_const)]))
 
 
 @singledispatch
@@ -208,6 +189,7 @@ def make_forall_consts_aux(forall: Forall):
     monotone_cond = Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
                         Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
 
+    '''
     res = And([Geq(start_forall_exp, RealVal("0")),
                 Geq(end_forall_exp, RealVal("0")),
                 monotone_cond,
@@ -222,8 +204,12 @@ def make_forall_consts_aux(forall: Forall):
                                op_dict[forall.const.__class__](RealVal('0'), diff(start_forall_exp, forall.integral)),
                                forall.integral))])
     '''
+    res = And([op_dict[type(forall.const)](start_forall_exp, RealVal("0")),
+               Geq(end_forall_exp, RealVal("0")),
+               monotone_cond])
+    '''
     print("forall")
-    print(forall)
+    print(forall.const)
     print(res)
     '''
 
@@ -400,7 +386,6 @@ def make_forall_consts(forall: Forall):
 #
 
 
-
 @singledispatch
 def yicesObj(const: Constraint):
     raise NotSupportedError('Something wrong :: ' + str(const) + ":" + str(type(const)))
@@ -408,7 +393,10 @@ def yicesObj(const: Constraint):
 
 @yicesObj.register(RealVal)
 def _(const: RealVal):
-    return str(const.value)
+    res = str(const.value)
+    if "-" in res:
+        return "(- 0 " + res[1:] + ")"
+    return res
 
 
 @yicesObj.register(IntVal)
@@ -423,7 +411,7 @@ def _(const: BoolVal):
     elif const.value == 'False':
         return 'false'
     else:
-        raise NotSupportedError("Z3 solver cannot translate this")
+        raise NotSupportedError("Yices solver cannot translate this")
 
 
 @yicesObj.register(Variable)
@@ -600,7 +588,7 @@ def _(const: Forall):
     if isinstance(const.const, Bool):
         return yicesObj(const.const)
     if get_vars(const.const) is None:
-        return yicseObj(const.const)
+        return yicesObj(const.const)
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
             return "(not " + yicesObj(const.const.child) + ")"
@@ -637,6 +625,6 @@ def _(const: Forall):
         new_forall_child_const = reverse_inequality(op_dict[const.const.__class__](exp, RealVal('0')))
         new_forall_const = make_forall_consts(
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
-    new_const = And([Eq(Real("currentMode" + bound_str), RealVal(str(const.current_mode_number))),
+    new_const = And([Eq(Real("currentMode_" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
     return yicesObj(new_const)

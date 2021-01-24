@@ -3,14 +3,13 @@ import argparse
 import os
 
 from stlmcPy.constraints.constraints import And
-from stlmcPy.objects.goal import ReachGoal
 from stlmcPy.constraints.operations import make_boolean_abstract_consts
 from stlmcPy.exception.exception import NotSupportedError
+from stlmcPy.objects.goal import ReachGoal
 from stlmcPy.objects.object_factory import ObjectFactory
 from stlmcPy.solver.solver_factory import SolverFactory
 from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
-from timeit import default_timer as timer
 
 
 def string_to_bool(v: str):
@@ -61,6 +60,8 @@ class StlConfiguration:
                                  help='delta for invariant condition (default: 0)')
         self.parser.add_argument('-formula_num', type=int,
                                  help='formula number to run (default: 1)')
+        self.parser.add_argument('-logic', type=str,
+                                 help='formula number to run \"{QF_LRA, QF_NRA}\"(default: QF_NRA)')
         self._args = None
         self._file_list = list()
         self._lower = 1
@@ -69,6 +70,7 @@ class StlConfiguration:
         self._solver = "z3"
         self._optimize_flags = list()
         self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction"]
+        self._logic_list = ["QF_LRA", "QF_NRA"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl",
                                        "only-goal-stl-enhanced"]
@@ -77,6 +79,7 @@ class StlConfiguration:
         self._verbose = False
         self._debug = False
         self._timebound = 60
+        self._logic = "QF_NRA"
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -115,6 +118,8 @@ class StlConfiguration:
             self._timebound = self._args.timebound
         if self._args.formula_num is not None:
             self._formula_num = self._args.formula_num
+        if self._args.logic is not None:
+            self._logic = (self._args.logic.upper() if self._args.logic.upper() in self._logic_list else "QF_NRA")
 
     @property
     def file_list(self):
@@ -155,6 +160,10 @@ class StlConfiguration:
     @property
     def formula_num(self):
         return self._formula_num
+
+    @property
+    def logic(self):
+        return self._logic
 
 
 class Runner:
@@ -223,6 +232,7 @@ class Runner:
                     '''
 
                     # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
+                    solver.set_logic(config.logic)
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
 
                                                 model.range_dict, boolean_abstract)

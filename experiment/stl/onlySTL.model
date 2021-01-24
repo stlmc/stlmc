@@ -24,7 +24,7 @@ init:
 
 propositions:
 
-
+# timebound: 60
 goal:
 #([] (0.0,1.0) p);
 #(<> (3.68,8.39] ~p5);

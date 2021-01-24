@@ -4,7 +4,7 @@ import stlmcPy.constraints.separation as SEP
 import stlmcPy.constraints.partition as PART
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not, make_new_dynamics, \
-    lower_encoding
+    lower_encoding, bound_tau_max
 import stlmcPy.constraints.encoding as ENC
 import abc
 from timeit import default_timer as timer
@@ -14,15 +14,19 @@ class Goal:
 
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
-        for k in range(1, bound + 2):
-            chi = Gt(Real('tau_' + str(k)), RealVal('0'))
+        for k in range(1, bound + 1):
+            chi = Geq(Real('tau_' + str(k)), RealVal('0'))
             chi._range = True
             time_const_children.append(chi)
             chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
             chi._range = True
             time_const_children.append(chi)
-            if k < bound + 1:
+            if k < bound :
+                time_const_children.append(Leq(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+            elif k == bound:
                 time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+
+        time_const_children.append(Eq(Real('tau_' + str(bound + 1)), RealVal(str(time_bound))))
 
         return time_const_children
 
@@ -73,6 +77,8 @@ class PropHelper:
         for bound in range(0, self.bound + 1):
             # don't do anything when there is nothing to do.
             goal_vars = get_vars(self.goal.get_formula())
+            all_vars_list = list(goal_vars)
+            all_vars_list = sorted(all_vars_list, key= lambda x: x.id)
 
             integrals = self.make_integrals(bound)
             substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict,
@@ -91,7 +97,8 @@ class PropHelper:
                 new_substitute_dict_point[prop_var] = Bool(prop_var.id + "_" + str(2 * bound))
                 new_substitute_dict_interval[prop_var] = Bool(prop_var.id + "_" + str(2 * bound + 1))
 
-            for goal_var in goal_vars:
+            #for goal_var in goal_vars:
+            for goal_var in all_vars_list:
                 if goal_var in self.proposition_dict:
                     index = 0
                     integral = integrals[index]
@@ -154,7 +161,7 @@ class BaseStlGoal(Goal):
         self.boolean_abstract = dict()
 
     @abc.abstractmethod
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         pass
 
     def get_formula(self):
@@ -172,9 +179,10 @@ class BaseStlGoal(Goal):
             mapping_consts = propHelper.make_consts(k, delta)
             prop_const.extend(mapping_consts)
         '''
+
         result_const.append(And(prop_const))
 
-        stl_consts_list = self.make_stl_consts(bound)
+        stl_consts_list = self.make_stl_consts(bound, time_bound)
 
         time_consts_list = self.make_time_consts(bound, time_bound)
 
@@ -188,27 +196,25 @@ class BaseStlGoal(Goal):
 
 
 class OldStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         baseP = PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
+        negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
-        s_time1 = timer()
         (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
-        e_time1 = timer()
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
-        e_time2 = timer()
+
 
         # set enc flags
         ENC.ENC_TYPES = "old"
         # FOL translation
-        baseV = ENC.baseEncoding(partition, baseP)
-        e_time3 = timer()
+
+        baseV = ENC.baseEncoding(partition, baseP, time_bound)
 
         formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
-        e_time4 = timer()
 
         total_children = list()
         total_children.extend(formulaConst)
@@ -218,7 +224,7 @@ class OldStlGoal(BaseStlGoal):
 
 
 class NewStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
 
@@ -237,6 +243,10 @@ class NewStlGoal(BaseStlGoal):
             if isinstance(sub, Bool):
                 sub_const = lower_encoding(id_match_dict[sub].id, bound, 2)
 
+        # for s in range(len(sub_list)):
+        #     consts.extend(ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
+        #     constraints, self.boolean_abstract = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
+        #     consts.extend(constraints)
         for s in range(len(sub_list)):
             constraints, ba = ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict)
             consts.extend(constraints)
