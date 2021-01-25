@@ -37,13 +37,12 @@ propositions:
 reachability = x >= 5.6 ;
 
 
-#timebound 20
 goal:
-([] [5.0, 15.0) x < 6); # false at bound 2 
+([] [5.0, 50.0) x < 6); # false at bound 2 
 ([] [2, 4] x > 5.5); # true
-((x < 7) U (10, 20] (x > 3)); # false
-([] [0, 4] ((x > 3) R [1, 4) x < 4)); # true
-([] [5, 10] (<> (0, 5] reachability));
+((x < 7) U (10, 100] (x > 3)); # false
+([] [0, 40] ((x > 3) R [10, 40) x < 4)); # true
+([] [5, 30] (<> (0, 15] reachability));
 
 
 

@@ -160,5 +160,6 @@ def _atomEncoding_old(f: Bool, j: Interval, base: dict):
     for (basePartition, prop) in base[f]:
         if str(j) == str(basePartition):
             return prop
-        #const.append(Implies(subInterval(j, basePartition), prop))
-    #return And(const)
+        const.append(Implies(subInterval(j, basePartition), prop))
+
+    return And(const)

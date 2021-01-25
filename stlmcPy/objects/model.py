@@ -277,10 +277,10 @@ class StlMC(Model):
 
             inv_consts = self.make_invariant_consts(k, integral_object_list)
             jump_consts = self.make_jump_consts(k)
-            #if k < bound:
-            #    jump_consts = self.make_jump_consts(k)
-            #else:
-            #    jump_consts = None
+            if k < bound:
+                jump_consts = self.make_jump_consts(k)
+            else:
+                jump_consts = None
             sub_result = list()
             sub_chi = list()
             for cur in range(len(flow_consts)):

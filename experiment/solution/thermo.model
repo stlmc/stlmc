@@ -7,18 +7,16 @@
 # temperature.
 
 bool a;
-[0, 50] x1;
+[19, 30] x1;
 bool b;
 real startX1;
 real startX2;
-[0, 50] x2;
+[19, 30] x2;
 {
     mode:
         a = false;
         b = false ;
     inv:
-        x1 >= 19.5;
-        (x2 >= 19.5);
     flow:
         d/dt[x1] = -0.015 * (startX1 + 0.01 * startX2);
         d/dt[x2] = -0.045 * (startX2 + 0.01 * startX1);
@@ -33,8 +31,6 @@ real startX2;
         a = false;
         b = true;
     inv:
-        x1 >= 19.5;
-        (x2 <= 24);
     flow:
         d/dt[x1] = -0.015 * (startX1 + 0.01 * startX2);
         d/dt[x2] = 0.045 * (50 -((1 - 2 * 0.01) * startX2 + 0.01 * startX1));
@@ -49,8 +45,6 @@ real startX2;
         a = true;
         b = false;
     inv:
-        x1 <= 24;
-        (x2 >= 19.5);
     flow:
         d/dt[x1] = 0.04 * (45 -(startX1 + 0.01 * startX2));
         d/dt[x2] = -0.045 * (startX2 + 0.01 * startX1);
@@ -66,8 +60,6 @@ real startX2;
         a = true;
         b = true;
     inv:
-        x1 <= 24;
-        (x2 <= 24);
     flow:
         d/dt[x1] = 0.04 * (45 -(startX1 + 0.01 * startX2)); 
         d/dt[x2] =  0.045 * (50 -((1 - 2 * 0.01) * startX2 + 0.01 * startX1));
@@ -93,7 +85,7 @@ s = x2 > 19;
 #time bound 20
 goal:
 (x2 <= 19 R [4, 10] x2 <= 22); # false at bound 11
-([][0, 20] x1 <= 20); # false at bound 3
+([][5, 15] x1 <= 20); # true
 (<> [0.0, 20.0] p);  # true
 ([] [0, 10] (x1 > 19 -> [] [2, 5) x1 < 24)); # true
 (<> [0, 4] (x1 > 19 and [] [2, 10] x2 < 22)); # false at bound 11

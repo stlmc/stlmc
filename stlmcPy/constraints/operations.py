@@ -624,7 +624,7 @@ def make_diff_mapping(integral: Integral):
     new_dict = dict()
     index = 0
     for dyn_var in integral.start_vector:
-        if isinstance(integral.dynamics, Ode):
+        if not isinstance(integral.dynamics, Ode):
             new_dict[dyn_var] = integral.dynamics.exps[index]
         else:
             one_var = integral.end_vector[0].id
@@ -636,7 +636,7 @@ def make_diff_mapping(integral: Integral):
                 cur_dur_start = RealVal("0")
             cur_dur_end = Real("tau_" + str(int(cur_bound) + 1))
             # new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], cur_dur_start)
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], cur_dur_end)
         index += 1
     return new_dict
 
@@ -935,11 +935,11 @@ def _(const: UntilFormula, tb):
 @bound_tau_max.register(ReleaseFormula)
 def _(const: ReleaseFormula, tb):
     gt = const.global_time
-    bound_interval = Interval(gt.left_end, gt.left, Treu, RealVal(str(tb)))
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
     return And([ReleaseFormula(const.local_time, bound_interval,
                           bound_tau_max(const.left, tb),
                           bound_tau_max(const.right, tb)),
-                FinallyFormula(Interval(True, 0, False, inf), bound_interval, bound_tau_max(const.left))])
+                FinallyFormula(Interval(True, 0, False, float('inf')), bound_interval, bound_tau_max(const.left, tb))])
 
 
 

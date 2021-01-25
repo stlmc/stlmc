@@ -30,11 +30,10 @@ reachability = x < 22;
 q = x <= 21;
 xT = x > 27 ;
 
-#timebound 20
 goal:
 [][0, 20] x < 21; # true
-([] (5, 10) (x <= 19 U [5, 10] x > 20)); #true
-(<> [10.0, 15) reachability); # false
+([] (5, 30) (x <= 19 U [5, 30] x > 20)); #true
+(<> [10.0, 25) reachability); # false
 ([](2, 5) (x < 19 R [0, 10] x > 18)); # true
 ((x < 23) R [4.0, 8.0] a); # true
 

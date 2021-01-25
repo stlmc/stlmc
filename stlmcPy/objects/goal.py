@@ -15,16 +15,14 @@ class Goal:
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
         for k in range(1, bound + 1):
-            chi = Geq(Real('tau_' + str(k)), RealVal('0'))
-            chi._range = True
-            time_const_children.append(chi)
-            chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
-            chi._range = True
-            time_const_children.append(chi)
+            if k == 1:
+                chi = Geq(Real('tau_' + str(k)), RealVal('0'))
+                time_const_children.append(chi)
             if k < bound :
                 time_const_children.append(Leq(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
             elif k == bound:
-                time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
+                chi = Lt(Real('tau_' + str(k)), RealVal(str(time_bound)))
+                time_const_children.append(chi)
 
         time_const_children.append(Eq(Real('tau_' + str(bound + 1)), RealVal(str(time_bound))))
 

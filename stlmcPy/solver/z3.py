@@ -237,8 +237,8 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
-    monotone_cond =  Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')), 
-                            Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
+    monotone_cond = Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
+                        Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
 
     return And([forall.const,
                 substitution_zero2t(forall.const),
