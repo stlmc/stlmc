@@ -487,8 +487,8 @@ def get_max_bound(literal):
             if s_index == e_index:
                 bound = int(v.id[s_index + 1:]) - 1
             else:
-                if "_0_0" in v.id or "_t" in v.id:
-                    bound = int(v.id[s_index + 1:e_index])
+                # if "_0_0" in v.id or "_t" in v.id:
+                bound = int(v.id[s_index + 1:e_index])
             if max_bound < bound:
                 max_bound = bound
     return max_bound
@@ -531,7 +531,7 @@ def _(const: Integral):
         result.add(ev)
     for sv in const.start_vector:
         result.add(sv)
-    # result.add(const)
+    result.add(const)
     return result
 
 

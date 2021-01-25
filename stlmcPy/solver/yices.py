@@ -32,7 +32,7 @@ class YicesSolver(SMTSolver):
         for i in consts:
             all_vars = all_vars.union(get_vars(i))
 
-        all_vars_list = list(all_vars)
+        all_vars_list = [c for c in all_vars if not isinstance(c, Integral)]
         all_vars_list = sorted(all_vars_list, key=lambda x: x.id)
 
         # variables declaration
