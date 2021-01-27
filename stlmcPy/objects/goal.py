@@ -72,6 +72,7 @@ class PropHelper:
         result_children = list()
         if len(self.proposition_dict) == 0:
             return result_children
+        mode_set = set(self.model.mode_var_dict.values())
         for bound in range(0, self.bound + 1):
             # don't do anything when there is nothing to do.
             goal_vars = get_vars(self.goal.get_formula())
@@ -101,6 +102,12 @@ class PropHelper:
                     index = 0
                     integral = integrals[index]
                     const = self.proposition_dict[goal_var]
+
+                    # mode condition checking get_vars(const))
+                    isMode = False
+                    if len(get_vars(const) - mode_set) == 0:
+                        isMode = True
+
                     bound_applied_goal_var = substitution(goal_var, new_substitute_dict_point)
                     bound_applied_goal_interval = substitution(goal_var, new_substitute_dict_interval)
 
@@ -114,9 +121,12 @@ class PropHelper:
                             sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
                             return sub
 
-                    relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                    #relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
 
-                    not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+                    #not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+
+                    relaxed_bound_const = bound_applied_const
+                    not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
 
                     not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
                     not_bound_applied_goal_interval = Bool("not@" + bound_applied_goal_interval.id)
@@ -132,15 +142,22 @@ class PropHelper:
                     start_tau = Real('tau_' + str(bound))
                     if str(bound) == "0":
                         start_tau = RealVal("0")
-                    for chi in range(len(sub_integrals_list)):
-                        pos_forall_list.append(
-                            Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const,
-                                   sub_integrals_list[chi]))
-                        neg_forall_list.append(
-                            Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const,
-                                   sub_integrals_list[chi]))
-                    self.boolean_abstract[bound_applied_goal_interval] = Or(pos_forall_list)
-                    self.boolean_abstract[not_bound_applied_goal_interval] = Or(neg_forall_list)
+
+                    if isMode:
+                        pos_interval_const = relaxed_bound_const
+                        neg_interval_const = not_relaxed_bound_const
+                    else:
+                        for chi in range(len(sub_integrals_list)):
+                            pos_forall_list.append(
+                                Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const,
+                                       sub_integrals_list[chi]))
+                            neg_forall_list.append(
+                                Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const,
+                                       sub_integrals_list[chi]))
+                        pos_interval_const = Or(pos_forall_list)
+                        neg_interval_const = Or(neg_forall_list)
+                    self.boolean_abstract[bound_applied_goal_interval] = pos_interval_const
+                    self.boolean_abstract[not_bound_applied_goal_interval] = neg_interval_const
 
                     result_children.append(Or([bound_applied_goal_interval, not_bound_applied_goal_interval]))
 
