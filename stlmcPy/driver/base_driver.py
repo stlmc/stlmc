@@ -219,12 +219,12 @@ class Runner:
                     for mc in model_const.children:
                         print(mc)
                     '''
-
+                    '''
 
                     print("goal")
                     for gc in goal_const.children:
                         print(gc)
-
+                    '''
 
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)

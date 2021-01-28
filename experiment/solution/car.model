@@ -1,4 +1,5 @@
-real d;
+bool r;
+bool d;
 [0, 100] x1;
 [0, 100] y1;
 [0.5, 10] vx1;
@@ -9,80 +10,75 @@ real d;
 #  car1 : straight
 {
     mode:
-        d = 0;
+	r = false;
+	d = false;
     inv:
-        x2 - x1 > 0.3;
-        x2 - x1 < 4;
-        y2 - y1 > -1.5;
-        y2 - y1 < 1.5;
     flow:
-        d/dt[x1] = vx1; 
-        d/dt[y1] = vy1; 
-        d/dt[x2] = 2;
-        d/dt[y2] = 2;
-	d/dt[vx1] = 0;
-	d/dt[vy1] = 0;
+	x1(t) = vx1(0) * t + x1(0);
+	y1(t) = vy1(0) * t + y1(0);
+	x2(t) = 3 * t + x2(0);
+	y2(t) = 3 * t + y2(0);
+	vx1(t) = vx1(0);
+	vy1(t) = vy1(0);
     jump:
         (y2 - y1) >= 1 =>
-                (and (d' = -1) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-			(vx1' = vx1) (vy1' = vy1));
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+			(vx1' = vx1) (vy1' = 7));
         (y2 - y1) <= -1 =>
-                (and (d' = 1) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-                        (vx1' = vx1) (vy1' = vy1));
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+                        (vx1' = vx1) (vy1' = -1));
 }
 # car1 : left, d/dt[vx1] = -0.7, d/dt[vy1] = 1;
 {
     mode:
-        d = -1;
+	r = true;
+	d = false;
     inv:
-        x2 - x1 > 0.3;
-        x2 - x1 < 4;
-        y2 - y1 > -1.5;
-        y2 - y1 < 1.5;
     flow:
-        d/dt[x1] = vx1;
-        d/dt[y1] = vy1;
-        d/dt[x2] = 2;
-        d/dt[y2] = 2;
-        d/dt[vx1] = -0.7;
-        d/dt[vy1] = 1;
+        x1(t) = vx1(0) * t - 0.8 * t * t + x1(0);
+        y1(t) = vy1(0) * t + 0.5 * t * t + y1(0);
+        x2(t) = 2 * t + x2(0);
+        y2(t) = 2 * t + y2(0);
+        vx1(t) = vx1(0) - 0.5 * t;
+        vy1(t) = vy1(0) + t;
     jump:
         (and ((y2 - y1) < 1) ((y2 - y1) > -1)) =>
-                (and (d' = 0) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-                        (vx1' = vx1) (vy1' = vy1));
+                (and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+                        (vx1' = vx1) (vy1' = 0));
         (y2 - y1) <= -1 =>
-                (and (d' = 1) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-                        (vx1' = vx1) (vy1' = vy1));
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+                        (vx1' = vx1) (vy1' = -1));
 
 }
 # car1 : right, d/dt[vx1] = -0.7, d/dt[vy1] = -1;
 {
     mode:
-        d = 1;
+	r = true;
+	d = true;
     inv:
-        x2 - x1 > 0.3;
-        x2 - x1 < 4;
-        y2 - y1 > -1.5;
-        y2 - y1 < 1.5;
     flow:
-        d/dt[x1] = vx1;
-        d/dt[y1] = vy1;
-        d/dt[x2] = 2;
-        d/dt[y2] = 2;
-        d/dt[vx1] = -0.7;
-        d/dt[vy1] = -1;
+        x1(t) = vx1(0) * t - 0.15 * t * t + x1(0);
+        y1(t) = vy1(0) * t - 0.5 * t * t +  y1(0);
+        x2(t) = 2 * t + x2(0);
+        y2(t) = 2 * t + y2(0);
+        vx1(t) = vx1(0) - 0.5 * t;
+        vy1(t) = vy1(0) - t;
+
     jump:
         (y2 - y1) >= 1 =>
-                (and (d' = -1) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-                        (vx1' = vx1) (vy1' = vy1));
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+                        (vx1' = vx1) (vy1' = 2));
         (and ((y2 - y1) < 1) ((y2 - y1) > -1)) =>
-                (and (d' = 0) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
-                        (vx1' = vx1) (vy1' = vy1));
+                (and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+                        (vx1' = vx1) (vy1' = 0));
+	#(y2 - y1) <= -1 =>
+        #        (and (d' = 1) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)
+        #                (vx1' = vx1) (vy1' = -2));
 }
 
 
 init:
-(and (d = 0) (x1 = 0) (y1 = 0) (x2 = 1) (y2 = 1) (vx1 = 3) (vy1 = 0));
+(and not(r) not(d) (x1 = 0) (y1 = 0) (x2 = 1) (y2 = 1) (vx1 = 3.5) (vy1 = 0));
 
 propositions:
 xg80 = x > 50;
@@ -92,9 +88,7 @@ xg70 = x > 70;
 
 # timebound 20
 goal:
-[] [0, 10] ((y2 - y1) <= 1.5); # true
-<> (0, 10] ((x2 - x1) < 3); # true
-[] [0, 4) (<>[2, 6] ((x2 - x1) >= 1.2)); # false at bound 11
-(y2 - y1  >= 8) U [5, 10) ((x2 - x1) >= 2); # false at bound 8
-[] [1, 3] (<> [5, 7] (y2 - y1 < 3)); # true
-
+~r U [0, 14] (y2 - y1 < 2); # true
+<> [0, 20] (d -> (y2 - y1) < 3); # true
+[] [0, 20] (y2 > y1); # false at 2
+(<> [1, 4] ~d) U [0, 10] (x2 - x1) < 3; # false at 3
