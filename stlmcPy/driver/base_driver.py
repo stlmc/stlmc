@@ -62,6 +62,8 @@ class StlConfiguration:
                                  help='formula number to run (default: 1)')
         self.parser.add_argument('-logic', type=str,
                                  help='formula number to run \"{QF_LRA, QF_NRA}\"(default: QF_NRA)')
+        self.parser.add_argument('-zeno', type=string_to_bool,
+                                 help='allow zeno behavior if set (default: true)')
         self._args = None
         self._file_list = list()
         self._lower = 1
@@ -80,6 +82,7 @@ class StlConfiguration:
         self._debug = False
         self._timebound = 60
         self._logic = "QF_NRA"
+        self._zeno = True
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -120,6 +123,12 @@ class StlConfiguration:
             self._formula_num = self._args.formula_num
         if self._args.logic is not None:
             self._logic = (self._args.logic.upper() if self._args.logic.upper() in self._logic_list else "QF_NRA")
+        if self._args.zeno is not None:
+            self._zeno = self._args.zeno
+
+    @property
+    def zeno(self):
+        return self._zeno
 
     @property
     def file_list(self):
@@ -180,7 +189,7 @@ class Runner:
         Printer.debug_on = config.debug_flag
         Printer.verbose_on = config.verbose_flag
         for file_name in config.file_list:
-            model, PD, goals = object_manager.generate_objects(file_name)
+            model, PD, goals = object_manager.generate_objects(file_name, config.zeno)
 
             if config.formula_num <= len(goals):
                 goal = goals[config.formula_num - 1]
@@ -210,12 +219,12 @@ class Runner:
                     for mc in model_const.children:
                         print(mc)
                     '''
-                    '''
+
 
                     print("goal")
                     for gc in goal_const.children:
                         print(gc)
-                    '''
+
 
                     boolean_abstract = dict()
                     boolean_abstract.update(model.boolean_abstract)

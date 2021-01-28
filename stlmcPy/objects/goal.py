@@ -9,24 +9,12 @@ import stlmcPy.constraints.encoding as ENC
 import abc
 from timeit import default_timer as timer
 
+from stlmcPy.encoding.time import make_zeno_time_const, make_non_zeno_time_const
+
 
 class Goal:
-
-    def make_time_consts(self, bound, time_bound):
-        time_const_children = list()
-        for k in range(1, bound + 1):
-            if k == 1:
-                chi = Geq(Real('tau_' + str(k)), RealVal('0'))
-                time_const_children.append(chi)
-            if k < bound :
-                time_const_children.append(Leq(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
-            elif k == bound:
-                chi = Lt(Real('tau_' + str(k)), RealVal(str(time_bound)))
-                time_const_children.append(chi)
-
-        time_const_children.append(Eq(Real('tau_' + str(bound + 1)), RealVal(str(time_bound))))
-
-        return time_const_children
+    def __init__(self, time_enc_func):
+        self.time_encoding_function = time_enc_func
 
     @abc.abstractmethod
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
@@ -77,7 +65,7 @@ class PropHelper:
             # don't do anything when there is nothing to do.
             goal_vars = get_vars(self.goal.get_formula())
             all_vars_list = list(goal_vars)
-            all_vars_list = sorted(all_vars_list, key= lambda x: x.id)
+            all_vars_list = sorted(all_vars_list, key=lambda x: x.id)
 
             integrals = self.make_integrals(bound)
             substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict,
@@ -96,7 +84,7 @@ class PropHelper:
                 new_substitute_dict_point[prop_var] = Bool(prop_var.id + "_" + str(2 * bound))
                 new_substitute_dict_interval[prop_var] = Bool(prop_var.id + "_" + str(2 * bound + 1))
 
-            #for goal_var in goal_vars:
+            # for goal_var in goal_vars:
             for goal_var in all_vars_list:
                 if goal_var in self.proposition_dict:
                     index = 0
@@ -121,9 +109,9 @@ class PropHelper:
                             sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
                             return sub
 
-                    #relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                    # relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
 
-                    #not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+                    # not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
 
                     relaxed_bound_const = bound_applied_const
                     not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
@@ -168,7 +156,8 @@ class PropHelper:
 
 class BaseStlGoal(Goal):
     # get core.formula. of some type...
-    def __init__(self, formula: Formula):
+    def __init__(self, formula: Formula, time_enc_func):
+        super().__init__(time_enc_func)
         self.formula = formula
         self.boolean_abstract = dict()
 
@@ -199,7 +188,7 @@ class BaseStlGoal(Goal):
 
         stl_consts_list = self.make_stl_consts(bound, time_bound)
 
-        time_consts_list = self.make_time_consts(bound, time_bound)
+        time_consts_list = self.time_encoding_function(bound, time_bound)
 
         result_const.extend(time_consts_list)
         result_const.extend(stl_consts_list)
@@ -221,7 +210,6 @@ class OldStlGoal(BaseStlGoal):
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
-
 
         # set enc flags
         ENC.ENC_TYPES = "old"
@@ -279,8 +267,12 @@ class NewStlGoal(BaseStlGoal):
 
 
 class ReachGoal(Goal):
+    def clear(self):
+        pass
+
     # get core.formula. of some type...
-    def __init__(self, formula: Formula):
+    def __init__(self, formula: Formula, time_enc_func):
+        super().__init__(time_enc_func)
         self.formula = formula
 
     def get_formula(self):
@@ -304,31 +296,41 @@ class ReachGoal(Goal):
             sub_result.append(goal_consts)
         # get time const
         result.append(Or(sub_result))
-        result.extend(self.make_time_consts(bound, time_bound))
+        result.extend(self.time_encoding_function(bound, time_bound))
 
         return And(result), dict()
 
 
 class GoalFactory:
-    def __init__(self, raw_goal: Formula):
+    def __init__(self, raw_goal: Formula, is_zeno=True):
         self.raw_goal = raw_goal
+        self.time_function = None
+        if is_zeno:
+            self.time_function = make_zeno_time_const
+        else:
+            self.time_function = make_non_zeno_time_const
 
     @abc.abstractmethod
     def generate_goal(self):
         if isinstance(self.raw_goal, Reach):
-            return ReachGoal(self.raw_goal.formula)
+            return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return NewStlGoal(self.raw_goal)
+            return NewStlGoal(self.raw_goal, self.time_function)
         pass
 
 
 class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula):
+    def __init__(self, raw_goal: Formula, is_zeno=True):
         super().__init__(raw_goal)
+        self.time_function = None
+        if is_zeno:
+            self.time_function = make_zeno_time_const
+        else:
+            self.time_function = make_non_zeno_time_const
 
     def generate_goal(self):
         if isinstance(self.raw_goal, Reach):
-            return ReachGoal(self.raw_goal.formula)
+            return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return OldStlGoal(self.raw_goal)
+            return OldStlGoal(self.raw_goal, self.time_function)
         pass
