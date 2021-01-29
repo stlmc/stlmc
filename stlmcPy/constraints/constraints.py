@@ -17,15 +17,12 @@ class Interval:
     def __repr__(self):
         if self._str is None:
             self._str = ('[' if self.left_end else '(') + repr(self.left) + ',' + repr(self.right) + (
-            ']' if self.right_end else ')')
+                ']' if self.right_end else ')')
         return self._str
 
     def __eq__(self, other):
         return isinstance(other,
                           Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
-
-
-universeInterval = Interval(True, 0.0, False, float('inf'))
 
 
 class Unary:
@@ -309,6 +306,9 @@ class BoolVal(Constant, Formula):
         Constant.__init__(self, "bool", value)
         Formula.__init__(self)
         self._range = False
+
+
+universeInterval = Interval(True, RealVal("0.0"), False, RealVal('inf'))
 
 
 class Add(BinaryExpr):
@@ -615,7 +615,7 @@ class Integral(Formula, Leaf):
         self.dynamics = dynamics
         self._range = False
         self._str = "(integral " + str(self.current_mode_number) \
-               + " " + str(self.end_vector) + " " + str(self.start_vector) + " " + str(self.dynamics) + ")"
+                    + " " + str(self.end_vector) + " " + str(self.start_vector) + " " + str(self.dynamics) + ")"
 
     def __hash__(self):
         return hash(self._str)

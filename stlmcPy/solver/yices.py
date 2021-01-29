@@ -103,6 +103,7 @@ class YicesSolver(SMTSolver):
         print(output_str)
         '''
 
+        #print(output_str)
         if "unsat" in output_str:
             result = "True"
         elif "sat" in output_str:

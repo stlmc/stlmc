@@ -217,7 +217,7 @@ class OldStlGoal(BaseStlGoal):
 
         baseV = ENC.baseEncoding(partition, baseP, time_bound)
 
-        formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
+        formulaConst = ENC.valuation(fs[0], fs[1], Interval(True, RealVal("0.0"), True, RealVal("0.0")), baseV)[0]
 
         total_children = list()
         total_children.extend(formulaConst)

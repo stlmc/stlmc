@@ -99,6 +99,7 @@ def subInterval(i: Interval, j: Interval):
 
     return And(const)
 
+
 def minusInterval(i: Interval, j: Interval):
     left_end = False
     right_end = False
@@ -111,21 +112,25 @@ def minusInterval(i: Interval, j: Interval):
     if isinstance(i.left, float):
         i_left_val = RealVal(str(i.left))
     i_right_val = i.right
-    if isinstance(i.right,float):
+    if isinstance(i.right, float):
         i_right_val = RealVal(str(i.right))
 
     j_left_val = j.left
     if isinstance(j.left, float):
         j_left_val = RealVal(str(j.left))
-    i_right_val = i.right
-    if isinstance(j.right,float):
+    j_right_val = i.right
+    if isinstance(j.right, float):
         j_right_val = RealVal(str(j.right))
     left = i_left_val - j_right_val
     right = i_right_val - j_left_val
     return Interval(left_end, left, right_end, right)
 
+
 def intervalConst(j: Interval, k: Interval, i: Interval):
     const = []
+    j = Interval(j.left_end, _to_old(j.left), j.right_end, _to_old(j.right))
+    k = Interval(k.left_end, _to_old(k.left), k.right_end, _to_old(k.right))
+    i = Interval(i.left_end, _to_old(i.left), i.right_end, _to_old(i.right))
 
     if math.isfinite(i.right):
         if j.left_end and not (k.left_end and i.right_end):
@@ -161,6 +166,21 @@ def _real(x):
         return IntVal(str(x))
     elif type(x) is str:
         return Real(str(x))
+    else:
+        print(type(x))
+        raise RuntimeError("Invalid partition : " + str(x))
+
+
+def _to_old(x):
+    assert isinstance(x, Real) or isinstance(x, RealVal) or isinstance(x, Int) or isinstance(x, IntVal)
+    if isinstance(x, Real):
+        return x
+    elif isinstance(x, RealVal):
+        return float(x.value)
+    elif isinstance(x, Int):
+        return x
+    elif isinstance(x, IntVal):
+        return int(x.value)
     else:
         print(type(x))
         raise RuntimeError("Invalid partition : " + str(x))

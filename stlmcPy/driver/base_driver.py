@@ -240,6 +240,7 @@ class Runner:
                         print(ba)
                     '''
 
+
                     # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
                     solver.set_logic(config.logic)
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),

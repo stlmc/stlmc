@@ -4,6 +4,7 @@ from functools import singledispatch
 from .operations import generate_id
 import re
 
+
 def fullSeparation(f: Formula, sepMap):
     fMap = {}
     gen = generate_id(0, "@chi")
@@ -30,6 +31,7 @@ def _(f: Not, sepMap, gen, fMap):
     if isinstance(f.child, Bool):
         return Bool("not@" + f.child.id)
     return f.__class__(_separation(f.child, sepMap, gen, fMap))
+
 
 @_separation.register(Multinary)
 def _(f: Multinary, sepMap, gen, fMap):
@@ -58,7 +60,7 @@ def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     op = {GloballyFormula: And, FinallyFormula: Or}
     global_time = f.global_time
     sep_point = list(sepMap[f])
-    sep_point = sorted(sep_point, key= lambda x: int(re.findall("\d+", x.id)[0]))
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
     if isinstance(global_time.left, float):
         left = RealVal(str(global_time.left))
     else:
@@ -85,7 +87,7 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
     op1 = {UntilFormula: Or, ReleaseFormula: And}
     global_time = f.global_time
     sep_point = list(sepMap[f])
-    sep_point = sorted(sep_point, key= lambda x: int(re.findall("\d+", x.id)[0]))
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
     if isinstance(global_time.left, float):
         left = RealVal(str(global_time.left))
     else:
@@ -111,7 +113,7 @@ def _separateUnary(f: UnaryTemporalFormula, index, partition):
     >>> print(_separateUnary(g, 0, [1,2,3]))
     ((<>_[1.0,2.0)^[0.0,1) p) \/ (<>_[1.0,2.0)^[1,1] p) \/ (<>_[1.0,2.0)^(1,2) p) \/ (<>_[1.0,2.0)^[2,2] p) \/ (<>_[1.0,2.0)^(2,3) p) \/ (<>_[1.0,2.0)^[3,3] p) \/ (<>_[1.0,2.0)^(3,inf) p))
     """
-    #assert f.global_time == universeInterval
+    # assert f.global_time == universeInterval
     ft = f.__class__
     result = list()
     op = {GloballyFormula: And, FinallyFormula: Or}
@@ -134,7 +136,7 @@ def _separateBinary(f: BinaryTemporalFormula, index, partition):
     >>> print(_separateBinary(s, 0, [1,2,3]))
     ((p R_(1.0,2.0]^[0.0,1) q) /\ ((<>_[0,inf)^[0.0,1) p) \/ (<>_[0,inf)^[1,1] p) \/ (([]_(1.0,2.0]^[1,1] q) /\ (p R_(1.0,2.0]^(1,2) q) /\ ((<>_[0,inf)^(1,2) p) \/ (<>_[0,inf)^[2,2] p) \/ (([]_(1.0,2.0]^[2,2] q) /\ (p R_(1.0,2.0]^(2,3) q) /\ ((<>_[0,inf)^(2,3) p) \/ (<>_[0,inf)^[3,3] p) \/ (([]_(1.0,2.0]^[3,3] q) /\ (p R_(1.0,2.0]^(3,inf) q))))))))
     """
-    #assert f.global_time == universeInterval
+    # assert f.global_time == universeInterval
     ft = f.__class__
     op1 = {UntilFormula: Or, ReleaseFormula: And}
     op2 = {UntilFormula: And, ReleaseFormula: Or}
@@ -143,7 +145,7 @@ def _separateBinary(f: BinaryTemporalFormula, index, partition):
     result = list()
     if index == 0:
         (p1, p2) = _sepMidPart(index, partition)
-        sub_part = st1[ft](Interval(True, 0, False, float('inf')), p1, f.left)
+        sub_part = st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p1, f.left)
         subresult = list()
         subresult.append(st2[ft](f.local_time, p1, f.right))
         subresult.append(_separateBinary(f, index + 1, partition))
@@ -151,12 +153,12 @@ def _separateBinary(f: BinaryTemporalFormula, index, partition):
     elif index >= len(partition) - 1:
         return ft(f.local_time, Interval(False, partition[-2], False, partition[-1]), f.left, f.right)
     else:
-        (p1, p2) = _sepMidPart(index-1, partition)
+        (p1, p2) = _sepMidPart(index - 1, partition)
         result.append(ft(f.local_time, p2, f.left, f.right))
         subresult = list()
-        subresult.append(st1[ft](Interval(True, 0, False, float('inf')), p2, f.left))
+        subresult.append(st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p2, f.left))
         (p1, p2) = _sepMidPart(index, partition)
-        subresult.append(st1[ft](Interval(True, 0, False, float('inf')), p1, f.left))
+        subresult.append(st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p1, f.left))
         sub_part = list()
         sub_part.append(st2[ft](f.local_time, p1, f.right))
         sub_part.append(_separateBinary(f, index + 1, partition))
@@ -169,9 +171,9 @@ def _sepEndPart(index, partition):
     if index == 0:
         return universeInterval
     else:
-        return Interval(False, partition[index - 1], False, float('inf'))
+        return Interval(False, partition[index - 1], False, RealVal('inf'))
 
 
 def _sepMidPart(index, partition):
     p2 = Interval(True, partition[index], True, partition[index])
-    return p2, Interval(False, partition[index], False, partition[index+1])
+    return p2, Interval(False, partition[index], False, partition[index + 1])

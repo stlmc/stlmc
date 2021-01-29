@@ -91,6 +91,7 @@ def _enhanced_value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
 @_value.register(Bool)
 def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
     if ENC_TYPES == "new":
+        print("???")
         return _enhanced_value_aux(f, sub, j, base, genPr, fMap)
     elif ENC_TYPES == "old":
         return _value_aux(f, sub, j, base, genPr, fMap)
