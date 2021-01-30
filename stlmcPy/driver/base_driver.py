@@ -248,7 +248,8 @@ class Runner:
                                                 model.range_dict, boolean_abstract)
 
                     if isinstance(goal, ReachGoal):
-                        result = not result
+                        result_dict = {"True": "False", "False": "True", "Unknown": "Unknown"}
+                        result = result_dict[result]
 
                     # e_time2 = timer()
 
