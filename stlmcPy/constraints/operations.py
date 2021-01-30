@@ -939,7 +939,7 @@ def _(const: ReleaseFormula, tb):
     return And([ReleaseFormula(const.local_time, bound_interval,
                           bound_tau_max(const.left, tb),
                           bound_tau_max(const.right, tb)),
-                FinallyFormula(Interval(True, 0, False, float('inf')), bound_interval, bound_tau_max(const.left, tb))])
+                FinallyFormula(Interval(True, RealVal('0'), False, RealVal('inf')), bound_interval, bound_tau_max(const.left, tb))])
 
 
 

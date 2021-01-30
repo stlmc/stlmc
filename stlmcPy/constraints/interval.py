@@ -103,26 +103,13 @@ def subInterval(i: Interval, j: Interval):
 def minusInterval(i: Interval, j: Interval):
     left_end = False
     right_end = False
-    if i.left_end and j.left_end:
+    if i.left_end and j.right_end:
         left_end = True
-    if i.right_end and j.right_end:
+    if i.right_end and j.left_end:
         right_end = True
 
-    i_left_val = i.left
-    if isinstance(i.left, float):
-        i_left_val = RealVal(str(i.left))
-    i_right_val = i.right
-    if isinstance(i.right, float):
-        i_right_val = RealVal(str(i.right))
-
-    j_left_val = j.left
-    if isinstance(j.left, float):
-        j_left_val = RealVal(str(j.left))
-    j_right_val = i.right
-    if isinstance(j.right, float):
-        j_right_val = RealVal(str(j.right))
-    left = i_left_val - j_right_val
-    right = i_right_val - j_left_val
+    left = i.left - j.right
+    right = i.right - j.left
     return Interval(left_end, left, right_end, right)
 
 
