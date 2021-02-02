@@ -58,8 +58,13 @@ class StlConfiguration:
                                  help='turn on debug message logging (default: false)')
         self.parser.add_argument('-delta', type=float,
                                  help='delta for invariant condition (default: 0)')
-        self.parser.add_argument('-formula_num', type=int,
-                                 help='formula number to run (default: 1)')
+        self.parser.add_argument('-formula_lower', '-fl', type=int,
+                                 help='lower bound of formula to run (default: 1)')
+        self.parser.add_argument('-formula_upper', '-fu', type=int,
+                                 help='lower bound of formula to run (default: formula lower bound)')
+        self.parser.add_argument('-formula_step', '-fs', type=int,
+                                 help='step between (formula_lower, formula_upper) (default: 1)')
+
         self.parser.add_argument('-logic', type=str,
                                  help='formula number to run \"{QF_LRA, QF_NRA}\"(default: QF_NRA)')
         self.parser.add_argument('-zeno', type=string_to_bool,
@@ -69,6 +74,11 @@ class StlConfiguration:
         self._lower = 1
         self._upper = 1
         self._step = 1
+
+        self._f_lower = 1
+        self._f_upper = 1
+        self._f_step = 1
+
         self._solver = "z3"
         self._optimize_flags = list()
         self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction"]
@@ -76,7 +86,6 @@ class StlConfiguration:
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl",
                                        "only-goal-stl-enhanced"]
-        self._formula_num = 1
         self._gen_ce = False
         self._verbose = False
         self._debug = False
@@ -104,6 +113,14 @@ class StlConfiguration:
             self._upper = self._args.upper
         if self._args.step is not None:
             self._step = self._args.step
+        # formula bound
+        if self._args.formula_lower is not None:
+            self._f_lower = self._args.formula_lower
+        if self._args.formula_upper is not None:
+            self._f_upper = self._args.formula_upper
+        if self._args.formula_step is not None:
+            self._f_step = self._args.formula_step
+
         if self._args.solver is not None:
             self._solver = (self._args.solver.lower() if self._args.solver.lower() in self._solver_list else 'z3')
         if self._args.optimize is not None:
@@ -119,8 +136,6 @@ class StlConfiguration:
             self._debug = self._args.debug
         if self._args.timebound is not None:
             self._timebound = self._args.timebound
-        if self._args.formula_num is not None:
-            self._formula_num = self._args.formula_num
         if self._args.logic is not None:
             self._logic = (self._args.logic.upper() if self._args.logic.upper() in self._logic_list else "QF_NRA")
         if self._args.zeno is not None:
@@ -167,8 +182,8 @@ class StlConfiguration:
         return self._gen_ce
 
     @property
-    def formula_num(self):
-        return self._formula_num
+    def formula_range(self):
+        return range(self._f_lower, self._f_upper + 1, self._f_step)
 
     @property
     def logic(self):
@@ -191,100 +206,102 @@ class Runner:
         for file_name in config.file_list:
             model, PD, goals = object_manager.generate_objects(file_name, config.zeno)
 
-            if config.formula_num <= len(goals):
-                goal = goals[config.formula_num - 1]
-                # for goal in goals:
-                output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver,
-                                                                 config.encoding)
-                # logger.write_to_csv(file_name=output_file_name, overwrite=True)
-                key_index = file_name.rfind("/")
-                stl_file_name = str(file_name[key_index + 1:]) + "_" + str(
-                    goal.get_formula()) + "_" + config.solver + "_" + config.encoding
-                for bound in config.bound:
-                    # output_file_name_bound = "{}_{}".format(output_file_name, bound)
-                    # logger.set_output_file_name(output_file_name_bound)
-                    # logger.write_to_csv(overwrite=True)
+            max_formula = max(config.formula_range)
+            if max_formula <= len(goals):
+                for formula in config.formula_range:
+                    goal = goals[formula - 1]
+                    # for goal in goals:
+                    output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver,
+                                                                     config.encoding)
+                    # logger.write_to_csv(file_name=output_file_name, overwrite=True)
+                    key_index = file_name.rfind("/")
+                    stl_file_name = str(file_name[key_index + 1:]) + "_" + str(
+                        goal.get_formula()) + "_" + config.solver + "_" + config.encoding
+                    for bound in config.bound:
+                        # output_file_name_bound = "{}_{}".format(output_file_name, bound)
+                        # logger.set_output_file_name(output_file_name_bound)
+                        # logger.write_to_csv(overwrite=True)
 
-                    # start logging
-                    logger.reset_timer()
-                    # logger.add_info("bound", bound)
+                        # start logging
+                        logger.reset_timer()
+                        # logger.add_info("bound", bound)
 
-                    model_const = model.make_consts(bound)
+                        model_const = model.make_consts(bound)
 
-                    logger.start_timer("goal timer")
-                    goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
+                        logger.start_timer("goal timer")
+                        goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
 
-                    '''
-                    print("model")
-                    for mc in model_const.children:
-                        print(mc)
-                    '''
-                    '''
+                        '''
+                        print("model")
+                        for mc in model_const.children:
+                            print(mc)
+                        '''
+                        '''
+    
+                        print("goal")
+                        for gc in goal_const.children:
+                            print(gc)
+                        '''
 
-                    print("goal")
-                    for gc in goal_const.children:
-                        print(gc)
-                    '''
+                        boolean_abstract = dict()
+                        boolean_abstract.update(model.boolean_abstract)
+                        boolean_abstract.update(goal_boolean_abstract)
+                        boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
+                        logger.stop_timer("goal timer")
 
-                    boolean_abstract = dict()
-                    boolean_abstract.update(model.boolean_abstract)
-                    boolean_abstract.update(goal_boolean_abstract)
-                    boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-                    logger.stop_timer("goal timer")
+                        printer.print_normal("> {}".format(config.solver))
 
-                    printer.print_normal("> {}".format(config.solver))
-
-                    '''
-                    print("boolean")
-                    for ba in boolean_abstract_consts.children:
-                        print(ba)
-                    '''
+                        '''
+                        print("boolean")
+                        for ba in boolean_abstract_consts.children:
+                            print(ba)
+                        '''
 
 
-                    # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
-                    solver.set_logic(config.logic)
-                    result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+                        # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
+                        solver.set_logic(config.logic)
+                        result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
 
-                                                model.range_dict, boolean_abstract)
+                                                    model.range_dict, boolean_abstract)
 
-                    if isinstance(goal, ReachGoal):
-                        result_dict = {"True": "False", "False": "True", "Unknown": "Unknown"}
-                        result = result_dict[result]
+                        if isinstance(goal, ReachGoal):
+                            result_dict = {"True": "False", "False": "True", "Unknown": "Unknown"}
+                            result = result_dict[result]
 
-                    # e_time2 = timer()
+                        # e_time2 = timer()
 
-                    # if not os.path.exists(stl_file_name + ".csv"):
-                    #     with open(stl_file_name + ".csv", 'a') as csv_file:
-                    #         csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
-                    #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
-                    #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
-                    # else:
-                    #     with open(stl_file_name + ".csv", 'a') as csv_file:
-                    #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
-                    #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
+                        # if not os.path.exists(stl_file_name + ".csv"):
+                        #     with open(stl_file_name + ".csv", 'a') as csv_file:
+                        #         csv_file.write("formula,bound,size,goal_generation_time,smt_solving_time,result\n")
+                        #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
+                        #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
+                        # else:
+                        #     with open(stl_file_name + ".csv", 'a') as csv_file:
+                        #         csv_file.write(str(goal.get_formula()) + "," + str(bound) + "," + str(size) + "," + str(
+                        #             e_time - s_time) + "," + str(e_time2 - e_time) + "," + str(result) + "\n")
 
-                    # logger.stop_timer("goal timer")
-                    printer.print_normal_dark("\n> result")
-                    smt_time = logger.get_duration_time("solving timer")
-                    goal_time = logger.get_duration_time("goal timer")
-                    printer.print_verbose("model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, config.formula_num, config.encoding))
-                    printer.print_verbose("smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}".format(smt_time, goal_time, smt_time + goal_time, result, size))
-                    printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
-                    printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
-                    printer.print_line()
+                        # logger.stop_timer("goal timer")
+                        printer.print_normal_dark("\n> result")
+                        smt_time = logger.get_duration_time("solving timer")
+                        goal_time = logger.get_duration_time("goal timer")
+                        printer.print_verbose("model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
+                        printer.print_verbose("smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}".format(smt_time, goal_time, smt_time + goal_time, result, size))
+                        printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
+                        printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
+                        printer.print_line()
 
-                    # logger.add_info("result", result)
-                    # logger.add_info("total", logger.get_duration_time("goal timer"))
-                    # logger.write_to_csv(clear_after_write=False)
-                    # logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
+                        # logger.add_info("result", result)
+                        # logger.add_info("total", logger.get_duration_time("goal timer"))
+                        # logger.write_to_csv(clear_after_write=False)
+                        # logger.write_to_csv(file_name=output_file_name, cols=["total", "result"])
 
-                    model.clear()
-                    goal.clear()
-                    solver.clear()
+                        model.clear()
+                        goal.clear()
+                        solver.clear()
 
-                    if config.is_generate_counterexample:
-                        assignment = solver.make_assignment()
-                        assignment.get_assignments()
+                        if config.is_generate_counterexample:
+                            assignment = solver.make_assignment()
+                            assignment.get_assignments()
             else:
                 printer.print_normal("> nothing to run")
 

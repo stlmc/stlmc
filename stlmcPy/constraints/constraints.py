@@ -72,11 +72,8 @@ class Multinary:
         if self._str is None:
             repr_str = ""
             comma = " "
-            last_key = None
-            if len(self.children) > 0:
-                last_key = self.children[-1]
-            for c in self.children:
-                if str(c) == str(last_key):
+            for i, c in enumerate(self.children):
+                if i == len(self.children) - 1:
                     repr_str += str(c)
                 else:
                     repr_str += (str(c) + comma)

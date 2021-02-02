@@ -32,7 +32,7 @@ real b2;
     jump:
         g1 > 1 => 
           (and (b1' = 1) (b2' = 2) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        g2 > 1 => 
+        g2 > 1 =>
           (and (b1' = 2) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
 }
 {
@@ -47,11 +47,11 @@ real b2;
         d/dt[g1] = -0.5;
         d/dt[g2] = 0 ;
     jump:
-        g2 > 1 => 
-          (and (b1' = 2) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2)); 
-        g1 > 1 => 
+        g2 > 1 =>
+          (and (b1' = 2) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
+        g1 > 1 =>
           (and (b1' = 1) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        g1 <=1 => 
+        g1 <=1 =>
           (and (b1' = 3) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
 }
 {
@@ -68,9 +68,9 @@ real b2;
     jump:
 	g1 > 1 =>
           (and (b1' = 1) (b2' = 2) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-	g2 > 1 =>        
+	g2 > 1 =>
           (and (b1' = 1) (b2' = 1) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
-        g2 <= 1 => 
+        g2 <= 1 =>
           (and (b1' = 1) (b2' = 3) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
 
 }
@@ -99,12 +99,12 @@ real b2;
 	g2 < 1;
     flow:
         d/dt[d1] = 0.7;
-        d/dt[d2] = 0; 
+        d/dt[d2] = 0;
         d/dt[g1] = -7 ;
         d/dt[g2] = 0 ;
     jump:
 	g1 <= 1 =>
-          (and (b1' = 3) (b2' = 3) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2)); 
+          (and (b1' = 3) (b2' = 3) (d1' = d1) (d2' = d2) (g1' = g1) (g2' = g2));
 }
 {
     mode:
@@ -112,7 +112,7 @@ real b2;
         b2 = 3;
     inv:
     flow:
-        d/dt[d1] = 0 ; 
+        d/dt[d1] = 0 ;
         d/dt[d2] = 0 ;
         d/dt[g1] = 0 ;
         d/dt[g2] = 0 ;
@@ -124,10 +124,10 @@ init:
 
 propositions:
 reachability = g2 < 4;
-modeLL = (d1 > 0.3); 
+modeLL = (d1 > 0.3);
 donegzero = d1 > 0.2 ;
 dtwogzero = d2 > 0.2;
-modeDD = (d1 < 0.1); 
+modeDD = (d1 < 0.1);
 
 #timebound 30
 goal:

@@ -460,23 +460,7 @@ def _(const):
 def _(const):
     x = drealObj(const.left)
     y = drealObj(const.right)
-
-    cfg = Config()
-    cfg.default_config_for_logic('QF_LRA')
-    ctx = Context(cfg)
-    red_val = Terms.new_uninterpreted_term(Types.real_type(), 'red')
-    red = Terms.parse_term('(= red ' + y + ')')
-    ctx.assert_formulas([red])
-    status = ctx.check_context()
-
-    if status == Status.SAT:
-        model = Model.from_context(ctx, 1)
-        yval = str(model.get_value(red_val))
-    else:
-        raise NotSupportedError("something wrong in divisor of power")
-    cfg.dispose()
-    ctx.dispose()
-    result = '(^ ' + x + ' ' + yval + ')'
+    result = '(^ ' + x + ' ' + y + ')'
     return result
 
 
