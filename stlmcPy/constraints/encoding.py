@@ -15,15 +15,16 @@ def baseEncoding(partition: dict, baseCase, time_bound):
     for f in partition.keys():
         if isinstance(f, Bool):
                 genProp = generate_id(0, f.id + "_")
-                #genNotProp = generate_id(0, "not@" + f.id + "_")
-                exPar = [0.0] + baseCase + [RealVal(str(time_bound))]
+                genNotProp = generate_id(0, "not@" + f.id + "_")
+                exPar = [RealVal("0.0")] + baseCase + [RealVal(str(time_bound))]
                 sub_result = list()
                 for i in range(len(baseCase) + 1):
                     sub_result.append((Interval(True, exPar[i], True, exPar[i]), Bool(next(genProp))))
                     sub_result.append((Interval(False, exPar[i], False, exPar[i + 1]), Bool(next(genProp))))
                 base[f] = sub_result
-                #base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
-                #                         in range(len(baseCase) + 1)]
+                if not "not@" in f.id:
+                    base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
+                                         in range(len(baseCase) + 1)]
     return base
 
 

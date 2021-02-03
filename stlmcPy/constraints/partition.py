@@ -109,7 +109,7 @@ def _addConstPar(wl, yl, k:Interval, i:Interval, const):
         arg = [w == RealVal("0")] + [w == y - RealVal(str(e)) for e in [i.left,i.right] if math.isfinite(float(e.value))]
         return Or(arg)
     for w in wl:
-        arg = [And([inInterval(y, k), _constEnd(w, y)]) for y in yl] + [_constEnd(w, e) for e in [k.left, k.right]]
+        arg = [And([inInterval(y, k), _constEnd(w, y)]) for y in yl] + [_constEnd(w, e) for e in [k.left, k.right] if math.isfinite(float(e.value))]
         const.append(Or(arg))
         const.append(w >= RealVal("0"))
     const.extend([Implies(And([inInterval(y,k), y - e >= RealVal("0")]), Or([w == y - e for w in wl])) \

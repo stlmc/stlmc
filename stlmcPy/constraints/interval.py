@@ -44,9 +44,8 @@ def aux_inInterval(x: Constraint, j: Interval):
     else:
         right = j.right
     cl = x >= left if j.left_end else x > left
-    if isinstance(j.right, float):
-        if not math.isfinite(j.right):
-            return cl
+    if not math.isfinite(float(j.right.value)):
+        return cl
     return And([cl, x <= right if j.right_end else x < right])
 
 
@@ -82,6 +81,9 @@ def _(x: IntVal, j: Interval):
 
 def subInterval(i: Interval, j: Interval):
     const = []
+    i = Interval(i.left_end, _to_old(i.left), i.right_end, _to_old(i.right))
+    j = Interval(j.left_end, _to_old(j.left), j.right_end, _to_old(j.right))
+
     if i.left_end and not j.left_end:
         const.append(_real(i.left) > _real(j.left))
     else:
