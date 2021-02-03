@@ -34,6 +34,7 @@ def intervalConstC(j: Interval, k: Interval, i: Interval):
 
 
 def aux_inInterval(x: Constraint, j: Interval):
+    assert isinstance(x, Expr)
     if isinstance(j.left, float):
         left = RealVal(str(j.left))
     else:
@@ -44,7 +45,7 @@ def aux_inInterval(x: Constraint, j: Interval):
     else:
         right = j.right
     cl = x >= left if j.left_end else x > left
-    if not math.isfinite(float(j.right.value)):
+    if "inf" in str(j.right):
         return cl
     return And([cl, x <= right if j.right_end else x < right])
 
