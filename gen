@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+import sys
+from stlmcPy.util.random import generate_random_formula
+
+if __name__ == '__main__':
+    try:
+        #
+        if len(sys.argv) == 6:
+            temp_depth = int(sys.argv[1])
+            non_temp_depth = int(sys.argv[2])
+            variable_size = int(sys.argv[3])
+            total = int(sys.argv[4])
+            file_name = sys.argv[5]
+
+            generate_random_formula(file_name, temp_depth, non_temp_depth, total, variable_size)
+        else:
+            raise SystemExit
+    except SystemExit:
+        print("wrong argument")

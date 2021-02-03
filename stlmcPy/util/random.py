@@ -115,10 +115,10 @@ def rand_formula(temporal_depth: int, non_temporal_depth: int, atoms):
         return set_formula(op, arity, add_uncertainty(children))
 
 
-def generate_random_formula(temporal_depth: int, non_temporal_depth, total: int, variable_size: int):
+def generate_random_formula(file_name: str, temporal_depth: int, non_temporal_depth, total: int, variable_size: int):
     counter = 0
     atoms = generate_atoms(variable_size)
-    f = open("formula", "w")
+    f = open(file_name, "w")
     for i in range(total):
         counter += 1
         print("generate ({}/{})".format(counter, total))
@@ -127,4 +127,4 @@ def generate_random_formula(temporal_depth: int, non_temporal_depth, total: int,
     f.close()
 
 
-# generate_random_formula(3, 5, 100, 5)
+# generate_random_formula("formula", 3, 5, 100, 5)
