@@ -88,7 +88,7 @@ def set_formula(op, arity, children):
 
 def rand_formula(temporal_depth: int, non_temporal_depth: int, atoms):
     # print("temporal_depth {}, non {}".format(temporal_depth, non_temporal_depth))
-    if non_temporal_depth <= 0:
+    if non_temporal_depth <= 0 < temporal_depth:
         return random.sample(atoms, 1)[0]
 
     if temporal_depth <= 0:
@@ -102,6 +102,7 @@ def rand_formula(temporal_depth: int, non_temporal_depth: int, atoms):
     op, arity, is_temporal = pick()
 
     if is_temporal:
+        print("temp ", end='')
         children = list()
         for _ in range(random.randrange(4, 12, 1)):
             child = rand_formula(temporal_depth - 1, non_temporal_depth, atoms)
