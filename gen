@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-from stlmcPy.util.random import generate_random_formula
+from stlmcPy.util.random import generate_random_formula, rand_formula2, rand_formula, rand_formula3
 
 if __name__ == '__main__':
     try:
@@ -12,7 +12,7 @@ if __name__ == '__main__':
             total = int(sys.argv[4])
             file_name = sys.argv[5]
 
-            generate_random_formula(file_name, temp_depth, non_temp_depth, total, variable_size)
+            generate_random_formula(file_name, temp_depth, non_temp_depth, total, variable_size, rand_formula3)
         else:
             raise SystemExit
     except SystemExit:

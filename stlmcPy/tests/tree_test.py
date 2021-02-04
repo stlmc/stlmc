@@ -1,7 +1,7 @@
 import unittest
 
 from stlmcPy.tree.tree import Leaf, NonLeaf
-from stlmcPy.tree.operations import size_of_tree, new_size_of_tree
+from stlmcPy.tree.operations import size_of_tree
 
 
 def gen_binary_tree(depth: int):
@@ -60,8 +60,8 @@ class TreeTestCase(unittest.TestCase):
     def test_gen_tree(self):
         root1 = gen_binary_tree(4)
         root2 = gen_binary_tree(5)
-        self.assertEqual(new_size_of_tree(root1), 15,
+        self.assertEqual(size_of_tree(root1), 15,
                          'incorrect children size')
 
-        self.assertEqual(new_size_of_tree(root2), 31,
+        self.assertEqual(size_of_tree(root2), 31,
                          'incorrect children size')

@@ -299,6 +299,10 @@ class Runner:
                         goal.clear()
                         solver.clear()
 
+                        # stop when find false
+                        if result == "False":
+                            return
+
                         if config.is_generate_counterexample:
                             assignment = solver.make_assignment()
                             assignment.get_assignments()
