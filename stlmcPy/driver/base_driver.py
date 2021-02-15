@@ -92,6 +92,7 @@ class StlConfiguration:
         self._timebound = 60
         self._logic = "QF_NRA"
         self._zeno = True
+        self._delta = None
 
     def parse(self):
         self._args = self.parser.parse_args()
@@ -140,6 +141,7 @@ class StlConfiguration:
             self._logic = (self._args.logic.upper() if self._args.logic.upper() in self._logic_list else "QF_NRA")
         if self._args.zeno is not None:
             self._zeno = self._args.zeno
+        self._delta = self._args.delta
 
     @property
     def zeno(self):
@@ -189,6 +191,14 @@ class StlConfiguration:
     def logic(self):
         return self._logic
 
+    @property
+    def is_delta_set(self):
+        return self._delta is not None
+
+    @property
+    def delta(self):
+        return self._delta
+
 
 class Runner:
     @abc.abstractmethod
@@ -229,7 +239,7 @@ class Runner:
                         model_const = model.make_consts(bound)
 
                         logger.start_timer("goal timer")
-                        goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, 0, model, PD)
+                        goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound, config.is_delta_set, config.delta, model, PD)
 
                         '''
                         print("model")
@@ -257,7 +267,6 @@ class Runner:
                             print(ba)
                         '''
 
-
                         # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
                         solver.set_logic(config.logic)
                         result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
@@ -284,9 +293,14 @@ class Runner:
                         printer.print_normal_dark("\n> result")
                         smt_time = logger.get_duration_time("solving timer")
                         goal_time = logger.get_duration_time("goal timer")
-                        printer.print_verbose("model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
-                        printer.print_verbose("smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}".format(smt_time, goal_time, smt_time + goal_time, result, size))
-                        printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
+                        printer.print_verbose(
+                            "model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula,
+                                                                                              config.encoding))
+                        printer.print_verbose(
+                            "smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}".format(
+                                smt_time, goal_time, smt_time + goal_time, result, size))
+                        printer.print_normal_dark(
+                            "Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
                         printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
                         printer.print_line()
 

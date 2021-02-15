@@ -17,7 +17,7 @@ class Goal:
         self.time_encoding_function = time_enc_func
 
     @abc.abstractmethod
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
         pass
 
     @abc.abstractmethod
@@ -36,6 +36,10 @@ class PropHelper:
         self.proposition_dict = proposition_dict
         self.boolean_abstract = dict()
         self.bound = bound
+        self.is_delta_set = False
+
+    def set_delta(self):
+        self.is_delta_set = True
 
     def make_integrals(self, bound):
         mode_number = 0
@@ -109,12 +113,14 @@ class PropHelper:
                             sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
                             return sub
 
-                    # relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                    # if delta exists
+                    if self.is_delta_set:
+                        relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                        not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
 
-                    # not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
-
-                    relaxed_bound_const = bound_applied_const
-                    not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
+                    else:
+                        relaxed_bound_const = bound_applied_const
+                        not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
 
                     not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
                     not_bound_applied_goal_interval = Bool("not@" + bound_applied_goal_interval.id)
@@ -171,11 +177,13 @@ class BaseStlGoal(Goal):
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
         # generate mapping constraint between model and goal
         propHelper = PropHelper(self, model, proposition_dict, bound)
 
         result_const = list()
+        if delta_flag:
+            propHelper.set_delta()
         prop_const = propHelper.make_consts(delta)
 
         '''
@@ -278,7 +286,7 @@ class ReachGoal(Goal):
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
         # if len(proposition_dict) == 0:
         #    return BoolVal("True"), dict()
 
