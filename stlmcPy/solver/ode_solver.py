@@ -102,7 +102,7 @@ class CommonOdeSolver(OdeSolver, ABC):
 
             if result:
                 printer.print_normal_dark("Smt solver level result!")
-                logger.write_to_csv()
+                # logger.write_to_csv()
                 print("The number of loop : " + str(cur_index))
                 solving_res = self.specific(hybrid_automata_queue)
                 print(solving_res)
@@ -194,7 +194,7 @@ class CommonOdeSolver(OdeSolver, ABC):
 
                 logger.stop_timer("loop timer")
                 logger.add_info("loop total", logger.get_duration_time("loop timer"))
-                logger.write_to_csv()
+                # logger.write_to_csv()
                 logger.reset_timer_without("goal timer")
 
             except RuntimeError as re:

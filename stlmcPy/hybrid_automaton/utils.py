@@ -8,7 +8,8 @@ from stlmcPy.constraints.constraints import Constraint, And, Forall, BoolVal, Dy
 from stlmcPy.constraints.operations import get_vars, clause, substitution, reduce_not, update_dynamics_with_replacement
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton, BaseMode, AggregatedMode, Transition, Mode
-from stlmcPy.solver.ode_utils import unit_split, remove_index
+from stlmcPy.solver.ode_utils import remove_index
+from stlmcPy.solver.strategy import unit_split
 from stlmcPy.solver.z3 import z3Obj
 from stlmcPy.util.logger import Logger
 

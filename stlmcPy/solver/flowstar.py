@@ -38,6 +38,9 @@ class FlowStarConverter(AbstractConverter):
 
         self.setting["gnuplot octagon"] = "{}, {}".format(lv[0], lv[1])
 
+    def set_logic(self, logic_name: str):
+        pass
+
     def infix(self, const: Constraint):
         pass
 
@@ -131,11 +134,19 @@ class FlowStarConverter(AbstractConverter):
                 t_str += "guard {\n"
                 if isinstance(guard, And):
                     for g in guard.children:
-                        t_str += "{}\n".format(expr_to_sympy_inequality(g)).replace(">", ">=").replace("<",
+                        etsi = expr_to_sympy_inequality(g)
+                        etsi_str = "".format(etsi)
+                        if isinstance(etsi, Equality):
+                            etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
+                        t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
                                                                                                        "<=").replace(
                             ">==", ">=").replace("<==", "<=")
                 else:
-                    t_str += "{}\n".format(expr_to_sympy_inequality(guard)).replace(">", ">=").replace("<",
+                    etsi = expr_to_sympy_inequality(guard)
+                    etsi_str = "".format(etsi)
+                    if isinstance(etsi, Equality):
+                        etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
+                    t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
                                                                                                        "<=").replace(
                         ">==", ">=").replace("<==", "<=")
                 # whole_g_str = infix(ha.trans[t].guard)
@@ -839,26 +850,25 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
                 latest_l_v = l_v
                 latest_bound_box_list = new_bound_box_list
                 latest_conf_dict = conf_dict
-                # print(ha)
-                # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
-                # model_string = fs.convert(ha)
-                # flowStarRaw = FlowStar()
-                # flowStarRaw.run(model_string)
-                # if flowStarRaw.result:
-                #     return False
-            # return True
+                print(ha)
+                fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+                model_string = fs.convert(ha)
+                flowStarRaw = FlowStar()
+                flowStarRaw.run(model_string)
+                if flowStarRaw.result:
+                    return False
+            return True
 
-            # merge(*ha_list, chi_optimization=False)
-            nha = merge(*ha_list, chi_optimization=False)
-            fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
-            model_string = fs.convert(nha)
-            flowStarRaw = FlowStar()
-            flowStarRaw.run(model_string)
-            print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
-            if flowStarRaw.result:
-                return False
-            else:
-                return True
+            # nha = merge(*ha_list, chi_optimization=False)
+            # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+            # model_string = fs.convert(nha)
+            # flowStarRaw = FlowStar()
+            # flowStarRaw.run(model_string)
+            # print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
+            # if flowStarRaw.result:
+            #     return False
+            # else:
+            #     return True
         return True
 
     def __init__(self):

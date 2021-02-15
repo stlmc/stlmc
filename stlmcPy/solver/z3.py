@@ -10,6 +10,7 @@ from stlmcPy.solver.abstract_solver import BaseSolver, SMTSolver
 from stlmcPy.constraints.constraints import *
 from timeit import default_timer as timer
 
+from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.logger import Logger
 
 
@@ -19,10 +20,10 @@ class Z3Solver(SMTSolver):
         self._z3_model = None
         self._cache = list()
         self._logic_list = ["LRA", "NRA"]
-        self._logic = "LRA"
+        self._logic = "NRA"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'LRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
 
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
@@ -42,18 +43,22 @@ class Z3Solver(SMTSolver):
         str_result = str(result)
         if str_result == "sat":
             m = solver.model()
+            # print(m)
             result = False
         else:
             m = None
             result = True if str_result == "unsat" else "Unknown"
         
-        return result, sizeAst(z3.And(self._cache)), m
+        return result, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        size = 0
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-        result, size, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
+            size = size_of_tree(all_consts)
+        result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
+        # return result, -1
 
     def clear(self):
         self._cache = list()
@@ -235,9 +240,12 @@ def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
     op_dict = {Gt: Gt, Geq: Geq}
-    
+    monotone_cond = Or([Geq(diff(start_forall_exp, forall.integral), RealVal('0')),
+                        Leq(diff(start_forall_exp, forall.integral), RealVal('0'))])
+
     return And([forall.const,
                 substitution_zero2t(forall.const),
+                monotone_cond,
                 Implies(Eq(forall.const.left, RealVal('0')),
                         Forall(forall.current_mode_number,
                                forall.end_tau, forall.start_tau,
@@ -271,11 +279,6 @@ def make_forall_consts(forall: Forall):
         return Or([first_const, second_const])
     else:
         return make_forall_consts_aux(forall)
-
-
-# return the size of the Z3 constraint
-def sizeAst(node: z3.AstRef):
-    return 1 + sum([sizeAst(c) for c in node.children()])
 
 
 @singledispatch
@@ -434,7 +437,7 @@ def _(const: Integral):
 
 @z3Obj.register(Forall)
 def _(const: Forall):
-    bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
+    bound_str = str(int(const.end_tau.id[4:]) - 1) 
     
     if len(get_vars(const.const)) == 0:
         return z3Obj(const.const)
@@ -444,8 +447,6 @@ def _(const: Forall):
     result = list()
     if isinstance(const.const, Bool):
         return z3Obj(const.const)
-    if get_vars(const.const) is None:
-        return const.const
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
             return z3.Not(z3Obj(const.const.child))
@@ -479,4 +480,5 @@ def _(const: Forall):
             Forall(const.current_mode_number, const.end_tau, const.start_tau, new_forall_child_const, const.integral))
     new_const = And([Eq(Real("currentMode_" + bound_str), RealVal(str(const.current_mode_number))),
                      new_forall_const])
+    
     return z3.And(z3Obj(new_const))

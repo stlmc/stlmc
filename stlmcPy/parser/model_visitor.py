@@ -370,12 +370,12 @@ class ModelVisitor(modelVisitor):
     # Visit a parse tree produced by modelParser#interval.
     def visitInterval(self, ctx: modelParser.IntervalContext):
         if ctx.EQUAL():
-            number = float(ctx.VALUE().getText())
+            number = RealVal(ctx.VALUE().getText())
             return Interval(True, number, True, number)
         else:
             left = self.visit(ctx.leftEnd())
             right = self.visit(ctx.rightEnd())
-            return Interval(left[0], left[1], right[0], right[1])
+            return Interval(left[0], RealVal(str(left[1])), right[0], RealVal(str(right[1])))
 
     # Visit a parse tree produced by modelParser#parenFormula.
     def visitParenFormula(self, ctx: modelParser.ParenFormulaContext):

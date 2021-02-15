@@ -1,30 +1,23 @@
 import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
+import stlmcPy.constraints.enhanced_separation as ENHANCED_SEP
 import stlmcPy.constraints.separation as SEP
 import stlmcPy.constraints.partition as PART
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not, make_new_dynamics
+from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not, make_new_dynamics, \
+    lower_encoding, bound_tau_max
 import stlmcPy.constraints.encoding as ENC
 import abc
 from timeit import default_timer as timer
 
+from stlmcPy.encoding.time import make_zeno_time_const, make_non_zeno_time_const
+
+
 class Goal:
-
-    def make_time_consts(self, bound, time_bound):
-        time_const_children = list()
-        for k in range(1, bound + 2):
-            chi = Gt(Real('tau_' + str(k)), RealVal('0'))
-            chi._range = True
-            time_const_children.append(chi)
-            chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
-            chi._range = True
-            time_const_children.append(chi)
-            if k < bound + 1:
-                time_const_children.append(Lt(Real('tau_' + str(k)), Real('tau_' + str(k + 1))))
-
-        return time_const_children
+    def __init__(self, time_enc_func):
+        self.time_encoding_function = time_enc_func
 
     @abc.abstractmethod
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
         pass
 
     @abc.abstractmethod
@@ -37,11 +30,16 @@ class Goal:
 
 
 class PropHelper:
-    def __init__(self, goal: Goal, model, proposition_dict):
+    def __init__(self, goal: Goal, model, proposition_dict, bound):
         self.goal = goal
         self.model = model
         self.proposition_dict = proposition_dict
         self.boolean_abstract = dict()
+        self.bound = bound
+        self.is_delta_set = False
+
+    def set_delta(self):
+        self.is_delta_set = True
 
     def make_integrals(self, bound):
         mode_number = 0
@@ -56,73 +54,116 @@ class PropHelper:
                 flow_var_id = dynamics.vars[index].id
                 start_vector.append(Real(flow_var_id + "_" + str(bound) + "_0"))
                 end_vector.append(Real(flow_var_id + "_" + str(bound) + "_t"))
+                index += 1
             integral = Integral(mode_number, end_vector, start_vector, dynamics)
             integrals.append(integral)
             mode_number += 1
         return integrals
 
-    def make_consts(self, bound, delta):
+    def make_consts(self, delta):
         result_children = list()
-        # don't do anything when there is nothing to do.
         if len(self.proposition_dict) == 0:
             return result_children
+        mode_set = set(self.model.mode_var_dict.values())
+        for bound in range(0, self.bound + 1):
+            # don't do anything when there is nothing to do.
+            goal_vars = get_vars(self.goal.get_formula())
+            all_vars_list = list(goal_vars)
+            all_vars_list = sorted(all_vars_list, key=lambda x: x.id)
 
-        goal_vars = get_vars(self.goal.get_formula())
+            integrals = self.make_integrals(bound)
+            substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict,
+                                        "_0")
+            dynamics_list = list()
+            sub_integrals_list = list()
+            for chi in integrals:
+                new_dynamics = make_new_dynamics(chi.dynamics, bound, self.model.mode_var_dict, self.model.range_dict,
+                                                 self.model.const_dict)
+                sub_integrals_list.append(
+                    Integral(chi.current_mode_number, chi.end_vector, chi.start_vector, new_dynamics))
 
-        integrals = self.make_integrals(bound)
-        substitute_dict = make_dict(bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict, "_0")
-        dynamics_list = list()
-        sub_integrals_list = list()
-        for chi in integrals:
-            new_dynamics = make_new_dynamics(chi.dynamics, bound, self.model.mode_var_dict, self.model.range_dict, self.model.const_dict)
-            sub_integrals_list.append(Integral(chi.current_mode_number, chi.end_vector, chi.start_vector, new_dynamics))
-            
+            new_substitute_dict_point = substitute_dict.copy()
+            new_substitute_dict_interval = substitute_dict.copy()
+            for prop_var in self.proposition_dict:
+                new_substitute_dict_point[prop_var] = Bool(prop_var.id + "_" + str(2 * bound))
+                new_substitute_dict_interval[prop_var] = Bool(prop_var.id + "_" + str(2 * bound + 1))
 
+            # for goal_var in goal_vars:
+            for goal_var in all_vars_list:
+                if goal_var in self.proposition_dict:
+                    index = 0
+                    integral = integrals[index]
+                    const = self.proposition_dict[goal_var]
 
+                    # mode condition checking get_vars(const))
+                    isMode = False
+                    if len(get_vars(const) - mode_set) == 0:
+                        isMode = True
 
-        new_substitute_dict = substitute_dict.copy()
-        for prop_var in self.proposition_dict:
-            new_substitute_dict[prop_var] = Bool(prop_var.id + "_" + str(bound))
+                    bound_applied_goal_var = substitution(goal_var, new_substitute_dict_point)
+                    bound_applied_goal_interval = substitution(goal_var, new_substitute_dict_interval)
 
-        for goal_var in goal_vars:
-            if goal_var in self.proposition_dict:
-                index = 0
-                integral = integrals[index]
-                const = self.proposition_dict[goal_var]
-                bound_applied_goal_var = substitution(goal_var, new_substitute_dict)
+                    bound_applied_const = substitution(const, new_substitute_dict_point)
 
-                bound_applied_const = substitution(const, new_substitute_dict)
+                    if isinstance(bound_applied_const, Eq):
+                        if isinstance(bound_applied_const.left, Bool) or isinstance(bound_applied_const.right, Bool):
+                            sub = list()
+                            sub.append(Eq(Bool("not@" + bound_applied_goal_var.id),
+                                          Neq(bound_applied_const.left, bound_applied_const.right)))
+                            sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
+                            return sub
 
-                relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                    # if delta exists
+                    if self.is_delta_set:
+                        relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
+                        not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
 
-                not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+                    else:
+                        relaxed_bound_const = bound_applied_const
+                        not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
 
-                not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
+                    not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
+                    not_bound_applied_goal_interval = Bool("not@" + bound_applied_goal_interval.id)
 
-                # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
-                fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
-                init_const_1 = Implies(bound_applied_goal_var, relaxed_bound_const)
-                init_const_2 = Implies(not_bound_applied_goal_var, not_relaxed_bound_const)
-                init_point_check = And([init_const_1, init_const_2, fair_const_2])
-                pos_forall_list = list()
-                neg_forall_list = list()
-                
-                start_tau = Real('tau_' + str(bound))
-                if str(bound) == "0":
-                    start_tau = RealVal("0")
-                for chi in range(len(sub_integrals_list)):
-                    pos_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const, sub_integrals_list[chi]))
-                    neg_forall_list.append(Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const, sub_integrals_list[chi]))
-                self.boolean_abstract[bound_applied_goal_var] = Or(pos_forall_list)
-                self.boolean_abstract[not_bound_applied_goal_var] = Or(neg_forall_list)
+                    # fair_const_1 = Or([Not(bound_applied_goal_var), Not(not_bound_applied_goal_var)])
+                    fair_const_2 = Or([bound_applied_goal_var, not_bound_applied_goal_var])
+                    init_const_1 = Eq(bound_applied_goal_var, relaxed_bound_const)
+                    init_const_2 = Eq(not_bound_applied_goal_var, not_relaxed_bound_const)
+                    init_point_check = And([init_const_1, init_const_2, fair_const_2])
+                    pos_forall_list = list()
+                    neg_forall_list = list()
 
-                result_children.append(init_point_check)
+                    start_tau = Real('tau_' + str(bound))
+                    if str(bound) == "0":
+                        start_tau = RealVal("0")
+
+                    if isMode:
+                        pos_interval_const = relaxed_bound_const
+                        neg_interval_const = not_relaxed_bound_const
+                    else:
+                        for chi in range(len(sub_integrals_list)):
+                            pos_forall_list.append(
+                                Forall(chi, Real('tau_' + str(bound + 1)), start_tau, relaxed_bound_const,
+                                       sub_integrals_list[chi]))
+                            neg_forall_list.append(
+                                Forall(chi, Real('tau_' + str(bound + 1)), start_tau, not_relaxed_bound_const,
+                                       sub_integrals_list[chi]))
+                        pos_interval_const = Or(pos_forall_list)
+                        neg_interval_const = Or(neg_forall_list)
+                    self.boolean_abstract[bound_applied_goal_interval] = pos_interval_const
+                    self.boolean_abstract[not_bound_applied_goal_interval] = neg_interval_const
+
+                    result_children.append(Or([bound_applied_goal_interval, not_bound_applied_goal_interval]))
+
+                    result_children.append(init_point_check)
+
         return result_children
 
 
 class BaseStlGoal(Goal):
     # get core.formula. of some type...
-    def __init__(self, formula: Formula):
+    def __init__(self, formula: Formula, time_enc_func):
+        super().__init__(time_enc_func)
         self.formula = formula
         self.boolean_abstract = dict()
 
@@ -130,27 +171,32 @@ class BaseStlGoal(Goal):
         self.boolean_abstract = dict()
 
     @abc.abstractmethod
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         pass
 
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
         # generate mapping constraint between model and goal
-        propHelper = PropHelper(self, model, proposition_dict)
+        propHelper = PropHelper(self, model, proposition_dict, bound)
 
         result_const = list()
-        prop_const = list()
+        if delta_flag:
+            propHelper.set_delta()
+        prop_const = propHelper.make_consts(delta)
 
+        '''
         for k in range(bound + 1):
             mapping_consts = propHelper.make_consts(k, delta)
             prop_const.extend(mapping_consts)
+        '''
+
         result_const.append(And(prop_const))
 
-        stl_consts_list = self.make_stl_consts(bound)
+        stl_consts_list = self.make_stl_consts(bound, time_bound)
 
-        time_consts_list = self.make_time_consts(bound, time_bound)
+        time_consts_list = self.time_encoding_function(bound, time_bound, delta_flag, delta)
 
         result_const.extend(time_consts_list)
         result_const.extend(stl_consts_list)
@@ -162,27 +208,24 @@ class BaseStlGoal(Goal):
 
 
 class OldStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         baseP = PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
+        negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
-        s_time1 = timer()
         (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
-        e_time1 = timer()
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
-        e_time2 = timer()
 
         # set enc flags
         ENC.ENC_TYPES = "old"
         # FOL translation
-        baseV = ENC.baseEncoding(partition, baseP)
-        e_time3 = timer()
 
-        formulaConst = ENC.valuation(fs[0], fs[1], ENC.Interval(True, 0.0, True, 0.0), baseV)[0]
-        e_time4 = timer()
+        baseV = ENC.baseEncoding(partition, baseP, time_bound)
+
+        formulaConst = ENC.valuation(fs[0], fs[1], Interval(True, RealVal("0.0"), True, RealVal("0.0")), baseV)[0]
 
         total_children = list()
         total_children.extend(formulaConst)
@@ -192,29 +235,36 @@ class OldStlGoal(BaseStlGoal):
 
 
 class NewStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound):
+    def make_stl_consts(self, bound, time_bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
-        print("formula ")
-        print(negFormula)
 
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
         sub_list = list(partition.keys())
+
         consts = list()
 
-        (var_point, var_interval) = SEP.make_time_list(bound)
+        (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
         id_match_dict = dict()
         for s in range(len(sub_list)):
-            if isinstance(sub_list[s], Bool):
-                id_match_dict[sub_list[s]] = sub_list[s]
-            else:
-                id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
-        for s in range(len(sub_list)):
-            consts.extend(SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
-            constraints, self.boolean_abstract = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
-            consts.extend(constraints)
+            id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
 
+        for sub in id_match_dict:
+            if isinstance(sub, Bool):
+                sub_const = lower_encoding(id_match_dict[sub].id, bound, 2)
+
+        # for s in range(len(sub_list)):
+        #     consts.extend(ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict))
+        #     constraints, self.boolean_abstract = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
+        #     consts.extend(constraints)
+        for s in range(len(sub_list)):
+            constraints, ba = ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict)
+            consts.extend(constraints)
+            self.boolean_abstract.update(ba)
+            constraints, ba = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
+            consts.extend(constraints)
+            self.boolean_abstract.update(ba)
 
         str_list = [str(c) for c in sub_list]
         form_index = str_list.index(str(negFormula))
@@ -225,14 +275,20 @@ class NewStlGoal(BaseStlGoal):
 
 
 class ReachGoal(Goal):
+    def clear(self):
+        pass
+
     # get core.formula. of some type...
-    def __init__(self, formula: Formula):
+    def __init__(self, formula: Formula, time_enc_func):
+        super().__init__(time_enc_func)
         self.formula = formula
 
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
+        # if len(proposition_dict) == 0:
+        #    return BoolVal("True"), dict()
 
         result = list()
         # return to original const
@@ -240,39 +296,49 @@ class ReachGoal(Goal):
         sub_result = list()
 
         # make goal speciific dictionary and substitute it
-        for cur_bound in range(0, bound+1):
+        for cur_bound in range(0, bound + 1):
             goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
             goal_consts = substitution(decoded_consts, goal_dict)
-            #cur_bool = Bool("reach_goal_" + str(cur_bound))
-            #sub_result.append(And([cur_bool, goal_consts]))
+            # cur_bool = Bool("reach_goal_" + str(cur_bound))
+            # sub_result.append(And([cur_bool, goal_consts]))
             sub_result.append(goal_consts)
         # get time const
         result.append(Or(sub_result))
-        result.extend(self.make_time_consts(bound, time_bound))
+        result.extend(self.time_encoding_function(bound, time_bound, delta_flag, delta))
 
         return And(result), dict()
 
 
 class GoalFactory:
-    def __init__(self, raw_goal: Formula):
+    def __init__(self, raw_goal: Formula, is_zeno=True):
         self.raw_goal = raw_goal
+        self.time_function = None
+        if is_zeno:
+            self.time_function = make_zeno_time_const
+        else:
+            self.time_function = make_non_zeno_time_const
 
     @abc.abstractmethod
     def generate_goal(self):
         if isinstance(self.raw_goal, Reach):
-            return ReachGoal(self.raw_goal.formula)
+            return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return NewStlGoal(self.raw_goal)
+            return NewStlGoal(self.raw_goal, self.time_function)
         pass
 
 
 class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula):
+    def __init__(self, raw_goal: Formula, is_zeno=True):
         super().__init__(raw_goal)
+        self.time_function = None
+        if is_zeno:
+            self.time_function = make_zeno_time_const
+        else:
+            self.time_function = make_non_zeno_time_const
 
     def generate_goal(self):
         if isinstance(self.raw_goal, Reach):
-            return ReachGoal(self.raw_goal.formula)
+            return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return OldStlGoal(self.raw_goal)
+            return OldStlGoal(self.raw_goal, self.time_function)
         pass

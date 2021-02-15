@@ -49,8 +49,11 @@ linear-hylaa-unsat-core-test: $(linear-hylaa-unsat-core-test)
 	$(info start testing for $<)
 	@./stlmc $< -l 1 -u 10 -solver hylaa-unsat-core
 
-
 clean:
+	$(info erase experimental results in $(PWD))
+	@rm -rf experiment.e* experiment.o*
+
+dev-clean:
 	$(info erase unused files in $(ANTLR_DIR))
 	@ echo $(linear_src_model)
 	@cd $(ANTLR_DIR) && rm -rf model.interp model.tokens modelLexer.* modelParser.py modelVisitor.py

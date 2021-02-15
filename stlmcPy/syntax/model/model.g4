@@ -170,7 +170,7 @@ formula
  |          op=NOT                      formula         # unaryFormula
  | formula  op=(BOOL_AND | BOOL_OR)     formula         # binaryFormula
  |          op=(GLOBAL|FINAL)  interval formula         # unaryTemporalFormula
- | op=(BOOL_AND | BOOL_OR) formula formula+             # multyFormula
+ | op=(BOOL_AND | BOOL_OR) formula+             # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula         # binaryTemporalFormula
  | formula  op=IMP                      formula         # binaryFormula
  | TRUE                                                 # constFormula

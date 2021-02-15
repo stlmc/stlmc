@@ -1,0 +1,23 @@
+# TIMEOUT = 00:20:00
+[cav2021_exp41.zip](/uploads/b8af0f5a0d7c39beeed95deac85a1ccc/cav2021_exp36.zip)
+
+| ID| Model | Bound | Formula | Timebound | Name| Encoding|solver|logic| | |
+| ------ | ------ | ------     | ------ | ------| ------ |------ |------ |------ |-------|-------|
+ | 1|cav2021_exp41/linear/d1|1,20,1|1,40,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 2|cav2021_exp41/linear/d1|1,20,1|41,80,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 3|cav2021_exp41/linear/d1|1,20,1|81,120,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 4|cav2021_exp41/linear/d2|1,20,1|1,40,1|100|lBd2|only-goal-stl|yices|QF_LRA|||
+ | 5|cav2021_exp41/linear/d2|1,20,1|41,80,1|100|lBd2|only-goal-stl|yices|QF_LRA|||
+ | 6|cav2021_exp41/linear/d2|1,20,1|81,120,1|100|lBd2|only-goal-stl|yices|QF_LRA|||
+ | 7|cav2021_exp41/linear/d3|1,20,1|1,40,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 8|cav2021_exp41/linear/d3|1,20,1|41,80,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 9|cav2021_exp41/linear/d3|1,20,1|81,120,1|100|lBd1|only-goal-stl|yices|QF_LRA|||
+ | 10|cav2021_exp41/linear/d1|1,20,1|1,40,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 11|cav2021_exp41/linear/d1|1,20,1|41,80,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 12|cav2021_exp41/linear/d1|1,20,1|81,120,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 13|cav2021_exp41/linear/d2|1,20,1|1,40,1|100|lBd2|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 14|cav2021_exp41/linear/d2|1,20,1|41,80,1|100|lBd2|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 15|cav2021_exp41/linear/d2|1,20,1|81,120,1|100|lBd2|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 16|cav2021_exp41/linear/d3|1,20,1|1,40,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 17|cav2021_exp41/linear/d3|1,20,1|41,80,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||
+ | 18|cav2021_exp41/linear/d3|1,20,1|81,120,1|100|lBd1|only-goal-stl-enhanced|yices|QF_LRA|||

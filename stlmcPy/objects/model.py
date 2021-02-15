@@ -159,6 +159,8 @@ class StlMC(Model):
             integral = integrals[index]
 
             invariant_sub_children = list()
+
+            new_dict = dict()
             for invariant_var in inv_prop_dict:
                 const = inv_prop_dict[invariant_var]
                 bound_applied_inv_var = substitution(invariant_var, new_substitute_dict)
@@ -177,13 +179,16 @@ class StlMC(Model):
                 #                             Real('tau_' + str(bound)),
                 #                             bound_applied_const, integral)
                 #invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
+                new_dict[invariant_var] = And([Bool(inv_boolean), bound_applied_const])
+
                 invariant_sub_children.extend([Bool(inv_boolean), bound_applied_const])
 
             if len(inv_prop_dict) > 0:
                 pass
                 #invariant_sub_children.extend(mode_const_bound)
             if len(invariant_sub_children) > 0:
-                invariant_children.append(And(invariant_sub_children))
+                result = substitution(transformed_inv_const, new_dict)
+                invariant_children.append(result)
             else:
                 invariant_children.append(And([BoolVal("True")]))
             index += 1
@@ -271,6 +276,7 @@ class StlMC(Model):
             flow_consts, integral_object_list = self.make_flow_consts(k)
 
             inv_consts = self.make_invariant_consts(k, integral_object_list)
+            jump_consts = self.make_jump_consts(k)
             if k < bound:
                 jump_consts = self.make_jump_consts(k)
             else:

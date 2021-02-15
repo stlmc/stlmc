@@ -1,0 +1,94 @@
+# model description:
+#
+# Two rooms are connected by an open door.
+# The room' temperature is controlled by
+# its own heater and changes over time.
+# It is also affected by each other's room
+# temperature.
+
+bool a;
+[10, 30] x1;
+bool b;
+[10, 30] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 >= 19.5;
+        (x2 >= 19.5);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = -0.6;
+    jump:
+         x2 < 22 =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+         x1 < 22 =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 >= 19.5;
+        (x2 <= 24);
+    flow:
+        d/dt[x1] = -0.4;
+        d/dt[x2] = 1;
+    jump:
+        x1 < 22 =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+        x2 > 20 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 <= 24;
+        (x2 >= 19.5);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = -0.6;
+    jump:
+        x2 < 22 =>
+          (and (a' = true) (b' = true) (x1' = x1) (x2' = x2));
+        x1 > 20 =>
+          (and (a' = false) (b' = false) (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 <= 24;
+        (x2 <= 24);
+    flow:
+        d/dt[x1] = 0.7;
+        d/dt[x2] = 1;
+    jump:
+         x1 > 20 =>
+          (and (a' = false) (b' = true) (x1' = x1) (x2' = x2));
+         x2 > 20  =>
+          (and (a' = true) (b' = false) (x1' = x1) (x2' = x2));
+
+}
+
+
+init:
+(and not(a) not(b) (18 <= x1) (x1 <= 20) (22.5 <= x2) (x2 <= 23));
+
+propositions:
+pa = a;
+pb = b;
+
+#time bound 40
+goal:
+(<>[2, 10] x2 > 20); # true (fix)
+([] [0, 5] (x1 > 19 -> [] [2, 5) x1 < 24));  # true (fix)
+[] [0, 10] ((pa and pb) -> x1 > 21); # false at 14 (fix)
+(<> [0, 2] pb) R[0, 8] x1 > 21 ; # false at 14 (fix)
+

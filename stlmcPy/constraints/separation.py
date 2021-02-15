@@ -1,82 +1,41 @@
 from .constraints import *
 from functools import singledispatch
-from .interval import *
+
+from .operations import generate_id
+import re
 
 
-def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
-    result = list()
-    chi_list = [str(c) for c in list(id_match_dict.values())]
-    max = 0
-    for c in chi_list:
-        if "chi_" in c:
-            if int(c[c.find("_") + 1:]) > max:
-                max = int(c[c.find("_") + 1:])
-
-    if not isinstance(subFormula, Bool):
-        for i in range(len(var_point)):
-            result.append(Eq(Bool("chi_" + str(index) + "_" + str(i + 1)),
-                             _separation(subFormula, i + 1, var_point, var_interval, id_match_dict)))
-            if index == max:
-                break
-    return result
+def fullSeparation(f: Formula, sepMap):
+    fMap = {}
+    gen = generate_id(0, "@chi")
+    return (_separation(f, sepMap, gen, fMap), fMap)
 
 
-def make_time_list(bound):
-    var_point = list()
-    var_interval = list()
-    for i in range(bound):
-        if i == 0:
-            # var_point.append(RealVal("0"))
-            # var_interval.append(Interval(True, RealVal("0"), True, RealVal("0")))
-            point = Real("tau_" + str(i + 1))
-            var_point.append(point / RealVal("2"))
-            var_interval.append(Interval(True, RealVal("0"), False, point))
-        # var_point.append(point)
-        # var_interval.append(Interval(True, point, True, point))
-        else:
-            start = Real("tau_" + str(i))
-            end = Real("tau_" + str(i + 1))
-            var_point.append((start + end) / RealVal("2"))
-            # var_point.append(end)
-            var_interval.append(Interval(True, start, False, end))
-        # var_interval.append(Interval(True, end, True, end))
-    var_point.append((Real("tau_" + str(bound)) + Real("tau_" + str(bound + 1))) / RealVal("2"))
-    var_interval.append(Interval(True, Real("tau_" + str(bound)), False, Real("tau_" + str(bound + 1))))
-
-    return var_point, var_interval
-
-
-# v : [0, (tau_1)/2, (tau_1 + tau_2) / 2, ...]
-# j : [{0}, (0, tau_1), {tau_1}, (tau_1, tau_2), ....]
 @singledispatch
-def _separation(f: Formula, i, v, j, idDict):
+def _separation(f: Formula, sepMap, gen, fMap):
     raise NotImplementedError('Something wrong')
+
+@_separation.register(Constant)
+def _(f: Constant, sepMap, gen, fMap):
+    return f
 
 
 @_separation.register(Bool)
-def _(f: Bool, i, v, j, idDict):
-    str_id = f.id + "_" + str(i - 1)
-    return Bool(str_id)
-
-
-@_separation.register(Constant)
-def _(f: Constant, i, v, j, idDict):
+def _(f: Bool, sepMap, gen, fMap):
     return f
 
 
 @_separation.register(Not)
-def _(f: Not, i, v, j, idDict):
-    if not "chi" in idDict[f.child].id:
-        str_id = idDict[f.child].id + "_" + str(i - 1)
-        return Bool(str_id)
-    return Not(Bool(idDict[f.child].id + "_" + str(i)))
-
+def _(f: Not, sepMap, gen, fMap):
+    if isinstance(f.child, Bool):
+        return Bool("not@" + f.child.id)
+    return f.__class__(_separation(f.child, sepMap, gen, fMap))
 
 @_separation.register(Multinary)
-def _(f: Multinary, i, v, j, idDict):
+def _(f: Multinary, sepMap, gen, fMap):
     flatten = list()
     ft = f.__class__
-    result = [_separation(c, i, v, j, idDict) for c in f.children]
+    result = [_separation(c, sepMap, gen, fMap) for c in f.children]
     for r in result:
         if isinstance(r, ft):
             flatten.extend(r.children)
@@ -86,95 +45,132 @@ def _(f: Multinary, i, v, j, idDict):
 
 
 @_separation.register(Implies)
-def _(f: Implies, i, j, idDict):
-    return f.__class__(_separation(f.left, i, v, j, idDict), _separation(f.right, i, v, j, idDict))
+def _(f: Implies, sepMap, gen, fMap):
+    return f.__class__(_separation(f.left, sepMap, gen, fMap), _separation(f.right, sepMap, gen, fMap))
+
+@_separation.register(UnaryTemporalFormula)
+def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
+    np = Bool(next(gen))
+    fMap[(np, f.local_time)] = _separation(f.child, sepMap, gen, fMap)
+    tf = f.__class__(f.local_time, f.global_time, np)
+    ft = tf.__class__
+    op = {GloballyFormula: And, FinallyFormula: Or}
+    global_time = f.global_time
+    sep_point = list(sepMap[f])
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
+    if isinstance(global_time.left, float):
+        left = RealVal(str(global_time.left))
+    else:
+        left = global_time.left
+    sep_point = [left] + sep_point
+    if isinstance(global_time.right, float):
+        right = RealVal(str(global_time.right))
+    else:
+        right = global_time.right
+    sep_point = sep_point + [right]
+
+    result = _separateUnary(tf, 0, sep_point)
+    return op[ft](result)
 
 
 @_separation.register(BinaryTemporalFormula)
-def _(f: BinaryTemporalFormula, i, v, j, idDict):
-    return _trans(f, i, i, v, j, idDict)
-
-
-@_separation.register(UnaryTemporalFormula)
-def _(f: UnaryTemporalFormula, i, v, j, idDict):
-    return _trans(f, i, i, v, j, idDict)
-
-
-@singledispatch
-def _trans(f: Formula, i, k, v, j, idDict):
-    print(type(f))
-    print(f)
-
-    raise NotImplementedError('Something wrong')
-
-
-@_trans.register(UntilFormula)
-def _(f: UntilFormula, i, k, v, j, idDict):
-    if k >= (len(j) + 1):
-        return BoolVal("False")
-    and_chi = list()
-    and_chi.extend(inInterval(v[i - 1], minusInterval(j[k - 1], f.local_time)).children)
-    if "chi" in idDict[f.left].id:
-        left_ind = k
+def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
+    np1 = Bool(next(gen))
+    np2 = Bool(next(gen))
+    fMap[(np1, f.local_time)] = _separation(f.left, sepMap, gen, fMap)
+    fMap[(np2, f.local_time)] = _separation(f.right, sepMap, gen, fMap)
+    tf = f.__class__(f.local_time, f.global_time, np1, np2)
+    op1 = {UntilFormula: Or, ReleaseFormula: And}
+    global_time = f.global_time
+    sep_point = list(sepMap[f])
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
+    if isinstance(global_time.left, float):
+        left = RealVal(str(global_time.left))
     else:
-        left_ind = int((k - 1) / 2)
-    if "chi" in idDict[f.right].id:
-        right_ind = k
+        left = global_time.left
+    sep_point = [left] + sep_point
+    if isinstance(global_time.right, float):
+        right = RealVal(str(global_time.right))
     else:
-        right_ind = int((k - 1) / 2)
-    and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
-    and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
-    return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)])])
+        right = global_time.right
+    sep_point = sep_point + [right]
+    result = _separateBinary(tf, 0, sep_point)
+
+    return result
 
 
-@_trans.register(ReleaseFormula)
-def _(f: ReleaseFormula, i, k, v, j, idDict):
-    if k >= (len(j) + 1):
-        return BoolVal("True")
-    and_chi = list()
-    and_chi.append(Not(inInterval(v[i - 1], minusInterval(j[k - 1], f.local_time))))
-    if "chi" in idDict[f.left].id:
-        left_ind = k
+def _separateUnary(f: UnaryTemporalFormula, index, partition):
+    """
+    >>> f = GloballyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
+    >>> print(_separateUnary(f, 0, [1,2,3]))
+    (([]_[1.0,2.0)^[0.0,1) p) /\ ([]_[1.0,2.0)^[1,1] p) /\ ([]_[1.0,2.0)^(1,2) p) /\ ([]_[1.0,2.0)^[2,2] p) /\ ([]_[1.0,2.0)^(2,3) p) /\ ([]_[1.0,2.0)^[3,3] p) /\ ([]_[1.0,2.0)^(3,inf) p))
+
+    >>> g = FinallyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
+    >>> print(_separateUnary(g, 0, [1,2,3]))
+    ((<>_[1.0,2.0)^[0.0,1) p) \/ (<>_[1.0,2.0)^[1,1] p) \/ (<>_[1.0,2.0)^(1,2) p) \/ (<>_[1.0,2.0)^[2,2] p) \/ (<>_[1.0,2.0)^(2,3) p) \/ (<>_[1.0,2.0)^[3,3] p) \/ (<>_[1.0,2.0)^(3,inf) p))
+    """
+    # assert f.global_time == universeInterval
+    ft = f.__class__
+    result = list()
+    op = {GloballyFormula: And, FinallyFormula: Or}
+    if index >= len(partition) - 1:
+        return list()
     else:
-        left_ind = int((k - 1) / 2)
-    if "chi" in idDict[f.right].id:
-        right_ind = k
+        (p1, p2) = _sepMidPart(index, partition)
+        result.extend([ft(f.local_time, p1, f.child), ft(f.local_time, p2, f.child)])
+        result.extend(_separateUnary(f, index + 1, partition))
+        return result
+
+
+def _separateBinary(f: BinaryTemporalFormula, index, partition):
+    """
+    >>> r = UntilFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
+    >>> print(_separateBinary(r, 0, [1,2,3]))
+    ((p U_(1.0,2.0]^[0.0,1) q) \/ (([]_[0,inf)^[0.0,1) p) /\ ([]_[0,inf)^[1,1] p) /\ ((<>_(1.0,2.0]^[1,1] q) \/ (p U_(1.0,2.0]^(1,2) q) \/ (([]_[0,inf)^(1,2) p) /\ ([]_[0,inf)^[2,2] p) /\ ((<>_(1.0,2.0]^[2,2] q) \/ (p U_(1.0,2.0]^(2,3) q) \/ (([]_[0,inf)^(2,3) p) /\ ([]_[0,inf)^[3,3] p) /\ ((<>_(1.0,2.0]^[3,3] q) \/ (p U_(1.0,2.0]^(3,inf) q))))))))
+
+    >>> s = ReleaseFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
+    >>> print(_separateBinary(s, 0, [1,2,3]))
+    ((p R_(1.0,2.0]^[0.0,1) q) /\ ((<>_[0,inf)^[0.0,1) p) \/ (<>_[0,inf)^[1,1] p) \/ (([]_(1.0,2.0]^[1,1] q) /\ (p R_(1.0,2.0]^(1,2) q) /\ ((<>_[0,inf)^(1,2) p) \/ (<>_[0,inf)^[2,2] p) \/ (([]_(1.0,2.0]^[2,2] q) /\ (p R_(1.0,2.0]^(2,3) q) /\ ((<>_[0,inf)^(2,3) p) \/ (<>_[0,inf)^[3,3] p) \/ (([]_(1.0,2.0]^[3,3] q) /\ (p R_(1.0,2.0]^(3,inf) q))))))))
+    """
+    # assert f.global_time == universeInterval
+    ft = f.__class__
+    op1 = {UntilFormula: Or, ReleaseFormula: And}
+    op2 = {UntilFormula: And, ReleaseFormula: Or}
+    st1 = {UntilFormula: GloballyFormula, ReleaseFormula: FinallyFormula}
+    st2 = {UntilFormula: FinallyFormula, ReleaseFormula: GloballyFormula}
+    result = list()
+    if index == 0:
+        (p1, p2) = _sepMidPart(index, partition)
+        sub_part = st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p1, f.left)
+        subresult = list()
+        subresult.append(st2[ft](f.local_time, p1, f.right))
+        subresult.append(_separateBinary(f, index + 1, partition))
+        return op2[ft]([sub_part, op1[ft](subresult)])
+    elif index >= len(partition) - 1:
+        return ft(f.local_time, Interval(False, partition[-2], False, partition[-1]), f.left, f.right)
     else:
-        right_ind = int((k - 1) / 2)
-    and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
-    and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
-    return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)])])
+        (p1, p2) = _sepMidPart(index - 1, partition)
+        result.append(ft(f.local_time, p2, f.left, f.right))
+        subresult = list()
+        subresult.append(st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p2, f.left))
+        (p1, p2) = _sepMidPart(index, partition)
+        subresult.append(st1[ft](Interval(True, RealVal("0"), False, RealVal('inf')), p1, f.left))
+        sub_part = list()
+        sub_part.append(st2[ft](f.local_time, p1, f.right))
+        sub_part.append(_separateBinary(f, index + 1, partition))
+        subresult.append(Or(sub_part))
+        result.append(And(subresult))
+        return Or(result)
 
 
-@_trans.register(FinallyFormula)
-def _(f: FinallyFormula, i, k, v, j, idDict):
-    if k >= (len(j) + 1):
-        return BoolVal("False")
-    and_chi = list()
-    and_chi.extend(inInterval(v[i - 1], minusInterval(j[k - 1], f.local_time)).children)
-
-    if "chi" in idDict[f.child].id:
-        ind = k
+def _sepEndPart(index, partition):
+    if index == 0:
+        return universeInterval
     else:
-        ind = int((k - 1) / 2)
-    and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
-    return Or([And(and_chi), _trans(f, i, k + 1, v, j, idDict)])
+        return Interval(False, partition[index - 1], False, RealVal('inf'))
 
 
-@_trans.register(GloballyFormula)
-def _(f: GloballyFormula, i, k, v, j, idDict):
-    if k >= (len(j) + 1):
-        return BoolVal("True")
-    and_chi = list()
-    and_chi.append(Not(inInterval(v[i - 1], minusInterval(j[k - 1], f.local_time))))
-    if "chi" in idDict[f.child].id:
-        ind = k
-    else:
-        ind = int((k - 1) / 2)
-    and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
-    return And([Or(and_chi), _trans(f, i, k + 1, v, j, idDict)])
+def _sepMidPart(index, partition):
+    p2 = Interval(True, partition[index], True, partition[index])
+    return p2, Interval(False, partition[index], False, partition[index + 1])
 
-
-@_trans.register(Not)
-def _(f: Not, i, k, v, j, idDict):
-    return Not(_trans(f.child, i, k, v, j, idDict))

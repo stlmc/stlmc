@@ -30,6 +30,11 @@ class BaseSolver:
     def make_assignment(self):
         pass
 
+    # todo: move this to SMT solver interface
+    @abc.abstractmethod
+    def set_logic(self, logic_name: str):
+        pass
+
 
 class SMTSolver(BaseSolver):
     @abc.abstractmethod
@@ -42,10 +47,6 @@ class SMTSolver(BaseSolver):
 
     @abc.abstractmethod
     def add(self, const):
-        pass
-
-    @abc.abstractmethod
-    def set_logic(self, logic_name: str):
         pass
 
 

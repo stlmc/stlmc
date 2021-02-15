@@ -3,10 +3,10 @@ import abc
 import copy
 from functools import reduce
 
-from stlmcPy.constraints.constraints import Bool, Not, BoolVal, And, Neq
+from stlmcPy.constraints.constraints import Bool, Not, BoolVal, And, Neq, Eq, Variable, Real
 from stlmcPy.constraints.operations import get_vars, reduce_not, get_max_bound
 from stlmcPy.solver.assignment import Assignment
-from stlmcPy.solver.ode_utils import unit_split, make_reset_pool
+from stlmcPy.solver.ode_utils import make_reset_pool
 from stlmcPy.solver.z3 import Z3Solver
 from stlmcPy.util.logger import Logger
 
@@ -59,7 +59,7 @@ class UnsatCoreBuilder(StrategyBuilder):
             flag = True
 
             for c_vs in vs:
-                if "newTau" in c_vs.id or "chi" in c_vs.id or "newPropDecl" in c_vs.id or "invAtomicID" in c_vs.id or "reach_goal_" in c_vs.id or "newIntegral" in c_vs.id or (
+                if "opt_var" in c_vs.id or "newTau" in c_vs.id or "chi" in c_vs.id or "newPropDecl" in c_vs.id or "invAtomicID" in c_vs.id or "reach_goal_" in c_vs.id or "newIntegral" in c_vs.id or (
                         c_vs.id.count('_') == 1 and 'tau' not in c_vs.id):
                     flag = False
                     if c_vs not in alpha:
@@ -400,3 +400,120 @@ class DeltaDebugBuilder(StrategyBuilder, CommonMaxLiteral):
 
     def delta_debugging(self, c_max, z3_boolean_consts, boolean_sub_dict):
         return self.delta_debugging_aux(c_max, z3_boolean_consts, boolean_sub_dict)
+
+
+def unit_split(given_set: set, i: int):
+    forall_set = set()
+    integral_set = set()
+    tau_set = set()
+    guard_set = set()
+    reset_set = set()
+    init_set = set()
+
+    s_diff = set()
+
+    for c in given_set:
+        if isinstance(c, Not):
+            s_diff.add(c)
+
+    given_set = given_set.difference(s_diff)
+
+    for c in given_set:
+        var_set = get_vars(c)
+        if len(var_set) == 1:
+            for var in var_set:
+                start_index = int(var.id.find("_"))
+                if var.id[start_index:] == "_0_0" and "newTau" not in var.id and "newIntegral" not in var.id and "invAtomicID" not in var.id:
+                    init_set.add(c)
+                    s_diff.add(c)
+                    break
+
+    given_set = given_set.difference(s_diff)
+    s_diff = set()
+
+    for c in given_set:
+        var_set = get_vars(c)
+        for var in var_set:
+            start_index = int(var.id.find("_"))
+            s_index = int(var.id.find("_"))
+            e_index = int(var.id.rfind("_"))
+            bound_index = int(var.id.rfind("_"))
+            if not (s_index == -1) and ((s_index == e_index and "tau" not in var.id)
+                                        or ("invAtomicID" in var.id) or ("newPropDecl" in var.id)):
+                bound = int(var.id[bound_index + 1:])
+                if i == bound:
+                    forall_set.add(c)
+                    s_diff.add(c)
+                    break
+            elif var.id[:start_index] == "newIntegral":
+                bound = int(var.id[bound_index + 1:])
+                if i == bound:
+                    integral_set.add(c)
+                    s_diff.add(c)
+                    break
+
+    given_set = given_set.difference(s_diff)
+    s_diff = set()
+
+    for c in given_set:
+        var_set = get_vars(c)
+        max_bound = -1
+        for var in var_set:
+            start_index = int(var.id.find("_"))
+            if var.id[:start_index] == "tau":
+                bound = int(var.id[start_index + 1:])
+                if max_bound < bound:
+                    max_bound = bound
+        if (max_bound == 0 and i == 0) or (max_bound != -1 and max_bound == i + 1):
+            tau_set.add(c)
+            s_diff.add(c)
+        elif isinstance(c, Bool):
+            if "newTau" in c.id and int(c.id[-1]) == i:
+                tau_set.add(c)
+                s_diff.add(c)
+
+    given_set = given_set.difference(s_diff)
+    s_diff = set()
+
+    for c in given_set:
+        if isinstance(c, Eq):
+            if isinstance(c.left, Variable):
+                start_index = int(c.left.id.find("_"))
+                end_index = int(c.left.id.rfind("_"))
+                if start_index < end_index:
+                    bound = int(c.left.id[start_index + 1:end_index])
+                    if c.left.id[end_index + 1:] == "0" and bound == i + 1:
+                        reset_set.add(c)
+                        s_diff.add(c)
+
+    given_set = given_set.difference(s_diff)
+    s_diff = set()
+
+    for c in given_set:
+        var_set = get_vars(c)
+        flag = True
+        for var in var_set:
+            start_index = int(var.id.find("_"))
+            s_index = int(var.id.find("_"))
+            e_index = int(var.id.rfind("_"))
+            end_index = int(var.id.rfind("_"))
+            if not (s_index == e_index or "newIntegral" in var.id or "invAtomicID" in var.id
+                    or "newPropDecl" in var.id or "newTau" in var.id or "reach_goal" in var.id or "chi" in var.id or "opt_var" in var.id):
+                bound = int(var.id[start_index + 1:end_index])
+                last_str = var.id[-1]
+                if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
+                    flag = False
+                if isinstance(c.left, Real):
+                    if c.left.id[e_index + 1:] == "0":
+                        flag = False
+                        break
+            else:
+                flag = False
+        if flag:
+            guard_set.add(c)
+            s_diff.add(c)
+        if isinstance(c, Bool):
+            if "reach_goal_" in c.id:
+                guard_set.add(c)
+
+    return forall_set, integral_set, init_set, tau_set, reset_set, guard_set

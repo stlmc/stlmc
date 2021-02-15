@@ -34,6 +34,7 @@ def intervalConstC(j: Interval, k: Interval, i: Interval):
 
 
 def aux_inInterval(x: Constraint, j: Interval):
+    assert isinstance(x, Expr)
     if isinstance(j.left, float):
         left = RealVal(str(j.left))
     else:
@@ -44,9 +45,8 @@ def aux_inInterval(x: Constraint, j: Interval):
     else:
         right = j.right
     cl = x >= left if j.left_end else x > left
-    if isinstance(j.right, float):
-        if not math.isfinite(j.right):
-            return cl
+    if "inf" in str(j.right):
+        return cl
     return And([cl, x <= right if j.right_end else x < right])
 
 
@@ -82,6 +82,9 @@ def _(x: IntVal, j: Interval):
 
 def subInterval(i: Interval, j: Interval):
     const = []
+    i = Interval(i.left_end, _to_old(i.left), i.right_end, _to_old(i.right))
+    j = Interval(j.left_end, _to_old(j.left), j.right_end, _to_old(j.right))
+
     if i.left_end and not j.left_end:
         const.append(_real(i.left) > _real(j.left))
     else:
@@ -99,54 +102,38 @@ def subInterval(i: Interval, j: Interval):
 
     return And(const)
 
+
 def minusInterval(i: Interval, j: Interval):
     left_end = False
     right_end = False
-    if i.left_end and j.left_end:
+    if i.left_end and j.right_end:
         left_end = True
-    if i.right_end and j.right_end:
+    if i.right_end and j.left_end:
         right_end = True
 
-    i_left_val = i.left
-    if isinstance(i.left, float):
-        i_left_val = RealVal(str(i.left))
-    i_right_val = i.right
-    if isinstance(i.right,float):
-        i_right_val = RealVal(str(i.right))
-
-    j_left_val = j.left
-    if isinstance(j.left, float):
-        j_left_val = RealVal(str(j.left))
-    i_right_val = i.right
-    if isinstance(j.right,float):
-        j_right_val = RealVal(str(j.right))
-    left = i_left_val - j_right_val
-    right = i_right_val - j_left_val
+    left = i.left - j.right
+    right = i.right - j.left
     return Interval(left_end, left, right_end, right)
+
 
 def intervalConst(j: Interval, k: Interval, i: Interval):
     const = []
-    if not isinstance(j.right, float) or math.isfinite(j.right):
-        mid = (_real(j.left) + _real(j.right)) / RealVal("2")
-    else:
-        mid = (_real(j.left) + RealVal("1"))
-
-    if isinstance(j.left, Real) or isinstance(j.left, RealVal) \
-            or isinstance(j.left, Int) or isinstance(j.left, IntVal):
-        const.append(_real(j.left) >= RealVal("0"))
+    j = Interval(j.left_end, _to_old(j.left), j.right_end, _to_old(j.right))
+    k = Interval(k.left_end, _to_old(k.left), k.right_end, _to_old(k.right))
+    i = Interval(i.left_end, _to_old(i.left), i.right_end, _to_old(i.right))
 
     if math.isfinite(i.right):
         if j.left_end and not (k.left_end and i.right_end):
-            const.append(mid > (_real(k.left) - _real(i.right)))
+            const.append(_real(j.left) > (_real(k.left) - _real(i.right)))
         else:
-            const.append(mid >= (_real(k.left) - _real(i.right)))
+            const.append(_real(j.left) >= (_real(k.left) - _real(i.right)))
 
     if not isinstance(j.right, float) or math.isfinite(j.right):
         if not isinstance(k.right, float) or math.isfinite(k.right):
             if j.right_end and not (k.right_end and i.left_end):
-                const.append(mid < (_real(k.right) - _real(i.left)))
+                const.append(_real(j.right) < (_real(k.right) - _real(i.left)))
             else:
-                const.append(mid <= (_real(k.right) - _real(i.left)))
+                const.append(_real(j.right) <= (_real(k.right) - _real(i.left)))
     else:
         if not (isinstance(k.right, float) and math.isinf(k.right)):
             return And([BoolVal("False")])
@@ -169,6 +156,21 @@ def _real(x):
         return IntVal(str(x))
     elif type(x) is str:
         return Real(str(x))
+    else:
+        print(type(x))
+        raise RuntimeError("Invalid partition : " + str(x))
+
+
+def _to_old(x):
+    assert isinstance(x, Real) or isinstance(x, RealVal) or isinstance(x, Int) or isinstance(x, IntVal)
+    if isinstance(x, Real):
+        return x
+    elif isinstance(x, RealVal):
+        return float(x.value)
+    elif isinstance(x, Int):
+        return x
+    elif isinstance(x, IntVal):
+        return int(x.value)
     else:
         print(type(x))
         raise RuntimeError("Invalid partition : " + str(x))

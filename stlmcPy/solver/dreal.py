@@ -7,10 +7,12 @@ from sympy.parsing.sympy_parser import (
 )
 
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution_zero2t, substitution, clause, infix
+from stlmcPy.constraints.operations import get_vars, substitution_zero2t, substitution, clause, infix, get_max_bound
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.solver.abstract_solver import SMTSolver
 from stlmcPy.solver.assignment import Assignment
+from stlmcPy.tree.operations import size_of_tree
+import random
 
 
 class DrealAssignment(Assignment):
@@ -44,10 +46,6 @@ class DrealAssignment(Assignment):
                     var_name = var_name.replace("time", "tau")
                     new_dict[Real(var_name)] = RealVal(val)
         return new_dict
-
-
-
-
         # for e in self._dreal_model.collect_defined_terms():
         #     if Terms.is_real(e):
         #         new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
@@ -68,11 +66,11 @@ class dRealSolver(SMTSolver):
         SMTSolver.__init__(self)
         self._dreal_model = None
         self._cache = list()
-        self._logic = "NRA"
-        declare_list = list()
+        self._logic_list = ["QF_NRA_ODE"]
+        self._logic = "QF_NRA_ODE"
 
     def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
+        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA_ODE')
 
     def get_declared_variables(self, consts):
         declare_list = list()
@@ -256,6 +254,9 @@ class dRealSolver(SMTSolver):
         return asyncio.run(self._run(consts, logic))
 
     async def _drealcheckSat(self, consts, logic):
+        assert self.logger is not None
+        logger = self.logger
+
         declares = self.get_declared_variables(consts)
         results = list()
 
@@ -264,7 +265,7 @@ class dRealSolver(SMTSolver):
         for i in self._cache:
             results.append(drealObj(i))
 
-        str_file_name = "dreal_model"
+        str_file_name = "dreal_model" + str(random.random())
         with open(str_file_name + ".smt2", 'w') as model_file:
             model_file.write("(set-logic QF_NRA_ODE)\n")
             model_file.write("\n".join(declares))
@@ -284,7 +285,9 @@ class dRealSolver(SMTSolver):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
 
+        logger.start_timer("solving timer")
         stdout, stderr = await proc.communicate()
+        logger.stop_timer("solving timer")
         stdout_str = stdout.decode()[len("Solution:\n"):-1]
         stderr_str = stderr.decode()
         output_str = "{}\n{}".format(stdout_str, stderr_str)
@@ -294,15 +297,15 @@ class dRealSolver(SMTSolver):
         # if stderr:
         #     print(f'[stderr]\n{stderr.decode()}')
 
-        # if os.path.isfile(model_file_name):
-        #     os.remove(model_file_name)
+        if os.path.isfile(model_file_name):
+            os.remove(model_file_name)
 
-        # print(stdout.decode())
-        print(output_str)
-        if "unsat" in output_str or "\n" in output_str:
-            result = True
+        if "currentMode" in output_str:
+            result = "False"
+        elif "unsat" in stdout.decode():
+            result = "True"
         else:
-            result = False
+            result = "Unknown"
 
         cont_var_list = stdout_str.split("\n")
         bool_var_list = stderr_str.split("\n")
@@ -312,12 +315,14 @@ class dRealSolver(SMTSolver):
         result_model.extend(bool_var_list)
 
         result_model.remove("")
-        return result, -1, result_model
+        return result, result_model
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        size = 0
         if all_consts is not None:
             self._cache.append(all_consts)
-        result, size, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
+            size = size_of_tree(all_consts)
+        result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
         return result, size
 
     def make_assignment(self):
@@ -333,9 +338,6 @@ class dRealSolver(SMTSolver):
         pass
 
     def add(self, const):
-        pass
-
-    def set_logic(self, logic_name: str):
         pass
 
 
@@ -393,8 +395,6 @@ def _(const: Variable):
 
 @drealObj.register(Geq)
 def _(const):
-    if const._range:
-        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(>= ' + x + ' ' + y + ')'
@@ -403,8 +403,6 @@ def _(const):
 
 @drealObj.register(Gt)
 def _(const):
-    if const._range:
-        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(> ' + x + ' ' + y + ')'
@@ -413,8 +411,6 @@ def _(const):
 
 @drealObj.register(Leq)
 def _(const):
-    if const._range:
-        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(<= ' + x + ' ' + y + ')'
@@ -423,8 +419,6 @@ def _(const):
 
 @drealObj.register(Lt)
 def _(const):
-    if const._range:
-        return "true"
     x = drealObj(const.left)
     y = drealObj(const.right)
     result = '(< ' + x + ' ' + y + ')'
@@ -465,23 +459,7 @@ def _(const):
 def _(const):
     x = drealObj(const.left)
     y = drealObj(const.right)
-
-    cfg = Config()
-    cfg.default_config_for_logic('QF_LRA')
-    ctx = Context(cfg)
-    red_val = Terms.new_uninterpreted_term(Types.real_type(), 'red')
-    red = Terms.parse_term('(= red ' + y + ')')
-    ctx.assert_formulas([red])
-    status = ctx.check_context()
-
-    if status == Status.SAT:
-        model = Model.from_context(ctx, 1)
-        yval = str(model.get_value(red_val))
-    else:
-        raise NotSupportedError("something wrong in divisor of power")
-    cfg.dispose()
-    ctx.dispose()
-    result = '(^ ' + x + ' ' + yval + ')'
+    result = '(^ ' + x + ' ' + y + ')'
     return result
 
 
@@ -612,61 +590,7 @@ def _(const: Integral):
 @drealObj.register(Forall)
 def _(const: Forall):
     cur_inv = substitution_zero2t(const.const)
-
-    result = "(forall_t " + str(int(const.current_mode_number) + 1) + " [0 time_" + get_bound(const.const) + "] "
-    result = result + "(" + drealObj(cur_inv) + "))"
-    return result
-
-
-def get_bound(const):
-    var_set = get_vars(const)
-    cur = var_set.pop()
-    if cur.id.find("_") == cur.id.rfind("_"):
-        return cur.id[cur.id.find("_") + 1:]
-    else:
-        return cur.id[cur.id.find("_") + 1:cur.id.rfind("_")]
-
-
-@singledispatch
-def eval(const: Constraint):
-    return const
-
-
-@eval.register(Add)
-def _(const: Add):
-    if len(get_vars(const)) == 0:
-        return RealVal(str(eval(const)))
-    return "(" + eval(const.left) + " + " + eval(const.right) + ")"
-
-
-@eval.register(Sub)
-def _(const: Sub):
-    if len(get_vars(const)) == 0:
-        return RealVal(str(eval(const)))
-    return "(" + eval(const.left) + " - " + eval(const.right) + ")"
-
-
-@eval.register(Neg)
-def _(const: Neg):
-    return "(-" + eval(const.child) + ")"
-
-
-@eval.register(Mul)
-def _(const: Mul):
-    if len(get_vars(const)) == 0:
-        return RealVal(str(eval(const)))
-    return "(" + eval(const.left) + " * " + eval(const.right) + ")"
-
-
-@eval.register(Div)
-def _(const: Div):
-    if len(get_vars(const)) == 0:
-        return RealVal(str(eval(const)))
-    return "(" + eval(const.left) + " / " + eval(const.right) + ")"
-
-
-@eval.register(Pow)
-def _(const: Pow):
-    if len(get_vars(const)) == 0:
-        return RealVal(str(eval(const)))
-    return "(" + eval(const.left) + " ** " + eval(const.right) + ")"
+    # all bounds are same
+    bound = get_max_bound(const.const)
+    d_obj = drealObj(cur_inv)
+    return "(and (= currentMode_{} {}) (forall_t {} [0 time_{}] ({})))".format(bound, const.current_mode_number, const.current_mode_number + 1, bound, d_obj)

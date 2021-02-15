@@ -1,10 +1,11 @@
 from stlmcPy.solver.c2e2 import C2E2SolverUnsatCore
 from stlmcPy.solver.flowstar import FlowStarSolverUnsatCore
+from stlmcPy.solver.hylaa import HylaaSolverNaive, HylaaSolverReduction, HylaaSolverUnsatCore
 from stlmcPy.solver.spaceex import SpaceExSolverUnsatCore, SpaceExSolverNaive
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 from stlmcPy.solver.dreal import dRealSolver
-from stlmcPy.solver.hylaa import HylaaSolverNaive, HylaaSolverReduction, HylaaSolverUnsatCore
+
 
 class SolverFactory:
     def __init__(self, solver_type):
