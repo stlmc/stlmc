@@ -315,7 +315,7 @@ class Runner:
 
                         # stop when find false
                         if result == "False":
-                            return
+                            break
 
                         if config.is_generate_counterexample:
                             assignment = solver.make_assignment()
