@@ -116,8 +116,8 @@ condition   :
             | VALUE    # constantCond
             | VARIABLE # constantCond
             | op=NOT condition  # unaryCond
-            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
             | condition op=(EQUAL | NEQ) condition    # compCond
+            | expression op=(COMPARE_OP | EQUAL | NEQ) expression  # compExp
             | op=(BOOL_AND | BOOL_OR) condition condition+  # multyCond
               ;
 
@@ -170,7 +170,7 @@ formula
  |          op=NOT                      formula         # unaryFormula
  | formula  op=(BOOL_AND | BOOL_OR)     formula         # binaryFormula
  |          op=(GLOBAL|FINAL)  interval formula         # unaryTemporalFormula
- | op=(BOOL_AND | BOOL_OR) formula formula+             # multyFormula
+ | op=(BOOL_AND | BOOL_OR) formula+             # multyFormula
  | formula  op=(UNTIL|RELEASE) interval formula         # binaryTemporalFormula
  | formula  op=IMP                      formula         # binaryFormula
  | TRUE                                                 # constFormula

@@ -7,6 +7,7 @@ from stlmcPy.constraints.interval import inInterval
 from stlmcPy.constraints.operations import generate_id
 from stlmcPy.constraints.constraints import *
 
+# We add linear order constraints for separation only
 
 def baseCase(baseSize):
     genVar = generate_id(1, "tau_")
@@ -67,7 +68,6 @@ def _(formula, baseCase, genVar, result, sepMap, const):
 
     p = result[formula.child]
     sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
-
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
 
     _addConstOrd(sepMap[formula], genVar, const)
@@ -82,8 +82,8 @@ def _(formula, baseCase, genVar, result, sepMap, const):
 
     p = result[formula.left] | result[formula.right]
     sepMap[formula] = [Real(next(genVar)) for _ in range(len(p))]
-
     result[formula] = {Real(next(genVar)) for _ in range(2 * (len(p) + 2))}
+
     _addConstOrd(sepMap[formula], genVar, const)
     _addConstEqu(sepMap[formula], p, const)
     _addConstPar(result[formula], p, formula.global_time, formula.local_time, const)
@@ -92,9 +92,9 @@ def _(formula, baseCase, genVar, result, sepMap, const):
 def _addConstOrd(bCase, genVar, bConst, strict=False):
     # op = ArithRef.__lt__ if strict else ArithRef.__le__
     if strict:
-        bConst.extend([Lt(bCase[i], bCase[i + 1]) for i in range(len(bCase) - 1)])
+        bConst.extend([Lt(bCase[i], bCase[i+1]) for i in range(len(bCase)-1)])
     else:
-        bConst.extend([Leq(bCase[i], bCase[i + 1]) for i in range(len(bCase) - 1)])
+        bConst.extend([Leq(bCase[i], bCase[i+1]) for i in range(len(bCase)-1)])
 
 
 def _addConstEqu(wl, yl, const):
@@ -103,26 +103,16 @@ def _addConstEqu(wl, yl, const):
     for y in yl:
         const.append(Or([y == w for w in wl]))
 
-
 # result[formula], result[formula.child], formula.gtime, formula.ltime, const)
-def _addConstPar(wl, yl, k: Interval, i: Interval, const):
+def _addConstPar(wl, yl, k:Interval, i:Interval, const):
     def _constEnd(w, y):
-        arg = [w == RealVal("0")] + [w == y - RealVal(str(e)) for e in [i.left, i.right] if math.isfinite(e)]
+        arg = [w == RealVal("0")] + [w == y - RealVal(str(e)) for e in [i.left,i.right] if math.isfinite(float(e.value))]
         return Or(arg)
-    arg_list = list()
     for w in wl:
-        for y in yl:
-            arg_list.append(And([inInterval(y, k), _constEnd(w, y)]))
-
-        for e in [k.left, k.right]:
-            if math.isfinite(e):
-                arg_list.append(_constEnd(w, RealVal(str(e))))
-
-        const.append(Or(arg_list))
+        arg = [And([inInterval(y, k), _constEnd(w, y)]) for y in yl] + [_constEnd(w, e) for e in [k.left, k.right] if math.isfinite(float(e.value))]
+        const.append(Or(arg))
         const.append(w >= RealVal("0"))
-    const.extend([Implies(And([inInterval(y, k), y - RealVal(str(e)) >= RealVal("0")]),
-                          Or([w == y - RealVal(str(e)) for w in wl])) \
-                  for y in yl for e in [i.left, i.right] if math.isfinite(e)])
-    const.extend([Implies(RealVal(str(e1)) - RealVal(str(e2)) >= RealVal("0"),
-                          Or([w == RealVal(str(e1)) - RealVal(str(e2)) for w in wl])) \
-                  for e1 in [k.left, k.right] if math.isfinite(e1) for e2 in [i.left, i.right] if math.isfinite(e2)])
+    const.extend([Implies(And([inInterval(y,k), y - e >= RealVal("0")]), Or([w == y - e for w in wl])) \
+            for y in yl for e in [i.left, i.right] if math.isfinite(float(e.value))])
+    const.extend([Implies(e1 - e2 >= RealVal("0"), Or([w == e1 - e2 for w in wl])) \
+            for e1 in [k.left, k.right] if math.isfinite(float(e1.value)) for e2 in [i.left, i.right] if math.isfinite(float(e2.value))])

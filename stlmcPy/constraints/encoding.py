@@ -9,17 +9,21 @@ from .operations import generate_id
 ENC_TYPES = "new"
 
 
-def baseEncoding(partition: dict, baseCase):
+def baseEncoding(partition: dict, baseCase, time_bound):
     base = {}
 
     for f in partition.keys():
         if isinstance(f, Bool):
-            genProp = generate_id(0, f.id + "_")
-            genNotProp = generate_id(0, "not@" + f.id + "_")
-            exPar = [0.0] + baseCase + [float('inf')]
-            base[f] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genProp))) for i in
-                       range(len(baseCase) + 1)]
-            base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
+                genProp = generate_id(0, f.id + "_")
+                genNotProp = generate_id(0, "not@" + f.id + "_")
+                exPar = [RealVal("0.0")] + baseCase + [RealVal(str(time_bound))]
+                sub_result = list()
+                for i in range(len(baseCase) + 1):
+                    sub_result.append((Interval(True, exPar[i], True, exPar[i]), Bool(next(genProp))))
+                    sub_result.append((Interval(False, exPar[i], False, exPar[i + 1]), Bool(next(genProp))))
+                base[f] = sub_result
+                if not "not@" in f.id:
+                    base[Bool("not@" + f.id)] = [(Interval(True, exPar[i], False, exPar[i + 1]), Bool(next(genNotProp))) for i
                                          in range(len(baseCase) + 1)]
     return base
 
@@ -88,6 +92,7 @@ def _enhanced_value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
 @_value.register(Bool)
 def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
     if ENC_TYPES == "new":
+        print("???")
         return _enhanced_value_aux(f, sub, j, base, genPr, fMap)
     elif ENC_TYPES == "old":
         return _value_aux(f, sub, j, base, genPr, fMap)
@@ -155,5 +160,8 @@ def _atomEncoding(f: Bool, j: Interval, base: dict):
 def _atomEncoding_old(f: Bool, j: Interval, base: dict):
     const = []
     for (basePartition, prop) in base[f]:
+        if str(j) == str(basePartition):
+            return prop
         const.append(Implies(subInterval(j, basePartition), prop))
+
     return And(const)

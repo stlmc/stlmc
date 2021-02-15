@@ -1,6 +1,7 @@
 from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 from stlmcPy.exception.exception import NotSupportedError
+from itertools import combinations
 
 
 @singledispatch
@@ -61,14 +62,14 @@ def _(const: Neg, substitution_dict):
 def _(const: Function, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Function([substitution(const.var, substitution_dict)], [substitution(const.exp, substitution_dict)])
+    return Function([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(Ode)
 def _(const: Ode, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Ode([substitution(const.var, substitution_dict)], [substitution(const.exp, substitution_dict)])
+    return Ode([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(And)
@@ -187,235 +188,6 @@ def _(const: ReleaseFormula, substitution_dict):
                           substitution(const.right, substitution_dict))
 
 
-@singledispatch
-def substitutionSize(const: Constraint, substitution_dict):
-    return const, 1
-
-
-@substitutionSize.register(Variable)
-def _(const: Variable, substitution_dict):
-    if const in substitution_dict:
-        result = substitution_dict[const]
-        return result, 1
-    return const, 1
-
-
-@substitutionSize.register(Add)
-def _(const: Add, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Add(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Sub)
-def _(const: Sub, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Sub(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Mul)
-def _(const: Mul, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Mul(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Div)
-def _(const: Div, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Div(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Pow)
-def _(const: Pow, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    return Pow(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Neg)
-def _(const: Neg, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    s, sl = substitutionSize(const.child, substitution_dict)
-    return Neg(s), sl + 1
-
-
-@substitutionSize.register(Function)
-def _(const: Function, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-
-    left, sl = substitutionSize(const.var, substitution_dict)
-    right, rl = substitutionSize(const.exp, substitution_dict)
-    return Function([left], [right]), sl + rl + 1
-
-
-@substitutionSize.register(Ode)
-def _(const: Ode, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.var, substitution_dict)
-    right, rl = substitutionSize(const.exp, substitution_dict)
-    return Ode([left], [right]), sl + rl + 1
-
-
-@substitutionSize.register(And)
-def _(const: And, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    children = list()
-    total = 0
-    for child in const.children:
-        chi, s = substitutionSize(child, substitution_dict)
-        total += s
-        children.append(chi)
-    return And(children), total + 1
-
-
-@substitutionSize.register(Or)
-def _(const: Or, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    children = list()
-    total = 0
-    for child in const.children:
-        chi, s = substitutionSize(child, substitution_dict)
-        total += s
-        children.append(chi)
-    return Or(children), total + 1
-
-
-@substitutionSize.register(Not)
-def _(const: Not, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-
-    s, ss = substitutionSize(const.child, substitution_dict)
-    return Not(s), ss + 1
-
-
-@substitutionSize.register(Gt)
-def _(const: Gt, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Gt(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Geq)
-def _(const: Geq, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Geq(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Lt)
-def _(const: Lt, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Lt(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Leq)
-def _(const: Leq, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Leq(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Eq)
-def _(const: Eq, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Eq(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Neq)
-def _(const: Neq, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Neq(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Implies)
-def _(const: Implies, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    left, sl = substitutionSize(const.left, substitution_dict)
-    right, rl = substitutionSize(const.right, substitution_dict)
-    return Implies(left, right), sl + rl + 1
-
-
-@substitutionSize.register(Forall)
-def _(const: Forall, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    s, ss = substitutionSize(const.const, substitution_dict)
-    return Forall(const.current_mode_number, const.end_tau, const.start_tau,
-                  s, const.integral), ss + 1
-
-
-@substitutionSize.register(FinallyFormula)
-def _(const: FinallyFormula, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    s, ss = substitutionSize(const.child, substitution_dict)
-    return FinallyFormula(const.local_time, const.global_time, s), ss + 1
-
-
-@substitutionSize.register(GloballyFormula)
-def _(const: GloballyFormula, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    s, ss = substitutionSize(const.child, substitution_dict)
-    return GloballyFormula(const.local_time, const.global_time, s), ss + 1
-
-
-@substitutionSize.register(UntilFormula)
-def _(const: UntilFormula, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    sl, ssl = substitutionSize(const.left, substitution_dict)
-    sr, ssr = substitutionSize(const.right, substitution_dict)
-    return UntilFormula(const.local_time, const.global_time,
-                        sl,
-                        sr), ssl + ssr + 1
-
-
-@substitutionSize.register(ReleaseFormula)
-def _(const: ReleaseFormula, substitution_dict):
-    if const in substitution_dict:
-        return substitution_dict[const], 1
-    sl, ssl = substitutionSize(const.left, substitution_dict)
-    sr, ssr = substitutionSize(const.right, substitution_dict)
-    return ReleaseFormula(const.local_time, const.global_time,
-                          sl,
-                          sr), ssl + ssr + 1
-
-
 # mode_dict => key : string, value : object
 # cont_dict => key : object, value : (left_end, left, right, right_end)
 # assumption : object is variable type
@@ -470,6 +242,7 @@ def _(cur_inv_const: BinaryFormula, inv_prop_dict: dict):
     inv_prop_dict[new_var] = cur_inv_const
     return new_var, inv_prop_dict
 
+
 def get_max_bound(literal):
     max_bound = -1
     bound = -1
@@ -483,13 +256,14 @@ def get_max_bound(literal):
             s_index = int(v.id.find("_"))
             e_index = int(v.id.rfind("_"))
             if s_index == e_index:
-                bound = int(v.id[s_index+1:]) - 1
+                bound = int(v.id[s_index + 1:]) - 1
             else:
-                if "_0_0" in v.id or "_t" in v.id:
-                    bound = int(v.id[s_index+1:e_index])
+                # if "_0_0" in v.id or "_t" in v.id:
+                bound = int(v.id[s_index + 1:e_index])
             if max_bound < bound:
                 max_bound = bound
     return max_bound
+
 
 @singledispatch
 def get_vars(const: Constraint):
@@ -584,8 +358,10 @@ def _(const: Lt, delta):
 
 @relaxing.register(Eq)
 def _(const: Eq, delta):
-    return And([Gt(const.left, Sub(const.right, Div(delta, RealVal('2')))),
-                Lt(const.left, Add(const.right, Div(delta, RealVal('2'))))])
+    if isinstance(const.left, Bool) or isinstance(const.right, Bool):
+        return const
+    return And([Geq(const.left, Sub(const.right, Div(delta, RealVal('2')))),
+                Leq(const.left, Add(const.right, Div(delta, RealVal('2'))))])
 
 
 @relaxing.register(Neq)
@@ -611,13 +387,7 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
-    '''
-    print("diff")
-    print(alpha)
-    print(exp)
-    print(new_exp)
-    print(diff_aux(new_exp))
-    '''
+
     return diff_aux(new_exp)
 
 
@@ -631,7 +401,14 @@ def make_diff_mapping(integral: Integral):
             one_var = integral.end_vector[0].id
             bound_start = one_var.find("_") + 1
             bound_end = one_var.rfind("_")
-            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], Real('tau_' + one_var[bound_start:bound_end]))
+            cur_bound = one_var[bound_start:bound_end]
+            cur_dur_start = Real("tau_" + cur_bound)
+            if cur_bound == "0":
+                cur_dur_start = RealVal("0")
+            cur_dur_end = Real("tau_" + str(int(cur_bound) + 1))
+            # new_dict[dyn_var] = Mul(integral.dynamics.exps[index], (cur_dur_end - cur_dur_start))
+            new_dict[dyn_var] = Mul(integral.dynamics.exps[index], cur_dur_end)
+        index += 1
     return new_dict
 
 
@@ -739,6 +516,11 @@ def substitution_zero2t(const: Constraint):
     return const
 
 
+@substitution_zero2t.register(Neg)
+def _(const):
+    return Neg(substitution_zero2t(const.child))
+
+
 @substitution_zero2t.register(Not)
 def _(const):
     return Not(substitution_zero2t(const.child))
@@ -764,7 +546,7 @@ def _(const: Or):
 @substitution_zero2t.register(Variable)
 def _(const: Variable):
     op_dict = {Bool: Bool, Real: Real, Int: Int}
-    if const.id[-2:] == "_0":
+    if (not const.id.find("_") == const.id.rfind("_")) and const.id[-2:] == "_0":
         return op_dict[const.__class__](const.id[:-2] + "_t")
     return const
 
@@ -814,10 +596,11 @@ def _(const: Not):
         return UntilFormula(child.local_time, child.global_time,
                             reduce_not(Not(child.left)),
                             reduce_not(Not(child.right)))
+    if isinstance(child, Not):
+        return child.child
     if isinstance(child, Bool):
-        return Bool("not@"+child.id)
+        return Bool("not@" + child.id)
     return const
-    # raise NotSupportedError("cannot reduce given constraint: " + str(const))
 
 
 @reduce_not.register(And)
@@ -844,6 +627,7 @@ def _(const: Eq):
 def _(const: Neq):
     return Neq(reduce_not(const.left), reduce_not(const.right))
 
+
 @reduce_not.register(FinallyFormula)
 def _(const: FinallyFormula):
     return FinallyFormula(const.local_time, const.global_time, reduce_not(const.child))
@@ -866,6 +650,72 @@ def _(const: ReleaseFormula):
     return ReleaseFormula(const.local_time, const.global_time,
                           reduce_not(const.left),
                           reduce_not(const.right))
+
+
+@singledispatch
+def bound_tau_max(const: Constraint, tb):
+    return const
+
+
+@bound_tau_max.register(And)
+def _(const: And, tb):
+    return And([bound_tau_max(c, tb) for c in const.children])
+
+
+@bound_tau_max.register(Or)
+def _(const: Or, tb):
+    return Or([bound_tau_max(c, tb) for c in const.children])
+
+
+@bound_tau_max.register(Implies)
+def _(const: Implies, tb):
+    return Implies(bound_tau_max(const.left, tb), bound_tau_max(const.right, tb))
+
+
+@bound_tau_max.register(Eq)
+def _(const: Eq, tb):
+    return Eq(bound_tau_max(const.left, tb), bound_tau_max(const.right, tb))
+
+
+@bound_tau_max.register(Neq)
+def _(const: Neq, tb):
+    return Neq(bound_tau_max(const.left, tb), bound_tau_max(const.right, tb))
+
+
+@bound_tau_max.register(FinallyFormula)
+def _(const: FinallyFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+
+    return FinallyFormula(const.local_time, bound_interval, bound_tau_max(const.child, tb))
+
+
+@bound_tau_max.register(GloballyFormula)
+def _(const: GloballyFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+    return GloballyFormula(const.local_time, bound_interval, bound_tau_max(const.child, tb))
+
+
+@bound_tau_max.register(UntilFormula)
+def _(const: UntilFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+    return UntilFormula(const.local_time, bound_interval,
+                        bound_tau_max(const.left, tb),
+                        bound_tau_max(const.right, tb))
+
+
+@bound_tau_max.register(ReleaseFormula)
+def _(const: ReleaseFormula, tb):
+    gt = const.global_time
+    bound_interval = Interval(gt.left_end, gt.left, True, RealVal(str(tb)))
+    return And([ReleaseFormula(const.local_time, bound_interval,
+                               bound_tau_max(const.left, tb),
+                               bound_tau_max(const.right, tb)),
+                FinallyFormula(Interval(True, RealVal('0'), False, RealVal('inf')), bound_interval,
+                               bound_tau_max(const.left, tb))])
+
 
 @singledispatch
 def get_boolean_abstraction(const: Constraint):
@@ -987,9 +837,11 @@ def generate_id(initial, gid='v'):
         counter += 1
 
 
-def make_boolean_abstract_consts(props: dict()):
+def make_boolean_abstract_consts(props: dict):
     result = list()
-    for p in props:
+    all_vars_list = props.keys()
+    all_vars_list = sorted(all_vars_list, key=lambda x: x.id)
+    for p in all_vars_list:
         result.append(Eq(p, props[p]))
     return And(result)
 
@@ -998,17 +850,6 @@ def make_boolean_abstract_consts(props: dict()):
 def infix(const: Constraint):
     return str(const)
 
-'''
-# assumption: no mode variable exists
-@infix.register(Real)
-def _(const: Real):
-    if "tau" in const.id:
-        return const.id
-    index = const.id.find("_")
-    if index == -1:
-        return const.id
-    return const.id[:index]
-'''
 
 @infix.register(Variable)
 def _(const: Variable):
@@ -1086,6 +927,7 @@ def _(const: Pow):
 def _(const: Forall):
     return infix(const.const)
 
+
 @singledispatch
 def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
     new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
@@ -1118,6 +960,7 @@ def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
         new_var = substitution(var, new_vars_dict)
         new_vars.append(new_var)
     return Function(new_vars, new_exps)
+
 
 @singledispatch
 def clause(const: Constraint):
@@ -1164,3 +1007,49 @@ def _(const):
     result = result.union(clause(const.left))
     result = result.union(clause(const.right))
     return result
+
+
+def lower_encoding(chi, bound, lower):
+    com_list = [(chi + "_" + str(i), chi + "_" + str(i + 1)) for i in range(1, 2 * (bound + 1))]
+    combi = combinations(com_list, lower)
+    result = list()
+    for i in combi:
+        rest = com_list[:]
+        sub = list()
+        for j in i:
+            rest.remove(j)
+            sub.append(Neq(Bool(j[0]), Bool(j[1])))
+        for j in rest:
+            sub.append(Eq(Bool(j[0]), Bool(j[1])))
+        result.append(And(sub))
+    return Or(result)
+
+
+def get_max_depth(const: Constraint):
+    queue = list()
+    waiting_queue = list()
+
+    waiting_queue.append(const)
+    queue.append((0, const, None))
+    level = 0
+    while len(waiting_queue) > 0:
+        n = waiting_queue.pop(0)
+        if isinstance(n, NonLeaf):
+            level += 1
+            for c in n.children:
+                waiting_queue.append(c)
+                queue.append((level, c, n))
+
+    max_depth = 0
+    while len(queue) > 0:
+        n, node, p = queue.pop(0)
+        if n > max_depth:
+            max_depth = n
+        # print("depth: {}, {} ({}) :: parent {}\n".format(n, node, id(node), id(p)))
+    return max_depth
+
+
+def fresh_new_var():
+    new_var = Bool("")
+    new_var.id = "opt_var_{}".format(id(new_var))
+    return new_var

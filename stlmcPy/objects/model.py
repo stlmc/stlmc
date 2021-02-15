@@ -119,13 +119,17 @@ class StlMC(Model):
                     cur_flow = new_dynamics.exps[cur_ode]
                     if len(get_vars(cur_flow)) == 0:
                         constant_consts.append(Eq(end_vector[cur_ode], start_vector[cur_ode] + cur_flow * Real("time_" + str(bound))))
+                        if bound == 0:
+                            constant_consts.append(Eq(Real("time_0"), Real("tau_0")))
+                        else:
+                            constant_consts.append(Eq(Real("time_" + str(bound)), (Real("tau_" + str(bound + 1)) - Real("tau_" + str(bound)))))
             integral = Integral(mode_number, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(mode_number) + "_" + str(bound))
-            #self.boolean_abstract[bool_integral] = integral
+            self.boolean_abstract[bool_integral] = integral
             integral_object_list.append(integral)
             integral_children.append(And(
-                #[bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
-                [integral, *mode_const_bound, *constant_consts]))
+                [bool_integral, *mode_const_bound, Eq(Real('currentMode_' + str(bound)), IntVal(str(mode_number)))]))
+                #[integral, *mode_const_bound, *constant_consts]))
             mode_number += 1
         return integral_children, integral_object_list
 
@@ -155,6 +159,8 @@ class StlMC(Model):
             integral = integrals[index]
 
             invariant_sub_children = list()
+
+            new_dict = dict()
             for invariant_var in inv_prop_dict:
                 const = inv_prop_dict[invariant_var]
                 bound_applied_inv_var = substitution(invariant_var, new_substitute_dict)
@@ -162,33 +168,32 @@ class StlMC(Model):
                 inv_boolean = bound_applied_inv_var.id[:key_index + 1] + str(index) + str(
                     bound_applied_inv_var.id[key_index + 1]) + "_" + bound_applied_inv_var.id[-1]
                 bound_applied_const = substitution(const, new_substitute_dict)
-                end_const = substitution(const,new_substitute_dict_t)
-
-                '''
                 self.boolean_abstract[Bool(inv_boolean)] = Forall(integral.current_mode_number,
                                                                   Real('tau_' + str(bound + 1)),
                                                                   Real('tau_' + str(bound)),
                                                                   bound_applied_const, integral)
+                #end_const = substitution(const,new_substitute_dict_t)
+
+                #forall_obj = Forall(integral.current_mode_number,
+                #                             Real('tau_' + str(bound + 1)),
+                #                             Real('tau_' + str(bound)),
+                #                             bound_applied_const, integral)
+                #invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
+                new_dict[invariant_var] = And([Bool(inv_boolean), bound_applied_const])
+
                 invariant_sub_children.extend([Bool(inv_boolean), bound_applied_const])
-                '''
-                forall_obj = Forall(integral.current_mode_number,
-                                             Real('tau_' + str(bound + 1)),
-                                             Real('tau_' + str(bound)),
-                                             bound_applied_const, integral)
-                invariant_sub_children.extend([forall_obj, bound_applied_const, end_const])
-                #invariant_sub_children.extend([forall_obj, bound_applied_const])
+
             if len(inv_prop_dict) > 0:
                 pass
                 #invariant_sub_children.extend(mode_const_bound)
             if len(invariant_sub_children) > 0:
-                invariant_children.append(And(invariant_sub_children))
+                result = substitution(transformed_inv_const, new_dict)
+                invariant_children.append(result)
             else:
                 invariant_children.append(And([BoolVal("True")]))
             index += 1
-        #if len(invariant_children) > 0:
         return invariant_children
-        #else:
-        #    return [BoolVal("True")]
+
 
     def make_jump_consts(self, bound):
 
@@ -271,6 +276,7 @@ class StlMC(Model):
             flow_consts, integral_object_list = self.make_flow_consts(k)
 
             inv_consts = self.make_invariant_consts(k, integral_object_list)
+            jump_consts = self.make_jump_consts(k)
             if k < bound:
                 jump_consts = self.make_jump_consts(k)
             else:
@@ -287,7 +293,5 @@ class StlMC(Model):
             for cur in sub_chi:
                 sub_result.append(And(cur))
             result_child.append(Or(sub_result))
-
-        
 
         return And(result_child)

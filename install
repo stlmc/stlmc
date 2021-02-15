@@ -1,0 +1,12 @@
+#!/bin/sh
+top_dir=$(pwd)
+dreal_dir=$top_dir/dreal
+
+mkdir -p $dreal_dir
+wget https://github.com/dreal/dreal3/releases/download/v3.16.06.02/dReal-3.16.06.02-linux.tar.gz -O $dreal_dir/dreal.tar.gz
+cd $dreal_dir 
+(
+tar -xvzf dreal.tar.gz
+mv dReal-3.16.06.02-linux/bin/dReal ./
+rm -rf $dreal_dir/dReal-3.16.06.02-linux
+)

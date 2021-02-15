@@ -7,40 +7,41 @@ from stlmcPy.parser.model_visitor import ModelVisitor
 
 class ObjectManager:
     @abc.abstractmethod
-    def generate_objects(self, file_name: str):
+    def generate_objects(self, file_name: str, is_zeno=True):
         model, original_prop_dict, raw_goals = ModelVisitor().get_parse_tree(file_name)
         goals = list()
         for raw_goal in raw_goals:
-            goals.append(GoalFactory(raw_goal).generate_goal())
+            goals.append(GoalFactory(raw_goal, is_zeno).generate_goal())
         return model, original_prop_dict, goals
 
 
 # generate only new stl encoded goal
 class NewStlObjectManager(ObjectManager):
-    def generate_objects(self, file_name: str):
+    def generate_objects(self, file_name: str, is_zeno=True):
         _, _, raw_goals = ModelVisitor().get_parse_tree(file_name)
         goals = list()
         for raw_goal in raw_goals:
-            goals.append(GoalFactory(raw_goal).generate_goal())
+            goals.append(GoalFactory(raw_goal, is_zeno).generate_goal())
         return EmptyModel(), {}, goals
 
 
 # generate only old stl encoded goal
 class OldStlObjectManager(ObjectManager):
-    def generate_objects(self, file_name: str):
+    def generate_objects(self, file_name: str, is_zeno=True):
         _, _, raw_goals = ModelVisitor().get_parse_tree(file_name)
         goals = list()
         for raw_goal in raw_goals:
-            goals.append(OldGoalFactory(raw_goal).generate_goal())
+            goals.append(OldGoalFactory(raw_goal, is_zeno).generate_goal())
         return EmptyModel(), {}, goals
+
 
 class OldObjectManager:
     @abc.abstractmethod
-    def generate_objects(self, file_name: str):
+    def generate_objects(self, file_name: str, is_zeno=True):
         model, original_prop_dict, raw_goals = ModelVisitor().get_parse_tree(file_name)
         goals = list()
         for raw_goal in raw_goals:
-            goals.append(OldGoalFactory(raw_goal).generate_goal())
+            goals.append(OldGoalFactory(raw_goal, is_zeno).generate_goal())
         return model, original_prop_dict, goals
 
 
@@ -50,7 +51,6 @@ class ObjectFactory:
 
     def generate_object_manager(self):
         if self._formula_encoding == "model-with-goal":
-            print("enter")
             return OldObjectManager()
         elif self._formula_encoding == "only-goal-stl":
             return OldStlObjectManager()
