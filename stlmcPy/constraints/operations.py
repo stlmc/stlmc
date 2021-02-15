@@ -241,7 +241,7 @@ def _(const: Div, substitution_dict):
 def _(const: Pow, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const], 1
-    return Pow(left, right), sl + rl + 1
+    return Pow(const.left, const.right), sl + rl + 1
 
 
 @substitutionSize.register(Neg)
@@ -470,6 +470,7 @@ def _(cur_inv_const: BinaryFormula, inv_prop_dict: dict):
     inv_prop_dict[new_var] = cur_inv_const
     return new_var, inv_prop_dict
 
+
 def get_max_bound(literal):
     max_bound = -1
     bound = -1
@@ -483,13 +484,26 @@ def get_max_bound(literal):
             s_index = int(v.id.find("_"))
             e_index = int(v.id.rfind("_"))
             if s_index == e_index:
-                bound = int(v.id[s_index+1:]) - 1
+                bound = int(v.id[s_index + 1:]) - 1
             else:
                 if "_0_0" in v.id or "_t" in v.id:
-                    bound = int(v.id[s_index+1:e_index])
+                    bound = int(v.id[s_index + 1:e_index])
             if max_bound < bound:
                 max_bound = bound
     return max_bound
+
+
+def update_dynamics_with_replacement(dynamics: Dynamics, v: Variable, e: Expr):
+    is_update = False
+    for i, dyn_var in enumerate(dynamics.vars):
+        if dyn_var.id == v.id:
+            print("sival gekse {}".format(dynamics))
+            dynamics.exps[i] = e
+            is_update = True
+    if not is_update:
+        dynamics.vars.append(v)
+        dynamics.exps.append(e)
+
 
 @singledispatch
 def get_vars(const: Constraint):
@@ -611,7 +625,7 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
-    
+
     return diff_aux(new_exp)
 
 
@@ -814,7 +828,7 @@ def _(const: Not):
                             reduce_not(Not(child.left)),
                             reduce_not(Not(child.right)))
     if isinstance(child, Bool):
-        return Bool("not@"+child.id)
+        return Bool("not@" + child.id)
     return const
 
 
@@ -842,6 +856,7 @@ def _(const: Eq):
 def _(const: Neq):
     return Neq(reduce_not(const.left), reduce_not(const.right))
 
+
 @reduce_not.register(FinallyFormula)
 def _(const: FinallyFormula):
     return FinallyFormula(const.local_time, const.global_time, reduce_not(const.child))
@@ -864,6 +879,7 @@ def _(const: ReleaseFormula):
     return ReleaseFormula(const.local_time, const.global_time,
                           reduce_not(const.left),
                           reduce_not(const.right))
+
 
 @singledispatch
 def get_boolean_abstraction(const: Constraint):
@@ -996,6 +1012,7 @@ def make_boolean_abstract_consts(props: dict()):
 def infix(const: Constraint):
     return str(const)
 
+
 @infix.register(Variable)
 def _(const: Variable):
     return const.id
@@ -1072,6 +1089,7 @@ def _(const: Pow):
 def _(const: Forall):
     return infix(const.const)
 
+
 @singledispatch
 def make_new_dynamics(dyn: Ode, bound, mode_var_dict, range_dict, constant_dict):
     new_dynamics_dict = make_dict(bound, mode_var_dict, range_dict, constant_dict, "_0")
@@ -1105,6 +1123,7 @@ def _(dyn: Function, bound, mode_var_dict, range_dict, constant_dict):
         new_vars.append(new_var)
     return Function(new_vars, new_exps)
 
+
 @singledispatch
 def clause(const: Constraint):
     return {const}
@@ -1124,6 +1143,13 @@ def _(const: And):
 
 
 @clause.register(Eq)
+def _(const: Eq):
+    if isinstance(const.left, Formula):
+        return clause(const.left).union(clause(const.right))
+    return {const}
+
+
+@clause.register(Neq)
 def _(const: Eq):
     if isinstance(const.left, Formula):
         return clause(const.left).union(clause(const.right))

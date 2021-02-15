@@ -12,7 +12,7 @@ class Goal:
     def make_time_consts(self, bound, time_bound):
         time_const_children = list()
         for k in range(1, bound + 2):
-            chi = Geq(Real('tau_' + str(k)), RealVal('0'))
+            chi = Gt(Real('tau_' + str(k)), RealVal('0'))
             chi._range = True
             time_const_children.append(chi)
             chi = Leq(Real('tau_' + str(k)), RealVal(str(time_bound)))
@@ -233,8 +233,6 @@ class ReachGoal(Goal):
         return self.formula
 
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
-        if len(proposition_dict) == 0:
-            return BoolVal("True"), dict()
 
         result = list()
         # return to original const
@@ -242,7 +240,7 @@ class ReachGoal(Goal):
         sub_result = list()
 
         # make goal speciific dictionary and substitute it
-        for cur_bound in range(bound, bound+1):
+        for cur_bound in range(0, bound+1):
             goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
             goal_consts = substitution(decoded_consts, goal_dict)
             #cur_bool = Bool("reach_goal_" + str(cur_bound))

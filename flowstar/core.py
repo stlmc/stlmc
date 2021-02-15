@@ -52,8 +52,8 @@ class FlowStar:
         if os.path.isdir(images):
             shutil.rmtree(images)
 
-        if os.path.isfile(model_file):
-            os.remove(model_file)
+        # if os.path.isfile(model_file):
+        #     os.remove(model_file)
 
         if "UNSAFE" in stdout.decode():
             self.result = True
@@ -66,7 +66,7 @@ class FlowStar:
 
     async def _run(self, model_string):
         try:
-            await asyncio.wait_for(self._run_command(model_string), timeout=100.0)
+            await asyncio.wait_for(self._run_command(model_string), timeout=10000.0)
         except asyncio.TimeoutError:
             print('timeout!')
 

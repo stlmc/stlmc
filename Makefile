@@ -18,7 +18,8 @@ test: linear-z3-test linear-hylaa-test linear-hylaa-test linear-hylaa-reduction-
 
 antlr:
 	$(info make files for antlr in $(ANTLR_DIR))
-	@cd $(ANTLR_DIR) && java -jar antlr-4.8-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
+	@cd $(ANTLR_DIR)/model && java -jar ../antlr-4.8-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
+	@cd $(ANTLR_DIR)/flowstar && java -jar ../antlr-4.8-complete.jar -Dlanguage=Python3 flow.g4 -no-listener -visitor
 
 linear-z3-test: $(linear-z3-test)
 	@ echo $<

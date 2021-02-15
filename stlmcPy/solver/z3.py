@@ -64,6 +64,9 @@ class Z3Solver(SMTSolver):
     def simplify(self, consts):
         return z3.simplify(consts)
 
+    def cache(self):
+        return self._cache
+
     def add(self, const):
         self._cache.append(z3Obj(const))
 

@@ -34,13 +34,13 @@ def _(f: UnaryTemporalFormula, sub_list, k):
     str_list = [str(c) for c in sub_list]
     form_index = str(str_list.index(str(f.child)))
     
-    left = str(2 * k)
-    right = str(2 * k + 2)
+    left = str(k)
+    right = str(k + 1)
     str_id = "chi_" + form_index
 
     if isinstance(f.child, Bool):
-        left = str(int((int(left) / 2) - 1))
-        right = str(int((int(right) / 2) - 1))
+        left = str(left)
+        right = str(right)
         str_id = f.child.id
 
     return Neq(Bool(str_id + "_" + left), Bool(str_id + "_" + right))
@@ -49,13 +49,13 @@ def _(f: UnaryTemporalFormula, sub_list, k):
 def _(f: Not, sub_list, k):
     str_list = [str(c) for c in sub_list]
     form_index = str(str_list.index(str(f.child)))
-    left = str(2 * k)
-    right = str(2 * k + 2)
+    left = str(k)
+    right = str(k + 1)
     str_id = "chi_" + form_index
 
     if isinstance(f.child, Bool):
-        left = str(int((int(left) / 2) - 1))
-        right = str(int((int(right) / 2) - 1))
+        left = str(left)
+        right = str(right)
         str_id = f.child.id
 
     return Neq(Bool(str_id + "_" + left), Bool(str_id + "_" + right))
@@ -67,20 +67,16 @@ def _(f: BinaryTemporalFormula, sub_list, k):
     lef_index = str(str_list.index(str(f.left)))
     rig_index = str(str_list.index(str(f.right)))
 
-    left_l = str(2 * k)
-    left_r = str(2 * k)
-    right_l = str(2 * k + 2)
-    right_r = str(2 * k + 2)
+    left_l = str(k)
+    left_r = str(k)
+    right_l = str(k + 1)
+    right_r = str(k + 1)
     left_id = "chi_" + lef_index
     right_id = "chi_" + rig_index
 
     if isinstance(f.left, Bool):
-        left_l = str(int((int(left_l) / 2) - 1))
-        right_l = str(int((int(right_l) / 2) - 1))
         left_id = f.left.id
     if isinstance(f.right, Bool):
-        left_r = str(int((int(left_r) / 2) - 1))
-        right_r = str(int((int(right_r) / 2) - 1))
         right_id = f.right.id
     result.append(Neq(Bool(left_id + "_" + left_l), Bool(left_id + "_" + right_l)))
     result.append(Neq(Bool(right_id + "_" + left_r), Bool(right_id + "_" + right_r)))
@@ -120,11 +116,12 @@ def genPartition(subform, subformula_list, bound):
                 if k >= (bound + 1):
                     consts.append(Bool("newTau_" + str(count) + "_" + str(k - 1)))
                 else:
-                    right_list.append(Bool("newTau_" + str(count) + "_" + str(k - 1)))
+                    consts.append(Implies(left_chi, Bool("newTau_" + str(count) + "_" + str(k - 1))))
+                    # right_list.append(Bool("newTau_" + str(count) + "_" + str(k - 1)))
                 count += 1
 
-            if k < bound + 1:
-                consts.append(Implies(left_chi, And(right_list)))
+            # if k < bound + 1:
+            #     consts.append(Implies(left_chi, And(right_list)))
     return consts, tau_abstraction
 
 

@@ -1,3 +1,4 @@
+from stlmcPy.solver.c2e2 import C2E2SolverUnsatCore
 from stlmcPy.solver.flowstar import FlowStarSolverUnsatCore
 from stlmcPy.solver.spaceex import SpaceExSolverUnsatCore, SpaceExSolverNaive
 from stlmcPy.solver.yices import YicesSolver
@@ -26,3 +27,5 @@ class SolverFactory:
             return SpaceExSolverUnsatCore()
         elif self.solver_type == 'flowstar':
             return FlowStarSolverUnsatCore()
+        elif self.solver_type == 'c2e2':
+            return C2E2SolverUnsatCore()

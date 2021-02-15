@@ -11,6 +11,8 @@ from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
 from timeit import default_timer as timer
 
+from stlmcPy.visualize.visualizer import Visualizer
+
 
 def string_to_bool(v: str):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -65,7 +67,7 @@ class StlConfiguration:
         self._step = 1
         self._solver = "z3"
         self._optimize_flags = list()
-        self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction", "spaceex", "flowstar"]
+        self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction", "spaceex", "flowstar", "c2e2"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl", "only-goal-stl-enhanced"]
         self._gen_ce = False
@@ -187,7 +189,6 @@ class Runner:
                     boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                     e_time = timer()
 
-                    
                     printer.print_normal("> {}".format(config.solver))
                     
                     result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
@@ -227,6 +228,10 @@ class Runner:
                     if config.is_generate_counterexample:
                         assignment = solver.make_assignment()
                         assignment.get_assignments()
+
+                        visualizer = Visualizer()
+                        model_assignment = assignment.get_assignments()
+                        visualizer.run(model_assignment, model.modules, model.mode_var_dict, model.range_dict, PD)
 
 
 class DriverFactory:

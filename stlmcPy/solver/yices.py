@@ -14,6 +14,40 @@ from stlmcPy.constraints.constraints import *
 from functools import singledispatch
 
 
+class YicesAssignment(Assignment):
+    def __init__(self, _yices_model):
+        self._yices_model = _yices_model
+
+    # solver_model_to_generalized_model
+    def get_assignments(self):
+        new_dict = dict()
+        for e in self._yices_model.collect_defined_terms():
+            if Terms.is_real(e):
+                new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
+            elif Terms.is_int(e):
+                new_dict[Int(Terms.to_string(e))] = IntVal(str(self._yices_model.get_integer_value(e)))
+            elif Terms.is_bool(e):
+                new_dict[Bool(Terms.to_string(e))] = BoolVal(str(self._yices_model.get_bool_value(e)))
+            else:
+                NotSupportedError("cannot generate assignments")
+        return new_dict
+        # new_dict = dict()
+        # op_var_dict = {'bool': Bool, 'int': Int, 'real': Real}
+        # op_dict = {'bool': BoolVal, 'int': IntVal, 'real': RealVal}
+        # for d in self._z3_model.decls():
+        #     var_type_str = str(d.range()).lower()
+        #     new_var = op_var_dict[var_type_str](d.name())
+        #     z3_val = self._z3_model[d]
+        #     new_dict[new_var] = op_dict[var_type_str](str(z3_val))
+        # return new_dict
+
+    def eval(self, const):
+        pass
+        # if self._z3_model is None:
+        #     raise NotSupportedError("Z3 has no model")
+        # return self._z3_model.eval(z3Obj(const))
+
+
 class YicesSolver(SMTSolver):
     def __init__(self):
         SMTSolver.__init__(self)
@@ -53,14 +87,14 @@ class YicesSolver(SMTSolver):
 
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
+            self._yices_model = m
             result = False
         else:
             m = None
             result = True if Status.UNSAT else "Unknown"
-    
+
         cfg.dispose()
         ctx.dispose()
-
 
         return result, sizeAst(Terms.yand(yicesConsts)), m
 
@@ -71,7 +105,7 @@ class YicesSolver(SMTSolver):
         return result, size
 
     def make_assignment(self):
-        pass
+        return YicesAssignment(self._yices_model)
 
     def clear(self):
         self._cache = list()
@@ -88,7 +122,6 @@ class YicesSolver(SMTSolver):
     def set_logic(self, logic_name: str):
         pass
 
-
     def add_contradict_consts(self):
         clause_set = set()
         for i in self._cache:
@@ -103,7 +136,7 @@ class YicesSolver(SMTSolver):
         cons_list = list(cons)
         for i in range(len(cons_list)):
             cur_const = cons_list[i]
-            for j in range(i+1, len(cons_list)):
+            for j in range(i + 1, len(cons_list)):
                 flag = False
                 comp_const = cons_list[j]
                 if len(get_vars(cur_const.left)) > 0:
@@ -289,6 +322,7 @@ def _(const):
     result = '(>= ' + x + ' ' + y + ')'
     return result
 
+
 @yicesObj.register(Gt)
 def _(const):
     x = yicesObj(const.left)
@@ -333,6 +367,7 @@ def _(const):
     y = yicesObj(const.right)
     result = '(+ ' + x + ' ' + y + ')'
     return result
+
 
 @yicesObj.register(Sub)
 def _(const):
@@ -380,6 +415,7 @@ def _(const):
     y = yicesObj(const.right)
     result = '(/ ' + x + ' ' + y + ')'
     return result
+
 
 @yicesObj.register(Neg)
 def _(const):
@@ -432,7 +468,6 @@ def _(const: Integral):
     return yicesObj(make_dynamics_consts(const.dynamics))
 
 
-
 @yicesObj.register(Forall)
 def _(const: Forall):
     bound_str = str(int(const.end_tau.id[4:]) - 1) + "_"
@@ -447,11 +482,12 @@ def _(const: Forall):
         return yicseObj(const.const)
     if isinstance(const.const, Not):
         if isinstance(const.const.child, Bool):
-            return "(not " + yicesObj(const.const.child) +")"
+            return "(not " + yicesObj(const.const.child) + ")"
         if isinstance(const.const.child, Not):
             return yicesObj(const.const.child.child)
         reduced_const = reduce_not(const.const)
-        new_const = yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
+        new_const = yicesObj(
+            Forall(const.current_mode_number, const.end_tau, const.start_tau, reduced_const, const.integral))
         return new_const
     elif isinstance(const.const, Implies):
         left = reduce_not(Not(const.const.left))
@@ -467,7 +503,8 @@ def _(const: Forall):
             elif get_vars(c) is None:
                 result.append(yicesObj(c))
             else:
-                result.append(yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
+                result.append(
+                    yicesObj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
 
         if isinstance(const.const, Or):
             return '(or ' + ' '.join(result) + ')'
