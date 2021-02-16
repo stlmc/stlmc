@@ -80,7 +80,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             abst_size = size_of_tree(abstracted_consts)
             logger.add_info("constraint size", abst_size)
 
-            printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
+            #printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
             #
             logger.start_timer("loop timer")
             logger.start_timer("smt solving timer")
@@ -101,11 +101,11 @@ class CommonOdeSolver(OdeSolver, ABC):
             logger.add_info("smt solving time", logger.get_duration_time("smt solving timer"))
 
             if result:
-                printer.print_normal_dark("Smt solver level result!")
+                # printer.print_normal_dark("Smt solver level result!")
                 # logger.write_to_csv()
-                print("The number of loop : " + str(cur_index))
+                #print("The number of loop : " + str(cur_index))
                 solving_res = self.specific(hybrid_automata_queue)
-                print(solving_res)
+                #print(solving_res)
                 # self.add_log_info("SMT solver level result!")
                 return solving_res, 0
                 # return True, 0
@@ -279,7 +279,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             abst_size = size_of_tree(abstracted_consts)
             logger.add_info("constraint size", abst_size)
 
-            printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
+            #printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
             #
             logger.start_timer("loop timer")
             logger.start_timer("smt solving timer")
@@ -308,7 +308,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             if result:
                 printer.print_normal_dark("Smt solver level result!")
                 logger.write_to_csv()
-                print("The number of loop : " + str(cur_index))
+                #print("The number of loop : " + str(cur_index))
                 # solving_res = self.specific(hybrid_automata_queue)
                 # print(solving_res)
                 # self.add_log_info("SMT solver level result!")
@@ -316,7 +316,7 @@ class CommonOdeSolver(OdeSolver, ABC):
                 return True, 0
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
-            print(alpha)
+            #print(alpha)
             for mp in mapping_info:
                 if isinstance(mapping_info[mp], Or):
                     mapping_info[mp] = mapping_info[mp].children[0]
@@ -390,14 +390,14 @@ class CommonOdeSolver(OdeSolver, ABC):
             # counter_consts = list(counter_consts_set)
             path_length = len(max_literal_set_list)
             mode_to_be_generated = path_length - depth
-            print("path length {}, mode to be generated {}".format(path_length, mode_to_be_generated))
+            #print("path length {}, mode to be generated {}".format(path_length, mode_to_be_generated))
             new_mode = None
             if path_length > mode_to_be_generated >= 0:
                 new_mode = make_mode_from_formula(And(list(max_literal_set_list[mode_to_be_generated])),
                                                   mode_to_be_generated, max_bound, mapping_info)
                 original_consts, counter_consts = encode_possible_path_as_formula(
                     And(list(max_literal_set_list[mode_to_be_generated])), mode_to_be_generated, alpha)
-                print("generate mode \n{}\n\n".format(new_mode))
+                #print("generate mode \n{}\n\n".format(new_mode))
             # depth += 1
             # reset at regeneration of ha
             try:
@@ -405,11 +405,11 @@ class CommonOdeSolver(OdeSolver, ABC):
                 if is_first:
                     ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
                     is_first = False
-                    print("first one \n{}\n\n".format(ha))
+                    #print("first one \n{}\n\n".format(ha))
                 else:
                     if new_mode is not None and ha is not None:
                         add_mode(ha, mode_to_be_generated, new_mode)
-                        print("add new mode \n {}\n\n".format(ha))
+                        #print("add new mode \n {}\n\n".format(ha))
                     # print(add_mode(ha, 1))
                 # ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
                 # hybrid_automata_queue.append((ha, conf_dict, l_v, new_bound_box_list))
