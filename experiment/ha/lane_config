@@ -8,7 +8,7 @@ flowstar {
 time 1
 remainder estimation 1e-2
 identity precondition 
-gnuplot octagon d1, g1
+gnuplot octagon x1, x2
 adaptive orders { min 4 , max 8 }
 cutoff 1e-12
 precision 53

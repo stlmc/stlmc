@@ -219,8 +219,6 @@ class OldStlGoal(BaseStlGoal):
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
 
-        # set enc flags
-        ENC.ENC_TYPES = "old"
         # FOL translation
 
         baseV = ENC.baseEncoding(partition, baseP, time_bound)

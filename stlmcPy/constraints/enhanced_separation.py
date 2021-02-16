@@ -1,5 +1,7 @@
 from stlmcPy.constraints.operations import reduce_not, fresh_new_var
-from .interval import *
+from functools import singledispatch
+from stlmcPy.constraints.constraints import *
+from .interval import inInterval, minusInterval
 
 
 def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
