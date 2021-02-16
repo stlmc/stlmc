@@ -318,6 +318,8 @@ class dRealSolver(SMTSolver):
         return result, result_model
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        if "logic" in self.conf_dict:
+            self.set_logic(self.conf_dict["logic"])
         size = 0
         if all_consts is not None:
             self._cache.append(all_consts)

@@ -101,7 +101,7 @@ class YicesSolver(SMTSolver):
 
         for c in consts:
             results.append(yicesObj(c))
-
+        print(self._logic)
         str_file_name = "yices_model" + str(random.random())
         with open(str_file_name + ".smt2", 'w') as model_file:
             model_file.write("(set-logic {})\n".format(self._logic))
@@ -150,6 +150,8 @@ class YicesSolver(SMTSolver):
         return result, None
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        if "logic" in self.conf_dict:
+            self.set_logic(self.conf_dict["logic"])
         size = 0
         if all_consts is not None:
             self._cache.append(all_consts)

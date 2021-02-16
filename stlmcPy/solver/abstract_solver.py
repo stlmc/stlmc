@@ -9,6 +9,7 @@ class BaseSolver:
     def __init__(self):
         self.logger = None
         self._optimize_dict = dict()
+        self.conf_dict = dict()
 
     def set_optimize_flag(self, name: str, value: bool):
         assert isinstance(value, bool)
@@ -30,10 +31,8 @@ class BaseSolver:
     def make_assignment(self):
         pass
 
-    # todo: move this to SMT solver interface
-    @abc.abstractmethod
-    def set_logic(self, logic_name: str):
-        pass
+    def set_config(self, config: dict):
+        self.conf_dict = config
 
 
 class SMTSolver(BaseSolver):
@@ -47,6 +46,10 @@ class SMTSolver(BaseSolver):
 
     @abc.abstractmethod
     def add(self, const):
+        pass
+
+    @abc.abstractmethod
+    def set_logic(self, logic_name: str):
         pass
 
 
