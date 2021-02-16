@@ -66,6 +66,7 @@ class dRealSolver(SMTSolver):
         SMTSolver.__init__(self)
         self._dreal_model = None
         self._cache = list()
+        self._cache_raw = list()
         self._logic_list = ["QF_NRA_ODE"]
         self._logic = "QF_NRA_ODE"
 
@@ -288,6 +289,7 @@ class dRealSolver(SMTSolver):
         logger.start_timer("solving timer")
         stdout, stderr = await proc.communicate()
         logger.stop_timer("solving timer")
+        self.set_time("solving timer", logger.get_duration_time("solving timer"))
         stdout_str = stdout.decode()[len("Solution:\n"):-1]
         stderr_str = stderr.decode()
         output_str = "{}\n{}".format(stdout_str, stderr_str)
@@ -320,10 +322,10 @@ class dRealSolver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if "logic" in self.conf_dict:
             self.set_logic(self.conf_dict["logic"])
-        size = 0
         if all_consts is not None:
             self._cache.append(all_consts)
-            size = size_of_tree(all_consts)
+            self._cache_raw.append(all_consts)
+        size = size_of_tree(And(self._cache_raw))
         result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
         return result, size
 
@@ -332,6 +334,7 @@ class dRealSolver(SMTSolver):
 
     def clear(self):
         self._cache = list()
+        self._cache_raw = list()
 
     def simplify(self, consts):
         pass

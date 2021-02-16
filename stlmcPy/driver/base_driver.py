@@ -339,6 +339,7 @@ class Runner:
                             boolean_abstract.update(goal_boolean_abstract)
                             boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                             logger.stop_timer("goal timer")
+                            goal_time = logger.get_duration_time("goal timer")
 
                             printer.print_normal("> {}".format(solver_name))
 
@@ -371,8 +372,9 @@ class Runner:
 
                             # logger.stop_timer("goal timer")
                             printer.print_normal_dark("\n> result")
-                            smt_time = logger.get_duration_time("solving timer")
-                            goal_time = logger.get_duration_time("goal timer")
+                            smt_time = solver.get_time("solving timer")
+                            # smt_time = logger.get_duration_time("solving timer")
+                            # goal_time = logger.get_duration_time("goal timer")
                             printer.print_verbose(
                                 "model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound,
                                                                                                   formula,
