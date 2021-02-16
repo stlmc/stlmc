@@ -201,6 +201,10 @@ class StlConfiguration:
         if self._args.abs_sep is not None:
             self._abs_sep = self._args.abs_sep
         self._delta = self._args.delta
+        solver_conf_dict = dict()
+        solver_conf_dict["solver"] = self._solver
+        solver_conf_dict["logic"] = self._logic
+        self._solver_configs.append(solver_conf_dict)
 
     @property
     def zeno(self):

@@ -96,10 +96,10 @@ class YicesSolver(SMTSolver):
 
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
-            result = False
+            result = "False"
         else:
             m = None
-            result = True if Status.UNSAT else "Unknown"
+            result = "True" if Status.UNSAT else "Unknown"
 
         cfg.dispose()
         ctx.dispose()
