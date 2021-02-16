@@ -250,12 +250,10 @@ class Runner:
                         for mc in model_const.children:
                             print(mc)
                         '''
-                        '''
     
                         print("goal")
                         for gc in goal_const.children:
                             print(gc)
-                        '''
 
                         boolean_abstract = dict()
                         boolean_abstract.update(model.boolean_abstract)
@@ -265,11 +263,9 @@ class Runner:
 
                         printer.print_normal("> {}".format(config.solver))
 
-                        '''
                         print("boolean")
                         for ba in boolean_abstract_consts.children:
                             print(ba)
-                        '''
 
                         # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
                         solver.set_logic(config.logic)

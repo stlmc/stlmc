@@ -242,6 +242,7 @@ class NewStlGoal(BaseStlGoal):
         sub_list = list(partition.keys())
 
         consts = list()
+        ENHANCED_SEP.NEW_ID = 0
 
         (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
         id_match_dict = dict()
