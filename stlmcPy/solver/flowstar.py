@@ -139,7 +139,7 @@ class FlowStarConverter(AbstractConverter):
                         if isinstance(etsi, Equality):
                             etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                         t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
-                                                                                                       "<=").replace(
+                                                                                    "<=").replace(
                             ">==", ">=").replace("<==", "<=")
                 else:
                     etsi = expr_to_sympy_inequality(guard)
@@ -147,7 +147,7 @@ class FlowStarConverter(AbstractConverter):
                     if isinstance(etsi, Equality):
                         etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                     t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
-                                                                                                       "<=").replace(
+                                                                                "<=").replace(
                         ">==", ">=").replace("<==", "<=")
                 # whole_g_str = infix(ha.trans[t].guard)
                 # for g_str in whole_g_str.split("&"):
@@ -264,6 +264,28 @@ class FlowStarConverter(AbstractConverter):
             phi_new_reset_children.append(reduce_not(substitution(c, new_dict)))
 
         trans_i.set_reset(And(phi_new_reset_children))
+
+
+def make_flowstar_conf_dict(conf_dict: dict):
+    # conf_dict = dict()
+    # conf_dict["fixed steps"] = "0.01"
+    # # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
+    # conf_dict["time"] = "1"
+    # conf_dict["remainder estimation"] = "1e-2"
+    # conf_dict["identity precondition"] = ""
+    # conf_dict["gnuplot octagon"] = ""
+    # conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
+    # conf_dict["cutoff"] = "1e-12"
+    # conf_dict["precision"] = "53"
+    # conf_dict["no output"] = ""
+    # conf_dict["max jumps"] = "10"
+    flowstar_dict = dict()
+    keywords = ["fixed steps", "time", "remainder estimation", "identity precondition",
+                "gnuplot octagon", "adaptive orders", "cutoff", "precision", "no output", "max jumps"]
+    for keyword in keywords:
+        if keyword in conf_dict:
+            flowstar_dict[keyword] = conf_dict[keyword]
+    return flowstar_dict
 
 
 def flowstar_run(s_f_list, max_bound, sigma):
@@ -428,7 +450,7 @@ def flowstar_run(s_f_list, max_bound, sigma):
         return True
 
 
-def flowstar_gen(s_f_list, max_bound, sigma):
+def flowstar_gen(s_f_list, max_bound, sigma, conf_dict):
     new_s_f_list = list()
     printer = Printer()
     printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
@@ -566,20 +588,18 @@ def flowstar_gen(s_f_list, max_bound, sigma):
     # print(l_v)
     # print(new_bound_box_list)
 
-    conf_dict = dict()
-    conf_dict["fixed steps"] = "0.01"
-    # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
-    conf_dict["time"] = "1"
-    conf_dict["remainder estimation"] = "1e-2"
-    conf_dict["identity precondition"] = ""
-    conf_dict["gnuplot octagon"] = ""
-    conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
-    conf_dict["cutoff"] = "1e-12"
-    conf_dict["precision"] = "53"
-    conf_dict["no output"] = ""
-    conf_dict["max jumps"] = "10"
-
-    fs = FlowStarConverter(conf_dict, l_v, new_bound_box_list)
+    # conf_dict = dict()
+    # conf_dict["fixed steps"] = "0.01"
+    # # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
+    # conf_dict["time"] = "1"
+    # conf_dict["remainder estimation"] = "1e-2"
+    # conf_dict["identity precondition"] = ""
+    # conf_dict["gnuplot octagon"] = ""
+    # conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
+    # conf_dict["cutoff"] = "1e-12"
+    # conf_dict["precision"] = "53"
+    # conf_dict["no output"] = ""
+    # conf_dict["max jumps"] = "10"
     return ha, conf_dict, l_v, new_bound_box_list
 
 
@@ -633,170 +653,6 @@ def flowstar_gen_without(formula: Constraint, bound, sigma, ha: HybridAutomaton)
     return mode_i
 
 
-
-
-# def flowstar_run(s_f_list, max_bound, sigma, tau_guard_list):
-#     new_s_f_list = list()
-#     printer = Printer()
-#     printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
-#     num_internal = [0 for i in range(max_bound + 1)]
-#
-#     for s in s_f_list:
-#         new_s = set()
-#         for c in s:
-#             if isinstance(c, Bool):
-#                 if "newTau" in c.id:
-#                     index = c.id.rfind("_") + 1
-#                     num_internal[int(c.id[index:])] = num_internal[int(c.id[index:])] + 1
-#             new_s.add(substitution(c, sigma))
-#         new_s_f_list.append(new_s)
-#
-#     sv = get_vars_from_set(new_s_f_list)
-#
-#     l_v = list()
-#     for v in sv:
-#         new_v = remove_index(v)
-#         if new_v.id not in l_v:
-#             l_v.append(new_v.id)
-#
-#     l_v = sorted(l_v)
-#
-#     s_forall = list()
-#     s_integral = list()
-#     s_0 = list()
-#     s_tau = list()
-#     s_reset = list()
-#     s_guard = list()
-#
-#     for i in range(max_bound + 1):
-#         s_forall_i, s_integral_i, s_0_i, s_tau_i, s_reset_i, s_guard_i = unit_split(s_f_list[i], i)
-#         s_forall.append(s_forall_i)
-#         s_integral.append(s_integral_i)
-#         s_0.append(s_0_i)
-#         s_tau.append(s_tau_i)
-#         s_reset.append(s_reset_i)
-#         s_guard.append(s_guard_i)
-#
-#     ha = HybridAutomaton('ha')
-#     l_mode = list()
-#
-#     for i in range(max_bound + 1):
-#         l_mode.append(FlowStarConverter.make_mode_property(s_integral[i], s_forall[i], i, max_bound, l_v, ha, sigma))
-#
-#     l_mode.append(ha.new_mode("error"))
-#
-#     for i in range(max_bound + 1):
-#         FlowStarConverter.make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
-#
-#     forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
-#
-#     # assumption: all boundaries should be number
-#     sympy_expr_list = list()
-#
-#     for cc in init_set:
-#         # if not isinstance(cc, Lt) or not isinstance(cc, Leq) or \
-#         #         not isinstance(cc, Gt) or not isinstance(cc, Geq) or \
-#         #         not isinstance(cc, Eq) or not isinstance(cc, Neq):
-#         sympy_expr_list.append(simplify(expr_to_sympy(reduce_not(cc))))
-#
-#     bound_box_list = list()
-#     for i in range(len(l_v)):
-#         bound_box_list.append([None, None])
-#
-#     for t in l_v:
-#         printer.print_debug("tau setting :\n{}".format(l_v))
-#         if ("tau" in t) or ("timeStep" in t):
-#             index = find_index(l_v, Real(t))
-#             printer.print_debug("{}, index => {}".format(t, index))
-#             bound_box_list[index][0] = Float(0.0)
-#             bound_box_list[index][1] = Float(0.0)
-#
-#     printer.print_debug("\n\ninit constraints :")
-#     printer.print_debug("* variables : {}".format(l_v))
-#     for init_elem in init_set:
-#         printer.print_debug("  * {}".format(init_elem))
-#
-#     for expr in sympy_expr_list:
-#         if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
-#             # left is variable
-#             if expr.lhs.is_symbol:
-#                 var_id = str(expr.lhs)
-#                 index = find_index(l_v, Real(var_id))
-#                 if bound_box_list[index][0] is None:
-#                     bound_box_list[index][0] = expr.rhs
-#                 else:
-#                     if str(simplify(bound_box_list[index][0] <= expr.rhs)) == "True":
-#                         bound_box_list[index][0] = expr.rhs
-#             elif expr.rhs.is_symbol:
-#                 var_id = str(expr.rhs)
-#                 index = find_index(l_v, Real(var_id))
-#                 if bound_box_list[index][1] is None:
-#                     bound_box_list[index][1] = expr.lhs
-#                 else:
-#                     if str(simplify(bound_box_list[index][1] <= expr.lhs)) == "True":
-#                         bound_box_list[index][1] = expr.lhs
-#
-#         elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
-#             # left is variable
-#             if expr.lhs.is_symbol:
-#                 var_id = str(expr.lhs)
-#                 index = find_index(l_v, Real(var_id))
-#                 if bound_box_list[index][1] is None:
-#                     bound_box_list[index][1] = expr.rhs
-#                 else:
-#                     if str(simplify(bound_box_list[index][1] >= expr.rhs)) == "True":
-#                         bound_box_list[index][1] = expr.rhs
-#             elif expr.rhs.is_symbol:
-#                 var_id = str(expr.rhs)
-#                 index = find_index(l_v, Real(var_id))
-#                 if bound_box_list[index][0] is None:
-#                     bound_box_list[index][0] = expr.lhs
-#                 else:
-#                     if str(simplify(bound_box_list[index][0] >= expr.lhs)) == "True":
-#                         bound_box_list[index][0] = expr.lhs
-#     new_bound_box_list = list()
-#     for e in bound_box_list:
-#         printer.print_debug("bound box list test : {}".format(e))
-#         bound_box_left = -float("inf")
-#         bound_box_right = float("inf")
-#         if e[0] is not None:
-#             bound_box_left = float(e[0])
-#         if e[1] is not None:
-#             bound_box_right = float(e[1])
-#         new_bound_box_list.append([bound_box_left, bound_box_right])
-#
-#     # add affine variable
-#     printer.print_debug("* bound : ")
-#     printer.print_debug(new_bound_box_list)
-#
-#     # mode = ha.modes['mode0']
-#     # print(l_v)
-#     # print(new_bound_box_list)
-#
-#     conf_dict = dict()
-#     conf_dict["fixed steps"] = "0.01"
-#     # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
-#     conf_dict["time"] = "1"
-#     conf_dict["remainder estimation"] = "1e-2"
-#     conf_dict["identity precondition"] = ""
-#     conf_dict["gnuplot octagon"] = ""
-#     conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
-#     conf_dict["cutoff"] = "1e-12"
-#     conf_dict["precision"] = "53"
-#     conf_dict["output"] = "stlmcflowstar"
-#     conf_dict["max jumps"] = "10"
-#
-#     fs = FlowStarConverter(conf_dict, l_v, new_bound_box_list)
-#     model_string = fs.convert(ha)
-#     flowStarRaw = FlowStar()
-#     flowStarRaw.run(model_string)
-#
-#     if flowStarRaw.result:
-#         return False
-#     else:
-#         return True
-
-
 class FlowStarSolverNaive(CommonOdeSolver):
     def specific(self, l: list):
         pass
@@ -805,7 +661,8 @@ class FlowStarSolverNaive(CommonOdeSolver):
         CommonOdeSolver.__init__(self, NaiveStrategyManager())
 
     def run(self, s_f_list, max_bound, sigma):
-        return flowstar_gen(s_f_list, max_bound, sigma)
+        conf_dict = make_flowstar_conf_dict(self.conf_dict)
+        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
 
     def make_assignment(self):
         pass
@@ -822,7 +679,8 @@ class FlowStarSolverReduction(CommonOdeSolver):
         CommonOdeSolver.__init__(self, ReductionStrategyManager())
 
     def run(self, s_f_list, max_bound, sigma):
-        return flowstar_gen(s_f_list, max_bound, sigma)
+        conf_dict = make_flowstar_conf_dict(self.conf_dict)
+        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
 
     def make_assignment(self):
         pass
@@ -879,7 +737,8 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
         return flowstar_gen_without(const, bound, sigma, ha)
 
     def run(self, s_f_list, max_bound, sigma):
-        return flowstar_gen(s_f_list, max_bound, sigma)
+        conf_dict = make_flowstar_conf_dict(self.conf_dict)
+        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
 
     def make_assignment(self):
         pass
