@@ -1,7 +1,7 @@
 import os
 import asyncio
 import shutil
-
+import random
 
 class FlowStar:
     def __init__(self):
@@ -19,7 +19,7 @@ class FlowStar:
         return False
 
     async def _run_command(self, model_string):
-        model_file = './##tmptmp##model.model'
+        model_file = "./fs_model{}.model".format(random.random())
 
         outputs = "./outputs"
         images = "./images"
@@ -37,11 +37,11 @@ class FlowStar:
         # print(type(proc))
         stdout, stderr = await proc.communicate()
 
-        print(f'[exited with {proc.returncode}]')
-        if stdout:
-            print(f'[stdout]\n{stdout.decode()}')
-        if stderr:
-            print(f'[stderr]\n{stderr.decode()}')
+        # print(f'[exited with {proc.returncode}]')
+        # if stdout:
+        #     print(f'[stdout]\n{stdout.decode()}')
+        # if stderr:
+        #     print(f'[stderr]\n{stderr.decode()}')
 
         if os.path.isdir(outputs):
             shutil.rmtree(outputs)
