@@ -52,6 +52,8 @@ class Z3Solver(SMTSolver):
         return result, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
+        if "logic" in self.conf_dict:
+            self.set_logic(self.conf_dict["logic"])
         size = 0
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
