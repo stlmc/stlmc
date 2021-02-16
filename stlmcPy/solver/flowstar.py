@@ -288,7 +288,7 @@ def make_flowstar_conf_dict(conf_dict: dict):
     return flowstar_dict
 
 
-def flowstar_run(s_f_list, max_bound, sigma):
+def flowstar_run(s_f_list, max_bound, sigma, conf_dict):
     new_s_f_list = list()
     printer = Printer()
     printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
@@ -426,28 +426,28 @@ def flowstar_run(s_f_list, max_bound, sigma):
     # print(l_v)
     # print(new_bound_box_list)
 
-    conf_dict = dict()
-    conf_dict["fixed steps"] = "0.01"
-    # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
-    conf_dict["time"] = "1"
-    conf_dict["remainder estimation"] = "1e-2"
-    conf_dict["identity precondition"] = ""
-    conf_dict["gnuplot octagon"] = ""
-    conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
-    conf_dict["cutoff"] = "1e-12"
-    conf_dict["precision"] = "53"
-    conf_dict["output"] = "stlmcflowstar"
-    conf_dict["max jumps"] = "10"
+    # conf_dict = dict()
+    # conf_dict["fixed steps"] = "0.01"
+    # # conf_dict["initially"] = "\"{}\"".format(infix(And(init_children)))
+    # conf_dict["time"] = "1"
+    # conf_dict["remainder estimation"] = "1e-2"
+    # conf_dict["identity precondition"] = ""
+    # conf_dict["gnuplot octagon"] = ""
+    # conf_dict["adaptive orders"] = "{ min 4 , max 8 }"
+    # conf_dict["cutoff"] = "1e-12"
+    # conf_dict["precision"] = "53"
+    # conf_dict["output"] = "stlmcflowstar"
+    # conf_dict["max jumps"] = "10"
 
     fs = FlowStarConverter(conf_dict, l_v, new_bound_box_list)
     model_string = fs.convert(ha)
     flowStarRaw = FlowStar()
     flowStarRaw.run(model_string)
-
+    solving_time = flowStarRaw.logger.get_duration_time("solving timer")
     if flowStarRaw.result:
-        return False
+        return False, solving_time
     else:
-        return True
+        return True, solving_time
 
 
 def flowstar_gen(s_f_list, max_bound, sigma, conf_dict):
@@ -662,7 +662,9 @@ class FlowStarSolverNaive(CommonOdeSolver):
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
+        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
+        self.set_time("solving timer", time)
+        return result
 
     def make_assignment(self):
         pass
@@ -680,7 +682,9 @@ class FlowStarSolverReduction(CommonOdeSolver):
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
+        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
+        self.set_time("solving timer", time)
+        return result
 
     def make_assignment(self):
         pass
@@ -698,17 +702,17 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
         latest_conf_dict = dict()
         if len(l) > 0:
             for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
-                if i > 0:
-                    assert l_v == latest_l_v
-                    assert new_bound_box_list == latest_bound_box_list
-                    assert latest_conf_dict == conf_dict
+                # if i > 0:
+                #    #assert l_v == latest_l_v
+                #    #assert new_bound_box_list == latest_bound_box_list
+                #    #assert latest_conf_dict == conf_dict
                 ha.name = "{}_{}".format(ha.name, i)
                 ha_list.append(ha)
                 # print(ha)
                 latest_l_v = l_v
                 latest_bound_box_list = new_bound_box_list
                 latest_conf_dict = conf_dict
-                #print(ha)
+                # print(ha)
                 fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
                 model_string = fs.convert(ha)
                 flowStarRaw = FlowStar()
@@ -738,7 +742,9 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
+        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
+        self.set_time("solving timer", time)
+        return result
 
     def make_assignment(self):
         pass

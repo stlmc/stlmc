@@ -54,6 +54,7 @@ class YicesSolver(SMTSolver):
         SMTSolver.__init__(self)
         self._yices_model = None
         self._cache = list()
+        self._cache_raw = list()
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
 
@@ -93,6 +94,7 @@ class YicesSolver(SMTSolver):
         result = ctx.check_context()
 
         logger.stop_timer("solving timer")
+        self.set_time("solving timer", logger.get_duration_time("solving timer"))
 
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
@@ -111,11 +113,10 @@ class YicesSolver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if "logic" in self.conf_dict:
             self.set_logic(self.conf_dict["logic"])
-        size = 0
         if all_consts is not None:
-            #self._cache.append(all_consts)
-            size = size_of_tree(all_consts)
+            self._cache_raw.append(all_consts)
             self._cache.append(yicesObj(all_consts))
+        size = size_of_tree(And(self._cache_raw))
         result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
@@ -124,6 +125,7 @@ class YicesSolver(SMTSolver):
 
     def clear(self):
         self._cache = list()
+        self._cache_raw = list()
 
     def simplify(self, consts):
         pass

@@ -10,6 +10,7 @@ class BaseSolver:
         self.logger = None
         self._optimize_dict = dict()
         self.conf_dict = dict()
+        self.time_dict = dict()
 
     def set_optimize_flag(self, name: str, value: bool):
         assert isinstance(value, bool)
@@ -33,6 +34,16 @@ class BaseSolver:
 
     def set_config(self, config: dict):
         self.conf_dict = config
+
+    def set_time(self, keyword: str, value):
+        if keyword in self.time_dict:
+            self.time_dict[keyword] += value
+        else:
+            self.time_dict[keyword] = value
+
+    def get_time(self, keyword: str):
+        assert keyword in self.time_dict
+        return self.time_dict[keyword]
 
 
 class SMTSolver(BaseSolver):
