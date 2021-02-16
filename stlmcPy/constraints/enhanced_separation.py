@@ -1,4 +1,4 @@
-from stlmcPy.constraints.operations import reduce_not, fresh_new_var
+from stlmcPy.constraints.operations import reduce_not, generate_id
 from functools import singledispatch
 from stlmcPy.constraints.constraints import *
 from .interval import inInterval, minusInterval
@@ -13,12 +13,14 @@ def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
             if int(c[c.find("_") + 1:]) > max:
                 max = int(c[c.find("_") + 1:])
     total_dict = dict()
+    gen = generate_id(0, "opt_var")
     for i in range(len(var_point)):
-        formula_const, boolean_abstract = _separation(subFormula, i + 1, var_point, var_interval, id_match_dict)
+        formula_const, boolean_abstract = _separation(subFormula, i + 1, var_point, var_interval, id_match_dict, gen)
         total_dict.update(boolean_abstract)
         result.append(Eq(Bool("chi_" + str(index) + "_" + str(i + 1)), formula_const))
         if index == max:
             break
+    
     return result, total_dict
 
 
@@ -56,7 +58,7 @@ def _separation(f: Formula, i, v, j, idDict):
 
 
 @_separation.register(Bool)
-def _(f: Bool, i, v, j, idDict):
+def _(f: Bool, i, v, j, idDict, gen):
     if (i % 2) == 0:
         str_id = f.id + "_" + str(int(i / 2) - 1)
     else:
@@ -65,12 +67,12 @@ def _(f: Bool, i, v, j, idDict):
 
 
 @_separation.register(Constant)
-def _(f: Constant, i, v, j, idDict):
+def _(f: Constant, i, v, j, idDict, gen):
     return f, dict()
 
 
 @_separation.register(Not)
-def _(f: Not, i, v, j, idDict):
+def _(f: Not, i, v, j, idDict, gen):
     if "chi" not in idDict[f.child].id:
         str_id = idDict[f.child].id + "_" + str(i - 1)
         return Bool(str_id)
@@ -78,7 +80,7 @@ def _(f: Not, i, v, j, idDict):
 
 
 @_separation.register(Multinary)
-def _(f: Multinary, i, v, j, idDict):
+def _(f: Multinary, i, v, j, idDict, gen):
     flatten = list()
     ft = f.__class__
     '''
@@ -92,25 +94,25 @@ def _(f: Multinary, i, v, j, idDict):
         if fc in idDict:
             result.append(Bool(idDict[fc].id + "_" + str(i)))
         else:
-            formula_const, boolean_abstract = _separation(fc, i, v, j, idDict)
+            formula_const, boolean_abstract = _separation(fc, i, v, j, idDict, gen)
             result.append(formula_const)
 
     return f.__class__(result), boolean_abstract
 
 
 @_separation.register(Implies)
-def _(f: Implies, i, v, j, idDict):
+def _(f: Implies, i, v, j, idDict, gen):
     boolean_abstract = dict()
     if f.left in idDict:
         left = Bool(idDict[f.left].id + "_" + str(i))
     else:
-        formula_const, boolean_abstract = _separation(f.left, i, v, j, idDict)
+        formula_const, boolean_abstract = _separation(f.left, i, v, j, idDict, gen)
         left = formula_const
 
     if f.right in idDict:
         right = Bool(idDict[f.right].id + "_" + str(i))
     else:
-        formula_const, ba = _separation(f.right, i, v, j, idDict)
+        formula_const, ba = _separation(f.right, i, v, j, idDict, gen)
         boolean_abstract.update(ba)
         right = formula_const
 
@@ -118,17 +120,17 @@ def _(f: Implies, i, v, j, idDict):
 
 
 @_separation.register(BinaryTemporalFormula)
-def _(f: BinaryTemporalFormula, i, v, j, idDict):
-    return _trans(f, i, i, v, j, idDict)
+def _(f: BinaryTemporalFormula, i, v, j, idDict, gen):
+    return _trans(f, i, i, v, j, idDict, gen)
 
 
 @_separation.register(UnaryTemporalFormula)
-def _(f: UnaryTemporalFormula, i, v, j, idDict):
-    return _trans(f, i, i, v, j, idDict)
+def _(f: UnaryTemporalFormula, i, v, j, idDict, gen):
+    return _trans(f, i, i, v, j, idDict, gen)
 
 
 @singledispatch
-def _trans(f: Formula, i, k, v, j, idDict):
+def _trans(f: Formula, i, k, v, j, idDict, gen):
     print(type(f))
     print(f)
 
@@ -136,7 +138,7 @@ def _trans(f: Formula, i, k, v, j, idDict):
 
 
 @_trans.register(UntilFormula)
-def _(f: UntilFormula, i, k, v, j, idDict):
+def _(f: UntilFormula, i, k, v, j, idDict, gen):
     if k >= (len(j) + 1):
         return BoolVal("False"), dict()
     and_chi = list()
@@ -151,17 +153,17 @@ def _(f: UntilFormula, i, k, v, j, idDict):
         right_ind = k - 1
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
-    new_var = fresh_new_var()
+    new_var = Bool(next(gen))
 
     abstract_dict = dict()
-    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict, gen)
     abstract_dict.update(exist_dict)
 
     return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
 
 
 @_trans.register(ReleaseFormula)
-def _(f: ReleaseFormula, i, k, v, j, idDict):
+def _(f: ReleaseFormula, i, k, v, j, idDict, gen):
     if k >= (len(j) + 1):
         return BoolVal("True"), dict()
     and_chi = list()
@@ -177,17 +179,17 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
 
-    new_var = fresh_new_var()
+    new_var = Bool(next(gen))
 
     abstract_dict = dict()
-    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict, gen)
     abstract_dict.update(exist_dict)
 
     return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
 
 
 @_trans.register(FinallyFormula)
-def _(f: FinallyFormula, i, k, v, j, idDict):
+def _(f: FinallyFormula, i, k, v, j, idDict, gen):
     if k >= (len(j) + 1):
         return BoolVal("False"), dict()
     and_chi = list()
@@ -199,17 +201,17 @@ def _(f: FinallyFormula, i, k, v, j, idDict):
         ind = k - 1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
 
-    new_var = fresh_new_var()
+    new_var = Bool(next(gen))
 
     abstract_dict = dict()
-    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict, gen)
     abstract_dict.update(exist_dict)
 
     return Or([And(and_chi), new_var]), abstract_dict
 
 
 @_trans.register(GloballyFormula)
-def _(f: GloballyFormula, i, k, v, j, idDict):
+def _(f: GloballyFormula, i, k, v, j, idDict, gen):
     if k >= (len(j) + 1):
         return BoolVal("True"), dict()
     and_chi = list()
@@ -220,15 +222,15 @@ def _(f: GloballyFormula, i, k, v, j, idDict):
         ind = k - 1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
 
-    new_var = fresh_new_var()
+    new_var = Bool(next(gen))
 
     abstract_dict = dict()
-    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict, gen)
     abstract_dict.update(exist_dict)
 
     return And([Or(and_chi), new_var]), abstract_dict
 
 
 @_trans.register(Not)
-def _(f: Not, i, k, v, j, idDict):
-    return Not(_trans(f.child, i, k, v, j, idDict))
+def _(f: Not, i, k, v, j, idDict, gen):
+    return Not(_trans(f.child, i, k, v, j, idDict, gen))
