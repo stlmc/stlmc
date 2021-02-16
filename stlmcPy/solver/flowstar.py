@@ -183,7 +183,7 @@ class FlowStarConverter(AbstractConverter):
         for m in terminal_modes:
             terminal_modes_str.append(m.name)
 
-        print(terminal_modes_str)
+        #print(terminal_modes_str)
         for m in ha.modes:
             if m.name in terminal_modes_str:
                 unsafe_str += "{}__id_{}".format(m.name, id(m)) + "{}\n"
@@ -708,7 +708,7 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
                 latest_l_v = l_v
                 latest_bound_box_list = new_bound_box_list
                 latest_conf_dict = conf_dict
-                print(ha)
+                #print(ha)
                 fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
                 model_string = fs.convert(ha)
                 flowStarRaw = FlowStar()
