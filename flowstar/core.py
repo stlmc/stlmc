@@ -52,8 +52,8 @@ class FlowStar:
         if os.path.isdir(images):
             shutil.rmtree(images)
 
-        # if os.path.isfile(model_file):
-        #     os.remove(model_file)
+        if os.path.isfile(model_file):
+            os.remove(model_file)
 
         if "UNSAFE" in stdout.decode():
             self.result = True
