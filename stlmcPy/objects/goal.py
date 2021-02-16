@@ -233,6 +233,9 @@ class OldStlGoal(BaseStlGoal):
 
 
 class NewStlGoal(BaseStlGoal):
+    def set_abs_opt_sep(self, isabs):
+        ENHANCED_SEP.ABS_OPT = True if isabs else False
+
     def make_stl_consts(self, bound, time_bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
@@ -309,9 +312,10 @@ class ReachGoal(Goal):
 
 
 class GoalFactory:
-    def __init__(self, raw_goal: Formula, is_zeno=True):
+    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
         self.raw_goal = raw_goal
         self.time_function = None
+        self.is_sep_abs = is_sep_abs 
         if is_zeno:
             self.time_function = make_zeno_time_const
         else:
@@ -322,13 +326,15 @@ class GoalFactory:
         if isinstance(self.raw_goal, Reach):
             return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return NewStlGoal(self.raw_goal, self.time_function)
+            new_stl_obj = NewStlGoal(self.raw_goal, self.time_function)
+            new_stl_obj.set_abs_opt_sep(self.is_sep_abs)
+            return new_stl_obj 
         pass
 
 
 class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula, is_zeno=True):
-        super().__init__(raw_goal)
+    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
+        super().__init__(raw_goal, is_sep_abs)
         self.time_function = None
         if is_zeno:
             self.time_function = make_zeno_time_const

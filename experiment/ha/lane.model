@@ -42,7 +42,7 @@ bool b;
         d/dt[vx] = 0.1 * ax;
         d/dt[sc] = vx - 2.5;
         d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
-        d/dt[w] = 3 - 0.15 * w = 0.2 - 0.01 * sy;
+        d/dt[w] = 3 - 0.15 * w + 0.2 - 0.01 * sy;
         d/dt[vy] = 7.5 - 0.45 * w + 0.5 - 0.0025 * sy - 0.05 * vy;
         d/dt[sy] = 0.1 *vy;
     jump:
@@ -108,7 +108,7 @@ bool b;
         d/dt[vx] = 0.1 * ax;
         d/dt[sc] = vx - 2.5;
         d/dt[ax] = -0.5 * vx + 1.4 - 0.5 * ax;
-        d/dt[w] = 3 - 0.15 * w = 0.2 - 0.01 * sy;
+        d/dt[w] = 3 - 0.15 * w + 0.2 - 0.01 * sy;
         d/dt[vy] = 7.5 - 0.45 * w + 0.5 - 0.0025 * sy - 0.05 * vy;
         d/dt[sy] = 0.1 *vy;
     jump:

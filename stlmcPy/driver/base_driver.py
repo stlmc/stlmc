@@ -71,6 +71,8 @@ class StlConfiguration:
                                  help='formula number to run \"{QF_LRA, QF_NRA}\"(default: QF_NRA)')
         self.parser.add_argument('-zeno', type=string_to_bool,
                                  help='allow zeno behavior if set (default: true)')
+        self.parser.add_argument('-abs_sep', type=string_to_bool,
+                                 help='allow abstraction in separation if set (default: true)')
         self._args = None
         self._file_list = list()
         self._lower = 1
@@ -95,6 +97,7 @@ class StlConfiguration:
 
         self._logic = "QF_NRA"
         self._zeno = True
+        self._abs_sep = True
         self._delta = None
 
 
@@ -145,11 +148,17 @@ class StlConfiguration:
             self._logic = (self._args.logic.upper() if self._args.logic.upper() in self._logic_list else "QF_NRA")
         if self._args.zeno is not None:
             self._zeno = self._args.zeno
+        if self._args.abs_sep is not None:
+            self._abs_sep = self._args.abs_sep
         self._delta = self._args.delta
 
     @property
     def zeno(self):
         return self._zeno
+
+    @property
+    def abs_sep(self):
+        return self._abs_sep
 
     @property
     def file_list(self):
@@ -218,7 +227,7 @@ class Runner:
         Printer.debug_on = config.debug_flag
         Printer.verbose_on = config.verbose_flag
         for file_name in config.file_list:
-            model, PD, goals = object_manager.generate_objects(file_name, config.zeno)
+            model, PD, goals = object_manager.generate_objects(file_name, config.abs_sep, config.zeno)
 
             max_formula = max(config.formula_range)
             if max_formula <= len(goals):
@@ -250,10 +259,12 @@ class Runner:
                         for mc in model_const.children:
                             print(mc)
                         '''
+                        '''
     
                         print("goal")
                         for gc in goal_const.children:
                             print(gc)
+                        '''
 
                         boolean_abstract = dict()
                         boolean_abstract.update(model.boolean_abstract)
@@ -263,9 +274,11 @@ class Runner:
 
                         printer.print_normal("> {}".format(config.solver))
 
+                        '''
                         print("boolean")
                         for ba in boolean_abstract_consts.children:
                             print(ba)
+                        '''
 
                         # result, size = solver.solve(And([model_const,boolean_abstract_consts]),
                         solver.set_logic(config.logic)
