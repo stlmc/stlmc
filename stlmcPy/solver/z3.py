@@ -19,6 +19,7 @@ class Z3Solver(SMTSolver):
         SMTSolver.__init__(self)
         self._z3_model = None
         self._cache = list()
+        self._cache_raw = list()
         self._logic_list = ["LRA", "NRA"]
         self._logic = "NRA"
 
@@ -30,7 +31,7 @@ class Z3Solver(SMTSolver):
         logger = self.logger
         
         solver = z3.Solver()
-
+        logger.reset_timer()
         logger.start_timer("solving timer")
         solver.add(consts)
 
@@ -39,7 +40,8 @@ class Z3Solver(SMTSolver):
 
         result = solver.check()
         logger.stop_timer("solving timer")
-        logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        #logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        self.set_time("solving timer", logger.get_duration_time("solving timer"))
         str_result = str(result)
         if str_result == "sat":
             m = solver.model()
@@ -54,16 +56,17 @@ class Z3Solver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         if "logic" in self.conf_dict:
             self.set_logic(self.conf_dict["logic"])
-        size = 0
         if all_consts is not None:
             self._cache.append(z3Obj(all_consts))
-            size = size_of_tree(all_consts)
+            self._cache_raw.append(all_consts)
+        size = size_of_tree(And(self._cache_raw))
         result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
         return result, size
         # return result, -1
 
     def clear(self):
         self._cache = list()
+        self._cache_raw = list()
 
     def result_simplify(self):
         return z3.simplify(z3.And(self._cache))
@@ -75,6 +78,7 @@ class Z3Solver(SMTSolver):
         return self._cache
 
     def add(self, const):
+        self._cache_raw.append(const)
         self._cache.append(z3Obj(const))
 
     def substitution(self, const, *dicts):

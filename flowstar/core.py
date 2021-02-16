@@ -3,9 +3,13 @@ import asyncio
 import shutil
 import random
 
+from stlmcPy.util.logger import Logger
+
+
 class FlowStar:
     def __init__(self):
         self.result = None
+        self.logger = Logger()
 
     def _check_if_string_in_file(self, file_name, string_to_search):
         """ Check if any line in the file contains given string """
@@ -34,14 +38,14 @@ class FlowStar:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
 
-        # print(type(proc))
+        self.logger.start_timer("solving timer")
         stdout, stderr = await proc.communicate()
-
-        # print(f'[exited with {proc.returncode}]')
-        # if stdout:
-        #     print(f'[stdout]\n{stdout.decode()}')
-        # if stderr:
-        #     print(f'[stderr]\n{stderr.decode()}')
+        self.logger.stop_timer("solving timer")
+        #print(f'[exited with {proc.returncode}]')
+        #if stdout:
+        #    print(f'[stdout]\n{stdout.decode()}')
+        #if stderr:
+        #    print(f'[stderr]\n{stderr.decode()}')
 
         if os.path.isdir(outputs):
             shutil.rmtree(outputs)

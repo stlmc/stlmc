@@ -26,6 +26,9 @@ class CommonOdeSolver(OdeSolver, ABC):
         self.hylaa_core = None
         self.time_optimize = False
         self.strategy_manager = strategy_manager
+        self.time_dict["smt_solving_time"] = 0
+        self.time_dict["solving_time"] = 0
+        self.size = 0
 
     def solve(self, all_consts=None, info_dict=None, mapping_info=None):
         assert self.logger is not None
@@ -77,13 +80,13 @@ class CommonOdeSolver(OdeSolver, ABC):
             # logging
             logger.add_info("loop", cur_index)
 
-            abst_size = size_of_tree(abstracted_consts)
-            logger.add_info("constraint size", abst_size)
+            # size = size_of_tree(abstracted_consts)
+            # logger.add_info("constraint size", abst_size)
 
-            #printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
+            # printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
             #
-            logger.start_timer("loop timer")
-            logger.start_timer("smt solving timer")
+            # logger.start_timer("loop timer")
+            # logger.start_timer("smt solving timer")
 
             cur_index += 1
             if counter_consts is not None:
@@ -96,19 +99,20 @@ class CommonOdeSolver(OdeSolver, ABC):
 
             # 2. Perform process #2 from note
             result, size = solver.solve()
-
-            logger.stop_timer("smt solving timer")
-            logger.add_info("smt solving time", logger.get_duration_time("smt solving timer"))
+            self.set_time("smt solving timer", solver.get_time("solving timer"))
+            self.size += size
+            # logger.stop_timer("smt solving timer")
+            # logger.add_info("smt solving time", logger.get_duration_time("smt solving timer"))
 
             if result:
                 # printer.print_normal_dark("Smt solver level result!")
                 # logger.write_to_csv()
-                #print("The number of loop : " + str(cur_index))
-                solving_res = self.specific(hybrid_automata_queue)
-                #print(solving_res)
+                # print("The number of loop : " + str(cur_index))
+                # solving_res = self.specific(hybrid_automata_queue)
+                # print(solving_res)
                 # self.add_log_info("SMT solver level result!")
-                return solving_res, 0
-                # return True, 0
+                # return solving_res, 0
+                return True, self.size
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
 
@@ -132,7 +136,7 @@ class CommonOdeSolver(OdeSolver, ABC):
                                                                                        self.get_optimize_flag(
                                                                                            "formula"))
             logger.stop_timer("max literal timer")
-            logger.add_info("preparing max literal set", logger.get_duration_time("max literal timer"))
+            # logger.add_info("preparing max literal set", logger.get_duration_time("max literal timer"))
 
             remove_mode_clauses = list()
             for clause_bound in max_literal_set_list:
@@ -183,19 +187,18 @@ class CommonOdeSolver(OdeSolver, ABC):
             # self.kiki(newwwww, max_bound, mapping_info)
 
             try:
-                logger.start_timer("hylaa timer")
-                ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
-                hybrid_automata_queue.append((ha, conf_dict, l_v, new_bound_box_list))
+                hylaa_result = self.run(max_literal_set_list, max_bound, mapping_info)
+                # ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
+                # hybrid_automata_queue.append((ha, conf_dict, l_v, new_bound_box_list))
                 # hylaa_result = self.run(max_literal_set_list, max_bound, mapping_info,
                 #                         tau_guard_list)
-                hylaa_result = True
-                logger.stop_timer("hylaa timer")
-                logger.add_info("hylaa time", logger.get_duration_time("hylaa timer"))
+                # hylaa_result = True
+                # logger.add_info("hylaa time", logger.get_duration_time("hylaa timer"))
 
-                logger.stop_timer("loop timer")
-                logger.add_info("loop total", logger.get_duration_time("loop timer"))
+                # logger.stop_timer("loop timer")
+                # logger.add_info("loop total", logger.get_duration_time("loop timer"))
                 # logger.write_to_csv()
-                logger.reset_timer_without("goal timer")
+                # logger.reset_timer_without("goal timer")
 
             except RuntimeError as re:
                 # negate the error state
@@ -206,21 +209,21 @@ class CommonOdeSolver(OdeSolver, ABC):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 traceback.print_tb(exc_traceback, file=sys.stdout)
                 printer.print_normal_dark("retry because of {}".format(re))
-                logger.write_to_csv()
+                # logger.write_to_csv()
                 logger.reset_timer_without("goal timer")
 
         # get overviewed file name
-        output_file_name = logger.get_output_file_name()
-        bound_index = output_file_name.rfind("_")
-        overview_file_name = output_file_name[:bound_index]
+        # output_file_name = logger.get_output_file_name()
+        # bound_index = output_file_name.rfind("_")
+        # overview_file_name = output_file_name[:bound_index]
 
-        logger.add_info("bound", max_bound)
-        logger.add_info("loop", cur_index)
-        logger.add_info("constraint size", first_abst_size)
-        logger.write_to_csv(file_name=overview_file_name, cols=["bound", "loop", "constraint size"])
+        # logger.add_info("bound", max_bound)
+        # logger.add_info("loop", cur_index)
+        # logger.add_info("constraint size", first_abst_size)
+        # logger.write_to_csv(file_name=overview_file_name, cols=["bound", "loop", "constraint size"])
 
         # TODO: replace -1 to formula size
-        return hylaa_result, -1
+        return hylaa_result, self.size
 
     def solve2(self, all_consts=None, info_dict=None, mapping_info=None):
         assert self.logger is not None
@@ -279,7 +282,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             abst_size = size_of_tree(abstracted_consts)
             logger.add_info("constraint size", abst_size)
 
-            #printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
+            # printer.print_verbose("loop : {}, size of constraints : {}".format(cur_index, abst_size))
             #
             logger.start_timer("loop timer")
             logger.start_timer("smt solving timer")
@@ -308,7 +311,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             if result:
                 printer.print_normal_dark("Smt solver level result!")
                 logger.write_to_csv()
-                #print("The number of loop : " + str(cur_index))
+                # print("The number of loop : " + str(cur_index))
                 # solving_res = self.specific(hybrid_automata_queue)
                 # print(solving_res)
                 # self.add_log_info("SMT solver level result!")
@@ -316,7 +319,7 @@ class CommonOdeSolver(OdeSolver, ABC):
                 return True, 0
             assignment = solver.make_assignment()
             alpha = assignment.get_assignments()
-            #print(alpha)
+            # print(alpha)
             for mp in mapping_info:
                 if isinstance(mapping_info[mp], Or):
                     mapping_info[mp] = mapping_info[mp].children[0]
@@ -369,8 +372,6 @@ class CommonOdeSolver(OdeSolver, ABC):
             #
             # path_prefix_set = _path_prefix(max_literal_set_list)
 
-
-
             # counter_consts_set = set()
             # max_bound = -1
             # for s in max_literal_set_list:
@@ -390,14 +391,14 @@ class CommonOdeSolver(OdeSolver, ABC):
             # counter_consts = list(counter_consts_set)
             path_length = len(max_literal_set_list)
             mode_to_be_generated = path_length - depth
-            #print("path length {}, mode to be generated {}".format(path_length, mode_to_be_generated))
+            # print("path length {}, mode to be generated {}".format(path_length, mode_to_be_generated))
             new_mode = None
             if path_length > mode_to_be_generated >= 0:
                 new_mode = make_mode_from_formula(And(list(max_literal_set_list[mode_to_be_generated])),
                                                   mode_to_be_generated, max_bound, mapping_info)
                 original_consts, counter_consts = encode_possible_path_as_formula(
                     And(list(max_literal_set_list[mode_to_be_generated])), mode_to_be_generated, alpha)
-                #print("generate mode \n{}\n\n".format(new_mode))
+                # print("generate mode \n{}\n\n".format(new_mode))
             # depth += 1
             # reset at regeneration of ha
             try:
@@ -405,11 +406,11 @@ class CommonOdeSolver(OdeSolver, ABC):
                 if is_first:
                     ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
                     is_first = False
-                    #print("first one \n{}\n\n".format(ha))
+                    # print("first one \n{}\n\n".format(ha))
                 else:
                     if new_mode is not None and ha is not None:
                         add_mode(ha, mode_to_be_generated, new_mode)
-                        #print("add new mode \n {}\n\n".format(ha))
+                        # print("add new mode \n {}\n\n".format(ha))
                     # print(add_mode(ha, 1))
                 # ha, conf_dict, l_v, new_bound_box_list = self.run(max_literal_set_list, max_bound, mapping_info)
                 # hybrid_automata_queue.append((ha, conf_dict, l_v, new_bound_box_list))
