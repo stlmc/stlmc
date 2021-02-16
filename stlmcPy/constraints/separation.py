@@ -58,16 +58,8 @@ def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     global_time = f.global_time
     sep_point = list(sepMap[f])
     sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
-    if isinstance(global_time.left, float):
-        left = RealVal(str(global_time.left))
-    else:
-        left = global_time.left
-    sep_point = [left] + sep_point
-    if isinstance(global_time.right, float):
-        right = RealVal(str(global_time.right))
-    else:
-        right = global_time.right
-    sep_point = sep_point + [right]
+    sep_point = [global_time.left] + sep_point
+    sep_point = sep_point + [global_time.right]
 
     result = _separateUnary(tf, 0, sep_point)
     return op[ft](result)
@@ -84,16 +76,8 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
     global_time = f.global_time
     sep_point = list(sepMap[f])
     sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
-    if isinstance(global_time.left, float):
-        left = RealVal(str(global_time.left))
-    else:
-        left = global_time.left
-    sep_point = [left] + sep_point
-    if isinstance(global_time.right, float):
-        right = RealVal(str(global_time.right))
-    else:
-        right = global_time.right
-    sep_point = sep_point + [right]
+    sep_point = [global_time.left] + sep_point
+    sep_point = sep_point + [global_time.right]
     result = _separateBinary(tf, 0, sep_point)
 
     return result
