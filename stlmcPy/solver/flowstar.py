@@ -64,7 +64,7 @@ class FlowStarConverter(AbstractConverter):
         self.var_set.add(Real("ff"))
         # get all variables and specify their types
         for m in ha.modes:
-
+            put_var = set()
             mode_str = "{}__id_{}{{\n".format(m.name, id(m))
             mode_str += "poly ode 1\n{"
             if m.dynamics is not None:
@@ -85,9 +85,10 @@ class FlowStarConverter(AbstractConverter):
                         e_var_wo_index = remove_index(e_var)
                         subst_dict[e_var] = e_var_wo_index
                         self.var_set.add(e_var_wo_index)
-
-                    # vars_dyn[newv] = infix(substitution(e, subst_dict))
-                    mode_str += "{}\' = {}\n".format(newv,
+                    if newv not in put_var:
+                        put_var.add(newv)
+                        # vars_dyn[newv] = infix(substitution(e, subst_dict))
+                        mode_str += "{}\' = {}\n".format(newv,
                                                      str(simplify(expr_to_sympy(substitution(e, subst_dict)))).replace(
                                                          "**", "^"))
             mode_str += "}\n"

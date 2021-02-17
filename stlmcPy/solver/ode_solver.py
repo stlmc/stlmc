@@ -38,7 +38,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             mapping_info = dict()
 
         logger = self.logger
-
+        self.set_time("solving timer", 0)
         tau_info = dict()
         for k in mapping_info:
             if "newTau" in k.id:
@@ -58,7 +58,6 @@ class CommonOdeSolver(OdeSolver, ABC):
         trans_all_consts.append(And(aft))
 
         abstracted_consts = And(trans_all_consts)
-        first_abst_size = size_of_tree(abstracted_consts)
 
         # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
