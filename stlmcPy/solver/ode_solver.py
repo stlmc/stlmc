@@ -38,7 +38,7 @@ class CommonOdeSolver(OdeSolver, ABC):
             mapping_info = dict()
 
         logger = self.logger
-
+        self.set_time("solving timer", 0)
         tau_info = dict()
         for k in mapping_info:
             if "newTau" in k.id:
