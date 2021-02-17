@@ -22,6 +22,7 @@ class Z3Solver(SMTSolver):
         self._cache_raw = list()
         self._logic_list = ["LRA", "NRA"]
         self._logic = "NRA"
+        self.solver = z3.Solver()
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
@@ -29,22 +30,22 @@ class Z3Solver(SMTSolver):
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
         logger = self.logger
-        
-        solver = z3.Solver()
+
         logger.reset_timer()
         logger.start_timer("solving timer")
-        solver.add(consts)
+        self.solver.add(consts)
+        self.solver.push()
 
-        with open("battery.smt2", 'w') as fle:
-            print(solver.to_smt2(), file=fle)
+        #with open("battery.smt2", 'w') as fle:
+        #    print(solver.to_smt2(), file=fle)
 
-        result = solver.check()
+        result = self.solver.check()
         logger.stop_timer("solving timer")
         #logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
         self.set_time("solving timer", logger.get_duration_time("solving timer"))
         str_result = str(result)
         if str_result == "sat":
-            m = solver.model()
+            m = self.solver.model()
             # print(m)
             result = False
         else:
@@ -57,10 +58,12 @@ class Z3Solver(SMTSolver):
         if "logic" in self.conf_dict:
             self.set_logic(self.conf_dict["logic"])
         if all_consts is not None:
-            self._cache.append(z3Obj(all_consts))
+            #self._cache.append(z3Obj(all_consts))
             self._cache_raw.append(all_consts)
+        else:
+            all_consts = BoolVal("True")
         size = size_of_tree(And(self._cache_raw))
-        result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
+        result, self._z3_model = self.z3checkSat(z3Obj(all_consts), self._logic)
         return result, size
         # return result, -1
 
@@ -79,7 +82,9 @@ class Z3Solver(SMTSolver):
 
     def add(self, const):
         self._cache_raw.append(const)
-        self._cache.append(z3Obj(const))
+        #self._cache.append(z3Obj(const))
+        self.solver.add(z3Obj(const))
+        self.solver.push()
 
     def substitution(self, const, *dicts):
         total_dict = dict()
