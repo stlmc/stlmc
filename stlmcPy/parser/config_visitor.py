@@ -92,7 +92,7 @@ class ConfigVisitor(configVisitor):
 
     # Visit a parse tree produced by configParser#delta_config.
     def visitDelta_config(self, ctx: configParser.Delta_configContext):
-        delta = int("{}".format(ctx.NUMBER()))
+        delta = float("{}".format(ctx.NUMBER()))
         self._config_dict["delta"] = delta
         return self.visitChildren(ctx)
 
