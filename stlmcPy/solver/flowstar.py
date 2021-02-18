@@ -18,7 +18,7 @@ from stlmcPy.hybrid_automaton.utils import merge, calc_initial_terminal_modes
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, ReductionStrategyManager, \
-    UnsatCoreStrategyManager
+    UnsatCoreStrategyManager, MergeSolvingStrategy, NormalSolvingStrategy
 from stlmcPy.solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, expr_to_sympy_inequality, \
     find_index
 from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
@@ -89,8 +89,9 @@ class FlowStarConverter(AbstractConverter):
                         put_var.add(newv)
                         # vars_dyn[newv] = infix(substitution(e, subst_dict))
                         mode_str += "{}\' = {}\n".format(newv,
-                                                     str(simplify(expr_to_sympy(substitution(e, subst_dict)))).replace(
-                                                         "**", "^"))
+                                                         str(simplify(
+                                                             expr_to_sympy(substitution(e, subst_dict)))).replace(
+                                                             "**", "^"))
             mode_str += "}\n"
 
             mode_str += "inv {\n"
@@ -123,7 +124,12 @@ class FlowStarConverter(AbstractConverter):
                 var_str += v.id + ", "
 
         setting_child_str = ""
-        for k in self.setting:
+
+        setting_ordering = ["fixed steps", "time", "remainder estimation", "identity precondition", "gnuplot octagon",
+                            "adaptive orders", "cutoff", "precision", "no output", "max jumps"]
+
+        for k in setting_ordering:
+            assert k in self.setting
             setting_child_str += "{} {}\n".format(k, self.setting[k])
         setting_str = "setting {{\n {} print on \n}}\n".format(setting_child_str)
 
@@ -184,7 +190,7 @@ class FlowStarConverter(AbstractConverter):
         for m in terminal_modes:
             terminal_modes_str.append(m.name)
 
-        #print(terminal_modes_str)
+        # print(terminal_modes_str)
         for m in ha.modes:
             if m.name in terminal_modes_str:
                 unsafe_str += "{}__id_{}".format(m.name, id(m)) + "{}\n"
@@ -654,12 +660,109 @@ def flowstar_gen_without(formula: Constraint, bound, sigma, ha: HybridAutomaton)
     return mode_i
 
 
-class FlowStarSolverNaive(CommonOdeSolver):
-    def specific(self, l: list):
-        pass
+def flowstar_solver(l: list):
+    ha_list = list()
+    # for integrity, l_vs are all the same
+    latest_l_v = list()
+    latest_bound_box_list = list()
+    latest_conf_dict = dict()
+    if len(l) > 0:
+        for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
+            # if i > 0:
+            #    #assert l_v == latest_l_v
+            #    #assert new_bound_box_list == latest_bound_box_list
+            #    #assert latest_conf_dict == conf_dict
+            ha.name = "{}_{}".format(ha.name, i)
+            ha_list.append(ha)
+            # print(ha)
+            latest_l_v = l_v
+            latest_bound_box_list = new_bound_box_list
+            latest_conf_dict = conf_dict
+            # print(ha)
+            fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+            model_string = fs.convert(ha)
+            flowStarRaw = FlowStar()
+            flowStarRaw.run(model_string)
+            if flowStarRaw.result:
+                return False
+        return True
 
+        # nha = merge(*ha_list, chi_optimization=False)
+        # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+        # model_string = fs.convert(nha)
+        # flowStarRaw = FlowStar()
+        # flowStarRaw.run(model_string)
+        # print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
+        # if flowStarRaw.result:
+        #     return False
+        # else:
+        #     return True
+    return True
+
+
+def flowstar_merging_solver(l: list, is_mini_merging=False):
+    # gets representative l_v and list of bound_box_list
+    # returns representative bound_box
+    def _make_bound_box(_l_v, _bound_box_list):
+        new_bound_box = list()
+        for i, _ in enumerate(_l_v):
+            max_left_value = -float("inf")
+            max_right_value = -float("inf")
+            for bbl in _bound_box_list:
+                if bbl[i][0] > max_left_value:
+                    max_left_value = bbl[i][0]
+                if bbl[i][1] > max_right_value:
+                    max_right_value = bbl[i][1]
+            assert max_left_value != -float("inf")
+            assert max_right_value != -float("inf")
+            new_bound_box.append([max_left_value, max_right_value])
+        return new_bound_box
+
+    ha_list = list()
+    bound_box_list = list()
+
+    # for integrity, l_vs are all the same
+    latest_l_v = list()
+    latest_conf_dict = dict()
+    if len(l) > 0:
+        for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
+            if i > 0:
+                assert l_v == latest_l_v
+                assert latest_conf_dict == conf_dict
+            ha.name = "{}_{}".format(ha.name, i)
+            ha_list.append(ha)
+            bound_box_list.append(new_bound_box_list)
+
+            latest_l_v = l_v
+            latest_conf_dict = conf_dict
+
+        bound_box = _make_bound_box(latest_l_v, bound_box_list)
+
+        if is_mini_merging:
+            print("mini merging ...")
+        nha = merge(*ha_list, chi_optimization=False)
+        if is_mini_merging:
+            return nha, latest_conf_dict, latest_l_v, bound_box
+        fs = FlowStarConverter(latest_conf_dict, latest_l_v, bound_box)
+        model_string = fs.convert(nha)
+        flowstar = FlowStar()
+        flowstar.run(model_string)
+        print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
+        solving_time = flowstar.logger.get_duration_time("solving timer")
+        if flowstar.result:
+            return False, solving_time
+        else:
+            return True, solving_time
+    return True, 0
+
+
+class FlowStarSolverNaive(CommonOdeSolver):
     def __init__(self):
-        CommonOdeSolver.__init__(self, NaiveStrategyManager())
+        assert "merging_strategy" in self.conf_dict
+        underlying_solver = NormalSolvingStrategy(flowstar_solver)
+        if self.conf_dict["merging_strategy"]:
+            underlying_solver = MergeSolvingStrategy(flowstar_merging_solver)
+        CommonOdeSolver.__init__(self, NaiveStrategyManager(), underlying_solver)
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
@@ -675,11 +778,12 @@ class FlowStarSolverNaive(CommonOdeSolver):
 
 
 class FlowStarSolverReduction(CommonOdeSolver):
-    def specific(self, l: list):
-        pass
-
     def __init__(self):
-        CommonOdeSolver.__init__(self, ReductionStrategyManager())
+        assert "merging_strategy" in self.conf_dict
+        underlying_solver = NormalSolvingStrategy(flowstar_solver)
+        if self.conf_dict["merging_strategy"]:
+            underlying_solver = MergeSolvingStrategy(flowstar_merging_solver)
+        CommonOdeSolver.__init__(self, ReductionStrategyManager(), underlying_solver)
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
@@ -694,58 +798,28 @@ class FlowStarSolverReduction(CommonOdeSolver):
         pass
 
 
-class FlowStarSolverUnsatCore(CommonOdeSolver):
-    def specific(self, l: list):
-        ha_list = list()
-        # for integrity, l_vs are all the same
-        latest_l_v = list()
-        latest_bound_box_list = list()
-        latest_conf_dict = dict()
-        if len(l) > 0:
-            for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
-                # if i > 0:
-                #    #assert l_v == latest_l_v
-                #    #assert new_bound_box_list == latest_bound_box_list
-                #    #assert latest_conf_dict == conf_dict
-                ha.name = "{}_{}".format(ha.name, i)
-                ha_list.append(ha)
-                # print(ha)
-                latest_l_v = l_v
-                latest_bound_box_list = new_bound_box_list
-                latest_conf_dict = conf_dict
-                # print(ha)
-                fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
-                model_string = fs.convert(ha)
-                flowStarRaw = FlowStar()
-                flowStarRaw.run(model_string)
-                if flowStarRaw.result:
-                    return False
-            return True
-
-            # nha = merge(*ha_list, chi_optimization=False)
-            # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
-            # model_string = fs.convert(nha)
-            # flowStarRaw = FlowStar()
-            # flowStarRaw.run(model_string)
-            # print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
-            # if flowStarRaw.result:
-            #     return False
-            # else:
-            #     return True
-        return True
-
+class FlowStarSolverUnsatCoreMerging(CommonOdeSolver):
     def __init__(self):
-        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager())
-
-    def kiki(self, const: Constraint, bound, sigma):
-        ha = HybridAutomaton("ksks")
-        return flowstar_gen_without(const, bound, sigma, ha)
+        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager(), MergeSolvingStrategy(flowstar_merging_solver))
 
     def run(self, s_f_list, max_bound, sigma):
         conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
-        self.set_time("solving timer", time)
-        return result
+        return flowstar_gen(s_f_list, max_bound, sigma, conf_dict)
+
+    def make_assignment(self):
+        pass
+
+    def clear(self):
+        pass
+
+
+class FlowStarSolverUnsatCore(CommonOdeSolver):
+    def __init__(self):
+        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager(), NormalSolvingStrategy(flowstar_solver))
+
+    def run(self, s_f_list, max_bound, sigma):
+        conf_dict = make_flowstar_conf_dict(self.conf_dict)
+        return flowstar_run(s_f_list, max_bound, sigma, conf_dict)
 
     def make_assignment(self):
         pass

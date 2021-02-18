@@ -4,7 +4,7 @@ from typing import Tuple, Optional, List, Set
 import z3
 
 from stlmcPy.constraints.constraints import Constraint, And, Forall, BoolVal, Dynamics, Real, RealVal, Bool, Variable, \
-    Eq, Neq, Or
+    Eq, Neq, Or, Ode
 from stlmcPy.constraints.operations import get_vars, clause, substitution, reduce_not, update_dynamics_with_replacement
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton, BaseMode, AggregatedMode, Transition, Mode
@@ -291,7 +291,7 @@ def merge(*hybrid_automata, **option):
     merging_counter = 0
     while len(waiting_queue) > 0:
         merging_counter += 1
-        print("mode merging ... {}".format(merging_counter))
+        print("mode merging ... {} (step {})".format(len(waiting_queue), merging_counter))
         if is_reset_waiting_queue:
             updated_waiting_queue = set()
             # print(waiting_queue)
@@ -327,10 +327,24 @@ def merge(*hybrid_automata, **option):
                 is_same_valuation = _check_chi_valuation(m1.chi_valuation, m2.chi_valuation, is_optimize)
                 # print("{}, {} : and {}, {} => {}".format(m1.belongs_to().name, m1.name, m2.belongs_to().name, m2.name,
                 #                                          is_same_valuation, m1 is m2))
+                txt = Real("tx_1_0_t")
+                bxt = Real("bx_1_0_t")
+                vbt = Real("vb_1_0_t")
+
+                tx0 = Real("tx_1_0")
+                bx0 = Real("bx_1_0")
+                vb0 = Real("vb_1_0")
+
+                dyn = Ode([txt, bxt, vbt],
+                          [RealVal("-5"), vb0, RealVal("0.3")])
+                if str(m1.dynamics) == str(m2.dynamics) and str(m1.dynamics) == str(dyn):
+                    print("wwwwwwwwwwwwwwwwwwwwww")
+                    # print("{} ==?== {}".format(m1.dynamics, m2.dynamics))
                 if is_same_valuation:
                     # print("valuation")
                     merged_mode, is_merged = merge_mode(m1, m2, merged_ha)
                     if is_merged:
+                        print(">>>>>>>>>>>> right after")
                         # print("merged! to {}".format(merged_mode))
                         # print("({} <><> {}) are merged to {}".format(m1, m2, merged_mode))
                         waiting_queue.remove(m1)
@@ -379,34 +393,87 @@ def merge(*hybrid_automata, **option):
     for m in all_merged_modes:
         _update_mode_name(m)
 
-    reduced_merged_trans = all_merged_trans.copy()
+    # reduced_merged_trans = all_merged_trans.copy()
     # reduce transition
 
-    logger.start_timer("transition merging")
-    merging_counter = 0
-    while True:
-        merging_counter += 1
-        print("transition merging ... {}".format(merging_counter))
-        reduced_merged_trans_before = reduced_merged_trans.copy()
-        possible_transitions = list(combinations(reduced_merged_trans, 2))
-        for (trans1, trans2) in possible_transitions:
-            # print("=======>>")
-            # print(trans1)
-            # print(trans2)
-            if merge_transition(trans1, trans2):
-                # print("=======>>")
-                # print("{}_id_{} => ( {} ) {}_id_{}".format(trans1.src.name, id(trans1.src), trans1, trans1.trg, id(trans1.trg)))
-                # print("{}_id_{} => ( {} ) {}_id_{}".format(trans2.src.name, id(trans2.src), trans2, trans2.trg, id(trans2.trg)))
-                reduced_merged_trans.remove(trans1)
+    def _make_splited_dict(_mode):
+        _split_dict = dict()
+        for _in_trans in _mode.incoming:
+            if _in_trans.src in _split_dict:
+                _split_dict[_in_trans.src].add(_in_trans)
+            else:
+                _split_dict[_in_trans.src] = {_in_trans}
+        return _split_dict
+
+    def _transition_pool_fixed_point_calculator(_transition_pool: set):
+        _merging_counter = 0
+        while True:
+            _merging_counter += 1
+            print("transition merging ... {}".format(len(_transition_pool)), end="")
+            _reduced_merged_trans_before = _transition_pool.copy()
+            _possible_transitions = list(combinations(_transition_pool, 2))
+            for (_trans1, _trans2) in _possible_transitions:
+                if merge_transition(_trans1, _trans2):
+                    _transition_pool.remove(_trans1)
+                    break
+            if _reduced_merged_trans_before.issubset(_transition_pool) and \
+                    _reduced_merged_trans_before.issuperset(_transition_pool):
+                print(" (step {}) (reach fixed point)".format(_merging_counter))
                 break
-        if reduced_merged_trans_before.issubset(reduced_merged_trans) and \
-                reduced_merged_trans_before.issuperset(reduced_merged_trans):
-            break
+            print(" (step {})".format(_merging_counter))
+        return _transition_pool
+
+    reduced_merged_queue = set(_get_terminal_nodes(merged_ha))
+    reduced_merged_trans = set()
+    next_reduced_merged_queue = set()
+    for rmq in reduced_merged_queue:
+        next_reduced_merged_queue.add(rmq)
+
+    logger.start_timer("transition merging")
+
+    merging_counter = 0
+    while len(next_reduced_merged_queue) > 0:
+        if merging_counter > 0:
+            reduced_merged_queue = next_reduced_merged_queue.copy()
+        next_reduced_merged_queue.clear()
+        while len(reduced_merged_queue) > 0:
+            merging_counter += 1
+            possible_mode = reduced_merged_queue.pop()
+            for incoming_transition in possible_mode.incoming:
+                next_reduced_merged_queue.add(incoming_transition.src)
+            _split_dict = _make_splited_dict(possible_mode)
+
+            for _mode in _split_dict:
+                _split_reduced_merged = _split_dict[_mode]
+                reduced_merged_trans.update(_transition_pool_fixed_point_calculator(_split_reduced_merged))
     logger.stop_timer("transition merging")
-    print("transition merging time : {}".format(logger.get_duration_time("transition merging")))
+
+    # logger.start_timer("transition merging")
+    # merging_counter = 0
+    # while True:
+    #     merging_counter += 1
+    #     print("transition merging ... {}".format(len(reduced_merged_trans)), end="")
+    #     reduced_merged_trans_before = reduced_merged_trans.copy()
+    #     possible_transitions = list(combinations(reduced_merged_trans, 2))
+    #     for (trans1, trans2) in possible_transitions:
+    #         # print("=======>>")
+    #         # print(trans1)
+    #         # print(trans2)
+    #         if merge_transition(trans1, trans2):
+    #             # print("=======>>")
+    #             # print("{}_id_{} => ( {} ) {}_id_{}".format(trans1.src.name, id(trans1.src), trans1, trans1.trg, id(trans1.trg)))
+    #             # print("{}_id_{} => ( {} ) {}_id_{}".format(trans2.src.name, id(trans2.src), trans2, trans2.trg, id(trans2.trg)))
+    #             reduced_merged_trans.remove(trans1)
+    #             break
+    #     if reduced_merged_trans_before.issubset(reduced_merged_trans) and \
+    #             reduced_merged_trans_before.issuperset(reduced_merged_trans):
+    #         print(" (step {}) (reach fixed point)".format(merging_counter))
+    #         break
+    #     print(" (step {})".format(merging_counter))
+    # logger.stop_timer("transition merging")
+    # print("transition merging time : {}".format(logger.get_duration_time("transition merging")))
     for trans in reduced_merged_trans:
         _update_trans_name(trans)
-
     # print("\n\n\n Merged!")
     # print(merged_ha)
     return merged_ha
