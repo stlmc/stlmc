@@ -1,6 +1,6 @@
 import unittest
 
-from stlmcPy.constraints.constraints import Real, Geq, RealVal, Or, And, Leq, Ode, Lt
+from stlmcPy.constraints.constraints import Real, Geq, RealVal, Or, And, Leq, Ode, Lt, Add
 from stlmcPy.hybrid_automaton.hybrid_automaton import Mode, HybridAutomaton, AggregatedMode
 from stlmcPy.hybrid_automaton.utils import subsumption, merge_mode, indexing, merge
 
@@ -87,6 +87,57 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         merged_mode, is_merged = merge_mode(mode1, mode2, dummy_ha)
         self.assertEqual(is_merged, True, 'merging fail')
         self.assertEqual(repr(merged_mode), "( aggregated mode dummy_mode1_mode2 = dyn: ode([x] = [1]), inv: (>= x 2) )",
+                         'merging fail because of strange mode generation')
+
+    def test_merge_mode1(self):
+        """Simple mode merging test1:
+        mode 1 [
+        dyn:
+            tx' = -5.0
+            bx' = vb
+            vb' = 0.3
+            tau_1' = 0
+            tau_2' = 1.0
+            tau_3' = 1.0
+        inv:
+            tx + 10.0 >= 0
+        ]
+
+        mode 2 [
+        dyn:
+            tx' = -5.0
+            bx' = vb
+            vb' = 0.3
+            tau_1' = 0
+            tau_2' = 1.0
+            tau_3' = 1.0
+        inv:
+            tx + 10.0 >= 0
+        ]
+        """
+
+        dummy_ha = HybridAutomaton("dummy")
+        tx = Real("tx")
+        bx = Real("bx")
+        vb = Real("vb")
+        tau1 = Real("tau1")
+        tau2 = Real("tau2")
+        tau3 = Real("tau3")
+
+        dyn = Ode([tx, bx, vb, tau1, tau2, tau3], [RealVal("-5.0"), vb, RealVal("0.3"), RealVal("0"), RealVal("1.0"), RealVal("1.0")])
+        const = Geq(Add(tx, RealVal("10.0")), RealVal("0"))
+
+        mode1 = Mode("mode1", None)
+        mode1.set_dynamics(dyn)
+        mode1.set_invariant(const)
+
+        mode2 = Mode("mode2", None)
+        mode2.set_dynamics(dyn)
+        mode2.set_invariant(const)
+
+        merged_mode, is_merged = merge_mode(mode1, mode2, dummy_ha)
+        self.assertEqual(is_merged, True, 'merging fail')
+        self.assertEqual(repr(merged_mode), "( aggregated mode dummy_mode1_mode2 = dyn: ode([tx, bx, vb, tau1, tau2, tau3] = [-5.0, vb, 0.3, 0, 1.0, 1.0]), inv: (>= (+ tx 10.0) 0) )",
                          'merging fail because of strange mode generation')
 
     def test_merge_agg_mode(self):
