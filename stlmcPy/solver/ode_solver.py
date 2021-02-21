@@ -182,6 +182,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
         result_dict = dict()
         result_dict["result"] = "True"
         result_dict["size"] = 0
+        result_dict["time"] = 0
 
         while solver_result:
             cur_index += 1
@@ -196,12 +197,12 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
             # 2. Perform process #2 from note
             result, formula_size = solver.solve()
             caller.set_time("smt solving timer", solver.get_time("solving timer"))
-            print("loop: {}, smt: {}".format(cur_index, solver.get_time("solving timer")), end="")
+            print("loop: {}, smt: {}".format(cur_index, solver.get_time("solving timer")), end="", flush=True)
             result_dict["size"] += formula_size
 
             if result:
                 # smt solver level result
-                print(", ode: {}".format(result_dict["time"]))
+                print(", ode: {}".format(result_dict["time"]), flush=True)
                 result_dict["result"], result_dict["time"] = "True", caller.get_time("solving timer")
                 return result_dict
 
@@ -270,7 +271,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
 
             solver_result, result_dict["time"] = caller.run(max_literal_set_list, max_bound, mapping_info)
             caller.set_time("solving timer", result_dict["time"])
-            print(", ode: {}, total: {}".format(result_dict["time"], caller.get_time("solving timer")))
+            print(", ode: {}, total: {}".format(result_dict["time"], caller.get_time("solving timer")), flush=True)
             caller.logger.reset_timer_without("goal timer")
         result_dict["result"] = "False"
         return result_dict
@@ -343,7 +344,7 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
             # 2. Perform process #2 from note
             result, formula_size = solver.solve()
             caller.set_time("smt solving timer", solver.get_time("solving timer"))
-            print("loop: {}, smt: {}".format(cur_index, solver.get_time("solving timer")))
+            print("loop: {}, smt: {}".format(cur_index, solver.get_time("solving timer")), flush=True)
             result_dict["size"] += formula_size
 
             if result:

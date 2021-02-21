@@ -62,14 +62,16 @@ def _(const: Neg, substitution_dict):
 def _(const: Function, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Function([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
+    return Function([substitution(var, substitution_dict) for var in const.vars],
+                    [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(Ode)
 def _(const: Ode, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Ode([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
+    return Ode([substitution(var, substitution_dict) for var in const.vars],
+               [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(And)
@@ -186,6 +188,7 @@ def _(const: ReleaseFormula, substitution_dict):
     return ReleaseFormula(const.local_time, const.global_time,
                           substitution(const.left, substitution_dict),
                           substitution(const.right, substitution_dict))
+
 
 # mode_dict => key : string, value : object
 # cont_dict => key : object, value : (left_end, left, right, right_end)
@@ -1070,3 +1073,84 @@ def fresh_new_var():
     new_var = Bool("")
     new_var.id = "opt_var_{}".format(id(new_var))
     return new_var
+
+
+@singledispatch
+def expr_syntatic_equality(left: Expr, right: Expr):
+    raise NotSupportedError("not enough information to determine equality between {} and {}".format(left, right))
+
+
+@expr_syntatic_equality.register(Variable)
+def _(left: Variable, right: Variable):
+    if not isinstance(left, Variable) or not isinstance(right, Variable):
+        return False
+    return left.id == right.id
+
+
+@expr_syntatic_equality.register(Constant)
+def _(left: Constant, right: Constant):
+    if not isinstance(left, Constant) or not isinstance(right, Constant):
+        return False
+    return left.value == right.value
+
+
+@expr_syntatic_equality.register(BinaryExpr)
+def _(left: BinaryExpr, right: BinaryExpr):
+    if not ((isinstance(left, Add) and isinstance(right, Add)) or
+            (isinstance(left, Sub) and isinstance(right, Sub)) or
+            (isinstance(left, Mul) and isinstance(right, Mul)) or
+            (isinstance(left, Div) and isinstance(right, Div)) or
+            (isinstance(left, Pow) and isinstance(right, Pow))):
+        return False
+    return (expr_syntatic_equality(left.get_left(), right.get_left()) and expr_syntatic_equality(left.get_right(),
+                                                                                                 right.get_right())) \
+           or (expr_syntatic_equality(left.get_left(), right.get_right()) and expr_syntatic_equality(left.get_right(),
+                                                                                                     right.get_left())) \
+           or (expr_syntatic_equality(left.get_right(), right.get_left()) and expr_syntatic_equality(left.get_left(),
+                                                                                                     right.get_right())) \
+           or (expr_syntatic_equality(left.get_right(), right.get_right()) and expr_syntatic_equality(left.get_left(),
+                                                                                                      right.get_left()))
+
+
+@expr_syntatic_equality.register(UnaryExpr)
+def _(left: UnaryExpr, right: UnaryExpr):
+    if not ((isinstance(left, Neg) and isinstance(right, Neg)) or
+            (isinstance(left, Sqrt) and isinstance(right, Sqrt)) or
+            (isinstance(left, Sin) and isinstance(right, Sin)) or
+            (isinstance(left, Cos) and isinstance(right, Cos)) or
+            (isinstance(left, Arcsin) and isinstance(right, Arcsin)) or
+            (isinstance(left, Arccos) and isinstance(right, Arccos)) or
+            (isinstance(left, Arctan) and isinstance(right, Arctan))):
+        return False
+    return (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child))
+
+
+def dynamic_syntatic_eqaulity(left: Dynamics, right: Dynamics):
+    # if both are the same
+    if left is None and right is None:
+        return True
+
+    # if one of them is None this is not the equal case
+    if left is None or right is None:
+        return False
+
+    set_a = set(left.vars)
+    set_b = set(right.vars)
+
+    if set_a != set_b:
+        return False
+
+    queue = set()
+    while queue != set_a:
+        for i, e in enumerate(left.exps):
+            for j, e1 in enumerate(right.exps):
+                if left.vars[i].id == right.vars[j].id:
+                    if expr_syntatic_equality(e, e1):
+                        queue.add(left.vars[i])
+                        break
+        break
+
+    return queue == set_a

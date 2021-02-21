@@ -24,3 +24,25 @@ def size_of_tree(tree: Tree):
         else:
             raise NotSupportedError("cannot calculate size of {}".format(t))
     return size
+
+
+def elements_of_tree(tree: Tree) -> set:
+    children = set()
+    if tree is None:
+        return children
+    count = 0
+    waiting_queue = set()
+    waiting_queue.add((count, tree))
+    while len(waiting_queue) > 0:
+        count = count + 1
+        _, t = waiting_queue.pop()
+        if isinstance(t, Leaf):
+            # print("Leaf , {}".format(id(t)))
+            children.add(t)
+        elif isinstance(t, NonLeaf):
+            # print("NonLeaf , {}".format(id(t)))
+            for child in t.children:
+                waiting_queue.add((count, child))
+        else:
+            continue
+    return children
