@@ -5,12 +5,14 @@ import z3
 
 from stlmcPy.constraints.constraints import Constraint, And, Forall, BoolVal, Dynamics, Real, RealVal, Bool, Variable, \
     Eq, Neq, Or, Ode
-from stlmcPy.constraints.operations import get_vars, clause, substitution, reduce_not, update_dynamics_with_replacement
+from stlmcPy.constraints.operations import get_vars, clause, substitution, reduce_not, update_dynamics_with_replacement, \
+    dynamic_syntatic_eqaulity
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton, BaseMode, AggregatedMode, Transition, Mode
 from stlmcPy.solver.ode_utils import remove_index
 from stlmcPy.solver.strategy import unit_split
 from stlmcPy.solver.z3 import z3Obj
+from stlmcPy.tree.operations import elements_of_tree
 from stlmcPy.util.logger import Logger
 
 
@@ -113,6 +115,89 @@ def subsumption(p: Constraint, q: Constraint):
         return False
 
 
+def merge_mode_syntatically(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
+    Optional[AggregatedMode], bool]:
+    def _remove_forall_from_invariant(c: Constraint):
+        if c is None:
+            return c
+        # invariants are assumed to be None or And
+        if isinstance(c, And):
+            new_children = list()
+            for child in c.children:
+                if isinstance(child, Forall):
+                    new_children.append(child.const)
+                else:
+                    new_children.append(child)
+            return new_children
+        else:
+            return [c]
+
+    def _invariant_eq(c: And, c1: And):
+        if c is None and c1 is None:
+            return True
+
+        if c is None or c1 is None:
+            return False
+
+        assert isinstance(c, And) and isinstance(c1, And)
+        return elements_of_tree(c) == elements_of_tree(c1)
+
+    if dynamic_syntatic_eqaulity(m1.dynamics, m2.dynamics):
+        m1_inv_without_forall = _remove_forall_from_invariant(m1.invariant)
+        m2_inv_without_forall = _remove_forall_from_invariant(m2.invariant)
+
+        # invariants to be checked subsumption relation
+        m1_inv = None
+        m2_inv = None
+        if m1_inv_without_forall is not None:
+            m1_inv = And(m1_inv_without_forall)
+
+        if m2_inv_without_forall is not None:
+            m2_inv = And(m2_inv_without_forall)
+
+        if not _invariant_eq(m1_inv, m2_inv):
+            return None, False
+
+        new_agg_mode = AggregatedMode("{}_{}".format(m1.name, m2.name), set(), ha)
+        new_agg_mode.add(m1)
+        new_agg_mode.add(m2)
+        new_agg_mode.set_dynamics(m1.dynamics)
+
+        new_out_going = set()
+        new_out_going = new_out_going.union(m1.outgoing)
+        new_out_going = new_out_going.union(m2.outgoing)
+
+        new_agg_mode.set_invariant(m1.invariant)
+
+        for out_going_trans in new_out_going:
+            g = out_going_trans.guard
+            # flatten guard constraint if it is And
+            if isinstance(g, And):
+                children = g.children.copy()
+                if m1.invariant is not None and out_going_trans.belongs_to() is m1.belongs_to():
+                    children.extend(m1_inv_without_forall)
+                elif m2.invariant is not None and out_going_trans.belongs_to() is m2.belongs_to():
+                    children.extend(m2_inv_without_forall)
+                out_going_trans.set_guard(And(children))
+            else:
+                if m1.invariant is not None and out_going_trans.belongs_to() is m1.belongs_to():
+                    new_children = m1_inv_without_forall
+                    new_children.extend(g)
+                    out_going_trans.set_guard(And(new_children))
+                elif m2.invariant is not None and out_going_trans.belongs_to() is m2.belongs_to():
+                    new_children = m2_inv_without_forall
+                    new_children.extend(g)
+                    out_going_trans.set_guard(And(new_children))
+
+        new_agg_mode.incoming = new_agg_mode.incoming.union(m1.incoming)
+        new_agg_mode.incoming = new_agg_mode.incoming.union(m2.incoming)
+
+        new_agg_mode.outgoing = new_agg_mode.outgoing.union(new_out_going)
+        return new_agg_mode, True
+    else:
+        return None, False
+
+
 def merge_mode(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
     Optional[AggregatedMode], bool]:
     def _remove_forall_from_invariant(c: Constraint):
@@ -142,7 +227,7 @@ def merge_mode(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
     #                     eq_queue.pop(c)
     #     return len(eq_queue) == 0
 
-    if m1.dynamics == m2.dynamics:
+    if dynamic_syntatic_eqaulity(m1.dynamics, m2.dynamics):
         m1_inv_without_forall = _remove_forall_from_invariant(m1.invariant)
         m2_inv_without_forall = _remove_forall_from_invariant(m2.invariant)
 
@@ -225,6 +310,26 @@ def merge_transition(trans1: Transition, trans2: Transition):
     return False
 
 
+def merge_transition_syntatically(trans1: Transition, trans2: Transition):
+    if id(trans1.src) == id(trans2.src) and id(trans1.trg) == id(trans2.trg):
+        if trans1.guard is None and trans2.guard is None:
+            return True
+
+        if trans1.guard is None or trans2.guard is None:
+            return False
+
+        if trans1.reset is None and trans2.reset is None:
+            return True
+
+        if trans1.reset is None or trans2.reset is None:
+            return False
+
+        guard_eq = elements_of_tree(trans1.guard) == elements_of_tree(trans2.guard)
+        reset_eq = elements_of_tree(trans1.reset) == elements_of_tree(trans2.reset)
+        return guard_eq and reset_eq
+    return False
+
+
 def merge(*hybrid_automata, **option):
     """
     Merge given hybrid automata. In order to merged, two hybrid automaton must have the common
@@ -234,11 +339,16 @@ def merge(*hybrid_automata, **option):
     :param option: chi_optimization True to enable chi optimization else false
     :return: A new merged hybrid automata
     """
-    option_keyword = "chi_optimization"
+    chi_keyword = "chi_optimization"
+    syntatic_keyword = "syntatic_merging"
     is_optimize = False
-    if option_keyword in option.keys():
-        if isinstance(option[option_keyword], bool):
-            is_optimize = option[option_keyword]
+    is_syntatic = False
+    if chi_keyword in option.keys():
+        if isinstance(option[chi_keyword], bool):
+            is_optimize = option[chi_keyword]
+    if syntatic_keyword in option.keys():
+        if isinstance(option[syntatic_keyword], bool):
+            is_syntatic = option[syntatic_keyword]
 
     def _get_terminal_nodes(ha: HybridAutomaton) -> List[BaseMode]:
         assert (ha is not None)
@@ -291,7 +401,7 @@ def merge(*hybrid_automata, **option):
     merging_counter = 0
     while len(waiting_queue) > 0:
         merging_counter += 1
-        print("mode merging ... {} (step {})".format(len(waiting_queue), merging_counter))
+        print("mode merging ... {} (step {})".format(len(waiting_queue), merging_counter), flush=True)
         if is_reset_waiting_queue:
             updated_waiting_queue = set()
             # print(waiting_queue)
@@ -327,26 +437,13 @@ def merge(*hybrid_automata, **option):
                 is_same_valuation = _check_chi_valuation(m1.chi_valuation, m2.chi_valuation, is_optimize)
                 # print("{}, {} : and {}, {} => {}".format(m1.belongs_to().name, m1.name, m2.belongs_to().name, m2.name,
                 #                                          is_same_valuation, m1 is m2))
-                txt = Real("tx_1_0_t")
-                bxt = Real("bx_1_0_t")
-                vbt = Real("vb_1_0_t")
-
-                tx0 = Real("tx_1_0")
-                bx0 = Real("bx_1_0")
-                vb0 = Real("vb_1_0")
-
-                dyn = Ode([txt, bxt, vbt],
-                          [RealVal("-5"), vb0, RealVal("0.3")])
-                if str(m1.dynamics) == str(m2.dynamics) and str(m1.dynamics) == str(dyn):
-                    print("wwwwwwwwwwwwwwwwwwwwww")
-                    # print("{} ==?== {}".format(m1.dynamics, m2.dynamics))
                 if is_same_valuation:
                     # print("valuation")
-                    merged_mode, is_merged = merge_mode(m1, m2, merged_ha)
+                    if is_syntatic:
+                        merged_mode, is_merged = merge_mode_syntatically(m1, m2, merged_ha)
+                    else:
+                        merged_mode, is_merged = merge_mode(m1, m2, merged_ha)
                     if is_merged:
-                        print(">>>>>>>>>>>> right after")
-                        # print("merged! to {}".format(merged_mode))
-                        # print("({} <><> {}) are merged to {}".format(m1, m2, merged_mode))
                         waiting_queue.remove(m1)
                         waiting_queue.remove(m2)
                         waiting_queue.add(merged_mode)
@@ -371,7 +468,7 @@ def merge(*hybrid_automata, **option):
         if is_update is False:
             is_reset_waiting_queue = True
     logger.stop_timer("mode merging")
-    print("mode merging time : {}".format(logger.get_duration_time("mode merging")))
+    print("mode merging time : {}".format(logger.get_duration_time("mode merging")), flush=True)
 
     def _update_mode_name(_mode: BaseMode):
         _mode_belongs_to = _mode.belongs_to().name
@@ -409,18 +506,23 @@ def merge(*hybrid_automata, **option):
         _merging_counter = 0
         while True:
             _merging_counter += 1
-            print("transition merging ... {}".format(len(_transition_pool)), end="")
+            print("transition merging ... {}".format(len(_transition_pool)), end="", flush=True)
             _reduced_merged_trans_before = _transition_pool.copy()
             _possible_transitions = list(combinations(_transition_pool, 2))
             for (_trans1, _trans2) in _possible_transitions:
-                if merge_transition(_trans1, _trans2):
-                    _transition_pool.remove(_trans1)
-                    break
+                if is_syntatic:
+                    if merge_transition(_trans1, _trans2):
+                        _transition_pool.remove(_trans1)
+                        break
+                else:
+                    if merge_transition_syntatically(_trans1, _trans2):
+                        _transition_pool.remove(_trans1)
+                        break
             if _reduced_merged_trans_before.issubset(_transition_pool) and \
                     _reduced_merged_trans_before.issuperset(_transition_pool):
-                print(" (step {}) (reach fixed point)".format(_merging_counter))
+                print(" (step {}) (reach fixed point)".format(_merging_counter), flush=True)
                 break
-            print(" (step {})".format(_merging_counter))
+            print(" (step {})".format(_merging_counter), flush=True)
         return _transition_pool
 
     reduced_merged_queue = set(_get_terminal_nodes(merged_ha))
@@ -447,7 +549,7 @@ def merge(*hybrid_automata, **option):
                 _split_reduced_merged = _split_dict[_mode]
                 reduced_merged_trans.update(_transition_pool_fixed_point_calculator(_split_reduced_merged))
     logger.stop_timer("transition merging")
-
+    print("transition merging time : {}".format(logger.get_duration_time("transition merging")), flush=True)
     # logger.start_timer("transition merging")
     # merging_counter = 0
     # while True:
@@ -548,15 +650,15 @@ def add_mode(ha: HybridAutomaton, depth: int, mode: BaseMode):
 
     for mode_at_depth in modes_at_depth:
         merge_counter += 1
-        print("searching for mergable mode ... {}".format(merge_counter))
+        print("searching for mergable mode ... {}".format(merge_counter), flush=True)
         merged_mode, is_merged = merge_mode(mode_at_depth, mode, ha)
         found_mergable_mode = found_mergable_mode or is_merged
 
     if found_mergable_mode:
-        print("found mergable mode : {}".format(merged_mode))
+        print("found mergable mode : {}".format(merged_mode), flush=True)
         _set_ha(mode)
     else:
-        print("found no mergable mode")
+        print("found no mergable mode", flush=True)
 
 
 def encode_possible_path_as_formula(formula: Constraint, bound: int, assignment: dict):

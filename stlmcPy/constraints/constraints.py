@@ -24,6 +24,7 @@ class Interval:
         return isinstance(other,
                           Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
 
+
 class Unary:
     def __init__(self, child):
         self.child = child
@@ -355,7 +356,6 @@ class Neg(UnaryExpr):
         return self._str
 
 
-
 class Sqrt(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
@@ -363,7 +363,6 @@ class Sqrt(UnaryExpr):
 
     def __repr__(self):
         return self._str
-
 
 
 class Sin(UnaryExpr):
@@ -375,7 +374,6 @@ class Sin(UnaryExpr):
         return self._str
 
 
-
 class Cos(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
@@ -383,7 +381,6 @@ class Cos(UnaryExpr):
 
     def __repr__(self):
         return self._str
-
 
 
 class Tan(UnaryExpr):
@@ -395,7 +392,6 @@ class Tan(UnaryExpr):
         return self._str
 
 
-
 class Arcsin(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
@@ -405,7 +401,6 @@ class Arcsin(UnaryExpr):
         return self._str
 
 
-
 class Arccos(UnaryExpr):
     def __init__(self, child):
         UnaryExpr.__init__(self, child)
@@ -413,7 +408,6 @@ class Arccos(UnaryExpr):
 
     def __repr__(self):
         return self._str
-
 
 
 class Arctan(UnaryExpr):

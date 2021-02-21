@@ -102,11 +102,11 @@ class FlowStarConverter(AbstractConverter):
                         # ets = expr_to_sympy(ee)
                         mode_str += "{}\n".format(expr_to_sympy_inequality(ee)).replace(">", ">=").replace("<",
                                                                                                            "<=").replace(
-                            ">==", ">=").replace("<==", "<=")
+                            ">==", ">=").replace("<==", "<=").replace("**", "^")
                 else:
                     mode_str += "{}\n".format(expr_to_sympy_inequality(inv)).replace(">", ">=").replace("<",
                                                                                                         "<=").replace(
-                        ">==", ">=").replace("<==", "<=")
+                        ">==", ">=").replace("<==", "<=").replace("**", "^")
 
                 # for inv in whole_inv_str.split("&"):
                 #     mode_str += "{}\n".format(str(simplify(expr_to_sympy(inv))))
@@ -147,7 +147,7 @@ class FlowStarConverter(AbstractConverter):
                             etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                         t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
                                                                                     "<=").replace(
-                            ">==", ">=").replace("<==", "<=")
+                            ">==", ">=").replace("<==", "<=").replace("**", "^")
                 else:
                     etsi = expr_to_sympy_inequality(guard)
                     etsi_str = "".format(etsi)
@@ -155,7 +155,7 @@ class FlowStarConverter(AbstractConverter):
                         etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                     t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
                                                                                 "<=").replace(
-                        ">==", ">=").replace("<==", "<=")
+                        ">==", ">=").replace("<==", "<=").replace("**", "^")
                 # whole_g_str = infix(ha.trans[t].guard)
                 # for g_str in whole_g_str.split("&"):
                 #     t_str += "{}\n".format(g_str)
@@ -740,14 +740,14 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
 
         if is_mini_merging:
             print("mini merging ...")
-        nha = merge(*ha_list, chi_optimization=False)
+        nha = merge(*ha_list, chi_optimization=False, syntatic_merging=True)
+        print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)), flush=True)
         if is_mini_merging:
             return nha, latest_conf_dict, latest_l_v, bound_box
         fs = FlowStarConverter(latest_conf_dict, latest_l_v, bound_box)
         model_string = fs.convert(nha)
         flowstar = FlowStar()
         flowstar.run(model_string)
-        print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
         solving_time = flowstar.logger.get_duration_time("solving timer")
         if flowstar.result:
             return False, solving_time
