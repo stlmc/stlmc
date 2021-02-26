@@ -14,7 +14,7 @@ from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, i
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
-from stlmcPy.hybrid_automaton.utils import merge, calc_initial_terminal_modes
+from stlmcPy.hybrid_automaton.utils import merge, calc_initial_terminal_modes, new_merge
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, ReductionStrategyManager, \
@@ -740,7 +740,8 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
 
         if is_mini_merging:
             print("mini merging ...")
-        nha = merge(*ha_list, chi_optimization=False, syntatic_merging=True)
+        # nha = merge(*ha_list, chi_optimization=False, syntatic_merging=True)
+        nha = new_merge(*ha_list, syntatic_merging=True)
         print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)), flush=True)
         if is_mini_merging:
             return nha, latest_conf_dict, latest_l_v, bound_box

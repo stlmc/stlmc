@@ -97,15 +97,15 @@ class Z3Solver(SMTSolver):
         return Z3Assignment(self._z3_model)
 
     def unsat_core(self, psi, assertion_and_trace):
-        solver = z3.SolverFor('LRA')
         trace_dict = dict()
         for (assertion, trace) in assertion_and_trace:
             # trace should be boolean var
             trace_dict[str(trace.id)] = assertion
-            solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
-        solver.add(z3Obj(Not(psi)))
-        solver.check()
-        unsat_cores = solver.unsat_core()
+            self.solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
+        #self.add(Not(psi))
+        self.solver.add(z3.Not(z3.And(psi)))
+        self.solver.check()
+        unsat_cores = self.solver.unsat_core()
         result = set()
         for unsat_core in unsat_cores:
             result.add(trace_dict[str(unsat_core)])
