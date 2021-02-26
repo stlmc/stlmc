@@ -7,13 +7,17 @@ from stlmcPy.hybrid_automaton.utils import add_mode, make_mode_from_formula, enc
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.ode_utils import make_boolean_abstract, make_tau_guard, gen_net_assignment, get_bound
 from stlmcPy.solver.strategy import UnsatCoreBuilder, DeltaDebugBuilder, NaiveBuilder
-from stlmcPy.solver.z3 import Z3Solver
+from stlmcPy.solver.z3 import Z3Solver, z3Obj
 from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.print import Printer
 
 
 # basic wrapper interface for ode strategy
 class CommonOdeStrategy:
+    @abc.abstractmethod
+    def add(self, consts):
+        pass
+
     @abc.abstractmethod
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict, reduction_flag):
@@ -115,6 +119,10 @@ class ReductionStrategyManager(CommonOdeStrategy):
 class UnsatCoreStrategyManager(CommonOdeStrategy):
     def __init__(self):
         self.builder = UnsatCoreBuilder()
+        self.cache = set()
+
+    def add(self, consts):
+        self.cache.add(z3Obj(consts))
 
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict, reduction_flag):
@@ -122,7 +130,8 @@ class UnsatCoreStrategyManager(CommonOdeStrategy):
         info_dict["alpha"] = alpha
         info_dict["assignment"] = assignment
         info_dict["max_bound"] = max_bound
-        info_dict["new_abstracted_consts"] = new_abstracted_consts
+        #info_dict["new_abstracted_consts"] = new_abstracted_consts
+        info_dict["new_abstracted_consts"] = self.cache
         info_dict["c"] = c
         info_dict["optimize"] = optimize
         info_dict["reduction_flag"] = reduction_flag
@@ -163,6 +172,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
         trans_all_consts.append(And(aft))
 
         abstracted_consts = And(trans_all_consts)
+        new_added_consts = abstracted_consts
 
         # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
@@ -190,7 +200,8 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
                 children_list = list()
                 for chi in abstracted_consts.children:
                     children_list.append(chi)
-                children_list.append(Or(counter_consts))
+                new_added_consts = Or(counter_consts)
+                children_list.append(new_added_consts)
                 abstracted_consts = And(children_list)
                 solver.add(Or(counter_consts))
 
@@ -218,6 +229,8 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
             new_alpha = gen_net_assignment(alpha, net_dict)
             new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
+
+            caller.strategy_manager.add(new_added_consts)
 
             caller.logger.start_timer("max literal timer")
             max_literal_set_list, alpha_delta = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,
@@ -309,6 +322,7 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
         trans_all_consts.append(And(aft))
 
         abstracted_consts = And(trans_all_consts)
+        new_added_consts = abstracted_consts
 
         # get stlmc type constraints and transform
         z3_boolean_consts, boolean_sub_dict = make_boolean_abstract(abstracted_consts)
@@ -337,7 +351,8 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
                 children_list = list()
                 for chi in abstracted_consts.children:
                     children_list.append(chi)
-                children_list.append(Or(counter_consts))
+                new_added_consts = Or(counter_consts)
+                children_list.append(new_added_consts)
                 abstracted_consts = And(children_list)
                 solver.add(Or(counter_consts))
 
@@ -365,6 +380,8 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
             new_alpha = gen_net_assignment(alpha, net_dict)
             new_abstracted_consts = abstracted_consts
             c = clause(new_abstracted_consts)
+
+            caller.strategy_manager.add(new_added_consts)
 
             caller.logger.start_timer("max literal timer")
             max_literal_set_list, alpha_delta = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,

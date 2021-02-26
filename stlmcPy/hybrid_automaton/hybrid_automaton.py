@@ -58,9 +58,15 @@ class AggregatedMode(BaseMode, Set):
         self._invariant = None
 
     def __repr__(self):
+        simple_ha_name = self.ha.name
+        if len(self.ha.name) > 20:
+            simple_ha_name = "{} ...".format(simple_ha_name[:20])
+        exact_name = self.name
+        if len(exact_name) > 20:
+            exact_name = "{} ...".format(exact_name[:20])
         if self.ha is None:
-            return "( aggregated mode None_{} = dyn: {} inv: {} )".format(self.name, self.dynamics, self.invariant)
-        return "( aggregated mode {}_{} = dyn: {}, inv: {} )".format(self.ha.name, self.name, self._dynamics, self._invariant)
+            return "( aggregated mode None_{} = dyn: {} inv: {} )".format(exact_name, self.dynamics, self.invariant)
+        return "( aggregated mode {}_{} = dyn: {}, inv: {} )".format(simple_ha_name, exact_name, self._dynamics, self._invariant)
 
 
 class Mode(BaseMode):
@@ -68,9 +74,15 @@ class Mode(BaseMode):
         super().__init__(name, ha)
 
     def __repr__(self):
+        simple_ha = self.ha.name
+        if len(simple_ha) > 20:
+            simple_ha = "{} ...".format(simple_ha)
+        exact_name = self.name
+        if len(exact_name) > 20:
+            exact_name = "{} ...".format(exact_name[:20])
         if self.ha is None:
-            return "( mode None_{} = dyn: {} inv: {} )".format(self.name, self.dynamics, self.invariant)
-        return "( mode {}_{} = dyn: {} inv: {} )".format(self.ha.name, self.name, self.dynamics, self.invariant)
+            return "( mode None_{} = dyn: {} inv: {} )".format(exact_name, self.dynamics, self.invariant)
+        return "( mode {}_{} = dyn: {} inv: {} )".format(simple_ha, exact_name, self.dynamics, self.invariant)
 
 
 # immutable
@@ -96,7 +108,13 @@ class Transition:
         return hash(id(self))
 
     def __repr__(self):
-        return "[{}, {}: {} -> {}, guard: {}, reset: {}]".format(self.ha.name, self.name, self.src.name,
+        simple_ha = self.ha.name
+        if len(simple_ha) > 20:
+            simple_ha = "{} ...".format(simple_ha)
+        exact_name = self.name
+        if len(exact_name) > 20:
+            exact_name = "{} ...".format(exact_name)
+        return "[{}, {}: {} -> {}, guard: {}, reset: {}]".format(simple_ha, exact_name, self.src.name,
                                                                  self.trg.name, self.guard, self.reset)
 
 
@@ -123,7 +141,12 @@ class HybridAutomaton:
         return trans
 
     def __repr__(self):
-        ha_str = "hybrid automaton {}".format(self.name)
+        ha_str = "hybrid automaton"
+        exact_name = self.name
+        if len(exact_name) > 20:
+            exact_name = "{} ...".format(exact_name[:20])
+
+        ha_str = "hybrid automaton {}".format(exact_name)
         for i, mode in enumerate(self.modes):
             if i == 0:
                 ha_str += "\n  Modes:\n  {}\n".format(mode)

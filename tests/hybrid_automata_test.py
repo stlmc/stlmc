@@ -2,7 +2,7 @@ import unittest
 
 from stlmcPy.constraints.constraints import Real, Geq, RealVal, Or, And, Leq, Ode, Lt, Add
 from stlmcPy.hybrid_automaton.hybrid_automaton import Mode, HybridAutomaton, AggregatedMode
-from stlmcPy.hybrid_automaton.utils import subsumption, merge_mode, indexing, merge, merge_mode_syntatically
+from stlmcPy.hybrid_automaton.utils import subsumption, merge_mode, indexing, merge, merge_mode_syntatically, new_merge
 
 
 class HybridAutomataUtilTestCase(unittest.TestCase):
@@ -233,14 +233,14 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
 
         self.assertEqual(is_merged_1_2_3_4, True, 'merging fail')
         self.assertEqual(repr(merged_mode_1_2_3_4),
-                         "( aggregated mode dummy_mode1_mode2_mode3_mode4 = dyn: None, inv: None )",
+                         "( aggregated mode dummy_mode1_mode2_mode3_mo ... = dyn: None, inv: None )",
                          'merging fail because of strange mode generation')
 
         merged_mode_1_2_3_4_5, is_merged_1_2_3_4_5 = merge_mode(merged_mode_1_2_3_4, mode5, dummy_ha)
 
         self.assertEqual(is_merged_1_2_3_4_5, True, 'merging fail')
         self.assertEqual(repr(merged_mode_1_2_3_4_5),
-                         "( aggregated mode dummy_mode1_mode2_mode3_mode4_mode5 = dyn: None, inv: None )",
+                         "( aggregated mode dummy_mode1_mode2_mode3_mo ... = dyn: None, inv: None )",
                          'merging fail because of strange mode generation')
 
     def test_not_merge_mode(self):
@@ -484,11 +484,11 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         ha3.new_transition("trans2", mode3_2, mode3_3)
         ha3.new_transition("trans3", mode3_3, mode3_4)
 
-        ha = merge(ha1, ha2, ha3, chi_optimization=False)
-        self.assertEqual(len(ha.modes), 4, "mode size is differ")
-        self.assertEqual(len(ha.transitions), 3, "transition size is differ")
+        # ha = merge(ha1, ha2, ha3, chi_optimization=False)
+        # self.assertEqual(len(ha.modes), 4, "mode size is differ")
+        # self.assertEqual(len(ha.transitions), 3, "transition size is differ")
 
-        ha2 = merge(ha1, ha2, ha3, chi_optimization=False, syntatic_merging=True)
+        ha2 = new_merge(ha1, ha2, ha3, chi_optimization=False, syntatic_merging=True)
         self.assertEqual(len(ha2.modes), 4, "mode size is differ")
         self.assertEqual(len(ha2.transitions), 3, "transition size is differ")
 
@@ -572,7 +572,7 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         ha3.new_transition("trans1", mode3_1, mode3_2)
         ha3.new_transition("trans2", mode3_2, mode3_3)
 
-        ha = merge(ha1, ha2, ha3, chi_optimization=False)
+        ha = new_merge(ha1, ha2, ha3, chi_optimization=False)
         self.assertEqual(len(ha.modes), 9, "mode size is differ")
         self.assertEqual(len(ha.transitions), 6, "transition size is differ")
 
@@ -627,7 +627,7 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         ha2.new_transition("trans1", mode2_1, mode2_2)
         ha2.new_transition("trans2", mode2_2, mode2_3)
 
-        ha = merge(ha1, ha2, chi_optimization=False)
+        ha = new_merge(ha1, ha2, chi_optimization=False)
         self.assertEqual(len(ha.modes), 3, "mode size is differ")
         self.assertEqual(len(ha.transitions), 2, "transition size is differ")
 
@@ -765,6 +765,10 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         self.assertEqual(len(ha.modes), 3, "mode size is differ")
         self.assertEqual(len(ha.transitions), 2, "transition size is differ")
 
+        ha = new_merge(ha1, ha2, chi_optimization=False)
+        self.assertEqual(len(ha.modes), 3, "mode size is differ")
+        self.assertEqual(len(ha.transitions), 2, "transition size is differ")
+
     def test_hybrid_automaton_syntatic_merging(self):
         """Simple automaton merging test (all have same length) :
             HybridAutomaton1 [
@@ -856,11 +860,108 @@ class HybridAutomataUtilTestCase(unittest.TestCase):
         ha3.new_transition("trans1", ha3mode1, ha3mode2).set_guard(trans_const2_1)
         ha3.new_transition("trans2", ha3mode2, ha3mode3).set_guard(trans_const2_2)
 
-        ha = merge(ha1, ha2, syntatic_merging=True)
+        ha = new_merge(ha1, ha2, syntatic_merging=True)
         self.assertEqual(len(ha.modes), 3, "mode size is differ")
         self.assertEqual(len(ha.transitions), 2, "transition size is differ")
 
-        ha2 = merge(ha1, ha3, syntatic_merging=True)
+        ha2 = new_merge(ha1, ha3, syntatic_merging=True)
         self.assertEqual(len(ha2.modes), 4, "mode size is differ")
         self.assertEqual(len(ha2.transitions), 3, "transition size is differ")
 
+    def test_hybrid_automaton_big_merging(self):
+        """Simple automaton merging test (all have same length) :
+            HybridAutomaton1 [
+            Modes:
+                mode1 (dyn : x' = 1, inv : And((x >= 1.5) (x < 2.0))
+                mode2 (dyn : x' = 1, inv : None)
+                mode3 (dyn : x' = 1, inv : And (x <= 11))
+            Transitions:
+                mode1 -> mode2 (And (x >= 1) (x <= 2))
+                mode2 -> mode3 (And (x >= -1) (x <= 10))
+            ]
+
+            HybridAutomaton2 [
+            Modes:
+                mode1 (dyn : x' = 1, inv : And((x < 2.0)(x >= 1.5))
+                mode2 (dyn : x' = 1, inv : None)
+                mode3 (dyn : x' = 1, inv : And (x <= 11))
+            Transitions:
+                mode1 -> mode2 (And (x <= 2) (x >= 1))
+                mode2 -> mode3 (And (x >= -1) (x <= 10))
+            ]
+
+            HybridAutomaton3 [
+            Modes:
+                mode1 (dyn : x' = 1, inv : None)
+                mode2 (dyn : x' = 1, inv : None)
+                mode3 (dyn : x' = 1, inv : And (x <= 11))
+            Transitions:
+                mode1 -> mode2 (And (x <= 2) (x >= 1))
+                mode2 -> mode3 (And (x >= -1) (x <= 10))
+            ]
+        """
+        x = Real("x")
+        dyn = Ode([x], [RealVal("1")])
+
+        # for type 1 hybrid automaton
+        type1_invs = [And([x >= RealVal("1.5"), x < RealVal("2.0")]), None, And([x <= RealVal("11")])]
+        type1_guard = [And([x >= RealVal("1"), x <= RealVal("2")]), And([x >= RealVal("-1"), x >= RealVal("10")])]
+
+        # for type 2 hybrid automaton
+        type2_invs = [And([x < RealVal("2.0"), x >= RealVal("1.5")]), None, And([x <= RealVal("11")])]
+        type2_guard = [And([x <= RealVal("2"), x >= RealVal("1")]), And([x >= RealVal("-1"), x >= RealVal("10")])]
+
+        hybrid_automata_queue = list()
+        for i in range(0, 4500):
+            ha = HybridAutomaton("ha{}".format(i))
+            modes = list()
+            for j in range(len(type2_invs)):
+                mode = ha.new_mode("mode{}".format(j))
+                mode.set_dynamics(dyn)
+                if type1_invs[j] is not None:
+                    mode.set_invariant(type1_invs[j])
+                modes.append(mode)
+
+            for j in range(len(type2_invs) - 1):
+                ha.new_transition("trans{}".format(j), modes[j], modes[j + 1]).set_guard(type1_guard[j])
+
+            hybrid_automata_queue.append(ha)
+
+        ha = new_merge(*hybrid_automata_queue, syntatic_merging=True)
+        # ha2 = HybridAutomaton("ha2")
+        # ha2mode1 = ha2.new_mode("mode1")
+        # ha2mode1.set_dynamics(dyn)
+        # ha2mode1.set_invariant(const2_1)
+        #
+        # ha2mode2 = ha2.new_mode("mode2")
+        # ha2mode2.set_dynamics(dyn)
+        #
+        # ha2mode3 = ha2.new_mode("mode3")
+        # ha2mode3.set_dynamics(dyn)
+        # ha2mode3.set_invariant(const2_3)
+        #
+        # ha2.new_transition("trans1", ha2mode1, ha2mode2).set_guard(trans_const2_1)
+        # ha2.new_transition("trans2", ha2mode2, ha2mode3).set_guard(trans_const2_2)
+        #
+        # ha3 = HybridAutomaton("ha3")
+        # ha3mode1 = ha3.new_mode("mode1")
+        # ha3mode1.set_dynamics(dyn)
+        #
+        # ha3mode2 = ha3.new_mode("mode2")
+        # ha3mode2.set_dynamics(dyn)
+        #
+        # ha3mode3 = ha3.new_mode("mode3")
+        # ha3mode3.set_dynamics(dyn)
+        # ha3mode3.set_invariant(const1_3)
+        #
+        # ha3.new_transition("trans1", ha3mode1, ha3mode2).set_guard(trans_const2_1)
+        # ha3.new_transition("trans2", ha3mode2, ha3mode3).set_guard(trans_const2_2)
+        #
+        # ha = merge(ha1, ha2, syntatic_merging=True)
+        # self.assertEqual(len(ha.modes), 3, "mode size is differ")
+        # self.assertEqual(len(ha.transitions), 2, "transition size is differ")
+        #
+        # ha2 = merge(ha1, ha3, syntatic_merging=True)
+        # self.assertEqual(len(ha2.modes), 4, "mode size is differ")
+        # self.assertEqual(len(ha2.transitions), 3, "transition size is differ")
+        self.assertTrue("ss")

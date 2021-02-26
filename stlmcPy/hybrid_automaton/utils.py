@@ -115,6 +115,82 @@ def subsumption(p: Constraint, q: Constraint):
         return False
 
 
+def merge_mode_pool_syntatically(modes: Set[BaseMode], ha: HybridAutomaton) -> Tuple[
+    Optional[AggregatedMode], bool]:
+    def _remove_forall_from_invariant(c: Constraint):
+        if c is None:
+            return c
+        # invariants are assumed to be None or And
+        if isinstance(c, And):
+            new_children = list()
+            for child in c.children:
+                if isinstance(child, Forall):
+                    new_children.append(child.const)
+                else:
+                    new_children.append(child)
+            return new_children
+        else:
+            return [c]
+    def _invariant_eq(c: And, c1: And):
+        if c is None and c1 is None:
+            return True
+
+        if c is None or c1 is None:
+            return False
+
+        assert isinstance(c, And) and isinstance(c1, And)
+        return elements_of_tree(c) == elements_of_tree(c1)
+
+    def _all_modes_are_the_same():
+        _category_dict = dict()
+        for _m in modes:
+            find_key = False
+            for _mode_key in _category_dict:
+                if dynamic_syntatic_eqaulity(_m.dynamics, _mode_key.dynamics) and _invariant_eq(_m.invariant,
+                                                                                                _mode_key.invariant):
+                    _category_dict[_mode_key].add(_m)
+                    find_key = True
+                    break
+            if not find_key:
+                _category_dict[_m] = {_m}
+
+        assert len(_category_dict) == 1
+        # get a representative key
+        return _category_dict
+
+    category_dict = _all_modes_are_the_same()
+    key = list(category_dict.keys())[0]
+    new_agg_mode = AggregatedMode("mode", category_dict[key], ha)
+    new_agg_mode.set_dynamics(key.dynamics)
+    new_agg_mode.set_invariant(key.invariant)
+
+    for _modes in category_dict[key]:
+        mode_inv = _remove_forall_from_invariant(_modes.invariant)
+        for out_going_trans in _modes.outgoing:
+            g = out_going_trans.guard
+            # flatten guard constraint if it is And
+            if mode_inv is None:
+                out_going_trans.src = new_agg_mode
+                new_agg_mode.outgoing.add(out_going_trans)
+            else:
+                if isinstance(g, And):
+                    children = g.children.copy()
+                    children.extend(mode_inv)
+                    out_going_trans.set_guard(And(children))
+                    out_going_trans.src = new_agg_mode
+                    new_agg_mode.outgoing.add(out_going_trans)
+                else:
+                    children = mode_inv.copy()
+                    children.append(g)
+                    out_going_trans.src = new_agg_mode
+                    out_going_trans.set_guard(And(children))
+        for in_coming_trans in _modes.incoming:
+            in_coming_trans.trg = new_agg_mode
+            new_agg_mode.incoming.add(in_coming_trans)
+
+    return new_agg_mode, True
+
+
 def merge_mode_syntatically(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
     Optional[AggregatedMode], bool]:
     def _remove_forall_from_invariant(c: Constraint):
@@ -330,6 +406,215 @@ def merge_transition_syntatically(trans1: Transition, trans2: Transition):
     return False
 
 
+def merge_transition_pool_syntatically(trans_set: Set[Transition], ha: HybridAutomaton) -> Set[Transition]:
+    def _categorize():
+        _categories = dict()
+        for _trans in trans_set:
+            find_key = False
+            for _trans_key in _categories:
+                if merge_transition_syntatically(_trans, _trans_key):
+                    find_key = True
+                    _categories[_trans_key].add(_trans)
+                    break
+
+            if not find_key:
+                _categories[_trans] = {_trans}
+        return _categories
+
+    categories = _categorize()
+    transitions = set()
+    for _trans in categories:
+        transitions.add(Transition(_trans.name, _trans.src, _trans.trg, ha))
+
+    return transitions
+
+
+def new_merge(*hybrid_automata, **option):
+    """
+    Merge given hybrid automata. In order to merged, two hybrid automaton must have the common
+    terminal nodes. See a test case with the different length.
+
+    :param hybrid_automata: Any hybrid automata
+    :param option: chi_optimization True to enable chi optimization else false
+    :return: A new merged hybrid automata
+    """
+    chi_keyword = "chi_optimization"
+    syntatic_keyword = "syntatic_merging"
+    is_optimize = False
+    is_syntatic = False
+    if chi_keyword in option.keys():
+        if isinstance(option[chi_keyword], bool):
+            is_optimize = option[chi_keyword]
+    if syntatic_keyword in option.keys():
+        if isinstance(option[syntatic_keyword], bool):
+            is_syntatic = option[syntatic_keyword]
+
+    def _get_terminal_nodes(ha: HybridAutomaton) -> List[BaseMode]:
+        assert (ha is not None)
+        terminal_modes = list()
+        for _m in ha.modes:
+            if len(_m.incoming) == 0:
+                pass
+            else:
+                if len(_m.outgoing) == 0:
+                    terminal_modes.append(_m)
+        return terminal_modes
+
+    def _categorize(_set):
+        _category_dict = dict()
+        for _m in _set:
+            dyn_str = str(_m.dynamics)
+            if dyn_str not in _category_dict:
+                _category_dict[dyn_str] = set()
+            _category_dict[dyn_str].add(_m)
+        return _category_dict
+
+    def _categorize_with_invs(_hybrid_automata_mode_queue):
+        def _invariant_eq(c: And, c1: And):
+            if c is None and c1 is None:
+                return True
+
+            if c is None or c1 is None:
+                return False
+
+            assert isinstance(c, And) and isinstance(c1, And)
+            return elements_of_tree(c) == elements_of_tree(c1)
+
+        _category_dict = dict()
+        for _mode in _hybrid_automata_mode_queue:
+            _find_key = False
+            for _mode_key in _category_dict:
+                if dynamic_syntatic_eqaulity(_mode_key.dynamics, _mode.dynamics) and _invariant_eq(_mode_key.invariant,
+                                                                                                   _mode.invariant):
+                    _find_key = True
+                    _category_dict[_mode_key].add(_mode)
+                    break
+            if not _find_key:
+                _category_dict[_mode] = {_mode}
+        return _category_dict
+
+    def _check_chi_valuation(chi_valuation_dict1: dict, chi_valuation_dict2: dict, is_on=False):
+        if not is_on:
+            return True
+        if len(chi_valuation_dict1) > 0 and len(chi_valuation_dict2) > 0:
+            for chi_1 in chi_valuation_dict1:
+                for chi_2 in chi_valuation_dict2:
+                    if chi_1 == chi_2:
+                        if chi_valuation_dict1[chi_1] != chi_valuation_dict2[chi_2]:
+                            return False
+        return True
+
+    all_merged_modes = set()
+    all_merged_trans = set()
+    waiting_queue = set()
+
+    terminal_merged_modes = set()
+    further_remove_mode_queue = set()
+    merged_ha_name = "new_agg_mode"
+    for hybrid_automaton in hybrid_automata:
+        merged_ha_name = "{}__{}".format(merged_ha_name, hybrid_automaton.name)
+        for terminal_node in _get_terminal_nodes(hybrid_automaton):
+            waiting_queue.add(terminal_node)
+
+    merged_ha = HybridAutomaton(merged_ha_name)
+
+    # print("this is waiting queue {}".format(waiting_queue))
+    is_reset_waiting_queue = False
+    logger = Logger()
+    logger.start_timer("mode merging")
+    merging_counter = 0
+    inner_logger = Logger()
+    while len(waiting_queue) > 0:
+        inner_logger.start_timer("mode merging timer")
+        merging_counter += 1
+
+        inner_logger.start_timer("new categorize timer")
+        categories = _categorize_with_invs(waiting_queue)
+        inner_logger.stop_timer("new categorize timer")
+
+        # print(waiting_queue)
+        is_update = False
+        inner_logger.start_timer("possible merging timer")
+        for c in categories:
+            categories_queue = categories[c]
+            merged_mode, _ = merge_mode_pool_syntatically(categories_queue, merged_ha)
+            all_merged_modes.add(merged_mode)
+
+            if merging_counter == 1:
+                terminal_merged_modes.add(merged_mode)
+
+        inner_logger.stop_timer("possible merging timer")
+
+        new_waiting_queue = set()
+        for _mode in waiting_queue:
+            for _trans in _mode.incoming:
+                new_waiting_queue.add(_trans.src)
+
+        inner_logger.stop_timer("mode merging timer")
+        print("mode merging ... {} (depth {}) --> categorize : {} --> possible merging : {} --> total : {})".format(
+            len(waiting_queue),
+            merging_counter,
+            inner_logger.get_duration_time("new categorize timer"),
+            inner_logger.get_duration_time("possible merging timer"),
+            inner_logger.get_duration_time("mode merging timer")), flush=True)
+        inner_logger.reset_timer()
+        waiting_queue.clear()
+        waiting_queue = new_waiting_queue
+
+    logger.stop_timer("mode merging")
+    print("mode merging time : {}".format(logger.get_duration_time("mode merging")), flush=True)
+
+    def _update_mode_name(_mode: BaseMode):
+        _mode_belongs_to = _mode.belongs_to().name
+        if _mode_belongs_to == merged_ha_name:
+            _mode.name = "{}_{}".format(_mode_belongs_to, _mode.name)
+        else:
+            _mode.name = "{}_{}_{}".format(merged_ha_name, _mode_belongs_to, _mode.name)
+        merged_ha.modes.add(_mode)
+
+    for m in all_merged_modes:
+        _update_mode_name(m)
+
+    def _update_trans_name(_trans: Transition):
+        _trans_belongs_to = _trans.belongs_to().name
+        if _trans_belongs_to == merged_ha_name:
+            _trans.name = "{}_{}".format(_trans_belongs_to, _trans.name)
+        else:
+            _trans.name = "{}_{}_{}".format(merged_ha_name, _trans_belongs_to, _trans.name)
+        merged_ha.transitions.add(trans)
+
+    transition_queue = set()
+    for _m in terminal_merged_modes:
+        transition_queue = transition_queue.union(_m.incoming)
+
+    inner_logger.reset_timer()
+    merged_transitions = set()
+    transition_merged_counter = 0
+    logger.start_timer("total trans merging timer")
+    while len(transition_queue) > 0:
+        inner_logger.start_timer("trans merging timer")
+        transition_merged_counter += 1
+        _merged_transitions = merge_transition_pool_syntatically(transition_queue, merged_ha)
+        merged_transitions = merged_transitions.union(_merged_transitions)
+
+        new_transition_queue = set()
+        for _trans in transition_queue:
+            new_transition_queue = new_transition_queue.union(_trans.src.incoming)
+        inner_logger.stop_timer("trans merging timer")
+        print("trans merging ... {} (depth {}, size {})".format(inner_logger.get_duration_time("trans merging timer"),
+                                                       transition_merged_counter, len(transition_queue)), flush=True)
+        transition_queue.clear()
+        transition_queue = new_transition_queue
+        inner_logger.reset_timer()
+    logger.stop_timer("total trans merging timer")
+    print("total transition merging ... {}".format(logger.get_duration_time("total trans merging timer")), flush=True)
+
+    for trans in merged_transitions:
+        _update_trans_name(trans)
+
+    return merged_ha
+
+
 def merge(*hybrid_automata, **option):
     """
     Merge given hybrid automata. In order to merged, two hybrid automaton must have the common
@@ -370,6 +655,30 @@ def merge(*hybrid_automata, **option):
             _category_dict[dyn_str].add(_m)
         return _category_dict
 
+    def _categorize_with_invs(_hybrid_automata_mode_queue):
+        def _invariant_eq(c: And, c1: And):
+            if c is None and c1 is None:
+                return True
+
+            if c is None or c1 is None:
+                return False
+
+            assert isinstance(c, And) and isinstance(c1, And)
+            return elements_of_tree(c) == elements_of_tree(c1)
+
+        _category_dict = dict()
+        for _mode in _hybrid_automata_mode_queue:
+            _find_key = False
+            for _mode_key in _category_dict:
+                if dynamic_syntatic_eqaulity(_mode_key.dynamics, _mode.dynamics) and _invariant_eq(_mode_key.invariant,
+                                                                                                   _mode.invariant):
+                    _find_key = True
+                    _category_dict[_mode_key].add(_mode)
+
+            if not _find_key:
+                _category_dict[_mode] = set()
+        return _category_dict
+
     def _check_chi_valuation(chi_valuation_dict1: dict, chi_valuation_dict2: dict, is_on=False):
         if not is_on:
             return True
@@ -399,9 +708,10 @@ def merge(*hybrid_automata, **option):
     logger = Logger()
     logger.start_timer("mode merging")
     merging_counter = 0
+    inner_logger = Logger()
     while len(waiting_queue) > 0:
+        inner_logger.start_timer("mode merging timer")
         merging_counter += 1
-        print("mode merging ... {} (step {})".format(len(waiting_queue), merging_counter), flush=True)
         if is_reset_waiting_queue:
             updated_waiting_queue = set()
             # print(waiting_queue)
@@ -422,17 +732,29 @@ def merge(*hybrid_automata, **option):
             waiting_queue = updated_waiting_queue
             is_reset_waiting_queue = False
 
+        inner_logger.start_timer("categorize timer")
         categories = _categorize(waiting_queue)
+        inner_logger.stop_timer("categorize timer")
+
+        inner_logger.start_timer("new categorize timer")
+        new_categories = _categorize_with_invs(waiting_queue)
+        inner_logger.stop_timer("new categorize timer")
+
+        print("  new categorize timer : {}".format(inner_logger.get_duration_time("new categorize timer")))
+
         # print(waiting_queue)
         is_update = False
+        inner_logger.start_timer("possible merging timer")
         for c in categories:
             # print("normal => {}".format(categories))
+            print("  size of categories : {}".format(len(categories[c])))
             possibilities = list(combinations(categories[c], 2))
             if len(possibilities) == 0:
                 is_reset_waiting_queue = True
                 break
 
             for (m1, m2) in possibilities:
+                print("  size of possibilities : {}".format(len(possibilities)))
                 # print("is optimize {}".format(is_optimize))
                 is_same_valuation = _check_chi_valuation(m1.chi_valuation, m2.chi_valuation, is_optimize)
                 # print("{}, {} : and {}, {} => {}".format(m1.belongs_to().name, m1.name, m2.belongs_to().name, m2.name,
@@ -459,7 +781,7 @@ def merge(*hybrid_automata, **option):
 
             if is_update:
                 break
-
+        inner_logger.stop_timer("possible merging timer")
         # remove modes in the removing queue
         if is_optimize:
             if len(further_remove_mode_queue) > 0:
@@ -467,6 +789,16 @@ def merge(*hybrid_automata, **option):
 
         if is_update is False:
             is_reset_waiting_queue = True
+
+        inner_logger.stop_timer("mode merging timer")
+        print("mode merging ... {} (step {}) --> categorize : {} --> possible merging : {} --> total : {})".format(
+            len(waiting_queue),
+            merging_counter,
+            inner_logger.get_duration_time("categorize timer"),
+            inner_logger.get_duration_time("possible merging timer"),
+            inner_logger.get_duration_time("mode merging timer")), flush=True)
+        inner_logger.reset_timer()
+
     logger.stop_timer("mode merging")
     print("mode merging time : {}".format(logger.get_duration_time("mode merging")), flush=True)
 
