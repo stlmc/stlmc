@@ -811,7 +811,7 @@ class FlowStarSolverUnsatCoreMerging(CommonOdeSolver):
         pass
 
     def clear(self):
-        pass
+        self.strategy_manager.clear()
 
 
 class FlowStarSolverUnsatCore(CommonOdeSolver):
@@ -826,7 +826,7 @@ class FlowStarSolverUnsatCore(CommonOdeSolver):
         pass
 
     def clear(self):
-        pass
+        self.strategy_manager.clear()
 
 
 class FlowStarAssignment(Assignment):

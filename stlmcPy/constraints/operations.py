@@ -1128,6 +1128,62 @@ def _(left: UnaryExpr, right: UnaryExpr):
            or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child))
 
 
+def expr_syntatic_equality_linear(left: Expr, right: Expr):
+    def _get_type_as(_expr: Expr):
+        if isinstance(_expr, Neg):
+            return "Neg"
+        if isinstance(_expr, Sqrt):
+            return "Sqrt"
+        if isinstance(_expr, Sin):
+            return "Sin"
+        if isinstance(_expr, Cos):
+            return "Cos"
+        if isinstance(_expr, Arcsin):
+            return "Arcsin"
+        if isinstance(_expr, Arccos):
+            return "Arccos"
+        if isinstance(_expr, Arctan):
+            return "Arctan"
+        if isinstance(_expr, Add):
+            return "Add"
+        if isinstance(_expr, Sub):
+            return "Sub"
+        if isinstance(_expr, Mul):
+            return "Mul"
+        if isinstance(_expr, Div):
+            return "Div"
+        if isinstance(_expr, Pow):
+            return "Pow"
+        if isinstance(_expr, Variable):
+            return "Variable"
+        if isinstance(_expr, Constant):
+            return "Constant"
+
+    def _get_child_list(_expr: Expr):
+        _child_list = list()
+        _queue = [_expr]
+
+        while len(_queue) > 0:
+            _elem = _queue.pop(0)
+            if isinstance(_elem, Variable):
+                _child_list.append(("Variable", _elem.id))
+            elif isinstance(_elem, Constant):
+                _child_list.append(("Constant", _elem.value))
+            elif isinstance(_elem, NonLeaf):
+                _new_queue = list()
+                _new_child_list = list()
+                for e in _elem.children:
+                    _new_child_list.append((_get_type_as(e), ""))
+                    _new_queue.append(e)
+                _child_list.append(_new_queue)
+        return _child_list
+
+    left_depth_list = _get_child_list(left)
+    right_depth_list = _get_child_list(right)
+
+    return left_depth_list == right_depth_list
+
+
 def dynamic_syntatic_eqaulity(left: Dynamics, right: Dynamics):
     # if both are the same
     if left is None and right is None:
@@ -1143,14 +1199,24 @@ def dynamic_syntatic_eqaulity(left: Dynamics, right: Dynamics):
     if set_a != set_b:
         return False
 
-    queue = set()
-    while queue != set_a:
-        for i, e in enumerate(left.exps):
-            for j, e1 in enumerate(right.exps):
-                if left.vars[i].id == right.vars[j].id:
-                    if expr_syntatic_equality(e, e1):
-                        queue.add(left.vars[i])
-                        break
-        break
+    if len(left.exps) != len(right.exps):
+        return False
 
-    return queue == set_a
+    for i, e in enumerate(left.exps):
+        if left.vars[i].id == right.vars[i].id:
+            if not expr_syntatic_equality_linear(e, right.exps[i]):
+                return False
+        else:
+            return False
+    # queue = set()
+    # while queue != set_a:
+    #     for i, e in enumerate(left.exps):
+    #         for j, e1 in enumerate(right.exps):
+    #             if left.vars[i].id == right.vars[j].id:
+    #                 if expr_syntatic_equality_linear(e, e1):
+    #                     queue.add(left.vars[i])
+    #                     break
+    #     break
+    #
+    # return queue == set_a
+    return True

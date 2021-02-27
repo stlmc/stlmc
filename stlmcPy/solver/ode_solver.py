@@ -19,6 +19,10 @@ class CommonOdeStrategy:
         pass
 
     @abc.abstractmethod
+    def clear(self):
+        pass
+
+    @abc.abstractmethod
     def perform_strategy(self, alpha, assignment, max_bound, new_abstracted_consts, c, optimize, z3_boolean_consts,
                          boolean_sub_dict, reduction_flag):
         pass
@@ -120,6 +124,9 @@ class UnsatCoreStrategyManager(CommonOdeStrategy):
     def __init__(self):
         self.builder = UnsatCoreBuilder()
         self.cache = set()
+
+    def clear(self):
+        self.cache.clear()
 
     def add(self, consts):
         self.cache.add(z3Obj(consts))
