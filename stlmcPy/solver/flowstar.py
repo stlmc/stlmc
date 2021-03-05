@@ -142,7 +142,7 @@ class FlowStarConverter(AbstractConverter):
                 if isinstance(guard, And):
                     for g in guard.children:
                         etsi = expr_to_sympy_inequality(g)
-                        etsi_str = "".format(etsi)
+                        etsi_str = "{}".format(etsi)
                         if isinstance(etsi, Equality):
                             etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                         t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
@@ -150,7 +150,7 @@ class FlowStarConverter(AbstractConverter):
                             ">==", ">=").replace("<==", "<=").replace("**", "^")
                 else:
                     etsi = expr_to_sympy_inequality(guard)
-                    etsi_str = "".format(etsi)
+                    etsi_str = "{}".format(etsi)
                     if isinstance(etsi, Equality):
                         etsi_str = "{} = {}".format(etsi.lhs, etsi.rhs)
                     t_str += "{}\n".format(etsi_str).replace(">", ">=").replace("<",
@@ -160,6 +160,8 @@ class FlowStarConverter(AbstractConverter):
                 # for g_str in whole_g_str.split("&"):
                 #     t_str += "{}\n".format(g_str)
                 t_str += "}\n"
+            else:
+                t_str += "guard {}"
 
             if t.reset is not None:
                 t_str += "reset {\n"
@@ -167,6 +169,8 @@ class FlowStarConverter(AbstractConverter):
                 for r_str in whole_r_str.split("&"):
                     t_str += "{}\n".format(r_str)
                 t_str += "}\n"
+            else:
+                t_str += "reset {}"
             t_str += "parallelotope aggregation { }\n"
             trans_str_list.append(t_str)
 
@@ -188,14 +192,15 @@ class FlowStarConverter(AbstractConverter):
 
         terminal_modes_str = list()
         for m in terminal_modes:
-            terminal_modes_str.append(m.name)
+            terminal_modes_str.append("{}__id_{}".format(m.name, id(m)))
 
         # print(terminal_modes_str)
         for m in ha.modes:
-            if m.name in terminal_modes_str:
-                unsafe_str += "{}__id_{}".format(m.name, id(m)) + "{}\n"
+            real_name = "{}__id_{}".format(m.name, id(m))
+            if real_name in terminal_modes_str:
+                unsafe_str += "{}{{}}\n".format(real_name)
             else:
-                unsafe_str += "{}__id_{}".format(m.name, id(m)) + "{ ff  <= 0 }\n"
+                unsafe_str += "{}{{ ff  <= 0 }}\n".format(real_name)
 
         return "hybrid reachability {{\n {}\n {}\n {}\n {}\n {}\n}}\n unsafe {{\n {} \n }}\n".format(var_str,
                                                                                                      setting_str,

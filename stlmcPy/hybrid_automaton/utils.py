@@ -424,7 +424,10 @@ def merge_transition_pool_syntatically(trans_set: Set[Transition], ha: HybridAut
     categories = _categorize()
     transitions = set()
     for _trans in categories:
-        transitions.add(Transition(_trans.name, _trans.src, _trans.trg, ha))
+        _new_trans = Transition(_trans.name, _trans.src, _trans.trg, ha)
+        _new_trans.set_guard(_trans.guard)
+        _new_trans.set_reset(_trans.reset)
+        transitions.add(_new_trans)
 
     return transitions
 

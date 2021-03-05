@@ -50,6 +50,8 @@ class UnsatCoreBuilder(StrategyBuilder):
         optimize = self.info["optimize"]
         reduction_flag = self.info["reduction_flag"]
 
+        '''
+
         c_sat = set()
         c_unsat = set()
         total = dict()
@@ -82,6 +84,7 @@ class UnsatCoreBuilder(StrategyBuilder):
                 else:
                     total[reduce_not(Not(c_elem))] = BoolVal("True")
                     c_unsat.add(Not(c_elem))
+        '''
 
         c = self.apply_unsat_core(c, new_abstracted_consts, assignment, is_formula_reduction=reduction_flag)
         max_literal_set_list = list()
@@ -123,8 +126,10 @@ class UnsatCoreBuilder(StrategyBuilder):
                     if get_max_bound(se) > reach_min_bound:
                         s_diff.add(se)
             new_set = new_set.difference(s_diff)
+
             max_literal_set_list.append(new_set)
-        return max_literal_set_list, total
+
+        return max_literal_set_list
 
     def apply_unsat_core(self, c_max, psi, assignment: Assignment, is_formula_reduction=False):
         c_sat = set()
@@ -503,10 +508,12 @@ def unit_split(given_set: set, i: int):
                 last_str = var.id[-1]
                 if not ((bound == i and last_str == "t") or (bound == i + 1 and last_str == "0")):
                     flag = False
+                '''
                 if isinstance(c.left, Real):
                     if c.left.id[e_index + 1:] == "0":
                         flag = False
                         break
+                '''
             else:
                 flag = False
         if flag:
