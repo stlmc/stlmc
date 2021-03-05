@@ -58,13 +58,17 @@ class CommonOdeSolver(OdeSolver, ABC):
                 _mapping_info = dict()
 
             tau_info = dict()
+            opt_var_info = dict()
             for k in _mapping_info:
                 if "newTau" in k.id:
                     tau_info[k] = _mapping_info[k]
+                if "opt_var" in k.id:
+                    opt_var_info[k] = _mapping_info[k]
 
             option_dict["info_dict"] = _info_dict
             option_dict["mapping_info"] = _mapping_info
             option_dict["tau_info"] = tau_info
+            option_dict["opt_var_info"] = opt_var_info
             option_dict["caller"] = self
 
             option_dict["all_consts"] = all_consts
@@ -161,6 +165,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
         info_dict = options["info_dict"]
         mapping_info = options["mapping_info"]
         tau_info = options["tau_info"]
+        opt_var_info = options["opt_var_info"]
         caller = options["caller"]
         all_consts = options["all_consts"]
 
@@ -170,13 +175,21 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
         # boolean_start = timer()
         # heuristic: removing mapping constraint part.
         trans_all_consts = list()
-        trans_all_consts.append(all_consts.children[0])
+        trans_all_consts.extend(all_consts.children[0:2])
+
+        for tchi in tau_info:
+            trans_all_consts.append(Eq(tchi, tau_info[tchi]))
+        for opt_chi in opt_var_info:
+            trans_all_consts.append(Eq(opt_chi, opt_var_info[opt_chi]))
+
+        '''
 
         bef = all_consts.children[1]
         tau_condition_sub = substitution(bef.children[-1], tau_info)
         aft = bef.children[0:-1]
         aft.append(tau_condition_sub)
         trans_all_consts.append(And(aft))
+        '''
 
         abstracted_consts = And(trans_all_consts)
         new_added_consts = abstracted_consts
@@ -240,7 +253,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
             caller.strategy_manager.add(new_added_consts)
 
             caller.logger.start_timer("max literal timer")
-            max_literal_set_list, alpha_delta = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,
+            max_literal_set_list = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,
                                                                                          new_abstracted_consts,
                                                                                          c,
                                                                                          caller.time_optimize,
@@ -281,11 +294,7 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
                             bound = int(c.id[index:])
                             if bound > max_bound:
                                 max_bound = bound
-                    # counter_consts_set.add(Not(c))
-                    if str(alpha_delta[c]) == "True":
-                        counter_consts_set.add(Not(c))
-                    else:
-                        counter_consts_set.add(c)
+                    counter_consts_set.add(Not(c))
 
             counter_consts = list(counter_consts_set)
 
@@ -311,6 +320,7 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
         info_dict = options["info_dict"]
         mapping_info = options["mapping_info"]
         tau_info = options["tau_info"]
+        opt_var_info = options["opt_var_info"]
         caller = options["caller"]
         all_consts = options["all_consts"]
 
@@ -320,13 +330,12 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
         # boolean_start = timer()
         # heuristic: removing mapping constraint part.
         trans_all_consts = list()
-        trans_all_consts.append(all_consts.children[0])
+        trans_all_consts.extend(all_consts.children[0:2])
 
-        bef = all_consts.children[1]
-        tau_condition_sub = substitution(bef.children[-1], tau_info)
-        aft = bef.children[0:-1]
-        aft.append(tau_condition_sub)
-        trans_all_consts.append(And(aft))
+        for tchi in tau_info:
+            trans_all_consts.append(Eq(tchi, tau_info[tchi]))
+        for opt_chi in opt_var_info:
+            trans_all_consts.append(Eq(opt_chi, opt_var_info[opt_chi]))
 
         abstracted_consts = And(trans_all_consts)
         new_added_consts = abstracted_consts
@@ -391,7 +400,7 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
             caller.strategy_manager.add(new_added_consts)
 
             caller.logger.start_timer("max literal timer")
-            max_literal_set_list, alpha_delta = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,
+            max_literal_set_list = caller.strategy_manager.perform_strategy(alpha, assignment, max_bound,
                                                                                          new_abstracted_consts,
                                                                                          c,
                                                                                          caller.time_optimize,
@@ -432,11 +441,7 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
                             bound = int(c.id[index:])
                             if bound > max_bound:
                                 max_bound = bound
-                    # counter_consts_set.add(Not(c))
-                    if str(alpha_delta[c]) == "True":
-                        counter_consts_set.add(Not(c))
-                    else:
-                        counter_consts_set.add(c)
+                    counter_consts_set.add(Not(c))
 
             counter_consts = list(counter_consts_set)
 
