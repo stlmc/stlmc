@@ -104,6 +104,7 @@ class Z3Solver(SMTSolver):
             self.solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
         #self.add(Not(psi))
         self.solver.add(z3.Not(z3.And(psi)))
+        self.solver.set(':core.minimize', True)
         self.solver.check()
         unsat_cores = self.solver.unsat_core()
         result = set()
