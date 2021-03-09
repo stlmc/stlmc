@@ -353,6 +353,10 @@ def flowstar_run(s_f_list, max_bound, sigma, conf_dict):
     for i in range(max_bound + 1):
         FlowStarConverter.make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
 
+    # add init mode
+    start_mode = ha.new_mode("start")
+    ha.new_transition("startTrasition", start_mode, l_mode[0])
+
     forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
     # assumption: all boundaries should be number
@@ -514,6 +518,12 @@ def flowstar_gen(s_f_list, max_bound, sigma, conf_dict):
 
     for i in range(max_bound + 1):
         FlowStarConverter.make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
+
+
+    # add init mode
+    start_mode = ha.new_mode("start")
+    ha.new_transition("startTrasition", start_mode, l_mode[0])
+
 
     forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
