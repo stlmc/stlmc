@@ -443,14 +443,20 @@ def unit_split(given_set: set, i: int):
             s_index = int(var.id.find("_"))
             e_index = int(var.id.rfind("_"))
             bound_index = int(var.id.rfind("_"))
-            if not (s_index == -1) and ((s_index == e_index and "tau" not in var.id)
-                                        or ("invAtomicID" in var.id) or ("newPropDecl" in var.id)):
-                bound = int(var.id[bound_index + 1:])
-                if i == bound:
-                    forall_set.add(c)
-                    s_diff.add(c)
-                    break
-            elif var.id[:start_index] == "newIntegral":
+            if not (s_index == -1):
+                if (s_index == e_index and "tau" not in var.id) or ("newPropDecl" in var.id):
+                    bound = int(var.id[bound_index + 1:]) // 2
+                    if i == bound:
+                        forall_set.add(c)
+                        s_diff.add(c)
+                        break
+                if "invAtomicID" in var.id:
+                    bound = int(var.id[bound_index + 1:])
+                    if i == bound:
+                        forall_set.add(c)
+                        s_diff.add(c)
+                        break
+            if var.id[:start_index] == "newIntegral":
                 bound = int(var.id[bound_index + 1:])
                 if i == bound:
                     integral_set.add(c)
