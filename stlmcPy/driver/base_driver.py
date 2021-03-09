@@ -231,6 +231,12 @@ class StlConfiguration:
             self._abs_sep = self._args.abs_sep
         self._delta = self._args.delta
 
+        for _sc in self._solver_configs:
+            # fixed steps should be 0.2 * delta
+            # timeMax should be timeBound
+            _sc["fixed steps"] = "{}".format(float(self._delta) * 0.2)
+            _sc["time"] = self._timebound
+
     @property
     def zeno(self):
         return self._zeno
