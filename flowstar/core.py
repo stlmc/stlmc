@@ -47,14 +47,14 @@ class FlowStar:
         #if stderr:
         #    print(f'[stderr]\n{stderr.decode()}')
 
-        if os.path.isdir(outputs):
-            shutil.rmtree(outputs)
-
-        if os.path.isdir(counterexamples):
-            shutil.rmtree(counterexamples)
-
-        if os.path.isdir(images):
-            shutil.rmtree(images)
+        # if os.path.isdir(outputs):
+        #     shutil.rmtree(outputs)
+        #
+        # if os.path.isdir(counterexamples):
+        #     shutil.rmtree(counterexamples)
+        #
+        # if os.path.isdir(images):
+        #     shutil.rmtree(images)
 
         #if os.path.isfile(model_file):
         #    os.remove(model_file)

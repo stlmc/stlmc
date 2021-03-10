@@ -721,17 +721,43 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
     def _make_bound_box(_l_v, _bound_box_list):
         new_bound_box = list()
         for i, _ in enumerate(_l_v):
-            max_left_value = -float("inf")
+            max_left_value = float("inf")
             max_right_value = -float("inf")
             for bbl in _bound_box_list:
-                if bbl[i][0] > max_left_value:
+                print (bbl)
+                if bbl[i][0] < max_left_value:
                     max_left_value = bbl[i][0]
                 if bbl[i][1] > max_right_value:
                     max_right_value = bbl[i][1]
-            assert max_left_value != -float("inf")
+            assert max_left_value != float("inf")
             assert max_right_value != -float("inf")
             new_bound_box.append([max_left_value, max_right_value])
         return new_bound_box
+
+    def _find_representative_l_v(_l_vs):
+        if len(_l_vs) <= 1:
+            return _l_vs
+        _l_v_set = set(_l_vs[0])
+        representative_l_v = _l_vs[0]
+        for _i, _l_v in enumerate(_l_vs[1:]):
+            _l_v_s = set(_l_v)
+            if _l_v_s.issuperset(_l_v_set):
+                representative_l_v = _l_v
+        return representative_l_v
+
+    def _unifying_bound_box(_representative_l_v, _l_vs, _bound_box_list):
+        _new_bound_box_list = list()
+        for bbi, bb in enumerate(_bound_box_list):
+            _new_bound_box = list()
+            for _v_i, _v in enumerate(_representative_l_v):
+                for _v_i2, _v2 in enumerate(_l_vs[bbi]):
+                    if _v == _v2:
+                        _new_bound_box.append(bb[_v_i2])
+                    else:
+                        _new_bound_box.append([0.0, 0.0])
+            _new_bound_box_list.append(_new_bound_box)
+        return _new_bound_box_list
+
 
     ha_list = list()
     bound_box_list = list()
@@ -739,19 +765,30 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
     # for integrity, l_vs are all the same
     latest_l_v = list()
     latest_conf_dict = dict()
+    list_of_l_v = list()
     if len(l) > 0:
         for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
+            # print("loop is {}".format(i))
             if i > 0:
-                assert l_v == latest_l_v
+                # assert l_v == latest_l_v
                 assert latest_conf_dict == conf_dict
+
             ha.name = "{}_{}".format(ha.name, i)
             ha_list.append(ha)
             bound_box_list.append(new_bound_box_list)
 
             latest_l_v = l_v
             latest_conf_dict = conf_dict
+            list_of_l_v.append(l_v)
 
-        bound_box = _make_bound_box(latest_l_v, bound_box_list)
+        representative_l_v = _find_representative_l_v(list_of_l_v)
+        representative_bb = _unifying_bound_box(representative_l_v, list_of_l_v, bound_box_list)
+        # bound_box = _make_bound_box(latest_l_v, bound_box_list)
+        # print("representative lv")
+        # print(representative_l_v)
+        # print("representative bb")
+        # print(representative_bb)
+        bound_box = _make_bound_box(representative_l_v, representative_bb)
 
         if is_mini_merging:
             print("mini merging ...")
