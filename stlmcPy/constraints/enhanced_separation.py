@@ -6,6 +6,7 @@ from .interval import inInterval, minusInterval
 NEW_ID = 0
 ABS_OPT = True
 
+
 def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
     result = list()
     chi_list = [str(c) for c in list(id_match_dict.values())]
@@ -165,7 +166,9 @@ def _(f: UntilFormula, i, k, v, j, idDict):
 
         return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
     else:
-        return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
+        return Or([And(and_chi),
+                   And([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
+
 
 @_trans.register(ReleaseFormula)
 def _(f: ReleaseFormula, i, k, v, j, idDict):
@@ -187,7 +190,7 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
     if ABS_OPT:
         global NEW_ID
 
-        new_var = Bool("opt_var_" + str(NEW_ID)) 
+        new_var = Bool("opt_var_" + str(NEW_ID))
         NEW_ID += 1
 
         abstract_dict = dict()
@@ -196,7 +199,8 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
 
         return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
     else:
-        return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
+        return And([Or(and_chi),
+                    Or([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
 
 
 @_trans.register(FinallyFormula)
@@ -216,7 +220,7 @@ def _(f: FinallyFormula, i, k, v, j, idDict):
     if ABS_OPT:
         global NEW_ID
 
-        new_var = Bool("opt_var_" + str(NEW_ID)) 
+        new_var = Bool("opt_var_" + str(NEW_ID))
         NEW_ID += 1
 
         abstract_dict = dict()
