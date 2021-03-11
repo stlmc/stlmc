@@ -519,11 +519,9 @@ def flowstar_gen(s_f_list, max_bound, sigma, conf_dict):
     for i in range(max_bound + 1):
         FlowStarConverter.make_transition(s_f_list[i], i, max_bound, ha, l_mode[i], l_mode[i + 1])
 
-
     # add init mode
     start_mode = ha.new_mode("start")
     ha.new_transition("startTrasition", start_mode, l_mode[0])
-
 
     forall_set, integral_set, init_set, tau_set, reset_set, guard_set = unit_split(s_f_list[0], max_bound)
 
@@ -724,7 +722,6 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
             max_left_value = float("inf")
             max_right_value = -float("inf")
             for bbl in _bound_box_list:
-                print (bbl)
                 if bbl[i][0] < max_left_value:
                     max_left_value = bbl[i][0]
                 if bbl[i][1] > max_right_value:
@@ -736,7 +733,7 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
 
     def _find_representative_l_v(_l_vs):
         if len(_l_vs) <= 1:
-            return _l_vs
+            return _l_vs[0]
         _l_v_set = set(_l_vs[0])
         representative_l_v = _l_vs[0]
         for _i, _l_v in enumerate(_l_vs[1:]):
@@ -750,14 +747,14 @@ def flowstar_merging_solver(l: list, is_mini_merging=False):
         for bbi, bb in enumerate(_bound_box_list):
             _new_bound_box = list()
             for _v_i, _v in enumerate(_representative_l_v):
-                for _v_i2, _v2 in enumerate(_l_vs[bbi]):
-                    if _v == _v2:
-                        _new_bound_box.append(bb[_v_i2])
-                    else:
-                        _new_bound_box.append([0.0, 0.0])
+                _given_l_v = _l_vs[bbi]
+                if _v in _given_l_v:
+                    _index = _given_l_v.index(_v)
+                    _new_bound_box.append(bb[_index])
+                else:
+                    _new_bound_box.append([0.0, 0.0])
             _new_bound_box_list.append(_new_bound_box)
         return _new_bound_box_list
-
 
     ha_list = list()
     bound_box_list = list()
