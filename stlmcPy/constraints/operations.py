@@ -314,61 +314,71 @@ def _(const: Forall):
 
 
 @singledispatch
-def relaxing(const: Formula, delta):
+def relaxing(const: Formula, delta: float):
     return const
 
 
 @relaxing.register(And)
-def _(const: And, delta):
+def _(const: And, delta: float):
     return And([relaxing(c, delta) for c in const.children])
 
 
 @relaxing.register(Or)
-def _(const: Or, delta):
+def _(const: Or, delta: float):
     return Or([relaxing(c, delta) for c in const.children])
 
 
 @relaxing.register(Not)
-def _(const: Not, delta):
+def _(const: Not, delta: float):
     return Not(relaxing(const.child, delta))
 
 
 @relaxing.register(Implies)
-def _(const: Implies, delta):
+def _(const: Implies, delta: float):
     return Implies(relaxing(const.left, delta), relaxing(const.right, delta))
 
 
 @relaxing.register(Geq)
-def _(const: Geq, delta):
-    return Geq(const.left, Sub(const.right, delta))
+def _(const: Geq, delta: float):
+    return Geq(const.left, Sub(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Gt)
-def _(const: Gt, delta):
-    return Geq(const.left, Sub(const.right, delta))
+def _(const: Gt, delta: float):
+    return Geq(const.left, Sub(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Leq)
-def _(const: Leq, delta):
-    return Leq(const.left, Add(const.right, delta))
+def _(const: Leq, delta: float):
+    return Leq(const.left, Add(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Lt)
-def _(const: Lt, delta):
-    return Leq(const.left, Add(const.right, delta))
+def _(const: Lt, delta: float):
+    return Leq(const.left, Add(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Eq)
-def _(const: Eq, delta):
+def _(const: Eq, delta: float):
     if isinstance(const.left, Bool) or isinstance(const.right, Bool):
         return const
-    return And([Geq(const.left, Sub(const.right, Div(delta, RealVal('2')))),
-                Leq(const.left, Add(const.right, Div(delta, RealVal('2'))))])
+    return And([Geq(const.left, Sub(const.right, Div(RealVal(str(delta)), RealVal('2')))),
+                Leq(const.left, Add(const.right, Div(RealVal(str(delta)), RealVal('2'))))])
 
 
 @relaxing.register(Neq)
-def _(const: Neq, delta):
+def _(const: Neq, delta: float):
     return Not(relaxing(Eq(const.left, const.right), delta))
+
+
+@relaxing.register(BinaryTemporalFormula)
+def _(const: BinaryTemporalFormula, delta: float):
+    return const.__class__(const.local_time, const.global_time, relaxing(const.left, delta), relaxing(const.right, delta))
+
+
+@relaxing.register(UnaryTemporalFormula)
+def _(const: UnaryTemporalFormula, delta: float):
+    return const.__class__(const.local_time, const.global_time, relaxing(const.child, delta))
 
 
 @singledispatch
