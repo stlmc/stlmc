@@ -12,7 +12,7 @@ from spaceex.core import Spaceex, TestSpaceex
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, infix
 from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
+from stlmcPy.hybrid_automaton.converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
@@ -203,7 +203,6 @@ class SpaceExConverter(AbstractConverter):
 
         trans_i.set_reset(And(phi_new_reset_children))
 
-
 def space_ex_run(s_f_list, max_bound, sigma, tau_guard_list):
     # printer = Printer()
     # printer.print_debug("\n\ninput s_f_list : \n\n{}".format(s_f_list))
@@ -321,6 +320,47 @@ def space_ex_run(s_f_list, max_bound, sigma, tau_guard_list):
         return False
     else:
         return True
+
+
+def spaceex_solver(l: list):
+    ha_list = list()
+    # for integrity, l_vs are all the same
+    latest_l_v = list()
+    latest_bound_box_list = list()
+    latest_conf_dict = dict()
+    if len(l) > 0:
+        for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
+            # if i > 0:
+            #    #assert l_v == latest_l_v
+            #    #assert new_bound_box_list == latest_bound_box_list
+            #    #assert latest_conf_dict == conf_dict
+            ha.name = "{}_{}".format(ha.name, i)
+            ha_list.append(ha)
+            # print(ha)
+            latest_l_v = l_v
+            latest_bound_box_list = new_bound_box_list
+            latest_conf_dict = conf_dict
+            # print(ha)
+            fs = SpaceexConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+            model_string = fs.convert(ha)
+            flowStarRaw = Spaceex()
+            flowStarRaw.run(model_string)
+            if flowStarRaw.result:
+                return False
+        return True
+
+        # nha = merge(*ha_list, chi_optimization=False)
+        # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+        # model_string = fs.convert(nha)
+        # flowStarRaw = FlowStar()
+        # flowStarRaw.run(model_string)
+        # print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
+        # if flowStarRaw.result:
+        #     return False
+        # else:
+        #     return True
+    return True
+
 
 
 class SpaceExSolverNaive(CommonOdeSolver):

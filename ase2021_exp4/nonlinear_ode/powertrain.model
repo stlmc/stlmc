@@ -1,0 +1,239 @@
+real m;
+[0,180] theta;
+[0,10]   p;
+[0,100] lambda;
+
+[0,10]   pe;
+[0,100] i;
+[0,100] acctime;
+[0,10]  fc;
+
+[0,180] thetaI;
+[0,150] w;
+
+[0,1]   duration;
+
+const real c1 = 0.41328;
+const real c2 = -0.366;
+const real c3 = 0.08979;
+const real c4 = -0.0337;
+const real c5 = 0.0001;
+const real c6 = 2.821;
+const real c7 = -0.05231;
+const real c8 = 0.10299;
+const real c9 = -0.00063;
+const real c10 = 1.0;
+const real c11 = 14.7;
+const real c11P	= 12.5;
+const real c12 = 0.9;
+const real c13 = 0.04;
+const real c14 = 0.14;
+const real c15 = 13.893;
+const real c16 = -35.2518;
+const real c17 = 20.7364;
+const real c18 = 2.6287;
+const real c19 = -1.592;
+const real c20 = -2.3421;
+const real c21 = 2.7799;
+const real c22 = -0.3273;
+const real c23 = 1.0;
+const real c24 = 1.0;
+const real c25 = 1.0;
+const real c26 = 4.0;
+
+const real tauI	= 10;
+const real h = 1;
+
+
+# startup
+{
+  mode:
+    m = 1;
+  inv:
+    (duration >= 0);
+  flow:
+    d/dt[theta]  = 10 * (thetaI - theta);
+    d/dt[p]      = c1 * ((c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) - (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+));
+    d/dt[lambda] = c26 * (c15 + c16*c25*fc + c17*c25*c25*fc*fc + c18 * (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+) + c19* (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)) * c25 * fc - lambda);
+    d/dt[pe]     = 0;
+    d/dt[i]      = 0;
+    d/dt[acctime]    = 0;
+    d/dt[fc]     = 0;
+    d/dt[duration]      = -1;
+    d/dt[thetaI] = 0;
+    d/dt[w]      = 0;
+  jump:
+    (and (duration = 0) (acctime + h < tauI)) =>
+    (and (m' = 1) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda) 
+            (thetaI' = thetaI) 
+            (w' = w)
+            (pe' = pe + h * c1 * (c23 * (2 * (c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) * (c20*p*p+c21*p+c22)) - (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe)))
+            (i' = 0) 
+            (acctime' = acctime + h)
+	    (fc' = (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe) / c11)
+            (duration' = h));
+
+    (and (duration = 0) (acctime + h >= tauI)) =>
+      (and (m' = 2) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda) 
+            (thetaI' = thetaI) 
+            (w' = w) 
+            (pe' = pe) 
+            (i' = i) 
+            (acctime' = acctime) 
+            (fc' = fc) 
+            (duration' = h));
+}
+# normal
+{
+  mode:
+     m = 2;
+  inv:
+    (duration >= 0);
+  flow:
+    d/dt[theta]  = 10 * (thetaI - theta);
+    d/dt[p]      = c1 * ((c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) - (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+));
+    d/dt[lambda] = c26 * (c15 + c16*c25*fc + c17*c25*c25*fc*fc + c18 * (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+) + c19* (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)) * c25 * fc - lambda);
+    d/dt[pe]     = 0;
+    d/dt[i]      = 0;
+    d/dt[acctime]    = 0;
+    d/dt[fc]     = 0;
+    d/dt[duration]      = -1;
+    d/dt[thetaI] = 0;
+    d/dt[w]      = 0;
+  jump:
+    (and (duration = 0) (theta < 70)) =>
+      (and (m' = 2) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda)
+            (thetaI' = thetaI) 
+            (w' = w)
+            (pe' = pe + h * c1 * (c23 * (2 * (c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) * (c20*p*p+c21*p+c22)) - (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe)))
+            (i' = i + h * c14 * (c24 * lambda - c11))
+            (acctime' = 0)
+	    (fc' = (1 + i + c13 * (c24 * lambda - c11)) * (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe) / c11)
+	    (duration' = h));
+
+    (and (duration = 0) (theta >= 70)) =>
+      (and (m' = 3) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda) 
+            (thetaI' = thetaI) 
+            (w' = w) 
+            (pe' = pe) 
+            (i' = i) 
+            (acctime' = acctime) 
+            (fc' = fc) 
+            (duration' = h));
+
+    (duration = 0) =>
+      (and (m' = 4) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda) 
+            (thetaI' = thetaI) 
+            (w' = w) 
+            (pe' = pe) 
+            (i' = i) 
+            (acctime' = acctime) 
+            (fc' = fc) 
+            (duration' = h));
+}
+
+# power
+{
+  mode: 
+    m = 3;
+  inv:
+    (duration >= 0);
+  flow:
+    d/dt[theta]  = 10 * (thetaI - theta);
+    d/dt[p]      = c1 * ((c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) - (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+));
+    d/dt[lambda] = c26 * (c15 + c16*c25*fc + c17*c25*c25*fc*fc + c18 * (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+) + c19* (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)) * c25 * fc - lambda);
+    d/dt[i]      = 0;
+    d/dt[acctime]    = 0;
+    d/dt[fc]     = 0;
+    d/dt[duration]      = -1;
+    d/dt[thetaI] = 0;
+    d/dt[w]      = 0;
+  jump:
+    (and (duration = 0) (theta > 50)) =>
+      (and (m' = 3) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda)
+            (thetaI' = thetaI) 
+            (w' = w)
+            (pe' = pe + h * c1 * (c23 * (2 * (c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) * (c20*p*p+c21*p+c22)) - (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe)))
+            (i' = 0) 
+            (acctime' = 0)
+            (fc' = (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe) / c11P)
+            (duration' = h));
+
+    (and (duration = 0) (theta <= 50)) =>
+      (and (m' = 2) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda) 
+            (thetaI' = thetaI) 
+            (w' = w) 
+            (pe' = pe) 
+            (i' = i) 
+            (acctime' = acctime) 
+            (fc' = fc) 
+            (duration' = h));
+}
+
+# sensor_fail mode
+{
+  mode:
+    m = 4;
+  inv:
+    (duration >= 0);
+  flow:
+    d/dt[theta]  = 10 * (thetaI - theta);
+    d/dt[p]      = c1 * ((c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) - (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+));
+    d/dt[lambda] = c26 * (c15 + c16*c25*fc + c17*c25*c25*fc*fc + c18 * (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)
+) + c19* (c12 * (c2 + c3*w*p + c4*w*p*p + c5*w*w*p)) * c25 * fc - lambda);
+    d/dt[pe]     = 0;
+    d/dt[i]      = 0;
+    d/dt[acctime]    = 0;
+    d/dt[fc]     = 0;
+    d/dt[duration]      = -1;
+    d/dt[thetaI] = 0;
+    d/dt[w]      = 0;
+  jump:
+    (duration = 0) =>
+      (and (m' = 3) (theta' = theta) 
+            (p' = p) 
+            (lambda' = lambda)
+            (thetaI' = thetaI) 
+            (w' = w)
+            (pe' = pe + h * c1 * (c23 * (2 * (c6 + c7*theta + c8*theta*theta + c9*theta*theta*theta) * (c20*p*p+c21*p+c22)) - (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe)))
+            (i' = 0) 
+            (acctime' = 0)
+            (fc' = (c2 + c3*w*pe + c4*w*pe*pe + c5*w*w*pe) / c11)
+            (duration' = h));
+}
+
+init: 
+(and (m = 1) (theta = 8.8) (p = 0.9833) (lambda = 14.7) (pe = 0.9) (i = 0) (acctime = 0) (fc = 0.6537) (duration = h) (w = 95) (thetaI = 10));
+
+propositions:
+lamless4 = lambda < 4;
+
+#timebound 30
+goal:
+<>[0,20] duration < 0.01;
+(lamless4 R [6, 20] (theta >= 0)); # true
+[][4, 14] (theta > 4 -> <>[0, 10] p > 1); # true
+[] [15,25] (p > 4.5 -> fc < 0.5);
+
+

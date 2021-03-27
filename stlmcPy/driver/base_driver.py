@@ -117,8 +117,12 @@ class StlConfiguration:
 
         yices_dict = dict()
         yices_dict["logic"] = "QF_NRA"
+
+        c2e2_dict = dict()
+        c2e2_dict["logic"] = "QF_NRA"
         solver_defaults["z3"] = z3_dict
         solver_defaults["yices"] = yices_dict
+        solver_defaults["c2e2"] = c2e2_dict
 
         self.config_visitor = ConfigVisitor(self._solver_list, solver_defaults, self._formula_encoding_list,
                                             ["normal", "verbose", "debug"])
@@ -307,6 +311,7 @@ class Runner:
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
         object_manager = ObjectFactory(config.encoding).generate_object_manager()
         success = False
+        print(config.solver_configs)
         for _solver_conf in config.solver_configs:
             if in_dict("solver", _solver_conf) and _solver_conf["solver"] == config.solver:
                 success = True

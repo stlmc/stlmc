@@ -1,0 +1,48 @@
+# model description:
+#
+bool a;
+[0, 10] s;
+[-1, 10] u;
+[-1, 10] v;
+{
+    mode:
+        a = false;
+    inv:
+	s < 20;
+    flow:
+        d/dt[s] = 1;
+        d/dt[u] = -0.9 * u * u - u * u * u - 0.9 * u - v;
+        d/dt[v] = u - 2 * v;
+    jump:
+	(s >= 20) => (and (a' = true) (u' = u) (v' = v) (s' = 0));
+}
+{
+    mode:
+        a = true;
+    inv:
+	s < 5;
+    flow:
+        d/dt[s] = 1;
+        d/dt[u] = -0.9 * u * u - u * u * u - 0.9 * u - v + 1;
+        d/dt[v] = u - 2 * v; 
+    jump:
+	(s >= 5) => (and (a' = false) (u' = u) (v' = v) (s' = 0)); 
+}
+init:
+(and (a = true) (0 < u) (u < 0.1) (0 < v) (v < 0.1) (s > 0) (s < 0.1)); 
+
+# unsafe region
+# u >= 2.5
+
+propositions:
+#reachability = x1 >= 26;
+#q = x1 <= 21;
+#x1T = x1 > 27 ;
+
+# timebound : 40
+goal:
+(<> [0.0, 10) u >= 5); # false
+(u > 3 R [0.5, 10] s < 10); 
+[] [0, 20] ((u > 5) -> <> [0, 10) (v > 3));
+<>[2, 15](u > 5 R[0, 10] s < 10);
+

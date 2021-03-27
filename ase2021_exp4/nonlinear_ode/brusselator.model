@@ -1,0 +1,45 @@
+
+bool a;
+[-1000, 1000] x;
+[-1000, 1000] y;
+{
+    mode:
+        a = true;
+    inv:
+	-800 <= x;
+	x <= 800;
+	-800 <= y;
+	y <= 800;
+    flow:
+        d/dt[x] = 1 - 2.5 * x + x * x * y;
+        d/dt[y] = 1.5 * x - x * x * y;
+    jump:
+	(or (x >= 800) (x <= -800) (y >= 800) (y <= -800)) =>
+		(and (a' = false) (x' = x) (y' = y));
+}
+{
+    mode:
+        a = false;
+    inv:
+    flow:
+        d/dt[x] = 0; 
+        d/dt[y] = 0;
+    jump:
+}
+
+
+init:
+(and a (2 <= x) (x <= 3) (1 <= y) (y <= 1.5)); 
+
+propositions:
+#reachability = x1 >= 26;
+#q = x1 <= 21;
+#x1T = x1 > 27 ;
+
+#timebound : 30
+goal:
+(<> [0.0, 20) x >= 10); 
+((x < 10) U [4.0, 8.0] (y > 3)); 
+<> [0.0, 10.0] (y < 5 U [5.0, 15.0] (x > 5));
+[][0, 15](<> [5, 10] x < 1); 
+

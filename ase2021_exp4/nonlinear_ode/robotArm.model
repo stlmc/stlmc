@@ -1,0 +1,58 @@
+# model description:
+#
+
+bool a;
+[-60, 60] theta;
+[-60, 60] omega;
+[-60, 60] r;
+[-60, 60] v;
+{
+    mode:
+        a = true;
+    inv:
+	-50 <= theta;
+	theta <= 50;
+	-50 <= omega;
+	omega <= 50;
+    flow:
+        d/dt[theta] = omega;
+        d/dt[r] = v;
+        d/dt[omega] = (4 - 2 * r * omega * v - 2 * theta - 2 * omega) / (r * r + 1);
+        d/dt[v] = r * omega * omega - r - v + 1;
+    jump:
+	(or (theta >= 50) (theta <= -50) (omega >= 50) (omega <= -50)) =>
+		(and (a' = false) (theta' = theta) (omega' = omega) (r' = r) (v' = v));
+}
+{
+    mode:
+        a = false;
+    inv:
+    flow:
+        d/dt[theta] = 0;
+        d/dt[r] = 0;
+        d/dt[omega] = 0; 
+        d/dt[v] = 0;
+    jump:
+}
+
+init:
+(and a (theta >= 1.25) (theta <= 1.75) (r >= 1.25) (r <= 1.75) (omega >= 0) (omega <= 1) (v >= 0) (v <= 1));
+# origin init
+# (and (theta >= 1.50) (theta <= 1.51) (r >= 1.50) (r <= 1.51) (omega >= 0.0) (omega <= 0.01) (v >= 0.0) (v <= 0.01));
+
+propositions:
+#reachability = x1 >= 26;
+#q = x1 <= 21;
+#x1T = x1 > 27 ;
+
+# timebound : 20
+goal:
+([] [0, 10) ((and (v >= -0.04) (v <= -0.02)) -> theta <= 1.8));
+(<> [0.0, 10) v >= 0.7); 
+((<>[0, 10] r > 2) R [0.0, 8.0] omega > 1); 
+<> [0.0, 10.0] (r < 5 U [5.0, 10.0] (theta > 3)); # false
+
+
+
+
+

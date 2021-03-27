@@ -9,12 +9,13 @@ DELTA: 'delta';
 LOGIC: 'logic';
 
 // solvers
-//Z3: 'z3';
-//YICES: 'yices';
+Z3: 'z3';
+YICES: 'yices';
 //DREAL: 'dreal';
-//FLOWSTAR: 'flowstar';
+FLOWSTAR: 'flowstar';
+FLOWSTAR_MERGING: 'flowstar-merging';
 //SPACEEX: 'spaceex';
-//C2E2: 'c2e2';
+C2E2: 'c2e2';
 //HYLAA: 'hylaa';
 
 
@@ -30,6 +31,7 @@ FS_CUT_OFF: 'cutoff';
 FS_PRECISION: 'precision';
 FS_NO_OUTPUT: 'no output';
 FS_MAX_JUMPS: 'max jumps';
+KVALUE: 'kvalue';
 
 
 //conf_dict["fixed steps"] = "0.01"
@@ -86,12 +88,24 @@ time_bound_config: TIME_BOUND EQ NUMBER;
 print_config: PRINT_OUTPUT EQ QUOTE VALUE QUOTE ;
 delta_config: DELTA EQ NUMBER ;
 
-solver_config: VALUE LCURLY solver_specific? RCURLY                                                      # solver_conf
+solver_config: FLOWSTAR LCURLY flowstar_configs? RCURLY                                                      # flowstar_conf
+             | FLOWSTAR_MERGING LCURLY flowstar_configs? RCURLY                                              # flowstar_merging_conf
+             | YICES LCURLY yices_configs? RCURLY                                                      # yices_conf
+             | Z3 LCURLY z3_configs? RCURLY                                                      # z3_conf
+             | C2E2 LCURLY c2e2_configs? RCURLY                                                        # c2e2_conf
                ;
 
-solver_specific: flowstar_config+ | yices_config+ ;
-yices_config: LOGIC QUOTE VALUE QUOTE                                                                # yices_logic
-                ;
+flowstar_configs: flowstar_config+;
+yices_configs: yices_config+;
+z3_configs: z3_config+;
+c2e2_configs: c2e2_config+;
+
+z3_config: LOGIC QUOTE VALUE QUOTE                                                                  # z3_logic;
+yices_config: LOGIC QUOTE VALUE QUOTE                                                                # yices_logic;
+c2e2_config: FS_FIXED_STEPS NUMBER                                                      # c2e2_fixed_step
+            | FS_TIME NUMBER                                                            # c2e2_time
+            | KVALUE NUMBER                                                          # c2e2_kvalue;
+
 
 flowstar_variable_list: VALUE                                                                           # fs_single_value_list
                 | VALUE COMMA VALUE                                                                     # fs_single_pair_value_list
