@@ -1,32 +1,18 @@
-import abc
-import copy
-from abc import ABC
 from functools import singledispatch
-from itertools import product
+from typing import *
 
-from sympy import symbols, simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Symbol, Float, Equality, \
-    Unequality
-from sympy.core import relational
+from sympy import simplify, Equality
 
 from flowstar.core import FlowStar
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import substitution, reduce_not, get_vars, infix, clause
 from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.hybrid_automaton.converter import AbstractConverter, HaGenerator
+from stlmcPy.hybrid_automaton.converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
-from stlmcPy.hybrid_automaton.utils import merge, calc_initial_terminal_modes, new_merge, vars_in_ha
-from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
+from stlmcPy.hybrid_automaton.utils import calc_initial_terminal_modes, vars_in_ha
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, ReductionStrategyManager, \
     UnsatCoreStrategyManager, MergeSolvingStrategy, NormalSolvingStrategy
-from stlmcPy.solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, expr_to_sympy_inequality, \
-    find_index
-from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
-from stlmcPy.solver.z3 import Z3Solver
-from stlmcPy.tree.operations import size_of_tree
-from stlmcPy.util.logger import Logger
-from stlmcPy.util.print import Printer
-from typing import *
+from stlmcPy.solver.ode_utils import expr_to_sympy, expr_to_sympy_inequality
 
 
 class FlowStarConverter(AbstractConverter):
@@ -45,7 +31,7 @@ class FlowStarConverter(AbstractConverter):
         ff_inv = Gt(ff, zero)
 
         for mode in ha.modes:
-            mode.set_dynamics(ff, zero)
+            mode.set_dynamic(ff, zero)
             mode.set_invariant(ff_inv)
 
     def solve(self):
@@ -80,6 +66,7 @@ class FlowStarConverter(AbstractConverter):
                     _dict[keyword] = _setting[keyword]
             return _dict
 
+        self.preprocessing(ha)
         initial_modes, terminal_modes = calc_initial_terminal_modes(ha)
 
         modes_str_list = list()
@@ -96,7 +83,7 @@ class FlowStarConverter(AbstractConverter):
                 mode_str += "{}\n".format(expr_to_sympy_inequality(inv)).replace(">", ">=").replace("<",
                                                                                                     "<=").replace(
                     ">==", ">=").replace("<==", "<=").replace("**", "^")
-            mode_str += "}"
+            mode_str += "}\n}"
             modes_str_list.append(mode_str)
 
         modes_str = "modes {{\n {}\n}}\n".format("\n".join(modes_str_list))
@@ -236,12 +223,6 @@ class FlowStarSolverNaive(CommonOdeSolver):
             underlying_solver = MergeSolvingStrategy(flowstar_merging_solver)
         CommonOdeSolver.__init__(self, NaiveStrategyManager(), underlying_solver)
 
-    def run(self, s_f_list, max_bound, sigma):
-        conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
-        self.set_time("solving timer", time)
-        return result
-
     def make_assignment(self):
         pass
 
@@ -256,12 +237,6 @@ class FlowStarSolverReduction(CommonOdeSolver):
         if self.conf_dict["merging_strategy"]:
             underlying_solver = MergeSolvingStrategy(flowstar_merging_solver)
         CommonOdeSolver.__init__(self, ReductionStrategyManager(), underlying_solver)
-
-    def run(self, s_f_list, max_bound, sigma):
-        conf_dict = make_flowstar_conf_dict(self.conf_dict)
-        result, time = flowstar_run(s_f_list, max_bound, sigma, conf_dict)
-        self.set_time("solving timer", time)
-        return result
 
     def make_assignment(self):
         pass

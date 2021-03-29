@@ -219,7 +219,7 @@ class BaseMode:
             pass
 
     def remove_invariants(self, invariants: Set):
-        self.invariant = self.invariant.difference(invariants)
+        self._invariant = self._invariant.difference(invariants)
 
     def belongs_to(self):
         return self.ha

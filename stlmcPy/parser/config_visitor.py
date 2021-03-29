@@ -96,6 +96,18 @@ class ConfigVisitor(configVisitor):
         self._config_dict["delta"] = delta
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by configParser#spaceex_conf.
+    def visitSpaceex_conf(self, ctx: configParser.Spaceex_confContext):
+        solver_dict = dict()
+        solver_dict["solver"] = "spaceex"
+        if ctx.spaceex_configs() is not None:
+            queue = self.visit(ctx.spaceex_configs())
+            for q in queue:
+                solver_dict.update(self.visit(q))
+        else:
+            solver_dict.update(self._solver_defaults["spaceex"])
+        self._config_dict["solvers"].append(solver_dict)
+
     # Visit a parse tree produced by configParser#flowstar_conf.
     def visitFlowstar_conf(self, ctx: configParser.Flowstar_confContext):
         solver_dict = dict()
@@ -109,7 +121,7 @@ class ConfigVisitor(configVisitor):
         self._config_dict["solvers"].append(solver_dict)
 
     # Visit a parse tree produced by configParser#flowstar_merging_conf.
-    def visitFlowstar_merging_conf(self, ctx:configParser.Flowstar_merging_confContext):
+    def visitFlowstar_merging_conf(self, ctx: configParser.Flowstar_merging_confContext):
         solver_dict = dict()
         solver_dict["solver"] = "flowstar-merging"
         if ctx.flowstar_configs() is not None:
@@ -127,32 +139,36 @@ class ConfigVisitor(configVisitor):
             queue.append(c)
         return queue
 
+    # Visit a parse tree produced by configParser#spaceex_configs.
+    def visitSpaceex_configs(self, ctx: configParser.Spaceex_configsContext):
+        queue = list()
+        for c in ctx.spaceex_config():
+            queue.append(c)
+        return queue
+
     # Visit a parse tree produced by configParser#yices_configs.
-    def visitYices_configs(self, ctx:configParser.Yices_configsContext):
+    def visitYices_configs(self, ctx: configParser.Yices_configsContext):
         queue = list()
         for c in ctx.yices_config():
             queue.append(c)
         return queue
 
-
     # Visit a parse tree produced by configParser#z3_configs.
-    def visitZ3_configs(self, ctx:configParser.Z3_configsContext):
+    def visitZ3_configs(self, ctx: configParser.Z3_configsContext):
         queue = list()
         for c in ctx.z3_config():
             queue.append(c)
         return queue
 
-
     # Visit a parse tree produced by configParser#c2e2_configs.
-    def visitC2e2_configs(self, ctx:configParser.C2e2_configsContext):
+    def visitC2e2_configs(self, ctx: configParser.C2e2_configsContext):
         queue = list()
         for c in ctx.c2e2_config():
             queue.append(c)
         return queue
 
-
     # Visit a parse tree produced by configParser#yices_configs.
-    def visitYices_conf(self, ctx:configParser.Yices_confContext):
+    def visitYices_conf(self, ctx: configParser.Yices_confContext):
         solver_dict = dict()
         solver_dict["solver"] = "yices"
         if ctx.yices_configs() is not None:
@@ -164,7 +180,7 @@ class ConfigVisitor(configVisitor):
         self._config_dict["solvers"].append(solver_dict)
 
     # Visit a parse tree produced by configParser#c2e2_conf.
-    def visitC2e2_conf(self, ctx:configParser.C2e2_confContext):
+    def visitC2e2_conf(self, ctx: configParser.C2e2_confContext):
         solver_dict = dict()
         solver_dict["solver"] = "c2e2"
         if ctx.c2e2_configs() is not None:
@@ -176,7 +192,7 @@ class ConfigVisitor(configVisitor):
         self._config_dict["solvers"].append(solver_dict)
 
     # Visit a parse tree produced by configParser#z3_configs.
-    def visitZ3_conf(self, ctx:configParser.Z3_confContext):
+    def visitZ3_conf(self, ctx: configParser.Z3_confContext):
         solver_dict = dict()
         solver_dict["solver"] = "z3"
         if ctx.z3_configs() is not None:
@@ -188,7 +204,7 @@ class ConfigVisitor(configVisitor):
         self._config_dict["solvers"].append(solver_dict)
 
     # Visit a parse tree produced by configParser#z3_logic.
-    def visitZ3_logic(self, ctx:configParser.Z3_logicContext):
+    def visitZ3_logic(self, ctx: configParser.Z3_logicContext):
         logic_dict = dict()
         logic_dict["logic"] = "{}".format(ctx.VALUE())
         return logic_dict
@@ -200,25 +216,52 @@ class ConfigVisitor(configVisitor):
         return logic_dict
 
     # Visit a parse tree produced by configParser#c2e2_fixed_step.
-    def visitC2e2_fixed_step(self, ctx:configParser.C2e2_fixed_stepContext):
+    def visitC2e2_fixed_step(self, ctx: configParser.C2e2_fixed_stepContext):
         c2e2_dict = dict()
         c2e2_dict["step"] = "{}".format(ctx.NUMBER())
         return c2e2_dict
 
-
     # Visit a parse tree produced by configParser#c2e2_time.
-    def visitC2e2_time(self, ctx:configParser.C2e2_timeContext):
+    def visitC2e2_time(self, ctx: configParser.C2e2_timeContext):
         c2e2_dict = dict()
         c2e2_dict["time"] = "{}".format(ctx.NUMBER())
         return c2e2_dict
 
-
     # Visit a parse tree produced by configParser#c2e2_kvalue.
-    def visitC2e2_kvalue(self, ctx:configParser.C2e2_kvalueContext):
+    def visitC2e2_kvalue(self, ctx: configParser.C2e2_kvalueContext):
         c2e2_dict = dict()
         c2e2_dict["kvalue"] = "{}".format(ctx.NUMBER())
         return c2e2_dict
 
+    # Visit a parse tree produced by configParser#spaceex_time.
+    def visitSpaceex_time(self, ctx: configParser.Spaceex_timeContext):
+        spaceex_dict = dict()
+        spaceex_dict["time-horizon"] = "{}".format(ctx.NUMBER())
+        return spaceex_dict
+
+    # Visit a parse tree produced by configParser#spaceex_fixed_step.
+    def visitSpaceex_fixed_step(self, ctx: configParser.Spaceex_fixed_stepContext):
+        spaceex_dict = dict()
+        spaceex_dict["sampling-time"] = "{}".format(ctx.NUMBER())
+        return spaceex_dict
+
+    # Visit a parse tree produced by configParser#spaceex_max_discrete_computation.
+    def visitSpaceex_max_discrete_computation(self, ctx: configParser.Spaceex_max_discrete_computationContext):
+        spaceex_dict = dict()
+        spaceex_dict["iter-max"] = "{}".format(ctx.NUMBER())
+        return spaceex_dict
+
+    # Visit a parse tree produced by configParser#spaceex_rel_err.
+    def visitSpaceex_rel_err(self, ctx: configParser.Spaceex_rel_errContext):
+        spaceex_dict = dict()
+        spaceex_dict["rel-err"] = "{}".format(ctx.NUMBER1())
+        return spaceex_dict
+
+    # Visit a parse tree produced by configParser#spaceex_abs_err.
+    def visitSpaceex_abs_err(self, ctx: configParser.Spaceex_abs_errContext):
+        spaceex_dict = dict()
+        spaceex_dict["abs-err"] = "{}".format(ctx.NUMBER1())
+        return spaceex_dict
 
     # Visit a parse tree produced by configParser#fs_single_value_list.
     def visitFs_single_value_list(self, ctx: configParser.Fs_single_value_listContext):
@@ -253,7 +296,7 @@ class ConfigVisitor(configVisitor):
         return fs_dict
 
     # Visit a parse tree produced by configParser#fs_gnuplot_octagon.
-    def visitFs_gnuplot_octagon(self, ctx:configParser.Fs_gnuplot_octagonContext):
+    def visitFs_gnuplot_octagon(self, ctx: configParser.Fs_gnuplot_octagonContext):
         var_str = ""
         for i, v in enumerate(ctx.flowstar_variable_list()):
             if i == 0:

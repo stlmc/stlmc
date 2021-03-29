@@ -244,12 +244,28 @@ class HaGenerator:
                 mode.set_invariant(substitution(inv, subst_dict))
 
         for transition in ha.transitions:
+            guard_to_be_removed = set()
+            guard_to_be_updated = set()
             for guard in transition.guard:
-                transition.remove_guard(guard)
-                transition.set_guard(substitution(guard, subst_dict))
+                guard_to_be_removed.add(guard)
+                guard_to_be_updated.add(substitution(guard, subst_dict))
+                # transition.remove_guard(guard)
+                # transition.set_guard(substitution(guard, subst_dict))
+            transition.remove_guards(guard_to_be_removed)
+            for guard in guard_to_be_updated:
+                transition.set_guard(guard)
+
+            reset_to_be_removed = set()
+            reset_to_be_updated = set()
             for reset in transition.reset:
-                transition.remove_reset(reset)
-                transition.set_reset(substitution(reset, subst_dict))
+                reset_to_be_removed.add(reset)
+                reset_to_be_updated.add(substitution(reset, subst_dict))
+            transition.remove_resets(reset_to_be_removed)
+
+            for reset in reset_to_be_updated:
+                transition.set_reset(reset)
+                # transition.remove_reset(reset)
+                # transition.set_reset(substitution(reset, subst_dict))
 
 
 class AbstractConverter:

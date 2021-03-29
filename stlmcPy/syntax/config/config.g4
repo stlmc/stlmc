@@ -14,15 +14,20 @@ YICES: 'yices';
 //DREAL: 'dreal';
 FLOWSTAR: 'flowstar';
 FLOWSTAR_MERGING: 'flowstar-merging';
-//SPACEEX: 'spaceex';
+SPACEEX: 'spaceex';
 C2E2: 'c2e2';
 //HYLAA: 'hylaa';
+
+TIME: 'time';
+KVALUE: 'kvalue';
+MAX_DIS_COMP: 'max discrete computation';
+ABS_ERR: 'relative error';
+REL_ERR: 'absolute error';
 
 
 // flowstar specific configuration
 FS_FIXED_STEPS: 'fixed steps';
 FS_INITIALLY: 'initially';
-FS_TIME: 'time';
 FS_REMAINDER_ESTI: 'remainder estimation';
 FS_ID_PRECOND: 'identity precondition';
 FS_GNUPLOT_OCTAGON: 'gnuplot octagon';
@@ -31,7 +36,6 @@ FS_CUT_OFF: 'cutoff';
 FS_PRECISION: 'precision';
 FS_NO_OUTPUT: 'no output';
 FS_MAX_JUMPS: 'max jumps';
-KVALUE: 'kvalue';
 
 
 //conf_dict["fixed steps"] = "0.01"
@@ -93,18 +97,27 @@ solver_config: FLOWSTAR LCURLY flowstar_configs? RCURLY                         
              | YICES LCURLY yices_configs? RCURLY                                                      # yices_conf
              | Z3 LCURLY z3_configs? RCURLY                                                      # z3_conf
              | C2E2 LCURLY c2e2_configs? RCURLY                                                        # c2e2_conf
+             | SPACEEX LCURLY spaceex_configs? RCURLY                                               # spaceex_conf
                ;
 
 flowstar_configs: flowstar_config+;
 yices_configs: yices_config+;
 z3_configs: z3_config+;
 c2e2_configs: c2e2_config+;
+spaceex_configs: spaceex_config+;
 
 z3_config: LOGIC QUOTE VALUE QUOTE                                                                  # z3_logic;
 yices_config: LOGIC QUOTE VALUE QUOTE                                                                # yices_logic;
 c2e2_config: FS_FIXED_STEPS NUMBER                                                      # c2e2_fixed_step
-            | FS_TIME NUMBER                                                            # c2e2_time
+            | TIME NUMBER                                                            # c2e2_time
             | KVALUE NUMBER                                                          # c2e2_kvalue;
+
+spaceex_config: TIME NUMBER                     # spaceex_time
+            |   FS_FIXED_STEPS NUMBER           # spaceex_fixed_step
+            |   MAX_DIS_COMP    NUMBER          # spaceex_max_discrete_computation
+            |   REL_ERR NUMBER1                  # spaceex_rel_err
+            |   ABS_ERR NUMBER1                  # spaceex_abs_err
+            ;
 
 
 flowstar_variable_list: VALUE                                                                           # fs_single_value_list
@@ -112,7 +125,7 @@ flowstar_variable_list: VALUE                                                   
                 ;
 
 flowstar_config: FS_FIXED_STEPS NUMBER                                                   # fs_fixed_step
-               | FS_TIME NUMBER                                                          # fs_time
+               | TIME NUMBER                                                          # fs_time
                | FS_REMAINDER_ESTI NUMBER1                                    # fs_remainder
                | FS_ID_PRECOND                                                                          # fs_id_precond
                | FS_GNUPLOT_OCTAGON flowstar_variable_list+                                             # fs_gnuplot_octagon
