@@ -11,9 +11,13 @@ from c2e2.core import C2E2
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import substitution, reduce_not, get_vars
 from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
+from stlmcPy.hybrid_automaton.converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
+<<<<<<< HEAD
 from stlmcPy.hybrid_automaton.utils import calc_initial_terminal_modes
+=======
+from stlmcPy.hybrid_automaton.utils import calc_initial_terminal_modes, vars_in_ha
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
@@ -25,30 +29,86 @@ from stlmcPy.solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, Red
     UnsatCoreStrategyManager, NormalSolvingStrategy
 from stlmcPy.solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, expr_to_sympy_inequality, \
     find_index
+from typing import *
 
 
 class C2E2Converter(AbstractConverter):
+<<<<<<< HEAD
     def __init__(self, inits: str):
         self.inits = inits
         print(inits)
         self.var_set = set()
+=======
+    def solve(self):
+        c2e2_core_solver = C2E2()
+        c2e2_core_solver.run(self.convert_result)
+        solving_time = c2e2_core_solver.logger.get_duration_time("solving timer")
+        if c2e2_core_solver.result:
+            return False, solving_time
+        else:
+            return True, solving_time
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
 
-    def infix_reset(self, const: Constraint):
-        pass
+    def preprocessing(self, ha: HybridAutomaton):
 
-    def infix(self, const: Constraint):
-        pass
+        ffggee = Real("ffggee")
+        zero = RealVal("0")
+        one = RealVal("1")
 
-    def convert(self, ha: HybridAutomaton):
+        for mode in ha.modes:
+            mode.set_dynamic(ffggee, zero)
+
+        initial_modes, terminal_modes = calc_initial_terminal_modes(ha)
+
+        # ffggee < 0
+        non_error_const = Lt(ffggee, zero)
+        # ffggee > 0
+        error_const = Gt(ffggee, zero)
+        # ffggee = 1 : reset
+        error_on = Eq(ffggee, one)
+
+        for init_mode in initial_modes:
+            init_mode.set_invariant(non_error_const)
+
+            for init_trans in init_mode.outgoing:
+                init_trans.set_guard(non_error_const)
+
+        for term_mode in terminal_modes:
+            term_mode.set_invariant(error_const)
+
+            for term_trans in term_mode.incoming:
+                term_trans.set_reset(error_on)
+
+        for transition in ha.transitions:
+            to_be_removed_reset = set()
+            for reset in transition.reset:
+                assert isinstance(reset, Eq)
+                if reset.left == reset.right:
+                    to_be_removed_reset.add(reset)
+            transition.remove_resets(to_be_removed_reset)
+
+        _, terminal_modes = calc_initial_terminal_modes(ha)
+        var_set = vars_in_ha(ha)
+
+        # modes in c2e2 always have dynamics
+        for term_mode in terminal_modes:
+            for v in var_set:
+                term_mode.set_dynamic(v, RealVal("0"))
+
+    def convert(self, ha: HybridAutomaton, setting: Dict, variable_ordering: List, bound_box: List):
+        def _make_conf_dict(_setting: dict):
+            _dict = dict()
+            keywords = ["step", "time", "kvalue"]
+            for keyword in keywords:
+                if keyword in _setting:
+                    _dict[keyword] = _setting[keyword]
+            return _dict
+
+        self.preprocessing(ha)
+        print("after preprocessing")
         print(ha)
-        mode_map = dict()
-        # for mode
-        vars = dict()
-        vars_dyn = dict()
-
-        # for dynamics, key: old variable, value: new variable
-        vars_old_new_map = dict()
         modes_str_list = list()
+<<<<<<< HEAD
 
         initial_modes, terminal_modes = calc_initial_terminal_modes(ha)
 
@@ -107,26 +167,46 @@ class C2E2Converter(AbstractConverter):
                             .replace(">=", "&gt;=")
                             .replace("<", "&lt;")
                             .replace("<=", "&lt;="))
-                else:
-                    mode_str += "  <invariant equation=\"{}\"/>\n".format(str(simplify(expr_to_sympy_inequality(inv)))
-                                                                          .replace(">", "&gt;")
-                                                                          .replace(">=", "&gt;=")
-                                                                          .replace("<", "&lt;")
-                                                                          .replace("<=", "&lt;="))
+=======
 
+        initial_modes, terminal_modes = calc_initial_terminal_modes(ha)
+
+        # there should be only one initial mode
+        # assert len(initial_modes) == 1
+
+        # get all variables and specify their types
+        for mode in ha.modes:
+            mode_str = " <mode id=\"{}\" initial=\"False\" name=\"{}\">\n".format(id(mode), mode.name)
+            if mode in initial_modes:
+                mode_str = " <mode id=\"{}\" initial=\"True\" name=\"{}\">\n".format(id(mode), mode.name)
+
+            for (var, exp) in mode.dynamics:
+                mode_str += "  <dai equation=\"{}_dot = {}\"/>\n".format(var, simplify(expr_to_sympy(exp)))
+
+            for inv in mode.invariant:
+                simplified_inv = simplify(expr_to_sympy_inequality(inv))
+                _str = ""
+                if isinstance(simplified_inv, Equality):
+                    _str = "{} &lt;= {} &amp;&amp; {} &gt;= {}".format(simplified_inv.lhs, simplified_inv.rhs,
+                                                                       simplified_inv.lhs, simplified_inv.rhs)
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
+                else:
+                    _str = "{}".format(simplified_inv)
+                _mode_str = _str.replace(">", "&gt;").replace(">=", "&gt;=").replace("<", "&lt;").replace("<=", "&lt;=")
+                mode_str += "  <invariant equation=\"{}\"/>\n".format(_mode_str)
             mode_str += " </mode>\n"
             modes_str_list.append(mode_str)
 
         modes_str = "\n".join(modes_str_list)
 
         var_str_list = list()
-        for v in self.var_set:
+        var_set = vars_in_ha(ha)
+        for v in var_set:
             var_str_list.append("  <variable name=\"{}\" scope=\"LOCAL_DATA\" type=\"Real\"/>".format(v.id))
         var_str = "\n".join(var_str_list)
 
-        is_error_guard = False
-        error_guard_list = list()
         trans_str_list = list()
+<<<<<<< HEAD
         for i, t in enumerate(ha.transitions):
             # src_id = mode_map[ha.trans[t].src.name]
             # dst_id = mode_map[ha.trans[t].trg.name]
@@ -145,17 +225,30 @@ class C2E2Converter(AbstractConverter):
                         if is_error_guard:
                             error_guard_list.append(ng)
                         t_str += "   <guard equation=\"{}\"/>\n".format(ng)
+=======
+        for i, transition in enumerate(ha.transitions):
+            t_str = "  <transition destination=\"{}\" id=\"{}\" source=\"{}\">\n".format(id(transition.trg), i,
+                                                                                         id(transition.src))
+            for guard in transition.guard:
+                simplified_guard = simplify(expr_to_sympy_inequality(guard))
+                _str = ""
+                if isinstance(simplified_guard, Equality):
+                    _str = "{} &lt;= {} &amp;&amp; {} &gt;= {}".format(simplified_guard.lhs, simplified_guard.rhs,
+                                                                       simplified_guard.lhs, simplified_guard.rhs)
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
                 else:
-                    ng = str(expr_to_sympy_inequality(guard)).replace(">", "&gt;").replace(">=", "&gt;=").replace("<",
-                                                                                                                  "&lt;").replace(
-                        "<=", "&lt;=")
-                    if is_error_guard:
-                        error_guard_list.append(ng)
-                    t_str += "   <guard equation=\"{}\"/>\n".format(ng)
-                # whole_g_str = infix(ha.trans[t].guard)
-                # for g_str in whole_g_str.split("&"):
-                #     t_str += "{}\n".format(g_str)
+                    _str = "{}".format(simplified_guard)
+                g_str = _str.replace(">", "&gt;").replace(">=", "&gt;=").replace("<", "&lt;").replace("<=", "&lt;=")
+                t_str += "   <guard equation=\"{}\"/>\n".format(g_str)
+
+            for reset in transition.reset:
+                assert isinstance(reset, Eq)
+                assert isinstance(reset.left, Variable)
+
+                t_str += "   <action equation=\"{}\"/>\n".format(C2E2infixReset(reset))
+            t_str += "  </transition>"
             trans_str_list.append(t_str)
+<<<<<<< HEAD
             if t.reset is not None:
                 trans_reset = t.reset
                 if isinstance(trans_reset, And):
@@ -497,6 +590,30 @@ def c2e2_run(s_f_list, max_bound, sigma):
         return False
     else:
         return True
+=======
+
+        trans_str = "\n".join(trans_str_list)
+
+        # get unique initial mode
+        # init_mode = initial_modes.pop()
+
+        init_str_list = list()
+        for i, v in enumerate(variable_ordering):
+            init_str_list.append("{} &gt;= {} &amp;&amp; {} &lt;= {}".format(v, bound_box[i][0], v, bound_box[i][1]))
+        init_str = "&amp;&amp;".join(init_str_list)
+
+        c2e2_setting = _make_conf_dict(setting)
+
+        prop_str = ""
+        for i, init_mode in enumerate(initial_modes):
+            prop_str += '''<property initialSet = \"{}: {} &amp;&amp; ffggee == -1\" name = \"error_cond_{}\" type = \"0\" unsafeSet = \"ffggee &gt; 0\">
+            <parameters kvalue = \"{}\" timehorizon = \"{}\" timestep = \"{}\"/>
+            </property>
+            '''.format(init_mode.name, init_str, i, c2e2_setting["kvalue"], c2e2_setting["time"], c2e2_setting["step"])
+
+        self.convert_result = "<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE hyxml>\n<hyxml type=\"Model\">\n <automaton name=\"{}\">\n{}\n{}\n{}\n </automaton>\n <composition automata=\"{}\"/>\n{}\n</hyxml>".format(
+            ha.name, var_str, modes_str, trans_str, ha.name, prop_str)
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
 
 def c2e2_solver(l: list):
     ha_list = list()
@@ -564,9 +681,12 @@ class C2E2SolverReduction(CommonOdeSolver):
     def __init__(self):
         CommonOdeSolver.__init__(self, ReductionStrategyManager())
 
+<<<<<<< HEAD
     def run(self, s_f_list, max_bound, sigma):
         return c2e2_run(s_f_list, max_bound, sigma)
 
+=======
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
     def make_assignment(self):
         pass
 
@@ -576,10 +696,14 @@ class C2E2SolverReduction(CommonOdeSolver):
 
 class C2E2SolverUnsatCore(CommonOdeSolver):
     def __init__(self):
+<<<<<<< HEAD
         CommonOdeSolver.__init__(self, UnsatCoreStrategyManager(), NormalSolvingStrategy(c2e2_solver))
 
     def run(self, s_f_list, max_bound, sigma):
         return c2e2_run(s_f_list, max_bound, sigma)
+=======
+        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager(), NormalSolvingStrategy(C2E2Converter()))
+>>>>>>> f6721757eff63a8d0e28436a139d95040ccd56a5
 
     def make_assignment(self):
         pass
@@ -724,9 +848,15 @@ def _(const: Geq):
 @C2E2infixReset.register(Eq)
 def _(const: Eq):
     if isinstance(const.left, Real):
-        return "{} = {}".format(const.left.id, C2E2infixReset(const.right))
+        r_str = C2E2infixReset(const.right)
+        if const.left.id == r_str:
+            return ""
+        return "{} = {}".format(const.left.id, r_str)
     elif isinstance(const.left, Int):
-        return "{} = {}".format(const.left.id, C2E2infixReset(const.right))
+        r_str = C2E2infixReset(const.right)
+        if const.left.id == r_str:
+            return ""
+        return "{} = {}".format(const.left.id, r_str)
     else:
         raise NotSupportedError()
 

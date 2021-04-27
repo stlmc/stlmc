@@ -3,13 +3,14 @@ from abc import ABC
 
 from stlmcPy.constraints.constraints import *
 from stlmcPy.constraints.operations import substitution, get_vars, clause
-from stlmcPy.hybrid_automaton.utils import add_mode, make_mode_from_formula, encode_possible_path_as_formula
+from stlmcPy.hybrid_automaton.utils import *
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.ode_utils import make_boolean_abstract, make_tau_guard, gen_net_assignment, get_bound
 from stlmcPy.solver.strategy import UnsatCoreBuilder, DeltaDebugBuilder, NaiveBuilder
 from stlmcPy.solver.z3 import Z3Solver, z3Obj
 from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.print import Printer
+from stlmcPy.hybrid_automaton.converter import *
 
 
 # basic wrapper interface for ode strategy
@@ -29,8 +30,8 @@ class CommonOdeStrategy:
 
 
 class CommonSolvingStrategy:
-    def __init__(self, solving_function):
-        self.solving_function = solving_function
+    def __init__(self, converter: AbstractConverter):
+        self.converter = converter
 
     @abc.abstractmethod
     def perform_solving(self, options: dict) -> dict:
@@ -38,6 +39,9 @@ class CommonSolvingStrategy:
 
 
 class CommonOdeSolver(OdeSolver, ABC):
+    def make_assignment(self):
+        pass
+
     def __init__(self, strategy_manager: CommonOdeStrategy, solving_manager: CommonSolvingStrategy):
         BaseSolver.__init__(self)
         self.hylaa_core = None
@@ -81,9 +85,6 @@ class CommonOdeSolver(OdeSolver, ABC):
         assert "time" in solving_result
         return solving_result["result"], solving_result["size"]
 
-    @abc.abstractmethod
-    def run(self, s_f_list, max_bound, sigma):
-        pass
 
 
 class NaiveStrategyManager(CommonOdeStrategy):
@@ -152,9 +153,6 @@ class UnsatCoreStrategyManager(CommonOdeStrategy):
 
 
 class NormalSolvingStrategy(CommonSolvingStrategy):
-    def __init__(self, solving_function):
-        super().__init__(solving_function)
-
     def perform_solving(self, options: dict) -> dict:
         assert "info_dict" in options
         assert "mapping_info" in options
@@ -298,7 +296,16 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
 
             counter_consts = list(counter_consts_set)
 
-            solver_result, result_dict["time"] = caller.run(max_literal_set_list, max_bound, mapping_info)
+            # generate hybrid automaton
+            hg = HaGenerator()
+            hg.set(max_literal_set_list, max_bound, mapping_info)
+            ha, bound_box, l_v = hg.generate()
+
+            # convert and solve
+            solver_specific_converter = self.converter
+            solver_specific_converter.convert(ha, options, l_v, bound_box)
+            solver_result, result_dict["time"] = solver_specific_converter.solve()
+
             caller.set_time("solving timer", result_dict["time"])
             print(", ode: {}, total: {}".format(result_dict["time"], caller.get_time("solving timer")), flush=True)
             caller.logger.reset_timer_without("goal timer")
@@ -307,10 +314,74 @@ class NormalSolvingStrategy(CommonSolvingStrategy):
 
 
 class MergeSolvingStrategy(CommonSolvingStrategy):
-    def __init__(self, solving_function):
-        super().__init__(solving_function)
-
     def perform_solving(self, options: dict) -> dict:
+        # gets representative l_v and list of bound_box_list
+        # returns representative bound_box
+        def _make_bound_box(_l_v, _bound_box_list):
+            new_bound_box = list()
+            for i, _ in enumerate(_l_v):
+                max_left_value = float("inf")
+                max_right_value = -float("inf")
+                for bbl in _bound_box_list:
+                    if bbl[i][0] < max_left_value:
+                        max_left_value = bbl[i][0]
+                    if bbl[i][1] > max_right_value:
+                        max_right_value = bbl[i][1]
+                assert max_left_value != float("inf")
+                assert max_right_value != -float("inf")
+                new_bound_box.append([max_left_value, max_right_value])
+            return new_bound_box
+
+        def _find_representative_l_v(_l_vs):
+            if len(_l_vs) <= 1:
+                return _l_vs[0]
+            _l_v_set = set(_l_vs[0])
+            representative_l_v = _l_vs[0]
+            for _i, _l_v in enumerate(_l_vs[1:]):
+                _l_v_s = set(_l_v)
+                if _l_v_s.issuperset(_l_v_set):
+                    representative_l_v = _l_v
+            return representative_l_v
+
+        def _unifying_bound_box(_representative_l_v, _l_vs, _bound_box_list):
+            _new_bound_box_list = list()
+            for bbi, bb in enumerate(_bound_box_list):
+                _new_bound_box = list()
+                for _v_i, _v in enumerate(_representative_l_v):
+                    _given_l_v = _l_vs[bbi]
+                    if _v in _given_l_v:
+                        _index = _given_l_v.index(_v)
+                        _new_bound_box.append(bb[_index])
+                    else:
+                        _new_bound_box.append([0.0, 0.0])
+                _new_bound_box_list.append(_new_bound_box)
+            return _new_bound_box_list
+
+        def _merging_ha(_ha_list: list, is_mini_merging=False):
+            ha_list = list()
+            bound_box_list = list()
+
+            # for integrity, l_vs are all the same
+            list_of_l_v = list()
+            if len(_ha_list) > 0:
+                for i, (ha, l_v, new_bound_box_list) in enumerate(_ha_list):
+                    ha.name = "{}_{}".format(ha.name, i)
+                    ha_list.append(ha)
+                    bound_box_list.append(new_bound_box_list)
+                    list_of_l_v.append(l_v)
+
+                representative_l_v = _find_representative_l_v(list_of_l_v)
+                unified_bb = _unifying_bound_box(representative_l_v, list_of_l_v, bound_box_list)
+                representative_bb = _make_bound_box(representative_l_v, unified_bb)
+
+                if is_mini_merging:
+                    print("mini merging ...")
+                # nha = merge(*ha_list, chi_optimization=False, syntatic_merging=True)
+                nha = new_merge(*ha_list, syntatic_merging=True)
+                print("# HA: {}, modes: {}, transitions: {}".format(len(_ha_list), len(nha.modes), len(nha.transitions)),
+                      flush=True)
+                return nha, representative_l_v, representative_bb
+
         assert "info_dict" in options
         assert "mapping_info" in options
         assert "tau_info" in options
@@ -380,7 +451,11 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
 
             if result:
                 # smt solver level result
-                result_dict["result"], result_dict["time"] = self.solving_function(hybrid_automata_queue)
+                merged_ha, merged_l_v, merged_bb = _merging_ha(hybrid_automata_queue)
+                solver_specific_converter = self.converter
+                solver_specific_converter.convert(merged_ha, options, merged_l_v, merged_bb)
+                result_dict["result"], result_dict["time"] = solver_specific_converter.solve()
+                # result_dict["result"], result_dict["time"] = self.solving_function(hybrid_automata_queue)
                 caller.set_time("solving timer", result_dict["time"])
                 return result_dict
 
@@ -445,8 +520,11 @@ class MergeSolvingStrategy(CommonSolvingStrategy):
 
             counter_consts = list(counter_consts_set)
 
-            ha, conf_dict, l_v, new_bound_box_list = caller.run(max_literal_set_list, max_bound, mapping_info)
-            hybrid_automata_queue.append((ha, conf_dict, l_v, new_bound_box_list))
+            hg = HaGenerator()
+            hg.set(max_literal_set_list, max_bound, mapping_info)
+            ha, bound_box, l_v = hg.generate()
+            # ha, conf_dict, l_v, new_bound_box_list = caller.run(max_literal_set_list, max_bound, mapping_info)
+            hybrid_automata_queue.append((ha, l_v, bound_box))
             # if merge_counter == 350:
             #     maybe_merged_ha = self.solving_function(hybrid_automata_queue, True)
             #     hybrid_automata_queue.clear()

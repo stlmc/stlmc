@@ -16,6 +16,32 @@ from stlmcPy.tree.operations import elements_of_tree
 from stlmcPy.util.logger import Logger
 
 
+def vars_in_ha(ha: HybridAutomaton):
+    assert ha is not None
+    var_set = set()
+    for mode in ha.modes:
+        for (var, exp) in mode.dynamics:
+            # add left hand variable
+            var_set.add(var)
+
+            # add variables in exp
+            exp_var_set = get_vars(exp)
+            var_set = var_set.union(exp_var_set)
+
+        for inv in mode.invariant:
+            inv_var_set = get_vars(inv)
+            var_set = var_set.union(inv_var_set)
+
+    for transition in ha.transitions:
+        for guard in transition.guard:
+            var_set = var_set.union(get_vars(guard))
+
+        for reset in transition.reset:
+            var_set = var_set.union(get_vars(reset))
+
+    return var_set
+
+
 def calc_initial_terminal_modes(ha: HybridAutomaton):
     assert (ha is not None)
     _initial_modes = set()
@@ -131,6 +157,7 @@ def merge_mode_pool_syntatically(modes: Set[BaseMode], ha: HybridAutomaton) -> T
             return new_children
         else:
             return [c]
+
     def _invariant_eq(c: And, c1: And):
         if c is None and c1 is None:
             return True
@@ -605,7 +632,8 @@ def new_merge(*hybrid_automata, **option):
             new_transition_queue = new_transition_queue.union(_trans.src.incoming)
         inner_logger.stop_timer("trans merging timer")
         print("trans merging ... {} (depth {}, size {})".format(inner_logger.get_duration_time("trans merging timer"),
-                                                       transition_merged_counter, len(transition_queue)), flush=True)
+                                                                transition_merged_counter, len(transition_queue)),
+              flush=True)
         transition_queue.clear()
         transition_queue = new_transition_queue
         inner_logger.reset_timer()

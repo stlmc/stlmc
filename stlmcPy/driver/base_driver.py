@@ -311,6 +311,7 @@ class Runner:
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
         object_manager = ObjectFactory(config.encoding).generate_object_manager()
         success = False
+        print(config.solver_configs)
         for _solver_conf in config.solver_configs:
             if in_dict("solver", _solver_conf) and _solver_conf["solver"] == config.solver:
                 success = True
