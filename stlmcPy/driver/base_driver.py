@@ -95,7 +95,7 @@ class StlConfiguration:
         self._solver = "z3"
         self._optimize_flags = list()
         self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction", "spaceex",
-                             "flowstar","flowstar-merging", "c2e2"]
+                             "flowstar","flowstar-merging", "c2e2", "ssmt"]
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl",
@@ -117,8 +117,12 @@ class StlConfiguration:
 
         yices_dict = dict()
         yices_dict["logic"] = "QF_NRA"
+
+        c2e2_dict = dict()
+        c2e2_dict["logic"] = "QF_NRA"
         solver_defaults["z3"] = z3_dict
         solver_defaults["yices"] = yices_dict
+        solver_defaults["c2e2"] = c2e2_dict
 
         self.config_visitor = ConfigVisitor(self._solver_list, solver_defaults, self._formula_encoding_list,
                                             ["normal", "verbose", "debug"])

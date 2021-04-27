@@ -13,6 +13,7 @@ from stlmcPy.constraints.operations import substitution, reduce_not, get_vars
 from stlmcPy.exception.exception import NotSupportedError
 from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
 from stlmcPy.hybrid_automaton.hybrid_automaton import HybridAutomaton
+from stlmcPy.hybrid_automaton.utils import calc_initial_terminal_modes
 from stlmcPy.solver.abstract_solver import BaseSolver, OdeSolver
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.strategy import UnsatCoreBuilder, unit_split
@@ -21,7 +22,7 @@ from stlmcPy.tree.operations import size_of_tree
 from stlmcPy.util.logger import Logger
 from stlmcPy.util.print import Printer
 from stlmcPy.solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, ReductionStrategyManager, \
-    UnsatCoreStrategyManager
+    UnsatCoreStrategyManager, NormalSolvingStrategy
 from stlmcPy.solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, expr_to_sympy_inequality, \
     find_index
 
@@ -29,6 +30,7 @@ from stlmcPy.solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_
 class C2E2Converter(AbstractConverter):
     def __init__(self, inits: str):
         self.inits = inits
+        print(inits)
         self.var_set = set()
 
     def infix_reset(self, const: Constraint):
@@ -47,34 +49,38 @@ class C2E2Converter(AbstractConverter):
         # for dynamics, key: old variable, value: new variable
         vars_old_new_map = dict()
         modes_str_list = list()
-        start_mode = ""
+
+        initial_modes, terminal_modes = calc_initial_terminal_modes(ha)
 
         # get all variables and specify their types
-        for mode_index, m in enumerate(ha.modes):
-            is_initial = False
-            if mode_index == 0:
-                is_initial = True
-                start_mode = m
+        for m in ha.modes:
+            put_var = set()
+            # is_initial = False
+            # if mode_index == 0:
+            #     is_initial = True
+            #     start_mode = m
+            #
+            mode_str = " <mode id=\"{}__id_{}\" initial=\"False\" name=\"{}\">\n".format(m.name, id(m), m.name)
+            if m in initial_modes:
+                mode_str = " <mode id=\"{}__id_{}\" initial=\"True\" name=\"{}\">\n".format(m.name, id(m), m.name)
+            # mode_map[m] = mode_index
+            #
+            # if "error" in m:
+            #     for v in self.var_set:
+            #         mode_str += "  <dai equation=\"{}_dot = {}\"/>\n".format(v, 0)
 
-            mode_str = " <mode id=\"{}\" initial=\"{}\" name=\"{}\">\n".format(mode_index, is_initial, m)
-            mode_map[m] = mode_index
-
-            if "error" in m:
-                for v in self.var_set:
-                    mode_str += "  <dai equation=\"{}_dot = {}\"/>\n".format(v, 0)
-
-            if ha.modes[m].dynamics is not None:
-                for i, v in enumerate(ha.modes[m].dynamics.vars):
+            if m.dynamics is not None:
+                for i, v in enumerate(m.dynamics.vars):
                     newv = remove_index(v)
                     vars_old_new_map[v] = newv
                     self.var_set.add(newv)
                     # do we need do check this?
-                    if isinstance(ha.modes[m].dynamics.exps[i], RealVal):
+                    if isinstance(m.dynamics.exps[i], RealVal):
                         vars[newv] = "const"
                     else:
                         vars[newv] = "any"
 
-                    e = ha.modes[m].dynamics.exps[i]
+                    e = m.dynamics.exps[i]
                     e_var_set = get_vars(e)
                     subst_dict = dict()
                     for e_var in e_var_set:
@@ -84,14 +90,16 @@ class C2E2Converter(AbstractConverter):
 
                     # vars_dyn[newv] = infix(substitution(e, subst_dict))
                     # print(e)
-                    mode_str += "  <dai equation=\"{}_dot = {}\"/>\n".format(newv, simplify(
-                        expr_to_sympy(substitution(e, subst_dict))))
+                    if newv not in put_var:
+                        put_var.add(newv)
+                        mode_str += "  <dai equation=\"{}_dot = {}\"/>\n".format(newv, simplify(
+                            expr_to_sympy(substitution(e, subst_dict))))
                     # mode_str += "  <dai equation=\"{}_out = {}\"/>\n".format(newv, newv)
 
-            if ha.modes[m].invariant is not None:
-                inv = ha.modes[m].invariant
+            if m.invariant is not None:
+                inv = m.invariant
                 if isinstance(inv, And):
-                    for ee in ha.modes[m].invariant.children:
+                    for ee in m.invariant.children:
                         # ets = expr_to_sympy(ee)
                         mode_str += "  <invariant equation=\"{}\"/>\n".format(
                             str(simplify(expr_to_sympy_inequality(ee)))
@@ -110,6 +118,7 @@ class C2E2Converter(AbstractConverter):
             modes_str_list.append(mode_str)
 
         modes_str = "\n".join(modes_str_list)
+
         var_str_list = list()
         for v in self.var_set:
             var_str_list.append("  <variable name=\"{}\" scope=\"LOCAL_DATA\" type=\"Real\"/>".format(v.id))
@@ -118,15 +127,15 @@ class C2E2Converter(AbstractConverter):
         is_error_guard = False
         error_guard_list = list()
         trans_str_list = list()
-        for i, t in enumerate(ha.trans):
-            src_id = mode_map[ha.trans[t].src.name]
-            dst_id = mode_map[ha.trans[t].trg.name]
-            t_str = "  <transition destination=\"{}\" id=\"{}\" source=\"{}\">\n".format(dst_id, i, src_id)
+        for i, t in enumerate(ha.transitions):
+            # src_id = mode_map[ha.trans[t].src.name]
+            # dst_id = mode_map[ha.trans[t].trg.name]
+            t_str = "  <transition destination=\"{}__id_{}\" id=\"{}\" source=\"{}__id_{}\">\n".format(t.trg.name, id(t.trg), i, t.src.name, id(t.src))
 
-            if "error" in ha.trans[t].trg.name:
-                is_error_guard = True
-
-            guard = ha.trans[t].guard
+            # if "error" in ha.trans[t].trg.name:
+            #     is_error_guard = True
+            guard = t.guard
+            # guard = ha.trans[t].guard
             if guard is not None:
                 if isinstance(guard, And):
                     for g in guard.children:
@@ -147,8 +156,8 @@ class C2E2Converter(AbstractConverter):
                 # for g_str in whole_g_str.split("&"):
                 #     t_str += "{}\n".format(g_str)
             trans_str_list.append(t_str)
-            if ha.trans[t].reset is not None:
-                trans_reset = ha.trans[t].reset
+            if t.reset is not None:
+                trans_reset = t.reset
                 if isinstance(trans_reset, And):
                     if len(trans_reset.children) > 0:
                         for trans_child in trans_reset.children:
@@ -186,6 +195,7 @@ class C2E2Converter(AbstractConverter):
         #
         # return "hybrid reachability {{\n {}\n {}\n {}\n {}\n {}\n}}\n unsafe {{\n error {{}}\n }}\n".format(var_str, setting_str, modes_str, trans_str, init_str)
 
+    @staticmethod
     def make_mode_property(s_integral_i, s_forall_i, i, max_bound, ha: HybridAutomaton, sigma):
         mode_i = ha.new_mode("mode" + str(i))
         for integral in s_integral_i:
@@ -218,6 +228,7 @@ class C2E2Converter(AbstractConverter):
             mode_i.set_invariant(And(phi_forall_children))
         return mode_i
 
+    @staticmethod
     def make_transition(s_psi_abs_i, i, max_bound, ha: HybridAutomaton, mode_p, mode_n):
         trans_i = ha.new_transition("trans{}".format(i), mode_p, mode_n)
         s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
@@ -255,7 +266,7 @@ class C2E2Converter(AbstractConverter):
         trans_i.set_reset(And(phi_new_reset_children))
 
 
-def c2e2_run(s_f_list, max_bound, sigma, tau_guard_list):
+def c2e2_run(s_f_list, max_bound, sigma):
     new_s_f_list = list()
     num_internal = [0 for i in range(max_bound + 1)]
     for s in s_f_list:
@@ -487,13 +498,60 @@ def c2e2_run(s_f_list, max_bound, sigma, tau_guard_list):
     else:
         return True
 
+def c2e2_solver(l: list):
+    ha_list = list()
+    # for integrity, l_vs are all the same
+    latest_l_v = list()
+    latest_bound_box_list = list()
+    latest_conf_dict = dict()
+    if len(l) > 0:
+        for i, (ha, conf_dict, l_v, new_bound_box_list) in enumerate(l):
+            # if i > 0:
+            #    #assert l_v == latest_l_v
+            #    #assert new_bound_box_list == latest_bound_box_list
+            #    #assert latest_conf_dict == conf_dict
+            ha.name = "{}_{}".format(ha.name, i)
+            ha_list.append(ha)
+            # print(ha)
+            latest_l_v = l_v
+            latest_bound_box_list = new_bound_box_list
+            latest_conf_dict = conf_dict
+            # print(ha)
+            fs = C2E2Converter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+            model_string = fs.convert(ha)
+            flowStarRaw = FlowStar()
+            flowStarRaw.run(model_string)
+            if flowStarRaw.result:
+                return False
+        return True
+
+        # nha = merge(*ha_list, chi_optimization=False)
+        # fs = FlowStarConverter(latest_conf_dict, latest_l_v, latest_bound_box_list)
+        # model_string = fs.convert(nha)
+        # flowStarRaw = FlowStar()
+        # flowStarRaw.run(model_string)
+        # print("# HA: {}, modes: {}, transitions: {}".format(len(l), len(nha.modes), len(nha.transitions)))
+        # if flowStarRaw.result:
+        #     return False
+        # else:
+        #     return True
+    return True
+
+
+
+
+
+
+
+
+
 
 class C2E2SolverNaive(CommonOdeSolver):
     def __init__(self):
         CommonOdeSolver.__init__(self, NaiveStrategyManager())
 
-    def run(self, s_f_list, max_bound, sigma, tau_guard_list):
-        return c2e2_run(s_f_list, max_bound, sigma, tau_guard_list)
+    def run(self, s_f_list, max_bound, sigma):
+        return c2e2_run(s_f_list, max_bound, sigma)
 
     def make_assignment(self):
         pass
@@ -506,8 +564,8 @@ class C2E2SolverReduction(CommonOdeSolver):
     def __init__(self):
         CommonOdeSolver.__init__(self, ReductionStrategyManager())
 
-    def run(self, s_f_list, max_bound, sigma, tau_guard_list):
-        return c2e2_run(s_f_list, max_bound, sigma, tau_guard_list)
+    def run(self, s_f_list, max_bound, sigma):
+        return c2e2_run(s_f_list, max_bound, sigma)
 
     def make_assignment(self):
         pass
@@ -518,10 +576,10 @@ class C2E2SolverReduction(CommonOdeSolver):
 
 class C2E2SolverUnsatCore(CommonOdeSolver):
     def __init__(self):
-        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager())
+        CommonOdeSolver.__init__(self, UnsatCoreStrategyManager(), NormalSolvingStrategy(c2e2_solver))
 
-    def run(self, s_f_list, max_bound, sigma, tau_guard_list):
-        return c2e2_run(s_f_list, max_bound, sigma, tau_guard_list)
+    def run(self, s_f_list, max_bound, sigma):
+        return c2e2_run(s_f_list, max_bound, sigma)
 
     def make_assignment(self):
         pass

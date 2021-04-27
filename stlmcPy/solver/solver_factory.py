@@ -2,6 +2,7 @@ from stlmcPy.solver.c2e2 import C2E2SolverUnsatCore
 from stlmcPy.solver.flowstar import FlowStarSolverUnsatCoreMerging, FlowStarSolverUnsatCore
 from stlmcPy.solver.hylaa import HylaaSolverNaive, HylaaSolverReduction, HylaaSolverUnsatCore
 from stlmcPy.solver.spaceex import SpaceExSolverUnsatCore, SpaceExSolverNaive
+from stlmcPy.solver.ssmt import SsmtSolver
 from stlmcPy.solver.yices import YicesSolver
 from stlmcPy.solver.z3 import Z3Solver
 from stlmcPy.solver.dreal import dRealSolver
@@ -32,3 +33,5 @@ class SolverFactory:
             return FlowStarSolverUnsatCoreMerging()
         elif self.solver_type == 'c2e2':
             return C2E2SolverUnsatCore()
+        elif self.solver_type == 'ssmt':
+            return SsmtSolver()
