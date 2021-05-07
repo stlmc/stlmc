@@ -9,7 +9,7 @@ from hylaa.core import Core
 from hylaa.hybrid_automaton import HybridAutomaton
 from hylaa.settings import HylaaSettings
 from hylaa.stateset import StateSet
-from stlmcPy.hybrid_automaton.abstract_converter import AbstractConverter
+from stlmcPy.hybrid_automaton.converter import AbstractConverter
 from stlmcPy.solver.strategy import unit_split
 
 

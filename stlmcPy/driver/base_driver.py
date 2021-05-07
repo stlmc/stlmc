@@ -95,7 +95,7 @@ class StlConfiguration:
         self._solver = "z3"
         self._optimize_flags = list()
         self._solver_list = ["z3", "dreal", "yices", "hylaa", "hylaa-unsat-core", "hylaa-reduction", "spaceex",
-                             "flowstar","flowstar-merging", "c2e2"]
+                             "flowstar", "flowstar-merging", "c2e2", "ssmt"]
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._formula_encoding = "model-with-goal-enhanced"
         self._formula_encoding_list = ["model-with-goal-enhanced", "model-with-goal", "only-goal-stl",
@@ -108,7 +108,7 @@ class StlConfiguration:
         self._logic = "QF_NRA"
         self._zeno = True
         self._abs_sep = True
-        self._delta = None
+        self._delta = 0
         self._solver_configs = list()
 
         solver_defaults = dict()
@@ -117,8 +117,12 @@ class StlConfiguration:
 
         yices_dict = dict()
         yices_dict["logic"] = "QF_NRA"
+
+        c2e2_dict = dict()
+        c2e2_dict["logic"] = "QF_NRA"
         solver_defaults["z3"] = z3_dict
         solver_defaults["yices"] = yices_dict
+        solver_defaults["c2e2"] = c2e2_dict
 
         self.config_visitor = ConfigVisitor(self._solver_list, solver_defaults, self._formula_encoding_list,
                                             ["normal", "verbose", "debug"])
@@ -229,7 +233,8 @@ class StlConfiguration:
             self._zeno = self._args.zeno
         if self._args.abs_sep is not None:
             self._abs_sep = self._args.abs_sep
-        self._delta = self._args.delta
+        if self._args.delta is not None:
+            self._delta = self._args.delta
 
         for _sc in self._solver_configs:
             # fixed steps should be 0.2 * delta
@@ -307,6 +312,7 @@ class Runner:
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
         object_manager = ObjectFactory(config.encoding).generate_object_manager()
         success = False
+        print(config.solver_configs)
         for _solver_conf in config.solver_configs:
             if in_dict("solver", _solver_conf) and _solver_conf["solver"] == config.solver:
                 success = True
@@ -329,7 +335,8 @@ class Runner:
                         for formula in config.formula_range:
                             goal = goals[formula - 1]
                             # for goal in goals:
-                            output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(), config.solver,
+                            output_file_name = "{}_###{}_###{}_###{}".format(file_name, goal.get_formula(),
+                                                                             config.solver,
                                                                              config.encoding)
                             # logger.write_to_csv(file_name=output_file_name, overwrite=True)
                             key_index = file_name.rfind("/")
@@ -345,7 +352,11 @@ class Runner:
                                 # logger.add_info("bound", bound)
 
                                 model_const = model.make_consts(bound)
+                                test_list = list()
+                                for k in range(bound + 1):
+                                    test_list.append(model.make_step_consts(k))
 
+                                print(test_list[0])
                                 logger.start_timer("goal timer")
                                 goal_const, goal_boolean_abstract = goal.make_consts(bound, config.timebound,
                                                                                      config.is_delta_set, config.delta,
@@ -372,14 +383,14 @@ class Runner:
                                 goal_time = logger.get_duration_time("goal timer")
 
                                 printer.print_normal("> {}".format(solver_name))
-
                                 '''
                                 print("boolean")
                                 for ba in boolean_abstract_consts.children:
                                     print(ba)
                                 '''
-
-                                result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+                                # result, size = solver.solve(And([model_const, goal_const, boolean_abstract_consts]),
+                                #                             model.range_dict, boolean_abstract)
+                                result, size = solver.solve(And([And(test_list), goal_const, boolean_abstract_consts]),
                                                             model.range_dict, boolean_abstract)
 
                                 if isinstance(goal, ReachGoal):
