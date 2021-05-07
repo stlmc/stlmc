@@ -336,3 +336,28 @@ class ConfigVisitor(configVisitor):
         fs_dict = dict()
         fs_dict["max jumps"] = "{}".format(ctx.NUMBER())
         return fs_dict
+
+    # Visit a parse tree produced by configParser#ssmt_conf.
+    def visitSsmt_conf(self, ctx: configParser.Ssmt_confContext):
+        solver_dict = dict()
+        solver_dict["solver"] = "ssmt"
+        if ctx.ssmt_configs() is not None:
+            queue = self.visit(ctx.ssmt_configs())
+            for q in queue:
+                solver_dict.update(self.visit(q))
+        else:
+            solver_dict.update(self._solver_defaults["ssmt"])
+        self._config_dict["solvers"].append(solver_dict)
+
+    # Visit a parse tree produced by configParser#ssmt_configs.
+    def visitSsmt_configs(self, ctx: configParser.Ssmt_configsContext):
+        queue = list()
+        for c in ctx.ssmt_config():
+            queue.append(c)
+        return queue
+
+    # Visit a parse tree produced by configParser#ssmt_logic.
+    def visitSsmt_logic(self, ctx: configParser.Ssmt_logicContext):
+        logic_dict = dict()
+        logic_dict["logic"] = "{}".format(ctx.VALUE())
+        return logic_dict

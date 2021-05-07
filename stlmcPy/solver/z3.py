@@ -86,6 +86,21 @@ class Z3Solver(SMTSolver):
         self.solver.add(z3Obj(const))
         self.solver.push()
 
+    def raw_add(self, const):
+        self.solver.add(z3Obj(const))
+
+    def raw_push(self):
+        self.solver.push()
+
+    def raw_pop(self):
+        self.solver.pop()
+
+    def raw_check(self):
+        return self.solver.check()
+
+    def raw_model(self):
+        return Z3Assignment(self.solver.model())
+
     def substitution(self, const, *dicts):
         total_dict = dict()
         for i in range(len(dicts)):
@@ -179,6 +194,8 @@ class Z3Assignment(Assignment):
 
     # solver_model_to_generalized_model
     def get_assignments(self):
+        if self._z3_model is None:
+            return dict()
         new_dict = dict()
         op_var_dict = {'bool': Bool, 'int': Int, 'real': Real}
         op_dict = {'bool': BoolVal, 'int': IntVal, 'real': RealVal}
