@@ -15,7 +15,6 @@ def fullSeparation(f: Formula, sepMap):
 def _separation(f: Formula, sepMap, gen, fMap):
     raise NotImplementedError('Something wrong')
 
-
 @_separation.register(Constant)
 def _(f: Constant, sepMap, gen, fMap):
     return f
@@ -31,7 +30,6 @@ def _(f: Not, sepMap, gen, fMap):
     if isinstance(f.child, Bool):
         return Bool("not@" + f.child.id)
     return f.__class__(_separation(f.child, sepMap, gen, fMap))
-
 
 @_separation.register(Multinary)
 def _(f: Multinary, sepMap, gen, fMap):
@@ -50,7 +48,6 @@ def _(f: Multinary, sepMap, gen, fMap):
 def _(f: Implies, sepMap, gen, fMap):
     return f.__class__(_separation(f.left, sepMap, gen, fMap), _separation(f.right, sepMap, gen, fMap))
 
-
 @_separation.register(UnaryTemporalFormula)
 def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     np = Bool(next(gen))
@@ -61,19 +58,10 @@ def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     global_time = f.global_time
     sep_point = list(sepMap[f])
     sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
-    if isinstance(global_time.left, float):
-        left = RealVal(str(global_time.left))
-    else:
-        left = global_time.left
-    sep_point = [left] + sep_point
-    if isinstance(global_time.right, float):
-        right = RealVal(str(global_time.right))
-    else:
-        right = global_time.right
-    sep_point = sep_point + [right]
+    sep_point = [global_time.left] + sep_point
+    sep_point = sep_point + [global_time.right]
 
     result = _separateUnary(tf, 0, sep_point)
-
     return op[ft](result)
 
 
@@ -88,16 +76,8 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
     global_time = f.global_time
     sep_point = list(sepMap[f])
     sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
-    if isinstance(global_time.left, float):
-        left = RealVal(str(global_time.left))
-    else:
-        left = global_time.left
-    sep_point = [left] + sep_point
-    if isinstance(global_time.right, float):
-        right = RealVal(str(global_time.right))
-    else:
-        right = global_time.right
-    sep_point = sep_point + [right]
+    sep_point = [global_time.left] + sep_point
+    sep_point = sep_point + [global_time.right]
     result = _separateBinary(tf, 0, sep_point)
 
     return result
@@ -177,3 +157,4 @@ def _sepEndPart(index, partition):
 def _sepMidPart(index, partition):
     p2 = Interval(True, partition[index], True, partition[index])
     return p2, Interval(False, partition[index], False, partition[index + 1])
+

@@ -1,0 +1,118 @@
+bool ix;
+bool iy;
+[-40, 40] rx;
+[-40, 40] ry;
+[0, 1.5] theta1;
+
+#  car1 : inc, inc 
+{
+    mode:
+        ix = true;
+        iy = true;
+    inv:
+	rx < 20;
+	ry < 20;
+	theta1 < 1.4;
+    flow:
+        d/dt[rx] = 1;
+        d/dt[ry] = 2 * sin(theta1);
+	d/dt[theta1] = 0.05;
+    jump:
+	(and (rx < 2) (ry < 2)) =>
+		(and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+	(and (rx >= 2.4) (ry >= 2.4)) =>
+		(and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+		(and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+		(and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : inc, dec
+{
+    mode:
+        ix = true;
+        iy = false;
+    inv:
+	rx < 20;
+	ry > -20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = 1;
+        d/dt[ry] = -2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : dec, inc
+{
+    mode:
+        ix = false;
+        iy = true;
+    inv:
+	rx > -20;
+	ry < 20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = -1;
+        d/dt[ry] = 2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : dec, dec
+{
+    mode:
+        ix = false;
+        iy = false;
+    inv:
+	rx > -20;
+	ry > -20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = -1;
+        d/dt[ry] = -2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+
+
+init:
+(and not(ix) not(iy) (0 <= rx) (rx <= 1) (0 <= ry) (ry <= 1) (0 <= theta1) (theta1 <= 1));
+
+propositions:
+xg80 = x > 50;
+yl50 = y < 50;
+xg60 = x > 60;
+xg70 = x > 70;
+pix = ix;
+piy = iy;
+
+# timebound 20
+goal:
+[][0, 3] rx < 5;
+(<>[0, 10] piy) R[0, 10] ry < 10;
+[] [0, 20] (rx < 6); # false at 2
+[] [0, 12] (piy -> <> [5, 7] (ry < 3)); # false at 1
+

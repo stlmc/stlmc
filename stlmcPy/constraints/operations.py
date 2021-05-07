@@ -62,14 +62,16 @@ def _(const: Neg, substitution_dict):
 def _(const: Function, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Function([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
+    return Function([substitution(var, substitution_dict) for var in const.vars],
+                    [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(Ode)
 def _(const: Ode, substitution_dict):
     if const in substitution_dict:
         return substitution_dict[const]
-    return Ode([substitution(var, substitution_dict) for var in const.vars], [substitution(exp, substitution_dict) for exp in const.exps])
+    return Ode([substitution(var, substitution_dict) for var in const.vars],
+               [substitution(exp, substitution_dict) for exp in const.exps])
 
 
 @substitution.register(And)
@@ -312,61 +314,71 @@ def _(const: Forall):
 
 
 @singledispatch
-def relaxing(const: Formula, delta):
+def relaxing(const: Formula, delta: float):
     return const
 
 
 @relaxing.register(And)
-def _(const: And, delta):
+def _(const: And, delta: float):
     return And([relaxing(c, delta) for c in const.children])
 
 
 @relaxing.register(Or)
-def _(const: Or, delta):
+def _(const: Or, delta: float):
     return Or([relaxing(c, delta) for c in const.children])
 
 
 @relaxing.register(Not)
-def _(const: Not, delta):
+def _(const: Not, delta: float):
     return Not(relaxing(const.child, delta))
 
 
 @relaxing.register(Implies)
-def _(const: Implies, delta):
+def _(const: Implies, delta: float):
     return Implies(relaxing(const.left, delta), relaxing(const.right, delta))
 
 
 @relaxing.register(Geq)
-def _(const: Geq, delta):
-    return Geq(const.left, Sub(const.right, delta))
+def _(const: Geq, delta: float):
+    return Geq(const.left, Sub(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Gt)
-def _(const: Gt, delta):
-    return Gt(const.left, Sub(const.right, delta))
+def _(const: Gt, delta: float):
+    return Geq(const.left, Sub(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Leq)
-def _(const: Leq, delta):
-    return Leq(const.left, Add(const.right, delta))
+def _(const: Leq, delta: float):
+    return Leq(const.left, Add(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Lt)
-def _(const: Lt, delta):
-    return Lt(const.left, Add(const.right, delta))
+def _(const: Lt, delta: float):
+    return Leq(const.left, Add(const.right, RealVal(str(delta))))
 
 
 @relaxing.register(Eq)
-def _(const: Eq, delta):
+def _(const: Eq, delta: float):
     if isinstance(const.left, Bool) or isinstance(const.right, Bool):
         return const
-    return And([Geq(const.left, Sub(const.right, Div(delta, RealVal('2')))),
-                Leq(const.left, Add(const.right, Div(delta, RealVal('2'))))])
+    return And([Geq(const.left, Sub(const.right, Div(RealVal(str(delta)), RealVal('2')))),
+                Leq(const.left, Add(const.right, Div(RealVal(str(delta)), RealVal('2'))))])
 
 
 @relaxing.register(Neq)
-def _(const: Neq, delta):
+def _(const: Neq, delta: float):
     return Not(relaxing(Eq(const.left, const.right), delta))
+
+
+@relaxing.register(BinaryTemporalFormula)
+def _(const: BinaryTemporalFormula, delta: float):
+    return const.__class__(const.local_time, const.global_time, relaxing(const.left, delta), relaxing(const.right, delta))
+
+
+@relaxing.register(UnaryTemporalFormula)
+def _(const: UnaryTemporalFormula, delta: float):
+    return const.__class__(const.local_time, const.global_time, relaxing(const.child, delta))
 
 
 @singledispatch
@@ -987,6 +999,13 @@ def _(const: Eq):
     return {const}
 
 
+@clause.register(Neq)
+def _(const: Eq):
+    if isinstance(const.left, Formula):
+        return clause(const.left).union(clause(const.right))
+    return {const}
+
+
 @clause.register(Or)
 def _(const: Or):
     result = set()
@@ -1025,6 +1044,17 @@ def lower_encoding(chi, bound, lower):
     return Or(result)
 
 
+def update_dynamics_with_replacement(dynamics: Dynamics, v: Variable, e: Expr):
+    is_update = False
+    for i, dyn_var in enumerate(dynamics.vars):
+        if dyn_var.id == v.id:
+            dynamics.exps[i] = e
+            is_update = True
+    if not is_update:
+        dynamics.vars.append(v)
+        dynamics.exps.append(e)
+
+
 def get_max_depth(const: Constraint):
     queue = list()
     waiting_queue = list()
@@ -1053,3 +1083,150 @@ def fresh_new_var():
     new_var = Bool("")
     new_var.id = "opt_var_{}".format(id(new_var))
     return new_var
+
+
+@singledispatch
+def expr_syntatic_equality(left: Expr, right: Expr):
+    raise NotSupportedError("not enough information to determine equality between {} and {}".format(left, right))
+
+
+@expr_syntatic_equality.register(Variable)
+def _(left: Variable, right: Variable):
+    if not isinstance(left, Variable) or not isinstance(right, Variable):
+        return False
+    return left.id == right.id
+
+
+@expr_syntatic_equality.register(Constant)
+def _(left: Constant, right: Constant):
+    if not isinstance(left, Constant) or not isinstance(right, Constant):
+        return False
+    return left.value == right.value
+
+
+@expr_syntatic_equality.register(BinaryExpr)
+def _(left: BinaryExpr, right: BinaryExpr):
+    if not ((isinstance(left, Add) and isinstance(right, Add)) or
+            (isinstance(left, Sub) and isinstance(right, Sub)) or
+            (isinstance(left, Mul) and isinstance(right, Mul)) or
+            (isinstance(left, Div) and isinstance(right, Div)) or
+            (isinstance(left, Pow) and isinstance(right, Pow))):
+        return False
+    return (expr_syntatic_equality(left.get_left(), right.get_left()) and expr_syntatic_equality(left.get_right(),
+                                                                                                 right.get_right())) \
+           or (expr_syntatic_equality(left.get_left(), right.get_right()) and expr_syntatic_equality(left.get_right(),
+                                                                                                     right.get_left())) \
+           or (expr_syntatic_equality(left.get_right(), right.get_left()) and expr_syntatic_equality(left.get_left(),
+                                                                                                     right.get_right())) \
+           or (expr_syntatic_equality(left.get_right(), right.get_right()) and expr_syntatic_equality(left.get_left(),
+                                                                                                      right.get_left()))
+
+
+@expr_syntatic_equality.register(UnaryExpr)
+def _(left: UnaryExpr, right: UnaryExpr):
+    if not ((isinstance(left, Neg) and isinstance(right, Neg)) or
+            (isinstance(left, Sqrt) and isinstance(right, Sqrt)) or
+            (isinstance(left, Sin) and isinstance(right, Sin)) or
+            (isinstance(left, Cos) and isinstance(right, Cos)) or
+            (isinstance(left, Arcsin) and isinstance(right, Arcsin)) or
+            (isinstance(left, Arccos) and isinstance(right, Arccos)) or
+            (isinstance(left, Arctan) and isinstance(right, Arctan))):
+        return False
+    return (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child)) \
+           or (expr_syntatic_equality(left.child, right.child) and expr_syntatic_equality(left.child, right.child))
+
+
+def expr_syntatic_equality_linear(left: Expr, right: Expr):
+    def _get_type_as(_expr: Expr):
+        if isinstance(_expr, Neg):
+            return "Neg"
+        if isinstance(_expr, Sqrt):
+            return "Sqrt"
+        if isinstance(_expr, Sin):
+            return "Sin"
+        if isinstance(_expr, Cos):
+            return "Cos"
+        if isinstance(_expr, Arcsin):
+            return "Arcsin"
+        if isinstance(_expr, Arccos):
+            return "Arccos"
+        if isinstance(_expr, Arctan):
+            return "Arctan"
+        if isinstance(_expr, Add):
+            return "Add"
+        if isinstance(_expr, Sub):
+            return "Sub"
+        if isinstance(_expr, Mul):
+            return "Mul"
+        if isinstance(_expr, Div):
+            return "Div"
+        if isinstance(_expr, Pow):
+            return "Pow"
+        if isinstance(_expr, Variable):
+            return "Variable"
+        if isinstance(_expr, Constant):
+            return "Constant"
+
+    def _get_child_list(_expr: Expr):
+        _child_list = list()
+        _queue = [_expr]
+
+        while len(_queue) > 0:
+            _elem = _queue.pop(0)
+            if isinstance(_elem, Variable):
+                _child_list.append(("Variable", _elem.id))
+            elif isinstance(_elem, Constant):
+                _child_list.append(("Constant", _elem.value))
+            elif isinstance(_elem, NonLeaf):
+                _new_queue = list()
+                _new_child_list = list()
+                for e in _elem.children:
+                    _new_child_list.append((_get_type_as(e), ""))
+                    _new_queue.append(e)
+                _child_list.append(_new_queue)
+        return _child_list
+
+    left_depth_list = _get_child_list(left)
+    right_depth_list = _get_child_list(right)
+
+    return left_depth_list == right_depth_list
+
+
+def dynamic_syntatic_eqaulity(left: Dynamics, right: Dynamics):
+    # if both are the same
+    if left is None and right is None:
+        return True
+
+    # if one of them is None this is not the equal case
+    if left is None or right is None:
+        return False
+
+    set_a = set(left.vars)
+    set_b = set(right.vars)
+
+    if set_a != set_b:
+        return False
+
+    if len(left.exps) != len(right.exps):
+        return False
+
+    for i, e in enumerate(left.exps):
+        if left.vars[i].id == right.vars[i].id:
+            if not expr_syntatic_equality_linear(e, right.exps[i]):
+                return False
+        else:
+            return False
+    # queue = set()
+    # while queue != set_a:
+    #     for i, e in enumerate(left.exps):
+    #         for j, e1 in enumerate(right.exps):
+    #             if left.vars[i].id == right.vars[j].id:
+    #                 if expr_syntatic_equality_linear(e, e1):
+    #                     queue.add(left.vars[i])
+    #                     break
+    #     break
+    #
+    # return queue == set_a
+    return True

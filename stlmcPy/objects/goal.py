@@ -115,8 +115,8 @@ class PropHelper:
 
                     # if delta exists
                     if self.is_delta_set:
-                        relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
-                        not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+                        relaxed_bound_const = relaxing(bound_applied_const, delta)
+                        not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), delta)
 
                     else:
                         relaxed_bound_const = bound_applied_const
@@ -171,19 +171,30 @@ class BaseStlGoal(Goal):
         self.boolean_abstract = dict()
 
     @abc.abstractmethod
-    def make_stl_consts(self, bound, time_bound):
+    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
         pass
 
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
-        # generate mapping constraint between model and goal
-        propHelper = PropHelper(self, model, proposition_dict, bound)
-
+    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict: dict):
         result_const = list()
+        # redundant
+        #if delta_flag:
+        #    propHelper.set_delta()
+        new_prop_dict = proposition_dict.copy()
         if delta_flag:
-            propHelper.set_delta()
+            for k in new_prop_dict:
+                assert isinstance(k, Bool)
+                # check if value is bool
+                if isinstance(new_prop_dict[k], Bool):
+                    pass
+                else:
+                    new_prop_dict[k] = relaxing(new_prop_dict[k], delta)
+
+        # generate mapping constraint between model and goal
+        propHelper = PropHelper(self, model, new_prop_dict, bound)
+        assert propHelper.is_delta_set is False
         prop_const = propHelper.make_consts(delta)
 
         '''
@@ -193,10 +204,10 @@ class BaseStlGoal(Goal):
         '''
 
         result_const.append(And(prop_const))
+        stl_consts_list = self.make_stl_consts(bound, time_bound, delta_flag, delta)
 
-        stl_consts_list = self.make_stl_consts(bound, time_bound)
-
-        time_consts_list = self.time_encoding_function(bound, time_bound)
+        # redundant function
+        time_consts_list = self.time_encoding_function(bound, time_bound, False, delta)
 
         result_const.extend(time_consts_list)
         result_const.extend(stl_consts_list)
@@ -208,9 +219,14 @@ class BaseStlGoal(Goal):
 
 
 class OldStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound, time_bound):
+    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
         baseP = PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
+        # do we need this?
+        if delta_flag:
+            # delta relaxing nnf
+            negFormula = relaxing(negFormula, delta)
+
         negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
@@ -219,8 +235,6 @@ class OldStlGoal(BaseStlGoal):
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
 
-        # set enc flags
-        ENC.ENC_TYPES = "old"
         # FOL translation
 
         baseV = ENC.baseEncoding(partition, baseP, time_bound)
@@ -235,15 +249,21 @@ class OldStlGoal(BaseStlGoal):
 
 
 class NewStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound, time_bound):
+    def set_abs_opt_sep(self, isabs):
+        ENHANCED_SEP.ABS_OPT = True if isabs else False
+
+    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
-
+        if delta_flag:
+            # delta relaxing nnf
+            negFormula = relaxing(negFormula, delta)
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
         sub_list = list(partition.keys())
 
         consts = list()
+        ENHANCED_SEP.NEW_ID = 0
 
         (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
         id_match_dict = dict()
@@ -304,15 +324,16 @@ class ReachGoal(Goal):
             sub_result.append(goal_consts)
         # get time const
         result.append(Or(sub_result))
-        result.extend(self.time_encoding_function(bound, time_bound))
+        result.extend(self.time_encoding_function(bound, time_bound, delta_flag, delta))
 
         return And(result), dict()
 
 
 class GoalFactory:
-    def __init__(self, raw_goal: Formula, is_zeno=True):
+    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
         self.raw_goal = raw_goal
         self.time_function = None
+        self.is_sep_abs = is_sep_abs 
         if is_zeno:
             self.time_function = make_zeno_time_const
         else:
@@ -323,13 +344,15 @@ class GoalFactory:
         if isinstance(self.raw_goal, Reach):
             return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            return NewStlGoal(self.raw_goal, self.time_function)
+            new_stl_obj = NewStlGoal(self.raw_goal, self.time_function)
+            new_stl_obj.set_abs_opt_sep(self.is_sep_abs)
+            return new_stl_obj 
         pass
 
 
 class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula, is_zeno=True):
-        super().__init__(raw_goal)
+    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
+        super().__init__(raw_goal, is_sep_abs)
         self.time_function = None
         if is_zeno:
             self.time_function = make_zeno_time_const

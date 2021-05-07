@@ -1,0 +1,9 @@
+# TIMEOUT = 02:00:00
+[cav2021_exp39.zip](/uploads/360142ec3be7b115be73d6ae9b3a0b0e/cav2021_exp32.zip)
+
+| ID| Model | Bound | Formula | Timebound | Name| Encoding|solver|logic| | |
+| ------ | ------ | ------     | ------ | ------| ------ |------ |------ |------ |-------|-------|
+ | 1|cav2021_exp39/solution/rail|1,20,1|1,1,1|20|pBrail|model-with-goal-enhanced|yices|QF_NRA|||
+ | 2|cav2021_exp39/solution/rail|1,20,1|1,1,1|20|pBrail|model-with-goal|yices|QF_NRA|||
+ | 1|cav2021_exp39/solution/water|1,20,1|2,6,1|20|pBwater|model-with-goal-enhanced|yices|QF_NRA|||
+ | 2|cav2021_exp39/solution/water|1,20,1|2,6,1|20|pBwater|model-with-goal|yices|QF_NRA|||

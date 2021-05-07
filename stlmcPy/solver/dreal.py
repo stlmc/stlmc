@@ -46,7 +46,6 @@ class DrealAssignment(Assignment):
                     var_name = var_name.replace("time", "tau")
                     new_dict[Real(var_name)] = RealVal(val)
         return new_dict
-
         # for e in self._dreal_model.collect_defined_terms():
         #     if Terms.is_real(e):
         #         new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
@@ -67,6 +66,7 @@ class dRealSolver(SMTSolver):
         SMTSolver.__init__(self)
         self._dreal_model = None
         self._cache = list()
+        self._cache_raw = list()
         self._logic_list = ["QF_NRA_ODE"]
         self._logic = "QF_NRA_ODE"
 
@@ -289,6 +289,7 @@ class dRealSolver(SMTSolver):
         logger.start_timer("solving timer")
         stdout, stderr = await proc.communicate()
         logger.stop_timer("solving timer")
+        self.set_time("solving timer", logger.get_duration_time("solving timer"))
         stdout_str = stdout.decode()[len("Solution:\n"):-1]
         stderr_str = stderr.decode()
         output_str = "{}\n{}".format(stdout_str, stderr_str)
@@ -319,10 +320,12 @@ class dRealSolver(SMTSolver):
         return result, result_model
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        size = 0
+        if "logic" in self.conf_dict:
+            self.set_logic(self.conf_dict["logic"])
         if all_consts is not None:
             self._cache.append(all_consts)
-            size = size_of_tree(all_consts)
+            self._cache_raw.append(all_consts)
+        size = size_of_tree(And(self._cache_raw))
         result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
         return result, size
 
@@ -331,6 +334,7 @@ class dRealSolver(SMTSolver):
 
     def clear(self):
         self._cache = list()
+        self._cache_raw = list()
 
     def simplify(self, consts):
         pass
@@ -591,7 +595,6 @@ def _(const: Integral):
 @drealObj.register(Forall)
 def _(const: Forall):
     cur_inv = substitution_zero2t(const.const)
-
     # all bounds are same
     bound = get_max_bound(const.const)
     d_obj = drealObj(cur_inv)

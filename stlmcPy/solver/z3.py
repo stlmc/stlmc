@@ -19,8 +19,10 @@ class Z3Solver(SMTSolver):
         SMTSolver.__init__(self)
         self._z3_model = None
         self._cache = list()
+        self._cache_raw = list()
         self._logic_list = ["LRA", "NRA"]
         self._logic = "NRA"
+        self.solver = z3.Solver()
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'NRA')
@@ -28,21 +30,22 @@ class Z3Solver(SMTSolver):
     def z3checkSat(self, consts, logic):
         assert self.logger is not None
         logger = self.logger
-        
-        solver = z3.Solver()
 
+        logger.reset_timer()
         logger.start_timer("solving timer")
-        solver.add(consts)
+        self.solver.add(consts)
+        self.solver.push()
 
-        with open("battery.smt2", 'w') as fle:
-            print(solver.to_smt2(), file=fle)
+        #with open("battery.smt2", 'w') as fle:
+        #    print(solver.to_smt2(), file=fle)
 
-        result = solver.check()
+        result = self.solver.check()
         logger.stop_timer("solving timer")
-        logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        #logger.add_info("smt solving time", logger.get_duration_time("solving timer"))
+        self.set_time("solving timer", logger.get_duration_time("solving timer"))
         str_result = str(result)
         if str_result == "sat":
-            m = solver.model()
+            m = self.solver.model()
             # print(m)
             result = False
         else:
@@ -52,16 +55,21 @@ class Z3Solver(SMTSolver):
         return result, m
 
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        size = 0
+        if "logic" in self.conf_dict:
+            self.set_logic(self.conf_dict["logic"])
         if all_consts is not None:
-            self._cache.append(z3Obj(all_consts))
-            size = size_of_tree(all_consts)
-        result, self._z3_model = self.z3checkSat(z3.And(self._cache), self._logic)
+            #self._cache.append(z3Obj(all_consts))
+            self._cache_raw.append(all_consts)
+        else:
+            all_consts = BoolVal("True")
+        size = size_of_tree(And(self._cache_raw))
+        result, self._z3_model = self.z3checkSat(z3Obj(all_consts), self._logic)
         return result, size
         # return result, -1
 
     def clear(self):
         self._cache = list()
+        self._cache_raw = list()
 
     def result_simplify(self):
         return z3.simplify(z3.And(self._cache))
@@ -69,8 +77,29 @@ class Z3Solver(SMTSolver):
     def simplify(self, consts):
         return z3.simplify(consts)
 
+    def cache(self):
+        return self._cache
+
     def add(self, const):
-        self._cache.append(z3Obj(const))
+        self._cache_raw.append(const)
+        #self._cache.append(z3Obj(const))
+        self.solver.add(z3Obj(const))
+        self.solver.push()
+
+    def raw_add(self, const):
+        self.solver.add(z3Obj(const))
+
+    def raw_push(self):
+        self.solver.push()
+
+    def raw_pop(self):
+        self.solver.pop()
+
+    def raw_check(self):
+        return self.solver.check()
+
+    def raw_model(self):
+        return Z3Assignment(self.solver.model())
 
     def substitution(self, const, *dicts):
         total_dict = dict()
@@ -83,15 +112,16 @@ class Z3Solver(SMTSolver):
         return Z3Assignment(self._z3_model)
 
     def unsat_core(self, psi, assertion_and_trace):
-        solver = z3.SolverFor('LRA')
         trace_dict = dict()
         for (assertion, trace) in assertion_and_trace:
             # trace should be boolean var
             trace_dict[str(trace.id)] = assertion
-            solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
-        solver.add(z3Obj(Not(psi)))
-        solver.check()
-        unsat_cores = solver.unsat_core()
+            self.solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
+        #self.add(Not(psi))
+        self.solver.add(z3.Not(z3.And(psi)))
+        self.solver.set(':core.minimize', True)
+        self.solver.check()
+        unsat_cores = self.solver.unsat_core()
         result = set()
         for unsat_core in unsat_cores:
             result.add(trace_dict[str(unsat_core)])
@@ -164,6 +194,8 @@ class Z3Assignment(Assignment):
 
     # solver_model_to_generalized_model
     def get_assignments(self):
+        if self._z3_model is None:
+            return dict()
         new_dict = dict()
         op_var_dict = {'bool': Bool, 'int': Int, 'real': Real}
         op_dict = {'bool': BoolVal, 'int': IntVal, 'real': RealVal}

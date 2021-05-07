@@ -1,0 +1,89 @@
+# model description:
+#
+# There exist a train and a crossing barrier on a
+# circular track. The train is moving around the track.
+# The barrier closes or opens depending on the distance
+# to the train. The goal of the barrier is to prevent others
+# from entering the track when the train passes by.
+
+bool a;
+bool b;
+[-20, 100] tx;
+[0, 90] bx;
+# state
+# 00: Past and Far(more than 85)
+# 01: Past and Approach
+# 10: Past and Near
+# 11: Past and Past
+{
+    mode:
+	a = false;
+	b = false;
+    inv:
+	tx > 60;
+    flow:
+        d/dt[tx] = -30;
+        d/dt[bx] = 0;
+    jump:
+        tx < 80 =>
+          (and (not a') b' (bx' = bx) (tx' = tx));
+        tx < 70 =>
+          (and a' (not b') (bx' = bx) (tx' = tx));
+}
+{
+    mode:
+	a = false;
+	b = true;
+    inv:
+	tx > 40;
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 5;
+    jump:
+        tx < 80 =>
+          (and a' (not b') (bx' = bx) (tx' = tx));
+}
+{
+    mode:
+	a = true;
+	b = false;
+    inv:
+	tx > 10;
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 10;
+    jump:
+        tx < 20 =>
+          (and a' b' (bx' = bx) (tx' = tx));
+}
+{
+    mode:
+	a = true;
+	b = true;
+    inv:
+	tx > -10;
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = -5;
+    jump:
+        (tx < 0) =>
+          (and (not a') (not b') (bx' = bx) (tx' = (100 + tx)));
+}
+
+init:
+(and (a = false) (b = false) (0<= bx) (bx <= 0.5) (89 <= tx) (tx <= 90) (0 <= vb) (vb <= 0.1)) ;
+
+propositions:
+txg60 = tx < 60;
+txg10 = tx > 10;
+bxg80 = bx > 80;
+pa = a;
+pb = b;
+
+# timebound 30
+goal:
+<>[4, 12] ((pa) or bx > 10);
+<>[0.0,5.0) (tx < 50 U[0, 10] bx > 5); # true
+(tx > 20) U[10, 20] bx < 75; # false at 17
+[][0, 5] (<>[2, 10] bx > 50); # false at 21
+
