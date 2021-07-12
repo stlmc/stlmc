@@ -85,7 +85,7 @@ As explained in Section VII.A, we consider five hybrid automata models, two vari
 We provide a script to automate the experiments: 'run' in the top directory. The following command run all 80 cases for this experiment (5 models, 2 dynamics, 4 formulas, 2 algorithms) with a 120-minute timeout:
 
   ~~~
-  $ ./run -m exp1 -t 120
+  ./run -m exp1 -t 120
   ~~~
   
 The argument '-m exp1' denotes the experiment, and '-t 120' denotes a timeout. This command produces a log file subdirectory 'exp1_log' and a spreadsheet report 'exp1.xlsx' in the current directory, explained above.
@@ -103,7 +103,7 @@ In this experiment, we consider 250 STL formulas (50 formulas for each nesting d
 Using the script 'run', we can run all 500 cases (250 formulas, two algorithms) with a 30-minute timeout, e.g., by the following command:
 
   ~~~
-  $ ./run -m exp2 -t 30
+  ./run -m exp2 -t 30
   ~~~
 
 This command produces a log file subdirectory 'exp2_log' and a spreadsheet report 'exp2.xlsx' in the current directory.
@@ -123,7 +123,7 @@ with DYNAMICS \in {linear, poly}, TOOL \in {stlmc, hycomp, spaceex, flowstar}, T
 The following command runs all cases (in Table II) with a 15-minute timeout:
 
   ~~~
-  $ ./run -m exp3 -t 15
+  ./run -m exp3 -t 15
   ~~~
 
 which produces a log file subdirectory 'exp3_log' and a spreadsheet report 'exp3.xlsx' in the current directory.
@@ -136,8 +136,8 @@ The 'run' script provides several options to run a subset of the experiments. Th
 
   ~~~
   $./run -m <MODEL> \ 
-	[-t <TIMEOUT>] \
-	[-d <DYNAMIC>]\
+	  [-t <TIMEOUT>] \
+	  [-d <DYNAMIC>]\
    	[-alg <ALGORITHM>] \
     	[-tool <TOOL>]
   ~~~
@@ -157,19 +157,16 @@ The following shows all available MODEL arguments for each experiment:
 - RQ3 : reach-car, reach-therm, reach-water, reach-battery, reach-rail 
 
 E.g., the following command runs Experiment RQ1 only for the railroad model with linear dynamics using algorithm New with a timeout of 10 minutes:
-
 	~~~
-	$ ./run -m rail -d linear -alg new -t 10
+	./run -m rail -d linear -alg new -t 10
 	~~~
 
 The following command runs Experiment RQ2 only for the formulas with nesting depth 2 with a timeout of 5 minutes:
-	
 	~~~
-	$ ./run -m nested2 -alg old -t 5
+	./run -m nested2 -alg old -t 5
 	~~~
 
 The following command runs Experiment RQ3 only for the railroad model with polynomial dynamics using algorithm ONew with a timeout of 5 minutes:
-	
 	~~~
-	$ ./run -m reach-rail -d poly -tool stlmc-opt -t 5
+	./run -m reach-rail -d poly -tool stlmc-opt -t 5
 	~~~
