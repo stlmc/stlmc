@@ -158,6 +158,10 @@ The following shows all available MODEL arguments for each experiment:
 
 E.g., the following command runs Experiment RQ1 only for the railroad model with linear dynamics using algorithm New with a timeout of 10 minutes:
 	
+  ~~~
+  ./run -m exp3 -t 15
+  ~~~
+	
 	~~~
 	./run -m rail -d linear -alg new -t 10
 	~~~
