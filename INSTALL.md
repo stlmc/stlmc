@@ -18,7 +18,7 @@ sudo make python
 ~~~
 cd stlmc-v1
 sudo make
-make set python
+make setpython
 ~~~
 5. Finish!!
 
