@@ -4,28 +4,23 @@
 
 2. Run the following commands:
 
-'''{.python}
+~~~
 
 unzip stlmc-v1
-
 cd stlmc-v1
-
 sudo apt install make
-
 sudo make python
 
-'''
+~~~
 
 3. Restarting the terminal window
 4. Run the following command
 
-'''{.python}
-
+~~~
+cd stlmc-v1
 sudo make
-
 make set python
-
-'''
+~~~
 
 
 
