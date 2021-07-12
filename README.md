@@ -157,16 +157,19 @@ The following shows all available MODEL arguments for each experiment:
 - RQ3 : reach-car, reach-therm, reach-water, reach-battery, reach-rail 
 
 E.g., the following command runs Experiment RQ1 only for the railroad model with linear dynamics using algorithm New with a timeout of 10 minutes:
+	
 	~~~
 	./run -m rail -d linear -alg new -t 10
 	~~~
 
 The following command runs Experiment RQ2 only for the formulas with nesting depth 2 with a timeout of 5 minutes:
+	
 	~~~
 	./run -m nested2 -alg old -t 5
 	~~~
 
 The following command runs Experiment RQ3 only for the railroad model with polynomial dynamics using algorithm ONew with a timeout of 5 minutes:
+	
 	~~~
 	./run -m reach-rail -d poly -tool stlmc-opt -t 5
 	~~~
