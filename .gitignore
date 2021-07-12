@@ -3,7 +3,6 @@ stlmc.e*
 stlmc.o*
 *.output
 *.csv
-*.sh
 *.interp
 *.tokens
 *Parser.py
