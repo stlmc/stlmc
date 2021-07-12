@@ -2,6 +2,7 @@
 
 This directory includes the following files:
 
+- ase2021-paper1206.pdf : a accepted paper
 - supp.pdf: the proof of the lemmas, and the details of the experiments.
 - data.zip (1.3MB): the experimental results and log files for the experiments
 - INSTALL.md: a file that explains how to install our source code
