@@ -1,10 +1,5 @@
-from stlmcPy.constraints.operations import reduce_not, generate_id
-from functools import singledispatch
-from stlmcPy.constraints.constraints import *
-from .interval import inInterval, minusInterval
-
-NEW_ID = 0
-ABS_OPT = True
+from stlmcPy.constraints.operations import reduce_not, fresh_new_var
+from .interval import *
 
 
 def fullSeparation(index, subFormula, var_point, var_interval, id_match_dict):
@@ -154,20 +149,13 @@ def _(f: UntilFormula, i, k, v, j, idDict):
         right_ind = k - 1
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
+    new_var = fresh_new_var()
 
-    if ABS_OPT:
-        global NEW_ID
-        new_var = Bool("opt_var_" + str(NEW_ID))
-        NEW_ID += 1
+    abstract_dict = dict()
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict.update(exist_dict)
 
-        abstract_dict = dict()
-        abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
-        abstract_dict.update(exist_dict)
-
-        return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
-    else:
-        return Or([And(and_chi),
-                   And([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
+    return Or([And(and_chi), And([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
 
 
 @_trans.register(ReleaseFormula)
@@ -187,25 +175,17 @@ def _(f: ReleaseFormula, i, k, v, j, idDict):
     and_chi.append(Bool(idDict[f.left].id + "_" + str(left_ind)))
     and_chi.append(Bool(idDict[f.right].id + "_" + str(right_ind)))
 
-    if ABS_OPT:
-        global NEW_ID
+    new_var = fresh_new_var()
 
-        new_var = Bool("opt_var_" + str(NEW_ID))
-        NEW_ID += 1
+    abstract_dict = dict()
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict.update(exist_dict)
 
-        abstract_dict = dict()
-        abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
-        abstract_dict.update(exist_dict)
-
-        return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
-    else:
-        return And([Or(and_chi),
-                    Or([Bool(idDict[f.left].id + "_" + str(left_ind)), _trans(f, i, k + 1, v, j, idDict)[0]])]), dict()
+    return And([Or(and_chi), Or([Bool(idDict[f.left].id + "_" + str(left_ind)), new_var])]), abstract_dict
 
 
 @_trans.register(FinallyFormula)
 def _(f: FinallyFormula, i, k, v, j, idDict):
-    global NEW_ID
     if k >= (len(j) + 1):
         return BoolVal("False"), dict()
     and_chi = list()
@@ -217,24 +197,17 @@ def _(f: FinallyFormula, i, k, v, j, idDict):
         ind = k - 1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
 
-    if ABS_OPT:
-        global NEW_ID
+    new_var = fresh_new_var()
 
-        new_var = Bool("opt_var_" + str(NEW_ID))
-        NEW_ID += 1
+    abstract_dict = dict()
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict.update(exist_dict)
 
-        abstract_dict = dict()
-        abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
-        abstract_dict.update(exist_dict)
-
-        return Or([And(and_chi), new_var]), abstract_dict
-    else:
-        return Or([And(and_chi), _trans(f, i, k + 1, v, j, idDict)[0]]), dict()
+    return Or([And(and_chi), new_var]), abstract_dict
 
 
 @_trans.register(GloballyFormula)
 def _(f: GloballyFormula, i, k, v, j, idDict):
-    global NEW_ID
     if k >= (len(j) + 1):
         return BoolVal("True"), dict()
     and_chi = list()
@@ -245,19 +218,13 @@ def _(f: GloballyFormula, i, k, v, j, idDict):
         ind = k - 1
     and_chi.append(Bool(idDict[f.child].id + "_" + str(ind)))
 
-    if ABS_OPT:
-        global NEW_ID
+    new_var = fresh_new_var()
 
-        new_var = Bool("opt_var_" + str(NEW_ID))
-        NEW_ID += 1
+    abstract_dict = dict()
+    abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
+    abstract_dict.update(exist_dict)
 
-        abstract_dict = dict()
-        abstract_dict[new_var], exist_dict = _trans(f, i, k + 1, v, j, idDict)
-        abstract_dict.update(exist_dict)
-
-        return And([Or(and_chi), new_var]), abstract_dict
-    else:
-        return And([Or(and_chi), _trans(f, i, k + 1, v, j, idDict)[0]]), dict()
+    return And([Or(and_chi), new_var]), abstract_dict
 
 
 @_trans.register(Not)

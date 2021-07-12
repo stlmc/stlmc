@@ -1,0 +1,97 @@
+MODULE main
+VAR
+    plant: Plant;
+
+INIT
+	plant.location = F1S1 &
+    plant.d1 <= 0.1 & plant.d1 >= 0 &
+    plant.d2 <= 0.1 & plant.d2 >= 0 &
+    plant.g1 <= 8.5 & plant.g1 >= 8.4 &
+    plant.g2 <= 7.5 & plant.g2 >= 7.4&
+    plant.gt = 0 & plant.bk = 0;
+
+INVARSPEC NAME unsafe := plant.d2 < 3;
+INVARSPEC NAME safe := plant.g2 > 0.3;
+
+
+MODULE Plant
+VAR
+    location: {F1S1, F1S2, F2S1, F3S1, F1S3, F3S3};
+    d1: continuous;
+    d2: continuous;
+    g1: continuous;
+    g2: continuous;
+    gt: continuous;
+    bk: continuous;
+
+FLOW (location = F1S1 -> der(d1) = 1 & der(d2) = 1 & der(g1) = -0.3 & der(g2) = -0.3 & der(gt) = 1 & der(bk) = 0) &
+	   (location = F1S2 -> der(d1) = 0.8 & der(d2) = -0.166 & der(g1) = -0.5 & der(g2) = 0 & der(gt) = 1 & der(bk) = 0) &
+	   (location = F2S1 -> der(d1) = -0.166 & der(d2) = 0.8 & der(g1) = 0 & der(g2) = -0.5 & der(gt) = 1 & der(bk) = 0) &
+	   (location = F3S1 -> der(d1) = 0 & der(d2) = 0.7 & der(g1) = 0 & der(g2) = -7 & der(gt) = 1 & der(bk) = 0) &
+	   (location = F1S3 -> der(d1) = 0.7 & der(d2) = 0 & der(g1) = -7 & der(g2) = 0 & der(gt) = 1 & der(bk) = 0) &
+	   (location = F3S3 -> der(d1) = 0 & der(d2) = 0 & der(g1) = 0 & der(g2) = 0 & der(gt) = 1 & der(bk) = 0) 
+
+INVAR (location = F1S1 -> g1 >= 0.5 & g2 >= 0.5 & gt <= 30 & bk <= 50)  
+
+INVAR (location = F1S2 -> g1 >= 0.5 & gt <= 30 & bk <= 50)  
+
+INVAR (location = F2S1 -> g2 >= 0.5 & gt <= 30 & bk <= 50)  
+
+INVAR (location = F3S1 -> g1 <= 1 & g2 >= 0.5 & gt <= 30 & bk <= 50)
+
+INVAR (location = F1S3 -> g1 >= 0.5 & g2 <= 1 & gt <= 30 & bk <= 50)
+ 
+
+TRANS
+    (location = F1S1 & g1 >= 2 &
+		                   next(location) = F1S2 & next(gt) = gt & next(bk) = bk + 1 &
+		                   next(d1) = d1 & next(d2) = d2 &
+				   next(g1)= g1 & next(g2) = g2) |
+		
+
+	(location = F1S1 & g2 >= 2 & 
+		                   next(location) = F2S1 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) |
+
+   (location = F1S1 & g1 <= 1 & 
+                       next(location) = F3S1 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) |                                    
+
+  (location = F1S1 & g2 <= 1 &
+                       next(location) = F1S3 & next(gt) = gt & next(bk) = bk + 1 &
+                       next(d1) = d1 & next(d2) = d2 &
+           next(g1)= g1 & next(g2) = g2) |
+  
+
+    (location = F1S2 & g1 <= 1 &
+		                   next(location) = F3S1 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 &
+                                   next(g1)= g1 & next(g2) = g2) |
+
+	(location = F1S2 & g2 >= 2 & 
+		                   next(location) = F2S1 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 &
+                                   next(g1)= g1 & next(g2) = g2)|
+
+    (location = F2S1 & g1 >= 2 &  
+		                   next(location) = F1S2 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) |
+
+	(location = F2S1 & g2 <= 1 &  
+		                   next(location) = F1S3 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) |
+
+    (location = F3S1 & g2 <= 1 &
+		                   next(location) = F3S3 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) |
+
+	(location = F1S3 & g1 <= 1 &  
+		                   next(location) = F3S3 & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(d1) = d1 & next(d2) = d2 & 
+                                   next(g1)= g1 & next(g2) = g2) 
+

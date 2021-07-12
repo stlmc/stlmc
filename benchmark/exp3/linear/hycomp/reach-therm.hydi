@@ -1,0 +1,112 @@
+MODULE main
+VAR
+    plant: Plant;
+
+INIT
+	plant.location = Off1Off2 &
+    plant.x1 <= 20 & plant.x1 >= 18 &
+    plant.x2 <= 23 & plant.x2 >= 22.5&
+    plant.gt = 0 & plant.bk = 0;
+
+INVARSPEC NAME unsafe := plant.x1 > 25 ;
+INVARSPEC NAME safe := plant.x1  > 5 | plant.x2 > 5;
+
+MODULE Plant
+VAR
+    location: {On1On2, On1Off2, Off1On2, Off1Off2};
+    x1: continuous;
+    x2: continuous;
+    gt: continuous;
+    bk: continuous;
+
+FLOW (location = On1On2 -> der(x1) = 0.7 & der(x2) = 1 & der(gt) = 1 & der(bk) = 0) &
+		(location = On1Off2 -> der(x1) = 0.7 & der(x2) = -0.6 & der(gt) = 1 & der(bk) = 0) &
+		(location = Off1On2 -> der(x1) = -0.4 & der(x2) = 1 & der(gt) = 1 & der(bk) = 0) &
+		(location = Off1Off2 -> der(x1) = -0.4 & der(x2) = -0.6 & der(gt) = 1 & der(bk) = 0)
+
+INVAR (location = On1On2 -> x1 <= 30 & x2 <= 30 & bk <= 50 & gt <= 10)  
+
+INVAR (location = On1Off2 -> x1 <= 30 & x2 >= 10 & bk <= 50 & gt <= 10 )  
+
+INVAR (location = Off1On2 -> x1 >= 10 & x2 <= 30 & bk <= 50 & gt <= 10)  
+
+INVAR (location = Off1Off2 -> x1 >= 10 & x2 >= 10 & bk <= 50 & gt <= 10)  
+
+TRANS
+   (location = On1On2 & x1 >= 22 &  
+		                   next(location) = Off1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = On1On2 & x2 >= 23 &  
+		                   next(location) = On1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+    (location = On1On2 & x1 >= 22 &  
+		                   next(location) = Off1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = On1On2 & x2 >= 23 &  
+		                   next(location) = Off1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+
+    (location = Off1Off2 & x1 <= 17 &
+		                   next(location) = On1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = Off1Off2 & x2 <= 19 &  
+		                   next(location) = Off1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+    (location = Off1Off2 & x1 <= 17 &
+		                   next(location) = On1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = Off1Off2 & x2 <= 19 & 
+		                   next(location) = On1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+
+    (location = Off1On2 & x1 <= 17 &
+		                   next(location) = On1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = Off1On2 & x2 >= 23 & 
+		                   next(location) = Off1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+    (location = Off1On2 & x1 <= 19 &
+		                   next(location) = On1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = Off1On2 & x2 >= 23 &
+		                   next(location) = On1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |					   
+
+    (location = On1Off2 & x1 >= 22 &
+		                   next(location) = Off1Off2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = On1Off2 & x2 <= 19 &  
+		                   next(location) = On1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2)  |
+    (location = On1Off2 & x1 >= 22 &
+		                   next(location) = Off1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2) |
+
+	(location = On1Off2 & x2 <= 19 &  
+		                   next(location) = Off1On2 & next(gt) = gt & next(bk) = bk + 1 & 
+		                   next(x1) = x1 & 
+						   next(x2) = x2)

@@ -1,0 +1,157 @@
+hybrid reachability {
+state var tx,bx,vb,k,ff
+
+setting 
+{
+    adaptive steps {min 0.01, max 0.05}
+	time 15
+	remainder estimation 1e-2 
+	identity precondition
+	gnuplot octagon tx,bx fixed orders 2
+	cutoff 1e-12
+	precision 53 
+	no output 
+	max jumps 5
+	print on
+}
+
+modes {
+	f0s0 {
+		poly ode 1
+		{
+			tx' = -30 
+			bx' = 0 
+			vb' = 0
+			k' = 0
+            ff'=0
+		}
+		inv 
+		{
+			tx >= 60
+            k <= 10
+		}
+	}
+        f0s1 {
+               poly ode 1
+                {
+                        tx' = -5
+                        bx' = vb
+                        vb' = 0.3
+                        k' = 0
+                        ff'=0
+                }
+                inv
+                {
+                        tx >= 20
+                        k <= 10
+                } 
+	}
+        f1s0 {
+	        poly ode 1
+                {
+                        tx' = -5
+                        bx' = vb
+
+			             vb' = 0.5
+                         k' = 0
+                         ff'=0
+                }
+                inv
+                {
+                        tx >= 10
+                        k <= 10
+                }
+        }
+        f1s1 {
+        	poly ode 1
+                {
+                        tx' = -5
+                        bx' = vb
+			             vb' = -1
+                         k' = 0
+                         ff'=0
+                }
+                inv
+                {
+                        tx >= -10
+                        k <= 10
+                }
+        }
+        goal {
+                poly ode 1
+                {
+                }
+                inv
+                {
+                }
+        }
+}
+
+jumps{
+        f0s0 -> f0s1
+        guard { tx <= 80 }
+        reset { bx' := bx tx' := tx vb' := 6 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s0 -> f1s0
+        guard { tx <= 70 }
+        reset { bx' := bx tx' := tx vb' := 8 k' := k + 1}
+        parallelotope aggregation { }	
+
+        f0s1 -> f1s0
+        guard { tx <= 80 }
+        reset { bx' := bx tx' := tx vb' := vb k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s0 -> f1s1
+        guard { tx <= 20 }
+        reset { bx' := bx tx' := tx vb' := -4 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s1 -> f0s0
+        guard { tx <= 0 }
+        reset { bx' := bx tx' := (100 + tx) vb' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s0 -> goal
+        guard {bx >= 85}
+        reset{}
+        parallelotope aggregation { }
+
+        f0s1 -> goal
+        guard {bx >= 85}
+        reset{}
+        parallelotope aggregation { }
+
+        f1s0 -> goal
+        guard {bx >= 85}
+        reset{}
+        parallelotope aggregation { }
+
+        f1s1 -> goal
+        guard {bx >= 85}
+        reset{}
+        parallelotope aggregation { }
+
+}
+
+
+init {
+	f0s0 {
+		bx in [0, 0.5]
+		tx in [89, 90]
+		vb in [0,0.1]
+        k in [0, 0]
+        ff in [0, 0]
+	}
+} 
+}
+
+unsafe
+{
+    f0s0{ff >= 1}
+    f0s1{ff >= 1}
+    f1s0{ff >= 1}
+    f1s1{ff >= 1}
+    goal{}
+}

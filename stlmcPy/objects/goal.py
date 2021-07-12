@@ -1,14 +1,13 @@
+import abc
+
+import stlmcPy.constraints.encoding as ENC
 import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
 import stlmcPy.constraints.enhanced_separation as ENHANCED_SEP
-import stlmcPy.constraints.separation as SEP
 import stlmcPy.constraints.partition as PART
+import stlmcPy.constraints.separation as SEP
 from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, relaxing, reduce_not, make_new_dynamics, \
+from stlmcPy.constraints.operations import get_vars, substitution, make_dict, reduce_not, make_new_dynamics, \
     lower_encoding, bound_tau_max
-import stlmcPy.constraints.encoding as ENC
-import abc
-from timeit import default_timer as timer
-
 from stlmcPy.encoding.time import make_zeno_time_const, make_non_zeno_time_const
 
 
@@ -17,7 +16,7 @@ class Goal:
         self.time_encoding_function = time_enc_func
 
     @abc.abstractmethod
-    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
         pass
 
     @abc.abstractmethod
@@ -36,10 +35,6 @@ class PropHelper:
         self.proposition_dict = proposition_dict
         self.boolean_abstract = dict()
         self.bound = bound
-        self.is_delta_set = False
-
-    def set_delta(self):
-        self.is_delta_set = True
 
     def make_integrals(self, bound):
         mode_number = 0
@@ -113,14 +108,12 @@ class PropHelper:
                             sub.append(Eq(Bool(bound_applied_goal_var.id), bound_applied_const))
                             return sub
 
-                    # if delta exists
-                    if self.is_delta_set:
-                        relaxed_bound_const = relaxing(bound_applied_const, delta)
-                        not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), delta)
+                    # relaxed_bound_const = relaxing(bound_applied_const, RealVal(str(delta)))
 
-                    else:
-                        relaxed_bound_const = bound_applied_const
-                        not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
+                    # not_relaxed_bound_const = relaxing(reduce_not(Not(bound_applied_const)), RealVal(str(delta)))
+
+                    relaxed_bound_const = bound_applied_const
+                    not_relaxed_bound_const = reduce_not(Not(bound_applied_const))
 
                     not_bound_applied_goal_var = Bool("not@" + bound_applied_goal_var.id)
                     not_bound_applied_goal_interval = Bool("not@" + bound_applied_goal_interval.id)
@@ -171,30 +164,17 @@ class BaseStlGoal(Goal):
         self.boolean_abstract = dict()
 
     @abc.abstractmethod
-    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
+    def make_stl_consts(self, bound, time_bound):
         pass
 
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict: dict):
-        result_const = list()
-        # redundant
-        #if delta_flag:
-        #    propHelper.set_delta()
-        new_prop_dict = proposition_dict.copy()
-        if delta_flag:
-            for k in new_prop_dict:
-                assert isinstance(k, Bool)
-                # check if value is bool
-                if isinstance(new_prop_dict[k], Bool):
-                    pass
-                else:
-                    new_prop_dict[k] = relaxing(new_prop_dict[k], delta)
-
+    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
         # generate mapping constraint between model and goal
-        propHelper = PropHelper(self, model, new_prop_dict, bound)
-        assert propHelper.is_delta_set is False
+        propHelper = PropHelper(self, model, proposition_dict, bound)
+
+        result_const = list()
         prop_const = propHelper.make_consts(delta)
 
         '''
@@ -204,10 +184,10 @@ class BaseStlGoal(Goal):
         '''
 
         result_const.append(And(prop_const))
-        stl_consts_list = self.make_stl_consts(bound, time_bound, delta_flag, delta)
 
-        # redundant function
-        time_consts_list = self.time_encoding_function(bound, time_bound, False, delta)
+        stl_consts_list = self.make_stl_consts(bound, time_bound)
+
+        time_consts_list = self.time_encoding_function(bound, time_bound)
 
         result_const.extend(time_consts_list)
         result_const.extend(stl_consts_list)
@@ -219,14 +199,9 @@ class BaseStlGoal(Goal):
 
 
 class OldStlGoal(BaseStlGoal):
-    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
+    def make_stl_consts(self, bound, time_bound):
         baseP = PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
-        # do we need this?
-        if delta_flag:
-            # delta relaxing nnf
-            negFormula = relaxing(negFormula, delta)
-
         negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
@@ -235,6 +210,8 @@ class OldStlGoal(BaseStlGoal):
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
 
+        # set enc flags
+        ENC.ENC_TYPES = "old"
         # FOL translation
 
         baseV = ENC.baseEncoding(partition, baseP, time_bound)
@@ -249,21 +226,15 @@ class OldStlGoal(BaseStlGoal):
 
 
 class NewStlGoal(BaseStlGoal):
-    def set_abs_opt_sep(self, isabs):
-        ENHANCED_SEP.ABS_OPT = True if isabs else False
-
-    def make_stl_consts(self, bound, time_bound, delta_flag, delta):
+    def make_stl_consts(self, bound, time_bound):
         baseP = ENHANCED_PART.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
-        if delta_flag:
-            # delta relaxing nnf
-            negFormula = relaxing(negFormula, delta)
+
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
 
         sub_list = list(partition.keys())
 
         consts = list()
-        ENHANCED_SEP.NEW_ID = 0
 
         (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
         id_match_dict = dict()
@@ -306,34 +277,44 @@ class ReachGoal(Goal):
     def get_formula(self):
         return self.formula
 
-    def make_consts(self, bound, time_bound, delta_flag, delta, model, proposition_dict):
+    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
+        def _update_negation_prop(_prop_dict: dict) -> dict:
+            _new_dict = dict()
+            for _p in _prop_dict:
+                _new_dict[_p] = _prop_dict[_p]
+                if isinstance(_p, Bool):
+                    if "newPropDecl_" in _p.id:
+                        _new_dict[Bool("not@{}".format(_p.id))] = reduce_not(Not(_prop_dict[_p]))
+            return _new_dict
         # if len(proposition_dict) == 0:
         #    return BoolVal("True"), dict()
 
+        updated_proposition_dict = _update_negation_prop(proposition_dict)
+
         result = list()
         # return to original const
-        decoded_consts = substitution(self.formula, proposition_dict)
+        decoded_consts = substitution(self.formula, updated_proposition_dict)
         sub_result = list()
 
-        # make goal speciific dictionary and substitute it
+        # make goal specific dictionary and substitute it
         for cur_bound in range(0, bound + 1):
             goal_dict = make_dict(cur_bound, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
+            goal_dict[Real("tau")] = Real("tau_{}".format(cur_bound + 1))
             goal_consts = substitution(decoded_consts, goal_dict)
             # cur_bool = Bool("reach_goal_" + str(cur_bound))
             # sub_result.append(And([cur_bool, goal_consts]))
             sub_result.append(goal_consts)
         # get time const
         result.append(Or(sub_result))
-        result.extend(self.time_encoding_function(bound, time_bound, delta_flag, delta))
+        result.extend(self.time_encoding_function(bound, time_bound))
 
         return And(result), dict()
 
 
 class GoalFactory:
-    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
+    def __init__(self, raw_goal: Formula, is_zeno=True):
         self.raw_goal = raw_goal
         self.time_function = None
-        self.is_sep_abs = is_sep_abs 
         if is_zeno:
             self.time_function = make_zeno_time_const
         else:
@@ -344,15 +325,13 @@ class GoalFactory:
         if isinstance(self.raw_goal, Reach):
             return ReachGoal(self.raw_goal.formula, self.time_function)
         else:
-            new_stl_obj = NewStlGoal(self.raw_goal, self.time_function)
-            new_stl_obj.set_abs_opt_sep(self.is_sep_abs)
-            return new_stl_obj 
+            return NewStlGoal(self.raw_goal, self.time_function)
         pass
 
 
 class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula, is_sep_abs, is_zeno=True):
-        super().__init__(raw_goal, is_sep_abs)
+    def __init__(self, raw_goal: Formula, is_zeno=True):
+        super().__init__(raw_goal)
         self.time_function = None
         if is_zeno:
             self.time_function = make_zeno_time_const
@@ -365,3 +344,50 @@ class OldGoalFactory(GoalFactory):
         else:
             return OldStlGoal(self.raw_goal, self.time_function)
         pass
+
+
+# for reach optimization
+def optimize(goal: Goal) -> Goal:
+    def _check_if_suitable(_formula: Formula):
+        if _formula is None or not isinstance(_formula, GloballyFormula):
+            return False
+        count = 0
+        waiting_queue = set()
+        waiting_queue.add((count, _formula))
+        while len(waiting_queue) > 0:
+            count = count + 1
+            _, t = waiting_queue.pop()
+            if isinstance(t, Leaf):
+                # print("Leaf , {}".format(id(t)))
+                pass
+            elif isinstance(t, NonLeaf):
+                # print("NonLeaf , {}".format(id(t)))
+                if (isinstance(t, UnaryTemporalFormula) or isinstance(t, BinaryTemporalFormula)) and count > 1:
+                    return False
+                for child in t.children:
+                    waiting_queue.add((count, child))
+            else:
+                continue
+        return True
+
+    def _transform(_formula: GloballyFormula) -> Formula:
+        # local : [0, inf] => ..
+        # local : [a , b] => tau \in [a, b]
+        _local = _formula.local_time
+        assert isinstance(_local, Interval)
+        _tau = Real("tau")
+        _zero = RealVal("0.0")
+        _inf = RealVal("inf")
+        if _local.left.value == _zero.value and _local.right.value == _inf.value:
+            return Not(_formula.child)
+
+        _op_dict = {True: Leq, False: Lt}
+        _left_const = _op_dict[_local.left_end](_local.left, _tau)
+        _right_const = _op_dict[_local.right_end](_tau, _local.right)
+        return And([_left_const, _right_const, Not(_formula.child)])
+
+    formula = reduce_not(goal.get_formula())
+    if _check_if_suitable(formula):
+        assert isinstance(formula, GloballyFormula)
+        return ReachGoal(_transform(formula), goal.time_encoding_function)
+    return goal

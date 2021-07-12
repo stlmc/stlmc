@@ -51,19 +51,22 @@ def _(f: UnaryTemporalFormula, sub_list, k):
 
     return Or(result)
 
+
 @_checkStable.register(Not)
 def _(f: Not, sub_list, k):
     str_list = [str(c) for c in sub_list]
     form_index = str(str_list.index(str(f.child)))
-    left = str(k)
-    right = str(k + 1)
+    left = str(2 * k)
+    right = str(2 * k + 2)
     str_id = "chi_" + form_index
 
     # if isinstance(f.child, Bool):
     #     left = str(int((int(left) / 2) - 1))
     #     right = str(int((int(right) / 2) - 1))
     #     str_id = f.child.id
+
     return Neq(Bool(str_id + "_" + left), Bool(str_id + "_" + right))
+
 
 @_checkStable.register(BinaryTemporalFormula)
 def _(f: BinaryTemporalFormula, sub_list, k):
@@ -92,7 +95,6 @@ def _(f: BinaryTemporalFormula, sub_list, k):
     result.append(Neq(Bool(left_id + "_" + point), Bool(left_id + "_" + right_l)))
     result.append(Neq(Bool(right_id + "_" + left_r), Bool(right_id + "_" + point)))
     result.append(Neq(Bool(right_id + "_" + point), Bool(right_id + "_" + right_r)))
-
     return Or(result)
 
 

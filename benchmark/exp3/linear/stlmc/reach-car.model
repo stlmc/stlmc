@@ -1,0 +1,76 @@
+bool r;
+bool d;
+[-100, 100] x1;
+[-100, 100] y1;
+[-100, 100] x2;
+[-100, 100] y2;
+
+#  car1 : straight 
+{
+    mode:
+        r = false;
+        d = false;
+    inv:
+        x2 - x1 <= 5;
+	y2 - y1 <= 5;
+    flow:
+        d/dt[x1] = 3;
+        d/dt[y1] = 0;
+	d/dt[x2] = 2;
+	d/dt[y2] = 2;
+    jump:
+        (y2 - y1) >= 3 =>
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+        (y2 - y1) <= -3 =>
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+}
+# car1 : left 
+{
+    mode:
+        r = true;
+        d = false;
+    inv:
+	x2 - x1 >= -5;
+	y2 - y1 >= -5;
+    flow:
+        d/dt[x1] = 1.5;
+        d/dt[y1] = 3;
+        d/dt[x2] = 2;
+        d/dt[y2] = 2;
+    jump:
+	(and ((y2 - y1) <= 1) ((y2 - y1) >= -1)) =>
+		(and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)); 
+        (y2 - y1) <= -3 =>
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+
+}
+# car1 : right 
+{
+    mode:
+        r = true;
+        d = true;
+    inv:
+	x2 - x1 >= -5;
+        x2 - x1 <= 5;
+    flow:
+        d/dt[x1] = 1.5;
+        d/dt[y1] = -3;
+        d/dt[x2] = 2;
+        d/dt[y2] = 2;
+    jump:
+	(and ((y2 - y1) <= 1) ((y2 - y1) >= -1)) =>
+                (and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+        (y2 - y1) >= 3 =>
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+}
+
+
+init:
+(and not(r) not(d) (0 <= x1) (x1 <= 1) (0 <=y1) (y1 <= 1) (2 <= x2) (x2 <= 3) (2 <= y2) (y2 <= 3));
+
+propositions:
+
+# timebound 20
+goal:
+~(<>[0, inf) x2 <= -2);
+~(<>[0, inf) x1 >= 5);

@@ -1,0 +1,110 @@
+bool ix;
+bool iy;
+[-40, 40] rx;
+[-40, 40] ry;
+[-30, 30] vx1;
+[-30, 30] vy1;
+
+#  car1 : inc, inc 
+{
+    mode:
+        ix = true;
+        iy = true;
+    inv:
+	rx <= 20;
+	ry <= 20;
+	vx1 <= 8;
+	vy1 <= 8;
+    flow:
+        d/dt[rx] = vx1;
+        d/dt[ry] = vy1;
+	d/dt[vx1] = 1.2;
+	d/dt[vy1] = 1.4;
+    jump:
+	(and (rx >= 4) (ry >= 4)) =>
+		(and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0)); 
+        (and (rx >= 4) (ry <= 1)) =>
+		(and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx <= 1) (ry >= 4)) =>
+		(and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+}
+#  car1 : inc, dec
+{
+    mode:
+        ix = true;
+        iy = false;
+    inv:
+	rx <= 20;
+	ry >= -20;
+        vx1 <= 8;
+        vy1 >= -8;
+    flow:
+        d/dt[rx] = vx1;
+        d/dt[ry] = vy1;
+        d/dt[vx1] = 1.2;
+        d/dt[vy1] = -1.4;
+    jump:
+        (and (rx <= 1) (ry <= 1)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx >= 4) (ry >= 4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx >= 4) (ry <= 1)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+}
+#  car1 : dec, inc
+{
+    mode:
+        ix = false;
+        iy = true;
+    inv:
+	rx >= -20;
+	ry <= 20;
+        vx1 >= -8;
+        vy1 <= 8;
+    flow:
+        d/dt[rx] = vx1;
+        d/dt[ry] = vy1;
+        d/dt[vx1] = -1.2;
+        d/dt[vy1] = 1.4;
+    jump:
+        (and (rx <= 1) (ry <= 1)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx >= 4) (ry >= 4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx <= 1) (ry >= 4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0)); 
+}
+#  car1 : dec, dec
+{
+    mode:
+        ix = false;
+        iy = false;
+    inv:
+	rx >= -20;
+	ry >= -20;
+        vx1 >= -8;
+        vy1 >= -8;
+    flow:
+        d/dt[rx] = vx1;
+        d/dt[ry] = vy1;
+        d/dt[vx1] = -1.2;
+        d/dt[vy1] = -1.4;
+    jump:
+        (and (rx <= 1) (ry <= 1)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx >= 4) (ry <= 1)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0));
+        (and (rx <= 1) (ry >= 4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (vx1' = 0) (vy1' = 0)); 
+}
+
+
+init:
+(and not(ix) not(iy) (0 <= rx) (rx <= 1) (0 <= ry) (ry <= 1) (-2.5 <= vx1) (vx1 <= -2) (-2.5 <= vy1) (vy1 <= -2)); 
+
+propositions:
+
+# timebound 20 
+goal:
+~(<>[0, inf) ((vx1 >= 10) and (vy1 <= -20)));
+~(<>[0, inf) rx >= 4);

@@ -1,0 +1,69 @@
+MODULE main
+VAR
+    plant: Plant;
+
+INIT
+    plant.location = Far &
+    plant.bx <= 0.5 & plant.bx >= 0 &
+    plant.tx <= 90 & plant.tx >= 89 &
+    plant.gt = 0 & plant.bk = 0;
+
+INVARSPEC NAME unsafe := plant.bx < 30;
+INVARSPEC NAME safe := (plant.tx > -14 | plant.bx > -1);
+
+MODULE Plant
+VAR
+    location: {Far, Approach, Close, Past};
+    bx: continuous;
+    tx: continuous; 
+    gt: continuous;
+    bk: continuous;
+
+FLOW (location = Far -> der(tx) = -30 & der(bx) = 0 & der(gt) = 1 & der(bk) =0) &
+		 (location = Approach -> der(tx) = -5 & der(bx) = 5 & der(gt) = 1 & der(bk) =0) & 
+		 (location = Close -> der(tx) = -5 & der(bx) = 10 & der(gt) = 1 & der(bk) =0) & 
+		 (location = Past -> der(tx) = -5 & der(bx) = -5 & der(gt) = 1 & der(bk) =0)  
+
+INVAR (location = Far -> tx <= 100 & tx >= 60 & gt <= 15 & bx <= 90 & bk <= 50) 
+
+INVAR (location = Approach -> tx <= 100 & tx >= 40 & gt <= 15 & bx <= 90 & bk <= 50)
+
+INVAR (location = Close -> tx <= 100 & tx >= 10 & gt <= 15 & bx <= 90 & bk <= 50)
+
+INVAR (location = Past -> tx <= 100 & tx >= -15 & gt <= 15 & bx >= 0 & bk <= 50) 
+
+TRANS
+    (location = Far & tx <= 80 & 
+		                   next(location) = Approach & next(gt) = gt & next(bk) = bk + 1 &
+		                   next(bx) = bx & next(tx) = tx) |
+
+
+	(location = Far & tx <= 80 & 
+		                   next(location) = Close & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(bx) = bx) &   
+                                                
+
+    (location = Approach & tx <= 80 & 
+		                   next(location) = Close & next(gt) = gt & next(bk) = bk + 1 &
+                                   next(bx) = bx & next(tx) = tx) |
+                                                  
+
+	(location = Close & tx <= 20 &
+		                   next(location) =  Past& next(gt) = gt & next(bk) = bk + 1 &
+                                   next(bx) = bx & next(tx) = tx) |
+                                                  
+
+    (location = Past & tx <= 0 & bx <= 10 & 
+		                   next(location) = Far & next(gt) = gt & next(bk) = bk + 1 &
+		                   next(bx) = bx & next(tx) = 100 + tx) |
+
+
+   (location = Past & tx <= 0 & bx <= 10 &  
+                       next(location) = Approach & next(gt) = gt & next(bk) = bk + 1 &
+                       next(bx) = bx & next(tx) = 100 + tx) |
+              
+    (location = Past & tx <= 0 & bx <= 10 &
+                       next(location) = Close & next(gt) = gt & next(bk) = bk + 1 &
+                       next(bx) = bx &  next(tx) = 100 + tx) 
+                                          
+

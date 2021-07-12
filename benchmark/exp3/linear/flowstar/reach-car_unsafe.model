@@ -1,0 +1,147 @@
+hybrid reachability {
+state var x1,x2,y1,y2,k,ff
+
+setting 
+{
+	adaptive steps { min 0.01, max 0.05}
+	time 20
+	remainder estimation 1e-2 
+	identity precondition
+	gnuplot octagon x1,x2 fixed orders 1
+	cutoff 1e-12
+	precision 53 
+	no output 
+	max jumps 5
+	print on
+}
+
+modes {
+	straight {
+		poly ode 1
+		{
+			x1' = 3
+			y1' = 0 
+			x2' = 2
+			y2' = 2 
+                        k' = 0
+                        ff' = 0     
+		}
+		inv 
+		{
+			(x2 - x1) <= 5
+			(y2 - y1) <= 5
+                        k <= 50
+		}
+	}
+        left {
+                poly ode 1
+                {
+                        x1' = 1.5
+                        y1' = 3
+                        x2' = 2
+                        y2' = 2
+                        k' = 0
+                        ff' = 0     
+                }
+                inv
+                {
+                        (x2 - x1) >= -5
+                        (y2 - y1) >= -5
+                        k <= 50
+                }
+        }
+        right {
+                poly ode 1
+                {
+                        x1' = 1.5
+                        y1' = -3
+                        x2' = 2
+                        y2' = 2
+                        k' = 0
+                        ff' = 0     
+                }
+                inv
+                {
+                        (x2 - x1) >= -5
+                        (x2 - x1) <= 5
+                        k <= 50
+                }
+        }
+        goal {
+                poly ode 1
+                {
+                }
+                inv
+                {
+                }
+        }
+}
+
+jumps{
+	straight -> left
+	guard { (y2 -y1) >= 3 }
+	reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+	parallelotope aggregation { }
+
+        straight -> right
+        guard { (y2 - y1) <= -3 }
+        reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+        parallelotope aggregation { }	
+
+        left -> straight
+        guard { (y2 -y1) >= -1 (y2 -y1) <= 1}
+        reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+        parallelotope aggregation { }
+
+        left -> right
+        guard { (y2 - y1) <= -3 }
+        reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+        parallelotope aggregation { }
+
+        right -> left
+        guard { (y2 -y1) >= 3 }
+        reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+        parallelotope aggregation { }
+
+        right -> straight
+        guard { (y2 -y1) >= -1 (y2 -y1) <= 1 }
+        reset { x1' := x1 y1' := y1 x2' := x2 y2' := y2  k' := k + 1}
+        parallelotope aggregation { }
+
+        straight -> goal
+        guard {x1 >= 5}
+        reset{}
+        parallelotope aggregation { }
+
+        left -> goal
+        guard {x1 >= 5} 
+        reset{}
+        parallelotope aggregation { }
+
+        right -> goal
+        guard {x1 >= 5}
+        reset{}
+        parallelotope aggregation { }
+
+}
+
+
+init {
+	straight {
+		x1 in [0, 1]
+		y1 in [0, 1]
+		x2 in [2, 3]
+		y2 in [2, 3]
+                k in [0, 0]
+                ff in [0,0]  
+	}
+} 
+}
+
+unsafe
+{
+	straight{ff >= 1}
+        left{ff >= 1}
+        right{ff >= 1}
+        goal{}
+}

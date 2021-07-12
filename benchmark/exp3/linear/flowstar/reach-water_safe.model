@@ -1,0 +1,210 @@
+hybrid reachability {
+state var x1,x2,k,ff
+
+setting 
+{
+        adaptive steps { min 0.01, max 0.05}
+        time 10
+        remainder estimation 1e-2
+        identity precondition
+        gnuplot octagon x1,x2 fixed orders 1
+        cutoff 1e-12
+        precision 53
+        no output
+        max jumps 5
+        print on
+}
+
+modes {
+	f0s0 {
+		poly ode 1
+		{
+			x1' = -0.8 
+			x2' = -0.6 
+                        k' = 0
+                        ff' = 0
+		}
+		inv 
+		{
+			x1 >= 1
+			x2 >= 1
+                        k <= 50
+		}
+	}
+        f0s1 {
+                poly ode 1
+                {
+                        x1' = -0.8
+                        x2' = 1
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {
+                        x1 >= 1
+                        x2 <= 9
+                        k <= 50
+                }
+        }
+        f1s0 {
+                poly ode 1
+                {
+                        x1' = 0.9
+                        x2' = -0.6
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {
+                        x1 <= 8
+                        x2 >= 1
+                        k <= 50
+                }
+        }
+        f1s1 {
+                poly ode 1
+                {
+                        x1' = 0.9
+                        x2' = 1
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {
+                        x1 <= 9
+                        x2 <= 9
+                        k <= 50
+                }
+        }
+        goal {
+                poly ode 1
+                {
+                }
+                inv
+                {
+                }
+        }
+
+}
+
+jumps{
+	f0s0 -> f1s0
+	guard { x1 <= 2 }
+	reset { x1' := x1 x2' := x2 k' := k + 1}
+	parallelotope aggregation { }
+
+        f0s0 -> f0s1
+        guard { x2 <= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }	
+
+        f0s0 -> f1s1
+        guard { x1 <= 2 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s0 -> f1s1
+        guard { x2 <= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s1 -> f1s1
+        guard { x1 <= 2 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s1 -> f0s0
+        guard { x2 >= 6}
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s1 -> f1s0
+        guard { x1 <= 2 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s1 -> f1s0
+        guard { x2 >= 6}
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s0 -> f1s1
+        guard { x2 <= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s0 -> f0s0
+        guard { x1 >= 5 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s0 -> f0s1
+        guard { x2 <= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s0 -> f0s1
+        guard { x1 >= 5 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s1 -> f1s0
+        guard { x2 >= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s1 -> f0s1
+        guard { x1 >= 5}
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s1 -> f0s0
+        guard { x2 >= 3 }
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f1s1 -> f0s0
+        guard { x1 >= 5}
+        reset { x1' := x1 x2' := x2 k' := k + 1}
+        parallelotope aggregation { }
+
+        f0s0 -> goal
+        guard {x2 >= 9.5}
+        reset{}
+        parallelotope aggregation { }
+
+        f0s1 -> goal
+        guard {x2 >= 9.5}
+        reset{}
+        parallelotope aggregation { }
+
+        f1s0 -> goal
+        guard {x2 >= 9.5}
+        reset{}
+        parallelotope aggregation { }
+
+        f1s1 -> goal
+        guard {x2 >= 9.5}
+        reset{}
+        parallelotope aggregation { }
+}
+
+
+init {
+	f0s0 {
+		x1 in [4.4, 4.5]
+		x2 in [5.9, 6]
+                k in [0, 0]
+                ff in [0,0]
+	}
+} 
+}
+
+unsafe
+{
+        f0s0{ff >= 1}
+        f0s1{ff >= 1}
+        f1s0{ff >= 1}
+        f1s1{ff >= 1}
+        goal{}
+}

@@ -1,0 +1,67 @@
+MODULE main
+VAR
+    plant: Plant;
+
+INIT
+	plant.location = Straight &
+    plant.x1 <= 1 & plant.x1 >= 0 &
+    plant.y1 <= 1 & plant.y1 >= 0 &
+    plant.x2 <= 3 & plant.x2 >= 2 &
+    plant.y2 <= 3 & plant.y2 >= 2 &
+    plant.gt = 0 & plant.bk = 0;
+
+INVARSPEC NAME unsafe := (plant.x1 < 5);
+INVARSPEC NAME safe := (plant.x1 > -2);
+
+
+MODULE Plant
+VAR
+    location: {Straight, Left, Right};
+    x1: continuous;
+    x2: continuous;
+    y1: continuous;
+    y2: continuous;
+    gt: continuous;
+    bk: continuous;
+
+FLOW (location = Straight -> der(x1) = 3 & der(y1) = 0 & der(x2) = 2 & der(y2) = 2 & der(gt) = 1 & der(bk) = 0) &
+     (location = Left -> der(x1) = 1.5 & der(y1) = 3 & der(x2) = 2 & der(y2) = 2 & der(gt) = 1 & der(bk) = 0) &
+     (location = Right -> der(x1) = 1.5 & der(y1) = -3 & der(x2) = 2 & der(y2) = 2 & der(gt) = 1 & der(bk) = 0) 
+
+INVAR (location = Straight -> x2 - x1 <= 5 & y2 - y1 <= 5 & gt <= 20 & bk <= 50)  
+
+INVAR (location = Left -> x2 - x1 >= -5 & y2 - y1 >= -5 & gt <= 20 & bk <= 50) 
+
+INVAR (location = Right -> x2 - x1 >= -5 & x2 - x1 <= 5 & gt <= 20 & bk <= 50)
+
+TRANS
+    ((location = Straight & (y2 - y1) <= -3) &  
+		                   (next(location) = Left & next(gt) = gt & next(bk) = bk &
+		                   next(x1) = x1 & next(x2) = x2 &
+				   next(y1) = y1 & next(y2) = y2)) |
+
+	((location = Straight & (y2 - y1) >= 3) &
+		                   (next(location) = Right & next(gt) = gt & next(bk) = bk &
+                                   next(x1) = x1 & next(x2) = 2 &
+                                   next(y1) = y1 & next(y2) = y2)) |
+
+    ((location = Left & (y2 - y1) <= 1 & (y2 - y1) >= -1) &  
+		                   (next(location) = Straight & next(gt) = gt & next(bk) = bk &
+                                   next(x1) = x1 & next(x2) = x2 &
+                                   next(y1) = y1 & next(y2) = y2)) |
+
+  ((location = Left & (y2 - y1) >= 3) &
+                       (next(location) = Right & next(gt) = gt & next(bk) = bk &
+                                   next(x1) = x1 & next(x2) = 2 &
+                                   next(y1) = y1 & next(y2) = y2)) |
+
+    ((location = Right & (y2 - y1) <= 1 & (y2 - y1) >= -1) &
+		                   (next(location) = Straight & next(gt) = gt & next(bk) = bk &
+                                   next(x1) = x1 & next(x2) = x2 &
+                                   next(y1) = y1 & next(y2) = y2)) |
+     ((location = Right & (y2 - y1) <= -3) &  
+                       (next(location) = Left & next(gt) = gt & next(bk) = bk &
+                       next(x1) = x1 & next(x2) = x2 &
+           next(y1) = y1 & next(y2) = y2))                                   
+
+

@@ -156,17 +156,12 @@ class ModelVisitor(modelVisitor):
             var_text = ctx.VARIABLE().getText()
             guess_real_var = Real(var_text)
             guess_bool_var = Bool(var_text)
-            guess_int_var = Int(var_text)
             if var_text in self.variable_declare_dict:
                 return self.variable_declare_dict[var_text]
             elif guess_real_var in self.range_dict:
                 return guess_real_var
             elif guess_bool_var in self.proposition_dict:
                 return guess_bool_var
-            elif guess_real_var in self.constant_dict:
-                return self.constant_dict[guess_real_var]
-            elif guess_int_var in self.constant_dict:
-                return self.constant_dict[guess_int_var]
         raise NotSupportedError("error in constant condition")
 
     def visitUnaryCond(self, ctx: modelParser.UnaryCondContext):

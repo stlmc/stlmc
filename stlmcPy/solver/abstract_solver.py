@@ -1,5 +1,4 @@
 import abc
-from abc import ABC
 
 from stlmcPy.util.logger import Logger
 
@@ -45,6 +44,10 @@ class BaseSolver:
         assert keyword in self.time_dict
         return self.time_dict[keyword]
 
+    def reset_time(self, keyword: str):
+        if keyword in self.time_dict:
+            self.time_dict[keyword] = 0
+
 
 class SMTSolver(BaseSolver):
     @abc.abstractmethod
@@ -62,12 +65,3 @@ class SMTSolver(BaseSolver):
     @abc.abstractmethod
     def set_logic(self, logic_name: str):
         pass
-
-
-class OdeSolver(BaseSolver, ABC):
-    pass
-
-# class BaseSolverFactory:
-#     @abc.abstractmethod
-#     def generate_solver(self):
-#         pass

@@ -1,0 +1,79 @@
+bool a;
+[0, 10] x1;
+bool b;
+[0, 10] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 >= 1;
+        (x2 >= 1);
+    flow:
+        d/dt[x1] = -0.8;
+        d/dt[x2] = -0.6;
+    jump:
+        x1 <= 2 =>
+          (and (a') (not b') (x1' = x1) (x2' = x2));
+        x2 <= 3 =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 >= 1;
+        (x2 <= 9);
+    flow:
+        d/dt[x1] = -0.8;
+        d/dt[x2] = 1;
+    jump:
+        x2 >= 6 =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        x1 <= 2 =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 <= 8;
+        (x2 >= 1);
+    flow:
+        d/dt[x1] = 0.9;
+        d/dt[x2] = -0.6;
+    jump:
+        x1 >= 5 =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        x2 <= 3 =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 <= 9;
+        (x2 <= 9);
+    flow:
+        d/dt[x1] = 0.9;
+        d/dt[x2] = 1;
+    jump:
+        x1 >= 5 =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        x2 >= 6 =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+}
+init:
+(and (not(a)) not(b) (4.4 <= x1) (x1 <= 4.5)  (5.9 <= x2) (x2 <= 6)); 
+
+propositions:
+
+# timebound : 10
+goal:
+~(<>[0,inf) (x2 >= 9.5)) ;
+~(<>[0,inf) x2 <= 3); 
+

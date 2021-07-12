@@ -5,6 +5,9 @@ from .constraints import *
 from .interval import intervalConst, subInterval, inIntervalCheck
 from .operations import generate_id
 
+# "new" and "old"
+ENC_TYPES = "new"
+
 
 def baseEncoding(partition: dict, baseCase, time_bound):
     base = {}
@@ -40,8 +43,11 @@ def valuation(f: Formula, sub: dict, j: Interval, base: dict):
     fMap = {}
 
     newSub = {}
-    for ns in sub:
-        newSub[ns[0]] = sub[ns]
+    if ENC_TYPES == "old":
+        for ns in sub:
+            newSub[ns[0]] = sub[ns]
+    else:
+        newSub = sub
     vf = _value(f, newSub, j, base, genPr, fMap)
 
     return [vf, *[Eq(pf[0], pf[1]) for pf in fMap.values()]], fMap
@@ -85,11 +91,19 @@ def _enhanced_value_aux(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
 
 @_value.register(Bool)
 def _(f: Bool, sub: dict, j: Interval, base, genPr, fMap):
-    return _value_aux(f, sub, j, base, genPr, fMap)
+    if ENC_TYPES == "new":
+        print("???")
+        return _enhanced_value_aux(f, sub, j, base, genPr, fMap)
+    elif ENC_TYPES == "old":
+        return _value_aux(f, sub, j, base, genPr, fMap)
 
 
 @_value.register(Not)
 def _(f: Not, sub: dict, j: Interval, base, genPr, fMap):
+    if f.child in base:
+        if ENC_TYPES == "new":
+            bound_bool = _atomEncoding(f.child, j, base)
+            return Bool("not@" + bound_bool.id)
     return Not(_value(f.child, sub, j, base, genPr, fMap))
 
 

@@ -11,7 +11,6 @@ LOGIC: 'logic';
 // solvers
 Z3: 'z3';
 YICES: 'yices';
-SSMT: 'ssmt';
 //DREAL: 'dreal';
 FLOWSTAR: 'flowstar';
 FLOWSTAR_MERGING: 'flowstar-merging';
@@ -99,7 +98,6 @@ solver_config: FLOWSTAR LCURLY flowstar_configs? RCURLY                         
              | Z3 LCURLY z3_configs? RCURLY                                                      # z3_conf
              | C2E2 LCURLY c2e2_configs? RCURLY                                                        # c2e2_conf
              | SPACEEX LCURLY spaceex_configs? RCURLY                                               # spaceex_conf
-             | SSMT LCURLY ssmt_configs? RCURLY                                                 # ssmt_conf
                ;
 
 flowstar_configs: flowstar_config+;
@@ -107,11 +105,9 @@ yices_configs: yices_config+;
 z3_configs: z3_config+;
 c2e2_configs: c2e2_config+;
 spaceex_configs: spaceex_config+;
-ssmt_configs: ssmt_config+;
 
 z3_config: LOGIC QUOTE VALUE QUOTE                                                                  # z3_logic;
 yices_config: LOGIC QUOTE VALUE QUOTE                                                                # yices_logic;
-ssmt_config: LOGIC QUOTE VALUE QUOTE                                                                # ssmt_logic;
 c2e2_config: FS_FIXED_STEPS NUMBER                                                      # c2e2_fixed_step
             | TIME NUMBER                                                            # c2e2_time
             | KVALUE NUMBER                                                          # c2e2_kvalue;

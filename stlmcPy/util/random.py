@@ -1,12 +1,9 @@
 import random
 
-from stlmcPy.constraints.constraints import Interval, RealVal, GloballyFormula, FinallyFormula, universeInterval, Not, \
-    UntilFormula, ReleaseFormula, Implies, And, Or, BoolVal, Bool, Constraint, BinaryTemporalFormula, \
-    UnaryTemporalFormula, UnaryFormula, BinaryFormula
-from stlmcPy.constraints.operations import generate_id, Leaf, NonLeaf
+from stlmcPy.constraints.constraints import Interval, RealVal, GloballyFormula, FinallyFormula, Not, \
+    UntilFormula, ReleaseFormula, Implies, And, Or, Bool, Constraint
+from stlmcPy.constraints.operations import generate_id
 from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.tests.tree_test import gen_binary_tree
-from stlmcPy.tree.operations import size_of_tree
 
 
 def pick():

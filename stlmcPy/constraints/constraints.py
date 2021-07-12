@@ -256,9 +256,6 @@ class Variable(Leaf, Expr):
     def __hash__(self):
         return hash(self._str)
 
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
-
     @property
     def type(self):
         return str(self.__type)

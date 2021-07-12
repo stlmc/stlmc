@@ -1,0 +1,207 @@
+hybrid reachability {
+state var rx,ry,vx1,vy1,k,ff
+
+setting 
+{
+    adaptive steps {min 0.01, max 0.05}
+    time 20
+    remainder estimation 1e-2
+    identity precondition
+    gnuplot octagon rx,ry fixed orders 2
+    cutoff 1e-12
+    precision 53
+    no output
+    max jumps 5
+    print on
+}
+
+modes {
+	fisi {
+		poly ode 1
+		{
+			rx' = vx1
+			vx1' = 1.2
+			ry' = vy1
+			vy1' = 1.4
+                        k' = 0
+                        ff' = 0
+		}
+		inv 
+		{
+			rx <= 20
+			ry <= 20
+			vx1 <= 8
+			vy1 <= 8
+                        k <= 10
+		}
+	}
+        fisd {
+                poly ode 1
+                {
+                        rx' = vx1
+                        vx1' = 1.2
+                        ry' = vy1
+                        vy1' = -1.4
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {
+                        rx <= 20
+                        ry >= -20
+                        vx1 <= 8
+                        vy1 >= -8
+                        k <= 10
+                }
+        }
+        fdsi {
+                poly ode 1
+                {
+                        rx' = vx1
+                        vx1' = -1.2
+                        ry' = vy1
+                        vy1' = 1.4
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {
+                        rx >= -20
+                        ry <= 20
+                        vx1 >= -8
+                        vy1 <= 8
+                        k <= 10
+                }
+        }
+        fdsd {
+                poly ode 1
+                {
+                        rx' = vx1
+                        vx1' = -1.2
+                        ry' = vy1
+                        vy1' = -1.4
+                        k' = 0
+                        ff' = 0
+                }
+                inv
+                {       
+                        rx >= -20
+                        ry >= -20
+                        vx1 >= -8
+                        vy1 >= -8
+                        k <= 10
+                }
+        }
+        goal {
+                poly ode 1
+                {
+                }
+                inv
+                {
+                }
+        }
+
+}
+
+jumps{
+	fisi -> fisd
+	guard { rx <= 1 ry >= 4 }
+	reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+	parallelotope aggregation { }
+
+        fisi -> fdsi
+        guard { rx >= 4 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }	
+
+        fisi -> fdsd
+        guard { rx >= 4 ry >= 4 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fisd -> fisi
+        guard { rx <= 1 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fisd -> fdsi
+        guard { rx >= 4 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fisd -> fdsd
+        guard { rx >= 4 ry >= 4 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fdsi -> fisi
+        guard { rx <= 1 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fdsi -> fisd
+        guard { rx <= 1 ry >= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fisi -> fdsd
+        guard { rx >= 4 ry >= 4 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fdsd -> fisd
+        guard { rx <= 1 ry >= 4 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fdsd -> fdsi
+        guard { rx >= 4 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fdsd -> fisi
+        guard { rx <= 1 ry <= 1 }
+        reset { rx' := rx vx1' := 0 ry' := ry vy1' := 0 k' := k + 1}
+        parallelotope aggregation { }
+
+        fisi-> goal
+        guard { vy1 <= -20 vx1 >= 10 }
+        reset { }
+        parallelotope aggregation { }
+
+        fisd-> goal
+        guard { vy1 <= -20 vx1 >= 10 } 
+        reset { }
+        parallelotope aggregation { }
+
+        fdsi-> goal
+        guard {vy1 <= -20 vx1 >= 10 } 
+        reset { }
+        parallelotope aggregation { }
+
+        fdsd-> goal
+        guard { vy1 <= -20 vx1 >= 10 }
+        reset { }
+        parallelotope aggregation { }
+}
+
+init {
+	fdsd {
+		rx in [0, 1]
+		vx1 in [-2.5, -2]
+		ry in [0, 1]
+		vy1 in [-2.5, -2]
+                k in [0,0]
+                ff in [0,0]
+	}
+} 
+}
+
+unsafe
+{
+    fisi{ff >= 1}
+    fisd{ff >= 1}
+    fdsi{ff >= 1}
+    fdsd{ff >= 1}
+    goal{}
+}

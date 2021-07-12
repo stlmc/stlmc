@@ -1,4 +1,5 @@
 import itertools
+import math
 from functools import singledispatch
 
 # We add linear order constraints for separation only
@@ -98,23 +99,20 @@ def _addConstOrd(bCase, genVar, bConst, strict=False):
 
 def _addConstEqu(wl, yl, const):
     for w in wl:
-        const.append(Or([Eq(w, y) for y in yl]))
+        const.append(Or([w == y for y in yl]))
     for y in yl:
-        const.append(Or([Eq(y, w) for w in wl]))
-
-def checkFinite(e):
-    return False if "inf" in str(e) else True
+        const.append(Or([y == w for w in wl]))
 
 # result[formula], result[formula.child], formula.gtime, formula.ltime, const)
 def _addConstPar(wl, yl, k:Interval, i:Interval, const):
     def _constEnd(w, y):
-        arg = [Eq(w, RealVal("0"))] + [Eq(w, y - RealVal(str(e))) for e in [i.left,i.right] if checkFinite(e)]
+        arg = [w == RealVal("0")] + [w == y - RealVal(str(e)) for e in [i.left,i.right] if math.isfinite(float(e.value))]
         return Or(arg)
     for w in wl:
-        arg = [And([inInterval(y, k), _constEnd(w, y)]) for y in yl] + [_constEnd(w, e) for e in [k.left, k.right] if checkFinite(e)]
+        arg = [And([inInterval(y, k), _constEnd(w, y)]) for y in yl] + [_constEnd(w, e) for e in [k.left, k.right] if math.isfinite(float(e.value))]
         const.append(Or(arg))
         const.append(w >= RealVal("0"))
-    const.extend([Implies(And([inInterval(y,k), y - e >= RealVal("0")]), Or([Eq(w, y - e) for w in wl])) \
-            for y in yl for e in [i.left, i.right] if checkFinite(e)])
-    const.extend([Implies(e1 - e2 >= RealVal("0"), Or([Eq(w, e1 - e2) for w in wl])) \
-            for e1 in [k.left, k.right] if checkFinite(e1) for e2 in [i.left, i.right] if checkFinite(e2)])
+    const.extend([Implies(And([inInterval(y,k), y - e >= RealVal("0")]), Or([w == y - e for w in wl])) \
+            for y in yl for e in [i.left, i.right] if math.isfinite(float(e.value))])
+    const.extend([Implies(e1 - e2 >= RealVal("0"), Or([w == e1 - e2 for w in wl])) \
+            for e1 in [k.left, k.right] if math.isfinite(float(e1.value)) for e2 in [i.left, i.right] if math.isfinite(float(e2.value))])
