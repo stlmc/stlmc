@@ -35,4 +35,4 @@ A Vritualbox image 'stlmc-artifact.ova' contains the benchmark models and script
 You can download the image from https://www.dropbox.com/home/ase2021.
 
 A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
-our artifact is located in the directory 'home/user/ase2021'. The password of the image is "ase2021".
+our artifact is located in the directory 'home/ase2021/stlmc'. The password of the image is "ase2021".
