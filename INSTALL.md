@@ -5,12 +5,10 @@
 2. Run the following commands:
 
 ~~~
-
 unzip stlmc-v1
 cd stlmc-v1
 sudo apt install make
 sudo make python
-
 ~~~
 
 3. Restarting the terminal window
@@ -28,4 +26,10 @@ make set python
 
 ## Using the VirtualBox Image
 
-The image 'stlmc-artifact.ova' contains the benchmark models and scripts for the experiments. You can run the image using VirtualBox (www.virtualbox.org). A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, our artifact is located in the directory 'home/user/ase2021'. The password of the image is "ase2021".
+You can run the experiments using VirtualBox (www.virtualbox.org). 
+A Vritualbox image 'stlmc-artifact.ova' contains the benchmark models and scripts for the experiments. 
+
+You can download the image from https://www.dropbox.com/home/ase2021.
+
+A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
+our artifact is located in the directory 'home/user/ase2021'. The password of the image is "ase2021".
