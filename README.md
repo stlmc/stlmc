@@ -136,10 +136,10 @@ The 'run' script provides several options to run a subset of the experiments. Th
 
   ~~~
   $./run -m <MODEL> \
-		 	    [-t <TIMEOUT>] \
-			    [-d <DYNAMIC>]\
-   	      [-alg <ALGORITHM>] \
-    		  [-tool <TOOL>]
+	[-t <TIMEOUT>] \
+	[-d <DYNAMIC>]\
+   	[-alg <ALGORITHM>] \
+    	[-tool <TOOL>]
   ~~~
 
 Each option restricts the cases to be executed. Run 'run -h' for more details on the options. The following shows compatible options for each experiment.
