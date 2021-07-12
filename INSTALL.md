@@ -12,14 +12,16 @@ sudo make python
 ~~~
 
 3. Restarting the terminal window
-4. Run the following command
+4. Run the following commands:
 
 ~~~
 cd stlmc-v1
 sudo make
 make set python
 ~~~
+5. Finish!!
 
+   Please refer <a href="#ruuning-the-experiments">README.md</a> to run the experiments. 
 
 
 ---
