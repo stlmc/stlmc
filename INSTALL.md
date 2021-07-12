@@ -22,7 +22,7 @@ make set python
 ~~~
 5. Finish!!
 
-   Please refer <a href="./README.md#ruuning-the-experiments">README.md</a> to run the experiments. 
+   Please refer [README.md](README.md#ruuning-the-experiments) to run the experiments. 
 
 
 ---
