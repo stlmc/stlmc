@@ -22,7 +22,7 @@ make setpython
 ~~~
 5. Finish!!
 
-   Please refer to [README.md](README.md#running-the-experiments) for running the experiments. 
+   Please see [README.md](README.md#running-the-experiments) to run the experiments. 
 
 
 ---
