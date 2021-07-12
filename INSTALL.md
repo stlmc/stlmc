@@ -7,6 +7,7 @@
 ~~~
 unzip stlmc-v1
 cd stlmc-v1
+sh permission.sh
 sudo apt install make
 sudo make python
 ~~~
