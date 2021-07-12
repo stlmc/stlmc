@@ -6,6 +6,14 @@ deps:
 	$(info install deps)
 	@sudo apt update && ./.install
 
+python:
+	$(info install python env)
+	@./.install_python
+
+setpython:
+	$(info set python env)
+	@./.set_python
+
 antlr:
 	$(info make files for antlr in $(ANTLR_DIR))
 	@cd $(ANTLR_DIR)/model && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
