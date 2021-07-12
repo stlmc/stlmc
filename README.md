@@ -135,7 +135,7 @@ which produces a log file subdirectory 'exp3_log' and a spreadsheet report 'exp3
 The 'run' script provides several options to run a subset of the experiments. There are five (optional) command-line arguments as follows:
 
   ~~~
-  $./run -m <MODEL> \
+  $./run -m <MODEL> \ 
 	[-t <TIMEOUT>] \
 	[-d <DYNAMIC>]\
    	[-alg <ALGORITHM>] \
@@ -158,12 +158,18 @@ The following shows all available MODEL arguments for each experiment:
 
 E.g., the following command runs Experiment RQ1 only for the railroad model with linear dynamics using algorithm New with a timeout of 10 minutes:
 
-> $ ./run -m rail -d linear -alg new -t 10
+	~~~
+	$ ./run -m rail -d linear -alg new -t 10
+	~~~
 
 The following command runs Experiment RQ2 only for the formulas with nesting depth 2 with a timeout of 5 minutes:
-
-> $ ./run -m nested2 -alg old -t 5
+	
+	~~~
+	$ ./run -m nested2 -alg old -t 5
+	~~~
 
 The following command runs Experiment RQ3 only for the railroad model with polynomial dynamics using algorithm ONew with a timeout of 5 minutes:
-
-> $ ./run -m reach-rail -d poly -tool stlmc-opt -t 5
+	
+	~~~
+	$ ./run -m reach-rail -d poly -tool stlmc-opt -t 5
+	~~~
