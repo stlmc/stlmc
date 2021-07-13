@@ -174,3 +174,4 @@ The following command runs Experiment RQ3 only for the railroad model with polyn
   ./run -m reach-rail -d poly -tool stlmc-opt -t 5
   ~~~	
 
+Note that the script 'run' performs the corresponding cases in parallel, depending on the number of CPU cores in the computing environment.
