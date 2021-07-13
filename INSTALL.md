@@ -3,7 +3,7 @@
 
 You can run the experiments using VirtualBox (www.virtualbox.org). 
 
-A Vritualbox image 'stlmc-artifact.ova' contains the benchmark models and scripts for the experiments. 
+A Vritualbox image 'ase2021.ova' contains the benchmark models and scripts for the experiments. 
 You can download the image from https://www.dropbox.com/home/ase2021.
 
 A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
