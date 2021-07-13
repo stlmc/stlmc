@@ -13,23 +13,24 @@ our artifact is located in the directory 'home/ase2021/stlmc'. The password of t
 
 ## Running the Experiment without VM
 
-1. Download the source code.
+We support scripts to install our artifact on Ubuntu 18.04.
 
-2. Run the following commands:
+1. Download the source code (https://doi.org/10.5281/zenodo.5094157).
+
+2. Go to the downloaded folder.
+
+3. Run the following commands:
 
 ~~~
-unzip stlmc-v1
-cd stlmc-v1
 sudo apt install make
 sh permission.sh
 sudo make python
 ~~~
 
-3. Restarting the terminal window
-4. Run the following commands:
+4. Restarting the terminal window and go to the downloaded folder.
+5. Run the following commands:
 
 ~~~
-cd stlmc-v1
 sudo make
 make setpython
 ~~~
