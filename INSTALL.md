@@ -2,9 +2,9 @@
 
 We support two ways to run our artifact:
 
-   ​	(1) Using the VirtualBox Image
-
-   ​	(2) Installing from Source Code
+      (1) Using the VirtualBox Image 
+      
+      (2) Installing from Source Code
 
 ## Using the VirtualBox Image
 
