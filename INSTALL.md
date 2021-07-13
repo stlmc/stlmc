@@ -25,7 +25,7 @@ our artifact is located in the directory 'home/ase2021/stlmc'. The password of t
 To build the artifact from the source, you need:
 
 - Ubuntu 18.04
-- Python version 3.8.* or newer
+- Python version 3.8.x or newer
 - JAVA 8: https://openjdk.java.net/install/
 - Python3-pip: https://pypi.org
 
