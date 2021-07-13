@@ -2,14 +2,14 @@ import abc
 import argparse
 import os
 
-from stlmcPy.constraints.constraints import And
-from stlmcPy.constraints.operations import make_boolean_abstract_consts
-from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.objects.goal import ReachGoal, optimize
-from stlmcPy.objects.object_factory import ObjectFactory
-from stlmcPy.solver.solver_factory import SolverFactory
-from stlmcPy.util.logger import Logger
-from stlmcPy.util.print import Printer
+from constraints.constraints import And
+from constraints.operations import make_boolean_abstract_consts
+from exception.exception import NotSupportedError
+from objects.goal import ReachGoal, optimize
+from objects.object_factory import ObjectFactory
+from solver.solver_factory import SolverFactory
+from util.logger import Logger
+from util.print import Printer
 
 
 def string_to_bool(v: str):

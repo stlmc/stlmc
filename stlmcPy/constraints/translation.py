@@ -1,7 +1,7 @@
 from functools import singledispatch
 
-from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import substitution_zero2t, diff, get_vars
+from constraints.constraints import *
+from constraints.operations import substitution_zero2t, diff, get_vars
 
 
 def make_forall_consts_aux(forall: Forall):

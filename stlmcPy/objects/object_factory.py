@@ -1,8 +1,8 @@
 import abc
 
-from stlmcPy.objects.goal import GoalFactory, OldGoalFactory
-from stlmcPy.objects.model import EmptyModel
-from stlmcPy.parser.model_visitor import ModelVisitor
+from objects.goal import GoalFactory, OldGoalFactory
+from objects.model import EmptyModel
+from parser.model_visitor import ModelVisitor
 
 
 class ObjectManager:

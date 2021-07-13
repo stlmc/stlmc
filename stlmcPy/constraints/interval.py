@@ -1,7 +1,7 @@
 import math
 from functools import singledispatch
 
-from stlmcPy.constraints.constraints import *
+from constraints.constraints import *
 
 
 def inIntervalC(x: float, j: Interval):

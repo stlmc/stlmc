@@ -1,6 +1,6 @@
 import abc
 
-from stlmcPy.util.logger import Logger
+from util.logger import Logger
 
 
 # all solver have logger

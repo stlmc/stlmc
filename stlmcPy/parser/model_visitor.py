@@ -1,11 +1,11 @@
 from antlr4 import FileStream, CommonTokenStream
 
-from stlmcPy.constraints.constraints import *
-from stlmcPy.syntax.model.modelLexer import modelLexer
-from stlmcPy.syntax.model.modelParser import modelParser
-from stlmcPy.syntax.model.modelVisitor import modelVisitor
-from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.objects.model import StlMC
+from constraints.constraints import *
+from syntax.model.modelLexer import modelLexer
+from syntax.model.modelParser import modelParser
+from syntax.model.modelVisitor import modelVisitor
+from exception.exception import NotSupportedError
+from objects.model import StlMC
 
 
 class ModelVisitor(modelVisitor):

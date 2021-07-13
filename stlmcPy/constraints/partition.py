@@ -3,9 +3,9 @@ import math
 from functools import singledispatch
 
 # We add linear order constraints for separation only
-from stlmcPy.constraints.interval import inInterval
-from stlmcPy.constraints.operations import generate_id
-from stlmcPy.constraints.constraints import *
+from constraints.interval import inInterval
+from constraints.operations import generate_id
+from constraints.constraints import *
 
 # We add linear order constraints for separation only
 

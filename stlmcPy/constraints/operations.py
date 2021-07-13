@@ -1,6 +1,6 @@
 from functools import singledispatch
-from stlmcPy.constraints.constraints import *
-from stlmcPy.exception.exception import NotSupportedError
+from constraints.constraints import *
+from exception.exception import NotSupportedError
 from itertools import combinations
 
 

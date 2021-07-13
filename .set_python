@@ -1,5 +1,0 @@
-sudo chown -R $USER:$USER $HOME/.pyenv
-pyenv install 3.8.6
-pyenv global 3.8.6
-sudo apt install python3-pip -y
-pip3 install termcolor yices antlr4-python3-runtime

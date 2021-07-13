@@ -5,13 +5,13 @@ from functools import singledispatch
 
 from yices import *
 
-from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, reverse_inequality, diff, \
+from constraints.constraints import *
+from constraints.operations import get_vars, reverse_inequality, diff, \
     substitution_zero2t, reduce_not
-from stlmcPy.constraints.translation import make_forall_consts, make_dynamics_consts
-from stlmcPy.exception.exception import NotSupportedError
-from stlmcPy.solver.abstract_solver import SMTSolver
-from stlmcPy.tree.operations import size_of_tree
+from constraints.translation import make_forall_consts, make_dynamics_consts
+from exception.exception import NotSupportedError
+from solver.abstract_solver import SMTSolver
+from tree.operations import size_of_tree
 
 
 class YicesSolver(SMTSolver):

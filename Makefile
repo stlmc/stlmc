@@ -1,18 +1,6 @@
 ANTLR_DIR := $(shell pwd)/stlmcPy/syntax
 
-all:	deps antlr
-
-deps:
-	$(info install deps)
-	@sudo apt update && ./.install
-
-python:
-	$(info install python env)
-	@./.install_python
-
-setpython:
-	$(info set python env)
-	@./.set_python
+all:    antlr
 
 antlr:
 	$(info make files for antlr in $(ANTLR_DIR))

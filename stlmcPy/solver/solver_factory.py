@@ -1,4 +1,4 @@
-from stlmcPy.solver.yices import YicesSolver
+from solver.yices import YicesSolver
 
 
 class SolverFactory:

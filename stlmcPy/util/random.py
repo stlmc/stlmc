@@ -1,9 +1,9 @@
 import random
 
-from stlmcPy.constraints.constraints import Interval, RealVal, GloballyFormula, FinallyFormula, Not, \
+from constraints.constraints import Interval, RealVal, GloballyFormula, FinallyFormula, Not, \
     UntilFormula, ReleaseFormula, Implies, And, Or, Bool, Constraint
-from stlmcPy.constraints.operations import generate_id
-from stlmcPy.exception.exception import NotSupportedError
+from constraints.operations import generate_id
+from exception.exception import NotSupportedError
 
 
 def pick():

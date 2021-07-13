@@ -1,4 +1,4 @@
-from stlmcPy.constraints.operations import reduce_not, fresh_new_var
+from constraints.operations import reduce_not, fresh_new_var
 from .interval import *
 
 

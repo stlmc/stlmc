@@ -1,10 +1,10 @@
 import abc
 from functools import singledispatch
 
-from stlmcPy.constraints.constraints import *
+from constraints.constraints import *
 
 # TODO: why attribute error occured here?
-from stlmcPy.constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics, get_vars
+from constraints.operations import make_dict, substitution, make_dictionary_for_invariant, reduce_not, make_new_dynamics, get_vars
 
 class Model:
     def __init__(self):

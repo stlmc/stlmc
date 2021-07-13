@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from stlmcPy.driver.base_driver import *
+from driver.base_driver import *
 
 
 if __name__ == '__main__':

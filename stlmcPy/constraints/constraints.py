@@ -1,6 +1,6 @@
 # start of base_objects
-from stlmcPy.exception.exception import NotFoundElementError
-from stlmcPy.tree.tree import Leaf, NonLeaf
+from exception.exception import NotFoundElementError
+from tree.tree import Leaf, NonLeaf
 
 
 class Interval:

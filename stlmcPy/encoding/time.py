@@ -1,4 +1,4 @@
-from stlmcPy.constraints.constraints import Leq, Lt, Real, RealVal, Eq
+from constraints.constraints import Leq, Lt, Real, RealVal, Eq
 
 
 def make_time_const(bound, time_bound, flag):

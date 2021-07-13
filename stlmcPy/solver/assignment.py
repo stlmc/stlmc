@@ -1,6 +1,6 @@
 import abc
 
-from stlmcPy.exception.exception import NotSupportedError
+from exception.exception import NotSupportedError
 
 
 def get_integral(integrals_list, i, k):

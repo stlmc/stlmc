@@ -1,14 +1,14 @@
 import abc
 
-import stlmcPy.constraints.encoding as ENC
-import stlmcPy.constraints.enhanced_partition as ENHANCED_PART
-import stlmcPy.constraints.enhanced_separation as ENHANCED_SEP
-import stlmcPy.constraints.partition as PART
-import stlmcPy.constraints.separation as SEP
-from stlmcPy.constraints.constraints import *
-from stlmcPy.constraints.operations import get_vars, substitution, make_dict, reduce_not, make_new_dynamics, \
+import constraints.encoding as ENC
+import constraints.enhanced_partition as ENHANCED_PART
+import constraints.enhanced_separation as ENHANCED_SEP
+import constraints.partition as PART
+import constraints.separation as SEP
+from constraints.constraints import *
+from constraints.operations import get_vars, substitution, make_dict, reduce_not, make_new_dynamics, \
     lower_encoding, bound_tau_max
-from stlmcPy.encoding.time import make_zeno_time_const, make_non_zeno_time_const
+from encoding.time import make_zeno_time_const, make_non_zeno_time_const
 
 
 class Goal:

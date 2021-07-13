@@ -1,6 +1,6 @@
 from functools import singledispatch
-from .tree import *
-from ..exception.exception import NotSupportedError
+from tree.tree import *
+from exception.exception import NotSupportedError
 
 
 def size_of_tree(tree: Tree):
