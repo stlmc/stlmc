@@ -1,10 +1,10 @@
 ## Overview
 
-We support two ways to execute our artifact:
+We support two ways to run our artifact:
 
-​	(1) Using the VirtualBox Image
+   ​	(1) Using the VirtualBox Image
 
-​	(2) Installing from Source
+   ​	(2) Installing from Source Code
 
 ## Using the VirtualBox Image
 
@@ -18,7 +18,7 @@ our artifact is located in the directory 'home/ase2021/stlmc'. The password of t
 
 ---
 
-## Installing from Source
+## Installing from Source Code
 
 ### Prerequisites
 
@@ -45,16 +45,14 @@ To build the artifact from the source, you need:
    pip3 install termcolor yices antlr4-python3-runtime
    ~~~
 
-   
-
 3. Download the source code (https://github.com/stlmc/stlmc/releases/tag/ase2021).
 4. Unzip the downloaded file.
 5. Run the following commands:
 
-~~~
-cd stlmc-ase2021
-make antlr
-~~~
+   ~~~
+   cd stlmc-ase2021
+   make antlr
+   ~~~
 
 6. Finish!!
 
