@@ -1,43 +1,36 @@
+## Download from github
 
-## Using the VirtualBox Image
+1. Download the source code
 
-You can run the experiments using VirtualBox (www.virtualbox.org). 
+2. Run the following commands:
 
-A Vritualbox image 'ase2021.ova' contains the benchmark models and scripts for the experiments. 
-You can download the image from https://www.dropbox.com/home/ase2021.
+'''{.python}
 
-A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
-our artifact is located in the directory 'home/ase2021/stlmc'. The password of the image is "ase2021".
+unzip stlmc-v1
+
+cd stlmc-v1
+
+sudo apt install make
+
+sudo make python
+
+'''
+
+3. Restarting the terminal window
+4. Run the following command
+
+'''{.python}
+
+sudo make
+
+make set python
+
+'''
+
+
 
 ---
 
-## Running the Experiment without VM
+## Using the VirtualBox Image
 
-We support scripts to install our artifact on Ubuntu 18.04.
-
-1. Download the source code (https://github.com/stlmc/stlmc/releases/tag/ase2021).
-
-2. Unzip the downloaded file.
-
-3. Run the following commands:
-
-~~~
-cd stlmc-ase2021
-sudo apt install make
-sh permission.sh
-sudo make python
-~~~
-
-4. Restarting the terminal window.
-5. Run the following commands:
-
-~~~
-cd stlmc-ase2021
-sudo make
-make setpython
-~~~
-5. Finish!!
-
-   Please see [README.md](README.md#running-the-experiments) to run the experiments. 
-
-
+The image 'stlmc-artifact.ova' contains the benchmark models and scripts for the experiments. You can run the image using VirtualBox (www.virtualbox.org). A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, our artifact is located in the directory 'home/user/ase2021'. The password of the image is "ase2021".
