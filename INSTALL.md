@@ -15,22 +15,24 @@ our artifact is located in the directory 'home/ase2021/stlmc'. The password of t
 
 We support scripts to install our artifact on Ubuntu 18.04.
 
-1. Download the source code (https://doi.org/10.5281/zenodo.5094157).
+1. Download the source code (https://github.com/stlmc/stlmc/releases/tag/ase2021).
 
-2. Go to the downloaded folder.
+2. Unzip the downloaded file.
 
 3. Run the following commands:
 
 ~~~
+cd stlmc-ase2021
 sudo apt install make
 sh permission.sh
 sudo make python
 ~~~
 
-4. Restarting the terminal window and go to the downloaded folder.
+4. Restarting the terminal window.
 5. Run the following commands:
 
 ~~~
+cd stlmc-ase2021
 sudo make
 make setpython
 ~~~
