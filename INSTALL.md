@@ -11,7 +11,7 @@ There are two ways to run our artifact.
 You can run the experiments using VirtualBox (www.virtualbox.org). 
 
 A Vritualbox image 'ase2021.ova' contains the benchmark models and scripts for the experiments. 
-You can download the image from https://www.dropbox.com/home/ase2021.
+You can download the image from https://www.dropbox.com/s/o1m05kphjkgy671/ase2021.ova?dl=0.
 
 A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
 our artifact is located in the directory 'home/ase2021/stlmc'. The password of the image is "ase2021".
