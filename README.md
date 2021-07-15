@@ -71,6 +71,8 @@ Similarly, each row of the spreadsheet 'exp3.xlsx' corresponds to an item in Tab
 # Running the Experiments
 
 We will explain how to run each experiment in the paper and how to analyze the results of each execution.
+	
+Please install our artifact first, if not already done (see [INSTALL.md](INSTALL.md))
 
 ## (1) Experiment 1: STL Model Checking for Hybrid Automata**
 
