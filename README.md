@@ -114,6 +114,7 @@ If 'exp2.xlsx' exists in the top directory, Figure 12 of the paper can be obtain
 
   ~~~
   ./run -genbp
+  cd stlmcPy
   gnuplot exp2box.gnu
   ~~~
 
