@@ -3,7 +3,7 @@
 This directory includes the following files:
 
 - [INSTALL.md](INSTALL.md) : a file that explains how to install our artifact
-- [ase2021-paper1206.pdf](ase2021-paper1206.pdf) : a accepted paper
+- [ase2021-paper1206.pdf](ase2021-paper1206.pdf) : an accepted paper
 - [supp.pdf](supp.pdf): the proof of the lemmas, and the details of the experiments.
 - [data.zip](data.zip) (1.3MB): the experimental results and log files for the experiments
 
@@ -71,6 +71,8 @@ Similarly, each row of the spreadsheet 'exp3.xlsx' corresponds to an item in Tab
 # Running the Experiments
 
 We will explain how to run each experiment in the paper and how to analyze the results of each execution.
+	
+Please install our artifact first, if not already done (see [INSTALL.md](INSTALL.md))
 
 ## (1) Experiment 1: STL Model Checking for Hybrid Automata**
 
