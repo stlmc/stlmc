@@ -238,7 +238,7 @@ class Runner:
                         logger.stop_timer("goal timer")
 
                         printer.print_normal("> {}".format(config.solver))
-
+                        printer.print_verbose("(args) model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
                         '''
                         print("boolean")
                         for ba in boolean_abstract_consts.children:
