@@ -6,7 +6,6 @@ This directory includes the following files:
 - [ase2021-paper1206.pdf](ase2021-paper1206.pdf) : an accepted paper
 - [supp.pdf](supp.pdf) : the proof of the lemmas, and the details of the experiments.
 - [data.zip](data.zip) (1.3MB) : the experimental results and log files for the experiments
-- [exp2box.gnu](exp2box.gnu) : a file that generates boxplot graph of Experiment 2.
 
 ---
 
