@@ -92,6 +92,8 @@ We provide a script to automate the experiments: 'run' in the top directory. The
   
 The argument '-m exp1' denotes the experiment, and '-t 120' denotes a timeout. This command produces a log file subdirectory 'exp1_log' and a spreadsheet report 'exp1.xlsx' in the current directory, explained above.
 
+In case of a timeout, the data is not recorded in the excel file.
+
 ## (2) Experiment 2: STL Bounded Satisfiability Checking**
 
 In this experiment, we consider 250 STL formulas (50 formulas for each nesting depth 1 <= d <= 5). These formulas are declared in the following files of the form 'nested<DEPTH>.model', where <DEPTH> denotes the nesting depth.
@@ -109,6 +111,8 @@ Using the script 'run', we can run all 500 cases (250 formulas, two algorithms) 
   ~~~
 
 This command produces a log file subdirectory 'exp2_log' and a spreadsheet report 'exp2.xlsx' in the current directory.
+	
+In case of a timeout, the data is not recorded in the excel file.
 
 ## (3) Experiment 3: Reachability analysis
 
@@ -129,6 +133,8 @@ The following command runs all cases (in Table II) with a 15-minute timeout:
   ~~~
 
 which produces a log file subdirectory 'exp3_log' and a spreadsheet report 'exp3.xlsx' in the current directory.
+	
+In case of a timeout, the data is not recorded in the excel file.
 
 ---
 
