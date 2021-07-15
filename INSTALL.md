@@ -1,10 +1,10 @@
 ## Overview
 
-We support two ways to run our artifact:
+There are two ways to run our artifact.
 
       (1) Using the VirtualBox Image 
       
-      (2) Installing from Source Code
+      (2) Installation from Source Code
 
 ## Using the VirtualBox Image
 
@@ -18,7 +18,7 @@ our artifact is located in the directory 'home/ase2021/stlmc'. The password of t
 
 ---
 
-## Installing from Source Code
+## Installation from Source Code
 
 ### Prerequisites
 
@@ -39,15 +39,14 @@ To build the artifact from the source, you need:
    sudo apt-get install yices2-dev
    ~~~
 
-2. Install following python packages:
+2. Install the following python packages:
 
    ~~~
    pip3 install termcolor yices antlr4-python3-runtime
    ~~~
 
-3. Download the source code (https://github.com/stlmc/stlmc/releases/tag/ase2021).
-4. Unzip the downloaded file.
-5. Run the following commands:
+3. Download the source code and unzip it (https://github.com/stlmc/stlmc/releases/tag/ase2021).
+4. Run the following commands:
 
    ~~~
    cd stlmc-ase2021
