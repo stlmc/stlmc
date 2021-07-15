@@ -36,7 +36,7 @@ set bmargin at screen 0.1;
 
 ## box1
 plot \
-	'acc.dat' using (1):1 ls 1 fs solid 0.25 notitle, \
+	'./stlmcPy/acc.dat' using (1):1 ls 1 fs solid 0.25 notitle, \
 	'' using (2):3 ls 1 fs solid 0.25 notitle, \
 	'' using (3):5 ls 1 fs solid 0.25 notitle, \
 	'' using (4):7 ls 1 fs solid 0.25 notitle, \
@@ -62,7 +62,7 @@ set nogrid
 unset ylabel
 ## box2
 plot \
-	'acc.dat' using (1):2 ls 2 notitle, \
+	'./stlmcPy/acc.dat' using (1):2 ls 2 notitle, \
 	'' using (2):4 ls 2 notitle, \
 	'' using (3):6 ls 2 notitle, \
 	'' using (4):8 ls 2 notitle, \
@@ -87,13 +87,13 @@ set output 'time_new.pdf'
 
 ## box3
 plot \
-	'time.dat' using (1):1 ls 1 fs solid 0.25 notitle, \
+	'./stlmcPy/time.dat' using (1):1 ls 1 fs solid 0.25 notitle, \
 	'' using (2):3 ls 1 fs solid 0.25 notitle, \
 	'' using (3):5 ls 1 fs solid 0.25 notitle, \
 	'' using (4):7 ls 1 fs solid 0.25 notitle, \
 	'' using (5):9 ls 1 fs solid 0.25 notitle
 
-set output 'time-old.pdf'
+set output 'time_old.pdf'
 set title "Time (Old)" font ", 55" offset -0.9,-0.4,1
 set logscale y
 set yrange [0.004:1000]
@@ -108,7 +108,7 @@ set label "T/O:" at graph 0.88,0.9 right font ",57"
 set label "{d_4, d_5}" at graph 0.96,0.77 right font ",57"
 ## box4
 plot \
-	'time.dat' using (1):2 ls 2 notitle, \
+	'./stlmcPy/time.dat' using (1):2 ls 2 notitle, \
 	'' using (2):4 ls 2 notitle, \
 	'' using (3):6 ls 2 notitle
 
