@@ -3,18 +3,28 @@
 There are two ways to run our artifact.
 
       (1) Using the VirtualBox Image 
-      
+
       (2) Installation from Source Code
 
+      (3) Using Docker
+      
 ## Using the VirtualBox Image
 
 You can run the experiments using VirtualBox (www.virtualbox.org). 
 
 A Vritualbox image 'ase2021.ova' contains the benchmark models and scripts for the experiments. 
-You can download the image from https://doi.org/10.5281/zenodo.5105936.
+You can download the image from https://doi.org/10.5281/zenodo.5106005.
 
-A minimum system requirement is a dual-core machine with 2048 MB memory. In the virtual machine, 
-our artifact is located in the directory 'home/ase2021/stlmc'. The password of the image is "ase2021".
+A minimum system requirement is as follows:
+
+  - Cores: 4
+
+  - RAM: 8192 MB (8 GB)
+
+In the virtual machine, our artifact is located in the directory 
+'home/ase2021/stlmc-ase2021'. The password of the image is "ase2021".
+
+   Please see [README.md](README.md#running-the-experiments) to run the experiments.
 
 ---
 
@@ -34,6 +44,7 @@ To build the artifact from the source, you need:
 1. Download Yices2 (https://github.com/SRI-CSL/yices2):
 
    ~~~
+   sudo apt install software-properties-common
    sudo add-apt-repository ppa:sri-csl/formal-methods
    sudo apt-get update
    sudo apt-get install yices2-dev
@@ -50,8 +61,56 @@ To build the artifact from the source, you need:
 
    ~~~
    cd stlmc-ase2021
-   make antlr
+   make
    ~~~
+
+5. Restart the terminal.
+
+6. Finish!!
+
+   Please see [README.md](README.md#running-the-experiments) to run the experiments.
+
+---
+
+## Using Docker
+
+You can run the experiments using Docker (https://docs.docker.com).
+
+1. Download docker "ubuntu: 18.04" and execute the docker:
+
+   ~~~
+   docker run ubuntu:18.04 
+   docker run --restart always --name ubuntu_18.04 -dt ubuntu:18.04 
+   docker ps
+   docker exec -it ubuntu_18.04 /bin/bash 
+   ~~~
+
+2. Download prerequisite packages:
+
+   ~~~
+   apt update
+   apt install -y python3 python3-pip openjdk-8-jdk software-properties-common wget nano unzip less
+   ~~~
+
+3. Download Yices2 (https://github.com/SRI-CSL/yices2):
+
+   ~~~
+   add-apt-repository ppa:sri-csl/formal-methods
+   apt update
+   apt install -y yices2-dev
+   ~~~
+
+4. Upgrade Python3 version to 3.8:
+
+   ~~~
+   add-apt-repository ppa:deadsnakes/ppa
+   apt update
+   apt install python3.8
+   update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 11
+   update-alternatives --config python3 
+   ~~~
+
+5. Do the same STEP "2 ~ 5" of [Installation from Source Code](INSTALL.md#installation) 
 
 6. Finish!!
 

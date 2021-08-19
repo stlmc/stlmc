@@ -114,8 +114,6 @@ If 'exp2.xlsx' exists in the top directory, Figure 12 of the paper can be obtain
 
   ~~~
   ./run -genbp
-  cd stlmcPy
-  gnuplot exp2box.gnu
   ~~~
 
 ## (3) Experiment 3: Reachability analysis

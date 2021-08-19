@@ -1,5 +1,6 @@
 # start of base_objects
-from exception.exception import NotFoundElementError
+
+from exception.exception import NotFoundElementError, NotSupportedError
 from tree.tree import Leaf, NonLeaf
 
 
@@ -12,7 +13,7 @@ class Interval:
         self._str = None
 
     def __hash__(self):
-        return hash(id(self))
+        return hash((hash(self.left_end), hash(self.left), hash(self.right_end), hash(self.right)))
 
     def __repr__(self):
         if self._str is None:
@@ -22,45 +23,48 @@ class Interval:
 
     def __eq__(self, other):
         return isinstance(other,
-                          Interval) and other.left_end == self.left_end and other.right_end == self.right_end and other.left == self.left and other.right == self.right
+                          Interval) and other.left_end == self.left_end and other.right_end == self.right_end and hash(other.left) == hash(self.left) and hash(other.right) == hash(self.right)
 
-
+# immutable
 class Unary:
-    def __init__(self, child):
+    def __init__(self, child, hash_root: str, op_str: str):
         self.child = child
-        self._str = None
-
-    def get_child(self):
-        return self.child
+        self._op_str = op_str
+        # self._str = "({} {})".format(op_str, self.child)
+        self._hash = hash((hash_root, hash(self.child)))
 
     def __repr__(self):
-        if self._str is None:
-            self._str = str(self.child)
-        return self._str
+        # return self._str
+        return "({} {})".format(self._op_str, self.child)
+
+    def __hash__(self):
+        return self._hash
 
 
 class Binary:
-    def __init__(self, left, right):
+    def __init__(self, left, right, hash_root: str, op_str: str):
         self.left = left
         self.right = right
-        self._str = None
-
-    def get_left(self):
-        return self.left
-
-    def get_right(self):
-        return self.right
+        self._op_str = op_str
+        # self._str = "({} {} {})".format(op_str, self.left, self.right)
+        self._hash = hash((hash_root, hash(self.left), hash(self.right)))
 
     def __repr__(self):
-        if self._str is None:
-            return str(self.left) + " " + str(self.right)
-        return self._str
+        # return self._str
+        return "({} {} {})".format(self._op_str, self.left, self.right)
+
+    def __hash__(self):
+        return self._hash
 
 
 class Multinary:
-    def __init__(self, children):
+    def __init__(self, children, hash_root: str, op_str: str):
         self.children = children
-        self._str = None
+        self._op_str = op_str
+        tmp = set()
+        for child in self.children:
+            tmp.add(hash(child))
+        self._hash = hash((hash_root, frozenset(tmp)))
 
     def at(self, i):
         if i < len(self.children):
@@ -69,16 +73,19 @@ class Multinary:
             raise NotFoundElementError(self, "not in the list")
 
     def __repr__(self):
-        if self._str is None:
-            repr_str = ""
-            comma = " "
-            for i, c in enumerate(self.children):
-                if i == len(self.children) - 1:
-                    repr_str += str(c)
-                else:
-                    repr_str += (str(c) + comma)
-            self._str = repr_str
-        return self._str
+        # return self._str
+        _str = ""
+        comma = " "
+        for i, c in enumerate(self.children):
+            if i == len(self.children) - 1:
+                _str += str(c)
+            else:
+                _str += (str(c) + comma)
+        _str = "({} {})".format(self._op_str, _str)
+        return _str
+
+    def __hash__(self):
+        return self._hash
 
 
 class Constraint:
@@ -124,42 +131,31 @@ class Expr(Constraint):
 
 
 class UnaryExpr(Expr, Unary):
-    def __init__(self, child):
+    def __init__(self, child, hash_root: str, op_str: str):
         Expr.__init__(self)
-        Unary.__init__(self, child)
-        self._str = Unary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Unary.__init__(self, child, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
+        return Unary.__hash__(self)
 
 
 class BinaryExpr(Expr, Binary):
-    def __init__(self, left, right):
+    def __init__(self, left, right, hash_root: str, op_str: str):
         Expr.__init__(self)
-        Binary.__init__(self, left, right)
-        self._str = Binary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Binary.__init__(self, left, right, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
+        return Binary.__hash__(self)
 
 
 class MultinaryExpr(Expr, Multinary):
-    def __init__(self, children):
+    def __init__(self, children, hash_root: str, op_str: str):
         Expr.__init__(self)
-        Multinary.__init__(self, children)
-        self._str = Multinary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Multinary.__init__(self, children, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
+        return Multinary.__hash__(self)
+
 
 
 class Formula(Constraint):
@@ -183,43 +179,29 @@ class Formula(Constraint):
 
 
 class UnaryFormula(Formula, Unary):
-    def __init__(self, child):
+    def __init__(self, child, hash_root: str, op_str: str):
         Formula.__init__(self)
-        Unary.__init__(self, child)
-        self._str = Unary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Unary.__init__(self, child, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
-
+        return Unary.__hash__(self)
 
 class BinaryFormula(Formula, Binary):
-    def __init__(self, left, right):
+    def __init__(self, left, right, hash_root: str, op_str: str):
         Formula.__init__(self)
-        Binary.__init__(self, left, right)
-        self._range = False
-        self._str = Binary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Binary.__init__(self, left, right, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
+        return Binary.__hash__(self)
 
 
 class MultinaryFormula(Formula, Multinary):
-    def __init__(self, children):
+    def __init__(self, children, hash_root: str, op_str: str):
         Formula.__init__(self)
-        Multinary.__init__(self, children)
-        self._str = Multinary.__repr__(self)
-
-    def __repr__(self):
-        return self._str
+        Multinary.__init__(self, children, hash_root, op_str)
 
     def __hash__(self):
-        return hash(self._str)
+        return Multinary.__hash__(self)
 
 
 class Constant(Leaf, Expr):
@@ -255,6 +237,9 @@ class Variable(Leaf, Expr):
 
     def __hash__(self):
         return hash(self._str)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
     @property
     def type(self):
@@ -310,120 +295,55 @@ universeInterval = Interval(True, RealVal("0.0"), False, RealVal('inf'))
 
 class Add(BinaryExpr):
     def __init__(self, left, right):
-        BinaryExpr.__init__(self, left, right)
-        self._str = "(+ " + BinaryExpr.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryExpr.__init__(self, left, right, "add", "+")
 
 class Sub(BinaryExpr):
     def __init__(self, left, right):
-        BinaryExpr.__init__(self, left, right)
-        self._str = "(- " + BinaryExpr.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryExpr.__init__(self, left, right, "sub", "-")
 
 class Mul(BinaryExpr):
     def __init__(self, left, right):
-        BinaryExpr.__init__(self, left, right)
-        self._str = "(* " + BinaryExpr.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryExpr.__init__(self, left, right, "mul", "*")
 
 class Div(BinaryExpr):
     def __init__(self, left, right):
-        BinaryExpr.__init__(self, left, right)
-        self._str = "(/ " + BinaryExpr.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryExpr.__init__(self, left, right, "div", "/")
 
 class Neg(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(- " + Unary.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "neg", "-")
 
 class Sqrt(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(sqrt (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "sqrt", "sqrt")
 
 class Sin(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(sin (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "sin", "sin")
 
 class Cos(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(cos (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "cos", "cos")
 
 class Tan(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(tan (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "tan", "tan")
 
 class Arcsin(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(arcsin (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "arcsin", "arcsin")
 
 class Arccos(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(arccos (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "arccos", "arccos")
 
 class Arctan(UnaryExpr):
     def __init__(self, child):
-        UnaryExpr.__init__(self, child)
-        self._str = "(arctan (" + Unary.__repr__(self) + "))"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryExpr.__init__(self, child, "arctan", "arctan")
 
 class Pow(BinaryExpr):
     def __init__(self, left, right):
-        BinaryExpr.__init__(self, left, right)
-        self._str = "(^ " + BinaryExpr.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryExpr.__init__(self, left, right, "pow", "^")
 
 class Dynamics:
     def __init__(self, vars: list, exps: list):
@@ -477,127 +397,92 @@ class Ode(Dynamics):
 class And(MultinaryFormula, NonLeaf):
     def __init__(self, children):
         NonLeaf.__init__(self, children)
-        MultinaryFormula.__init__(self, children)
-        self._str = "(and " + MultinaryFormula.__repr__(self) + ")"
+        MultinaryFormula.__init__(self, children, "and", "and")
 
-    def __repr__(self):
-        return self._str
-
+    def __hash__(self):
+        return MultinaryFormula.__hash__(self)
 
 class Or(MultinaryFormula, NonLeaf):
     def __init__(self, children):
         NonLeaf.__init__(self, children)
-        MultinaryFormula.__init__(self, children)
-        self._str = "(or " + MultinaryFormula.__repr__(self) + ")"
+        MultinaryFormula.__init__(self, children, "or", "or")
 
-    def __repr__(self):
-        return self._str
-
+    def __hash__(self):
+        return MultinaryFormula.__hash__(self)
 
 class Not(UnaryFormula, NonLeaf):
     def __init__(self, child):
         NonLeaf.__init__(self, [child])
         Formula.__init__(self)
-        UnaryFormula.__init__(self, child)
-        self._str = "(not " + UnaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        UnaryFormula.__init__(self, child, "not", "not")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return UnaryFormula.__hash__(self)
 
 class Gt(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(> " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "gt", ">")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Geq(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(>= " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "geq", ">=")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Lt(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(< " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "lt", "<")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Leq(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(<= " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "leq", "<=")
 
     def __hash__(self):
-        return hash(self._str)
+        return BinaryFormula.__hash__(self)
+
+class TimeBoundConst(BinaryFormula, Leaf):
+    def __init__(self, left, right):
+        Leaf.__init__(self)
+        BinaryFormula.__init__(self, left, right, "gt", ">=")
+
+    def __hash__(self):
+        return BinaryFormula.__hash__(self)
 
 
 class Eq(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(= " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "eq", "=")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Neq(BinaryFormula, Leaf):
     def __init__(self, left, right):
         Leaf.__init__(self)
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(!= " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "neq", "!=")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Implies(BinaryFormula, NonLeaf):
     def __init__(self, left, right):
         NonLeaf.__init__(self, [left, right])
-        BinaryFormula.__init__(self, left, right)
-        self._str = "(implies " + BinaryFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
+        BinaryFormula.__init__(self, left, right, "implies", "implies")
 
     def __hash__(self):
-        return hash(self._str)
-
+        return BinaryFormula.__hash__(self)
 
 class Integral(Formula, Leaf):
     def __init__(self, current_mode_number, end_vector: list, start_vector: list, dynamics: Dynamics):
@@ -641,15 +526,19 @@ class Forall(Formula, Leaf):
 
 
 # end of boolean_objects
-
+## hashing
 
 class UnaryTemporalFormula(UnaryFormula, NonLeaf):
-    def __init__(self, local_time, global_time, child):
+    def __init__(self, local_time, global_time, child, hash_root: str, op_str: str):
         NonLeaf.__init__(self, [child])
-        UnaryFormula.__init__(self, child)
+        UnaryFormula.__init__(self, child, hash_root, op_str)
         self.local_time = local_time
         self.global_time = global_time
-        self._str = '_' + str(self.local_time) + '^' + str(self.global_time) + ' ' + str(self.child)
+        self._str = "({}_{}^{} {})".format(op_str, self.local_time, self.global_time, self.child)
+        self._hash = hash((hash(self.local_time), hash(self.global_time), self._hash))
+
+    def __hash__(self):
+        return self._hash
 
     def __repr__(self):
         return self._str
@@ -657,51 +546,43 @@ class UnaryTemporalFormula(UnaryFormula, NonLeaf):
 
 class GloballyFormula(UnaryTemporalFormula):
     def __init__(self, local_time, global_time, child):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child)
-        self._str = "([]" + UnaryTemporalFormula.__repr__(self) + ")"
+        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globally", "[]")
 
-    def __repr__(self):
-        return self._str
+class GloballyT1Formula(UnaryTemporalFormula):
+    def __init__(self, local_time, global_time, child):
+        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globallyT1", "[1]")
+
+class GloballyT2Formula(UnaryTemporalFormula):
+    def __init__(self, local_time, global_time, child):
+        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globallyT2", "[2]")
 
 
 class FinallyFormula(UnaryTemporalFormula):
     def __init__(self, local_time, global_time, child):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child)
-        self._str = "(<>" + UnaryTemporalFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "finally", "<>")
 
 class BinaryTemporalFormula(BinaryFormula, NonLeaf):
-    def __init__(self, local_time, global_time, left, right):
+    def __init__(self, local_time, global_time, left, right, hash_root: str, op_str: str):
         NonLeaf.__init__(self, [left, right])
-        BinaryFormula.__init__(self, left, right)
+        BinaryFormula.__init__(self, left, right, hash_root, op_str)
         self.local_time = local_time
         self.global_time = global_time
-        self._str = '_' + str(self.local_time) + '^' + str(self.global_time) + ' ' + str(self.right)
+        self._str = "({} {}_{}^{} {})".format(self.left, op_str, self.local_time, self.global_time, self.right)
+        self._hash = hash((hash(self.local_time), hash(self.global_time), self._hash))
 
     def __repr__(self):
         return self._str
 
+    def __hash__(self):
+        return self._hash
 
 class UntilFormula(BinaryTemporalFormula):
     def __init__(self, local_time, global_time, left, right):
-        BinaryTemporalFormula.__init__(self, local_time, global_time, left, right)
-        self._str = "(" + repr(self.left) + " U" + BinaryTemporalFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryTemporalFormula.__init__(self, local_time, global_time, left, right, "until", "U")
 
 class ReleaseFormula(BinaryTemporalFormula):
     def __init__(self, local_time, global_time, left, right):
-        BinaryTemporalFormula.__init__(self, local_time, global_time, left, right)
-        self._str = "(" + repr(self.left) + " R" + BinaryTemporalFormula.__repr__(self) + ")"
-
-    def __repr__(self):
-        return self._str
-
+        BinaryTemporalFormula.__init__(self, local_time, global_time, left, right, "release", "R")
 
 # wrapper class for goal reach
 class Reach(Formula):

@@ -1,6 +1,7 @@
 import abc
 import argparse
 import os
+import sys
 
 from constraints.constraints import And
 from constraints.operations import make_boolean_abstract_consts
@@ -193,6 +194,7 @@ class StlConfiguration:
 class Runner:
     @abc.abstractmethod
     def run(self, config: StlConfiguration, logger: Logger, printer: Printer):
+        sys.setrecursionlimit(1000000)
         object_manager = ObjectFactory(config.encoding).generate_object_manager()
         solver = SolverFactory(config.solver).generate_solver()
         solver.append_logger(logger)
@@ -200,6 +202,11 @@ class Runner:
         Printer.debug_on = config.debug_flag
         Printer.verbose_on = config.verbose_flag
         for file_name in config.file_list:
+            formula_lower = min(config.formula_range)
+            bound_lower = min(config.bound)
+            printer.print_normal("> {}".format(config.solver))
+            printer.print_verbose("(args) model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound_lower, formula_lower, config.encoding))
+
             model, PD, goals = object_manager.generate_objects(file_name, config.zeno)
 
             max_formula = max(config.formula_range)
@@ -213,6 +220,10 @@ class Runner:
                         # start logging
                         logger.reset_timer()
                         # logger.add_info("bound", bound)
+
+                        if not(bound == bound_lower and formula == formula_lower):
+                            printer.print_normal("> {}".format(config.solver))
+                            printer.print_verbose("(args) model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
 
                         model_const = model.make_consts(bound)
 
@@ -237,8 +248,6 @@ class Runner:
                         boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
                         logger.stop_timer("goal timer")
 
-                        printer.print_normal("> {}".format(config.solver))
-                        printer.print_verbose("(args) model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
                         '''
                         print("boolean")
                         for ba in boolean_abstract_consts.children:

@@ -1,3 +1,8 @@
+*.dat
+*.xlsx
+exp2_log/
+exp1_log/
+exp3_log/
 *.smt2
 stlmc.e*
 stlmc.o*
