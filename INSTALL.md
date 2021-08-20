@@ -19,7 +19,7 @@ A minimum system requirement is as follows:
 
   - Cores: 4
 
-  - RAM: 8192 MB (8 GB)
+  - RAM: 12288 MB (12 GB)
 
 In the virtual machine, our artifact is located in the directory 
 'home/ase2021/stlmc-ase2021'. The password of the image is "ase2021".
