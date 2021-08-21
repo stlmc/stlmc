@@ -1,12 +1,12 @@
 ## Overview
 
-There are two ways to run our artifact.
+There are three ways to run our artifact.
 
       (1) Using the VirtualBox Image 
 
       (2) Installation from Source Code
 
-      (3) Using Docker
+      (3) Installation for Docker 
       
 ## Using the VirtualBox Image
 
@@ -24,7 +24,7 @@ A minimum system requirement is as follows:
 In the virtual machine, our artifact is located in the directory 
 'home/ase2021/stlmc-ase2021'. The password of the image is "ase2021".
 
-   Please see [README.md](README.md#running-the-experiments) to run the experiments.
+   Please see [README.md](README.md#running-the-experiments) for instructions to run the experiments.
 
 ---
 
@@ -38,6 +38,7 @@ To build the artifact from the source, you need:
 - Python version 3.8.x or newer
 - JAVA 8: https://openjdk.java.net/install/
 - Python3-pip: https://pypi.org
+- GNUPLOT: http://www.gnuplot.info
 
 ### Installation
 
@@ -68,11 +69,11 @@ To build the artifact from the source, you need:
 
 6. Finish!!
 
-   Please see [README.md](README.md#running-the-experiments) to run the experiments.
+   Please see [README.md](README.md#running-the-experiments) for instructions to run the experiments.
 
 ---
 
-## Using Docker
+## Installation for Docker
 
 You can run the experiments using Docker (https://docs.docker.com).
 
@@ -89,7 +90,7 @@ You can run the experiments using Docker (https://docs.docker.com).
 
    ~~~
    apt update
-   apt install -y python3 python3-pip openjdk-8-jdk software-properties-common wget nano unzip less
+   apt install -y python3 python3-pip openjdk-8-jdk software-properties-common wget nano unzip less gnuplot
    ~~~
 
 3. Download Yices2 (https://github.com/SRI-CSL/yices2):
@@ -114,5 +115,5 @@ You can run the experiments using Docker (https://docs.docker.com).
 
 6. Finish!!
 
-   Please see [README.md](README.md#running-the-experiments) to run the experiments. 
+   Please see [README.md](README.md#running-the-experiments) for instructions to run the experiments. 
 
