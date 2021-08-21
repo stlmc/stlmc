@@ -6,7 +6,7 @@ There are three ways to run our artifact.
 
       (2) Installation from Source Code
 
-      (3) Installation for Docker 
+      (3) Installation from Docker 
       
 ## Using the VirtualBox Image
 
@@ -73,7 +73,7 @@ To build the artifact from the source, you need:
 
 ---
 
-## Installation for Docker
+## Installation from Docker
 
 You can run the experiments using Docker (https://docs.docker.com).
 
