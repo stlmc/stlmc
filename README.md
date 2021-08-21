@@ -112,13 +112,6 @@ Using the script 'run', we can run all 500 cases (250 formulas, two algorithms) 
 
 This command produces a log file subdirectory 'exp2_log' and a spreadsheet report 'exp2.xlsx' in the current directory.
 
-If 'exp2_log' exists in the top directory, the spreadsheet report 'exp2.xlsx' can be obtained with the following command:
-
-  ~~~
-  ./run -ge
-  ~~~
-
-
 ## (3) Experiment 3: Reachability analysis
 
 In this experiment, we consider the same benchmark models as (1), but written in the input languages of three tools (HyComp, SpaceEx, and Flow*), and two invariant properties (see Section B of 'supp.pdf'). These models are declared in the following files, together with tool-specific files for properties:
