@@ -13,7 +13,7 @@ There are three ways to run our artifact.
 You can run the experiments using VirtualBox (www.virtualbox.org). 
 
 A Vritualbox image 'ase2021.ova' contains the benchmark models and scripts for the experiments. 
-You can download the image from https://doi.org/10.5281/zenodo.5106005.
+You can download the image from https://doi.org/10.5281/zenodo.5225136.
 
 A minimum system requirement is as follows:
 
