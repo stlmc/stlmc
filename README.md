@@ -93,7 +93,7 @@ We provide a script to automate the experiments: 'run' in the top directory. The
   
 The argument '-m exp1' denotes the experiment, and '-t 120' denotes a timeout. This command produces a log file subdirectory 'exp1_log' and a spreadsheet report 'exp1.xlsx' in the current directory, explained above.
 	
-We support a command to generate a table of experiment 1 (TABLE I) using data in the spreadsheet 'exp1.xlsx'
+We support a command to generate a table ('table1.html') of experiment 1 (TABLE I) using data in the spreadsheet 'exp1.xlsx'
 
   ~~~
   ./run -gentb
