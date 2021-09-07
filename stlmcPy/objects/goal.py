@@ -14,6 +14,7 @@ from encoding.time import make_zeno_time_const, make_non_zeno_time_const
 class Goal:
     def __init__(self, time_enc_func):
         self.time_encoding_function = time_enc_func
+        self.partition_size = 0
 
     @abc.abstractmethod
     def make_consts(self, bound, time_bound, delta, model, proposition_dict):
@@ -205,7 +206,12 @@ class OldStlGoal(BaseStlGoal):
         negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
-        (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+        (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)   
+        empty = set()
+        for pt in partition.keys():
+            empty = empty.union(partition[pt])
+
+        self.partition_size = len(empty)
 
         # full separation
         fs = SEP.fullSeparation(negFormula, sepMap)
@@ -231,6 +237,12 @@ class NewStlGoal(BaseStlGoal):
         negFormula = reduce_not(Not(self.formula))
 
         (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
+
+        empty = set()
+        for pt in partition.keys():
+            empty = empty.union(partition[pt])
+
+        self.partition_size = len(empty)
 
         sub_list = list(partition.keys())
 

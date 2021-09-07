@@ -265,7 +265,7 @@ class Runner:
                         smt_time = logger.get_duration_time("solving timer")
                         goal_time = logger.get_duration_time("goal timer")
                         printer.print_verbose("model name: {}, bound: {}, formula num: {}, encoding: {}".format(file_name, bound, formula, config.encoding))
-                        printer.print_verbose("smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}".format(smt_time, goal_time, smt_time + goal_time, result, size))
+                        printer.print_verbose("smt solving time: {}, goal generation time: {}, total time: {}, result: {}, size: {}, partition size: {}".format(smt_time, goal_time, smt_time + goal_time, result, size, goal.partition_size))
                         printer.print_normal_dark("Driver returns : {}, Total solving time : {}".format(result, smt_time + goal_time))
                         printer.print_normal_dark("formula : {}, bound : {}".format(goal.get_formula(), bound))
                         printer.print_line()
