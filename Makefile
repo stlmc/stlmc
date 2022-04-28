@@ -1,7 +1,11 @@
 ANTLR_DIR := $(shell pwd)/stlmcPy/syntax
 SPACEEX_LIB_DIR := $(shell pwd)/stlmcPy/3rd_party/lib
 
-all:    antlr spaceex
+all:    extra-libs antlr spaceex
+
+extra-libs:
+	$(info mv libraries)
+	@mv ../3rd_party/run ./ && mv ../3rd_party/antlr-4.9.1-complete.jar ./stlmcPy/syntax  && mv ../3rd_party/ ./stlmcPy
 
 antlr:
 	$(info make files for antlr in $(ANTLR_DIR))

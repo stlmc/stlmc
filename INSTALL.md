@@ -57,7 +57,9 @@ To build the artifact from the source, you need:
    pip3 install termcolor yices antlr4-python3-runtime
    ~~~
 
-3. Download the source code and unzip it (https://github.com/stlmc/stlmc/releases/tag/ase2021).
+3. Download the source code and 3rd-party libraries
+and unzip it in the same directory (https://github.com/stlmc/stlmc/releases/tag/ase2021).
+
 4. Run the following commands:
 
    ~~~

@@ -3,9 +3,9 @@
 This directory includes the following files:
 
 - [INSTALL.md](INSTALL.md) : a file that explains how to install our artifact
-- [paper.pdf](ase2021-paper1206.pdf) : an accepted paper
-- [supp.pdf](supp.pdf) : the proof of the lemmas, and the details of the experiments.
-- [data.zip](data.zip) (1.3MB) : the experimental results and log files for the experiments
+- [paper.pdf](https://github.com/stlmc/stlmc/releases/download/ase2021/paper.pdf) : an accepted paper
+- [supp.pdf](https://github.com/stlmc/stlmc/releases/download/ase2021/supp.pdf) : the proof of the lemmas, and the details of the experiments.
+- [data.zip](https://github.com/stlmc/stlmc/releases/download/ase2021/data.zip) (1.3MB) : the experimental results and log files for the experiments
 - [AUTHORS.md](AUTHORS.md) : authors information
 
 ---
