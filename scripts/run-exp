@@ -11,8 +11,8 @@ from glob import glob
 from typing import Dict, List, Tuple, Set
 
 benchmark_dir = "./benchmarks"
-stlmc_dir = "../src"
-dreal_dir = "../3rd_party/dreal"
+stlmc_dir = "../stlmc/src"
+dreal_dir = "../stlmc/3rd_party/dreal"
 
 
 def check_python_version():

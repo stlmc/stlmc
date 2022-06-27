@@ -272,6 +272,8 @@ def grouping(data: List[List[str]]):
 def gen_html_paper(data: List[List[str]]):
     groups, group_size = grouping(data)
 
+    bound_str = {"linear": "$(N = 20)$", "poly": "$(N = 10)$", "ode": "$(N = 5)$"}
+
     html = list()
     sorted_dy = sorted(groups.keys())
     for dy in sorted_dy:
@@ -285,8 +287,8 @@ def gen_html_paper(data: List[List[str]]):
             if index == 0:
                 html.append(
                     """<tr>
-                        <td rowspan=\"{}\" class=\"rotate t-draw\"><strong>{}</strong></td>
-                        """.format(d_size, dy.capitalize())
+                        <td rowspan=\"{}\" class=\"rotate t-draw\"><strong>{}</strong><br>{}</td>
+                        """.format(d_size, dy.capitalize(), bound_str[dy.lower()])
                 )
 
             is_last_block = index == len(model) - 1
