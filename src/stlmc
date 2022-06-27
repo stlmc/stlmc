@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+from stlmcPy.driver.abstract_driver import *
+from stlmcPy.driver.base_driver import *
+from stlmcPy.exception.exception import *
+from stlmcPy.util.print import *
+import traceback
+
+if __name__ == '__main__':
+    printer = ExceptionPrinter()
+    try:
+        # default driver factory
+        driver_factory = BaseDriverFactory()
+
+        stlmc = StlModelChecker()
+        stlmc.create_env(driver_factory)
+        stlmc.run()
+    except NotSupportedError as E:
+        printer.print_normal("system error: {}".format(E))
+    except OperationError as E:
+        printer.print_normal("operation error: {}".format(E))
+    except ParsingError as E:
+        printer.print_normal("parsing error: {}".format(E))
+    except Exception as E:
+        printer.print_normal("error: {}".format(E))
+        printer.print_normal(traceback.format_exc())

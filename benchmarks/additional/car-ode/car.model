@@ -1,0 +1,112 @@
+# logging: ode
+bool ix;
+bool iy;
+[-40, 40] rx;
+[-40, 40] ry;
+[0, 1.5] theta1;
+
+#  car1 : inc, inc 
+{
+    mode:
+        ix = true;
+        iy = true;
+    inv:
+	rx < 20;
+	ry < 20;
+	theta1 < 1.4;
+    flow:
+        d/dt[rx] = 1;
+        d/dt[ry] = 2 * sin(theta1);
+	d/dt[theta1] = 0.05;
+    jump:
+	(and (rx < 2) (ry < 2)) =>
+		(and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+	(and (rx >= 2.4) (ry >= 2.4)) =>
+		(and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+		(and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+		(and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : inc, dec
+{
+    mode:
+        ix = true;
+        iy = false;
+    inv:
+	rx < 20;
+	ry > -20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = 1;
+        d/dt[ry] = -2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : dec, inc
+{
+    mode:
+        ix = false;
+        iy = true;
+    inv:
+	rx > -20;
+	ry < 20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = -1;
+        d/dt[ry] = 2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+#  car1 : dec, dec
+{
+    mode:
+        ix = false;
+        iy = false;
+    inv:
+	rx > -20;
+	ry > -20;
+        theta1 < 1.4;
+    flow:
+        d/dt[rx] = -1;
+        d/dt[ry] = -2 * sin(theta1);
+        d/dt[theta1] = 0.05;
+    jump:
+        (and (rx < 2) (ry < 2)) =>
+                (and (ix' = true) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry >= 2.4)) =>
+                (and (ix' = false) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx >= 2.4) (ry < 2)) =>
+                (and (ix' = false) (iy' = true) (rx' = rx) (ry' = ry) (theta1' = 0));
+        (and (rx < 2) (ry >= 2.4)) =>
+                (and (ix' = true) (iy' = false) (rx' = rx) (ry' = ry) (theta1' = 0));
+}
+
+
+init:
+(and not(ix) not(iy) (0 <= rx) (rx <= 1) (0 <= ry) (ry <= 1) (0 <= theta1) (theta1 <= 1));
+
+proposition:
+
+# bound: 5, timebound: 5
+goal:
+[f1]: <>[1, 3]([][0, 2] (theta1 > 1)); # threshold: 1, time-horizon: 2
+[f2]: (<>[1, 2] ry >= 1) R[0, 2] theta1 > 2; # threshold: 0.5, time-horizon: 2
+[f3]: [][0, 2] (rx > 2 -> <> [2, 3] (ry < -1)); # threshold: 2, time-horizon: 2
+

@@ -1,0 +1,428 @@
+#!/usr/bin/env python3
+import argparse
+import csv
+import os
+import re
+from functools import reduce
+from glob import glob
+from typing import List, Set, Tuple
+
+scripts = [
+    "<script src=\"https://polyfill.io/v3/polyfill.min.js?features=es6\"></script>",
+    "<script id=\"MathJax-script\" async src=\"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"></script>",
+    "<script>MathJax = {tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}};</script>"
+]
+
+styles = [
+    "table { text-align: center; padding: 3px 3px 5px 3px; border-top: 2px solid; border-bottom: 2px solid; border-spacing: 0px;}",
+    "th { border-bottom: 1px solid; padding: 3px 10px 5px 10px;}", "td {padding: 10px 10px 5px 10px;}",
+    ".draw {border-bottom: 1px solid;}", ".left { text-align: left; }", ".t-draw {border-bottom: 2px solid;}",
+    "mjx-container[display=\"block\"] { display: inline; margin: 1em 0;}",
+]
+
+
+def remove_ansi_color(colored_string):
+    return re.sub(r'\033\[(\d|;)+?m', '', colored_string)
+
+
+def find_size(input_string):
+    result = re.search(r'size\s:\s[1-9]+[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split(":")[1]
+    return None
+
+
+def find_threshold(input_string):
+    result = re.search(r'threshold\s:\s[0-9]+(\.)*[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split(":")[1]
+    return None
+
+
+def find_time_bound(input_string):
+    result = re.search(r'time\sbound:\s[1-9]+[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split(":")[1]
+    return None
+
+
+def find_last_running_time(input_string):
+    result = re.findall(r'running\stime\s[0-9]+\.[0-9]*', input_string)
+    if result:
+        return str(result[-1]).split(" ")[2]
+    return None
+
+
+def find_result(input_string):
+    result = re.search(r'result\s:\sFalse\sat\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return "false"
+
+    result = re.search(r'result\s:\sTrue\sup\sto\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return "true"
+
+    return None
+
+
+def find_bound(input_string):
+    result = re.search(r'result\s:\sFalse\sat\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split("bound")[1]
+
+    result = re.search(r'result\s:\sTrue\sup\sto\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split("bound")[1]
+
+    return None
+
+
+def find_path_loops(input_string):
+    result = re.findall(r'total\sloop\s:\s[1-9]+[0-9]*', input_string)
+    if result:
+        return str(result[-1]).split(":")[1]
+
+    return None
+
+
+def find_dynamics(input_string):
+    result = re.search(r'#\slogging\s\(dynamics:\s[a-z]*\)', input_string)
+    if result:
+        return result.group().replace(" ", "").replace("(", "").replace(")", "").split(":")[1]
+    return None
+
+
+def find_model_name(input_string):
+    result = re.search(r'#\slogging\s\(model:\s([a-z]|[0-9])*\)', input_string)
+    if result:
+        return result.group().replace(" ", "").replace("(", "").replace(")", "").split(":")[1]
+    return None
+
+
+def find_goal(input_string):
+    result = re.search(r'#\slogging\s\(goal:\s([a-z]|[0-9])*\)', input_string)
+    if result:
+        return result.group().replace(" ", "").replace("(", "").replace(")", "").split(":")[1]
+    return None
+
+
+def find_formula(input_string):
+    result = re.search(r'goal\s:\s(.*?)\n', input_string)
+    if result:
+        return result.group().replace("\n", "").split(":")[1]
+    return None
+
+
+def check_time_out(found_data: List[str]) -> bool:
+    for d in found_data:
+        if d == "T/O":
+            return True
+    return False
+
+
+def set_data(found_data: List[str], border=None):
+    # found_data = ['poly', 'car', 'f2', 'formula', '10', '2.0', '676', '5.70978', 'false', '1', '-', '1-step']
+    # f<N>
+    is_time_out = check_time_out(found_data)
+    if is_time_out:
+        not_pretty = [
+            found_data[2],
+            found_data[3],
+            "-",
+            "-",
+            "-",
+            "T/O",
+            "-",
+            "-",
+            "-",
+            "-",
+        ]
+    else:
+        not_pretty = [
+            found_data[2],
+            found_data[3],
+            found_data[4],
+            found_data[5],
+            found_data[6],
+            found_data[7],
+            found_data[8],
+            found_data[9],
+            found_data[11],
+            found_data[10],
+        ]
+
+    pretty = list()
+    for index, d in enumerate(not_pretty):
+        # ignore formula
+        if index == 0:
+            pretty.append(d)
+            continue
+
+        if d == "":
+            pretty.append("-")
+        elif d == "true":
+            pretty.append("$\\top$")
+        elif d == "false":
+            pretty.append("$\\bot$")
+        elif d == "-":
+            pretty.append("-")
+        elif d == "1-step":
+            pretty.append("$\\textsf{1-step}$")
+        elif d == "2-step":
+            pretty.append("$\\textsf{2-step}$")
+        elif d == "T/O":
+            pretty.append("$\\textsf{T/O}$")
+        else:
+            pretty.append("${}$".format(d))
+
+    border_style = ""
+    if border is not None:
+        border_style = "class=\"{}\"".format(border)
+
+    text = """
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    <td {}>{}</td>
+    """.format(
+        border_style, pretty[0],
+        border_style, pretty[1],
+        border_style, pretty[2],
+        border_style, pretty[3],
+        border_style, pretty[4],
+        border_style, pretty[5],
+        border_style, pretty[6],
+        border_style, pretty[7],
+        border_style, pretty[8],
+        border_style, pretty[9],
+    )
+
+    return text
+
+
+def write_table(table: str, file_name: str):
+    html_string = ("<html>\n<head>\n{}\n<style>{}</style>\n</head><body>{}</body>\n</html>".format("\n".join(scripts),
+                                                                                                   "\n".join(styles),
+                                                                                                   table))
+    f = open(file_name, "w")
+    f.write(html_string)
+    f.close()
+
+
+def read_from_csv(file_name: str) -> List[List[str]]:
+    if os.path.isdir(file_name):
+        raise ValueError("\'{}\' is not a file".format(file_name))
+
+    if not os.path.exists(file_name):
+        raise ValueError("\'{}\' does not exist (script uses the csv file to make table)".format(file_name))
+
+    csv_data = list()
+    with open(file_name, newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        for row in reader:
+            csv_data.append(row)
+
+    return csv_data[1:]
+
+
+def find_data_from_csv(data: List[List[str]], *keywords) -> List[List[str]]:
+    search_result = list()
+    no_keyword = len(keywords) == 0
+    for row in data:
+        if no_keyword:
+            search_result.append(row.copy())
+            continue
+
+        query = reduce(lambda x, y: x in row and y in row, keywords)
+        if query:
+            search_result.append(row.copy())
+    return search_result
+
+
+def grouping(data: List[List[str]]):
+    groups = dict()
+    category = set()
+    group_size = dict()
+    # collect all (dynamics, model)
+    for csv_row in data:
+        if len(csv_row) > 0:
+            groups[csv_row[0]] = dict()
+            category.add((csv_row[0], csv_row[1]))
+
+    for dy, mo in category:
+        group_size[dy] = 0
+        found = find_data_from_csv(data, dy, mo)
+        if len(found) < 1:
+            continue
+        groups[dy][mo] = sorted(found, key=lambda l: l[2])
+
+    for dy, mo in category:
+        found = find_data_from_csv(data, dy, mo)
+        group_size[dy] += len(found)
+
+    return groups, group_size
+
+
+def gen_html_paper(data: List[List[str]]):
+    groups, group_size = grouping(data)
+
+    html = list()
+    sorted_dy = sorted(groups.keys())
+    for dy in sorted_dy:
+        model = groups[dy]
+        d_size = group_size[dy]
+
+        sorted_model_name = sorted(model.keys())
+        for index, model_name in enumerate(sorted_model_name):
+            model_data = model[model_name]
+
+            if index == 0:
+                html.append(
+                    """<tr>
+                        <td rowspan=\"{}\" class=\"rotate t-draw\"><strong>{}</strong></td>
+                        """.format(d_size, dy.capitalize())
+                )
+
+            is_last_block = index == len(model) - 1
+            for index2, row in enumerate(model_data):
+                is_last_row = index2 == len(model_data) - 1
+                border_line_style = list()
+                if is_last_block and is_last_row:
+                    border_line_style.append("t-draw")
+
+                if is_last_row:
+                    border_line_style.append("draw")
+
+                border_style = " ".join(border_line_style) if len(border_line_style) > 0 else None
+
+                if index2 == 0:
+                    model_style = "draw"
+                    if is_last_block:
+                        model_style = "t-draw"
+                    html.append(
+                        """
+                <td rowspan=\"{}\" class=\"{}\">{}</td>
+                {}
+                </tr>
+                        """.format(len(model_data), model_style, model_name.capitalize(), set_data(row, border_style))
+                    )
+                else:
+                    html.append(
+                        """<tr>
+                        {}
+                        </tr>
+                        """.format(set_data(row, border_style))
+                    )
+
+    table = """
+    <table>
+<thead>
+  <tr>
+    <th>Dyn.</th>
+    <th>Model</th>
+    <th>Label</th>
+    <th>STL formula</th>
+    <th>$\\tau$</th>
+    <th>$\\epsilon$</th>
+    <th>$| \\Psi |$</th>
+    <th>Time</th>
+    <th>Result</th>
+    <th>$k$</th>
+    <th>Alg.</th>
+    <th>#$\\pi$</th>
+  </tr>
+</thead>
+<tbody>
+{}
+</tbody>
+    """.format("\n".join(html))
+
+    return table
+
+
+def write_csv(data: List[List[str]], file_name):
+    header = ["dynamics", "model", "label", "formula", "time bound", "threshold", "size", "time", "result",
+              "bound", "scenarios", "algorithm"]
+
+    rows = list()
+    rows.append(header)
+    rows.extend(data)
+
+    with open(file_name, "w", newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(rows)
+
+
+def read_log(log_name):
+    fd = open(log_name, "r")
+    s = fd.read()
+    uncolored_string = remove_ansi_color(s)
+    dy = find_dynamics(uncolored_string)
+    model = find_model_name(uncolored_string)
+    g = find_goal(uncolored_string)
+    f = find_formula(uncolored_string)
+    if "timeout" in uncolored_string:
+        data = [dy, model, g, "-", "-", "-", "-", "-", "-", "-", "-", "-", "T/O"]
+    else:
+        tb = find_time_bound(uncolored_string)
+        eps = find_threshold(uncolored_string)
+        size = find_size(uncolored_string)
+        time = find_last_running_time(uncolored_string)
+        result = find_result(uncolored_string)
+        k = find_bound(uncolored_string)
+        data = [dy, model, g, f, tb, eps, size, time, result, k]
+
+        loops = find_path_loops(uncolored_string)
+        if loops is not None:
+            data.append(loops)
+        else:
+            data.append("-")
+        data.append("2-step" if dy == "ode" else "1-step")
+    fd.close()
+    return data
+
+
+if __name__ == "__main__":
+    default_dir = "./log"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dir", nargs="?", metavar="D", type=str, help="log directory", default=default_dir)
+    args = parser.parse_args()
+
+    try:
+        log_files = list()
+        log_data = list()
+
+        if os.path.isfile(args.dir):
+            raise ValueError("\'{}\' is a file (should provide directory).".format(args.dir))
+
+        if not os.path.exists(args.dir):
+            if args.dir == default_dir:
+                raise ValueError("The default log directory \'{}\' does not exist".format(args.dir))
+            else:
+                raise ValueError("\'{}\' does not exist".format(args.dir))
+
+        for root, dirs, files in os.walk(args.dir):
+            for file in files:
+                if os.path.splitext(file)[1] != ".log":
+                    continue
+                log_file = "{}/{}".format(root, file)
+                log_data.append(read_log(log_file))
+        log_file_name = args.dir.replace("/", "").replace(".", "").replace("..", "")
+        csv_file_name = "{}-report.csv".format(log_file_name)
+        table_name = "{}-table.html".format(log_file_name)
+        write_csv(log_data, csv_file_name)
+        d = read_from_csv(csv_file_name)
+        write_table(gen_html_paper(d), table_name)
+
+        print("write \'{}\' using the log files in \'{}\'".format(table_name, args.dir))
+
+        log_data.clear()
+
+    except Exception as err:
+        print("error: {}".format(err))

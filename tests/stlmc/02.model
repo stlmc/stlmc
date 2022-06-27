@@ -1,0 +1,42 @@
+bool a;
+bool b;
+[-20, 100] tx;
+[-10, 90] bx;
+{
+    mode:
+	a = false;
+	b = false;
+    inv:
+	tx >= 60;
+    flow:
+        d/dt[tx] = -30;
+        d/dt[bx] = 0;
+    jump:
+        tx <= 80 =>
+          (and (not a') b' (bx' = bx) (tx' = tx));
+        tx <= 80 =>
+          (and a' (not b') (bx' = bx) (tx' = tx));
+}
+# Approach
+{
+    mode:
+	a = false;
+	b = true;
+    inv:
+	tx >= 40;
+    flow:
+        d/dt[tx] = -5;
+        d/dt[bx] = 3;
+    jump:
+        tx <= 80 =>
+          (and a' (not b') (bx' = bx) (tx' = tx));
+}
+
+init:
+(and (a = false) (b = false) (0<= bx) (bx <= 0.5) (89 <= tx) (tx <= 90)) ;
+
+proposition:
+
+# bound: 3, timebound: 15
+goal:
+[f1]: [][0,5](<>[0, 10] bx >= 50);   # threshold: 0.5

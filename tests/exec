@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+import os
+import platform
+import re
+import shutil
+import csv
+import argparse
+import subprocess
+
+tool_dir = "./src"
+dreal_dir = "./3rd_party/dreal"
+test_dir = "./tests/smt2"
+test_dir2 = "./tests/stlmc"
+
+
+def check_python_version():
+    result = subprocess.run(["python3", "-V"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # >= python 3.8.6
+    base_py_major, base_py_minor, base_py_else = 3, 8, 6
+    [py_major_str, py_minor_str, py_else_str] = str(result.stdout.decode('utf-8')) \
+        .replace("Python", "").replace("\n", "").replace(" ", "").split(".")
+
+    py_major, py_minor, py_else = int(py_major_str), int(py_minor_str), int(py_else_str)
+    py_err_msg = "STLmc supports Python version >= {}.{}.{} ({}.{}.{} not supported)" \
+        .format(base_py_major, base_py_minor, base_py_else, py_major, py_minor, py_else)
+
+    if py_major >= base_py_major:
+        if py_minor >= base_py_minor:
+            if py_minor == base_py_minor:
+                if py_else < base_py_else:
+                    raise ValueError(py_err_msg)
+        else:
+            raise ValueError(py_err_msg)
+    else:
+        raise ValueError(py_err_msg)
+
+
+def check_yices_version():
+    result = subprocess.run(["yices", "-V"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    base_yices_major, base_yices_minor, base_yices_else = 2, 6, 2
+    yices_version_str = str(result.stdout.decode('utf-8')).split("\n")[0].replace("Yices", "").replace(" ", "")
+    [yices_major_str, yices_minor_str, yices_else_str] = yices_version_str.split(".")
+
+    yices_major, yices_minor, yices_else = int(yices_major_str), int(yices_minor_str), int(yices_else_str)
+    yices_err_msg = "STLmc supports Yices version >= {}.{}.{} ({}.{}.{} not supported)" \
+        .format(base_yices_major, base_yices_minor, base_yices_else, yices_major, yices_minor, yices_else)
+
+    if yices_major >= base_yices_major:
+        if yices_minor >= base_yices_minor:
+            if yices_minor == base_yices_minor:
+                if yices_else < base_yices_else:
+                    raise ValueError(yices_err_msg)
+        else:
+            raise ValueError(yices_err_msg)
+    else:
+        raise ValueError(yices_err_msg)
+
+
+def check_yices_smt2_version():
+    result = subprocess.run(["yices-smt2", "-V"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    base_yices_major, base_yices_minor, base_yices_else = 2, 6, 2
+    yices_version_str = str(result.stdout.decode('utf-8')).split("\n")[0].replace("Yices", "").replace(" ", "")
+    [yices_major_str, yices_minor_str, yices_else_str] = yices_version_str.split(".")
+
+    yices_major, yices_minor, yices_else = int(yices_major_str), int(yices_minor_str), int(yices_else_str)
+    yices_err_msg = "STLmc supports Yices version >= {}.{}.{} ({}.{}.{} not supported)" \
+        .format(base_yices_major, base_yices_minor, base_yices_else, yices_major, yices_minor, yices_else)
+
+    if yices_major >= base_yices_major:
+        if yices_minor >= base_yices_minor:
+            if yices_minor == base_yices_minor:
+                if yices_else < base_yices_else:
+                    raise ValueError(yices_err_msg)
+        else:
+            raise ValueError(yices_err_msg)
+    else:
+        raise ValueError(yices_err_msg)
+
+
+def check_dreal_version():
+    current_os = platform.platform()
+    if "macOS" in current_os:
+        dreal_exec = "{}/dReal-darwin".format(dreal_dir)
+    elif "Linux" in current_os:
+        dreal_exec = "{}/dReal".format(dreal_dir)
+    else:
+        raise ValueError("dreal is not supported for current os ({})".format(current_os))
+    result = subprocess.run([dreal_exec, "--version"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    base_dreal_major, base_dreal_minor, base_dreal_else, base_dreal_else2 = 3, 16, 6, 2
+    dreal_version_str = str(result.stdout.decode('utf-8')).split(" ")[1].replace("v", "")
+    version_array = dreal_version_str.split(".")
+
+    if len(version_array) < 4:
+        raise Exception("STLmc does not support dReal version {} (supports >= {}.{}.{}.{})"
+                        .format(".".join(version_array),
+                                base_dreal_major, base_dreal_minor,
+                                base_dreal_else, base_dreal_else2))
+
+    [dreal_major_str, dreal_minor_str, dreal_else_str, dreal_else1_str] = version_array
+
+    dreal_major, dreal_minor = int(dreal_major_str), int(dreal_minor_str)
+    dreal_else, dreal_else2 = int(dreal_else_str), int(dreal_else1_str)
+    dreal_err_msg = "STLmc supports dReal version >= {}.{}.{}.{} ({}.{}.{}.{} not supported)" \
+        .format(base_dreal_major, base_dreal_minor, base_dreal_else, base_dreal_else2,
+                dreal_major, dreal_minor, dreal_else, dreal_else2)
+
+    if dreal_major >= base_dreal_major:
+        if dreal_minor >= base_dreal_minor:
+            if dreal_minor == base_dreal_minor:
+                if dreal_else < base_dreal_else:
+                    raise ValueError(dreal_err_msg)
+                else:
+                    if dreal_else2 < base_dreal_else2:
+                        raise ValueError(dreal_err_msg)
+        else:
+            raise ValueError(dreal_err_msg)
+    else:
+        raise ValueError(dreal_err_msg)
+
+
+def check_z3():
+    subprocess.run(["z3", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+def check_java_version():
+    result = subprocess.run(["java", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    respond = str(result.stdout.decode('utf-8'))
+    if "openjdk" not in respond:
+        ValueError("Java is not available (check: \"java -version\")")
+
+
+def check_gnuplot():
+    result = subprocess.run(["gnuplot", "-V"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    respond = str(result.stdout.decode('utf-8'))
+    if "gnuplot" not in respond:
+        ValueError("gnuplot is not available (check: \"gnuplot -V\")")
+
+
+def check_program():
+    print("[exec] Python", end='')
+    check_python_version()
+    print(": pass")
+    print("[exec] Yices", end='')
+    check_yices_version()
+    check_yices_smt2_version()
+    print(": pass")
+    print("[exec] dReal", end='')
+    check_dreal_version()
+    print(": pass")
+    print("[exec] Z3", end='')
+    check_z3()
+    print(": pass")
+    print("[exec] Java", end='')
+    check_java_version()
+    print(": pass")
+    print("[exec] Gnuplot", end='')
+    check_gnuplot()
+    print(": pass")
+
+
+def check_config_file():
+    print("[file] Config: ", end='')
+    cfg_file = "{}/default.cfg".format(tool_dir)
+    if not os.path.exists(cfg_file):
+        raise Exception(": fail (default configuration file \"{}\" does not exist)".format(cfg_file))
+    print("pass")
+
+
+def run_dreal():
+    print("[smt] dReal")
+    test_files = ["01.smt2", "02.smt2"]
+    current_os = platform.platform()
+    if "macOS" in current_os:
+        dreal_exec = "{}/dReal-darwin".format(dreal_dir)
+    elif "Linux" in current_os:
+        dreal_exec = "{}/dReal".format(dreal_dir)
+    else:
+        raise ValueError("dreal is not supported for current os ({})".format(current_os))
+    for test_file in test_files:
+        input_file = "{}/dreal/{}".format(test_dir, test_file)
+        output_file = "{}/dreal/{}.expected".format(test_dir, test_file)
+
+        print("  {}".format(input_file), end='')
+        result = subprocess.run([dreal_exec, input_file],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf-8', text=True)
+        f = open(output_file, "r")
+        expected = f.readline()
+        if expected != result.stdout:
+            raise ValueError()
+        f.close()
+        print(": pass")
+
+
+def run_z3():
+    print("[smt] Z3")
+    test_files = ["01.smt2", "02.smt2"]
+    for test_file in test_files:
+        input_file = "{}/z3/{}".format(test_dir, test_file)
+        output_file = "{}/z3/{}.expected".format(test_dir, test_file)
+
+        print("  {}".format(input_file), end='')
+        result = subprocess.run(["z3".format(dreal_dir), input_file],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf-8', text=True)
+        f = open(output_file, "r")
+        expected = "".join(f.readlines())
+        if expected != result.stdout:
+            raise ValueError()
+        f.close()
+        print(": pass")
+
+
+def run_yices():
+    print("[smt] Yices")
+    test_files = ["01.smt2", "02.smt2"]
+    for test_file in test_files:
+        input_file = "{}/yices2/{}".format(test_dir, test_file)
+        output_file = "{}/yices2/{}.expected".format(test_dir, test_file)
+
+        print("  {}".format(input_file), end='')
+        result = subprocess.run(["yices-smt2", input_file],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf-8', text=True)
+        f = open(output_file, "r")
+        expected = f.readline()
+        if expected != result.stdout:
+            raise ValueError()
+        f.close()
+        print(": pass")
+
+
+def remove_ansi_color(colored_string):
+    return re.sub(r'\033\[(\d|;)+?m', '', colored_string)
+
+
+def find_size(input_string):
+    result = re.search(r'size\s:\s[1-9]+[0-9]*', input_string)
+    if result:
+        return result.group().replace(" ", "").split(":")[1]
+    return None
+
+
+def find_result(input_string):
+    result = re.search(r'result\s:\sFalse\sat\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return "false"
+
+    result = re.search(r'result\s:\sTrue\sup\sto\sbound\s[1-9]+[0-9]*', input_string)
+    if result:
+        return "true"
+
+    return None
+
+
+def run_stlmc():
+    print("[tool] STLmc")
+    test_files = ["01.model", "02.model"]
+    for test_file in test_files:
+        input_file = "{}/{}".format(test_dir2, test_file)
+        output_file = "{}/{}.expected".format(test_dir2, test_file)
+
+        print("  {}".format(input_file), end='')
+        result = subprocess.run(["{}/stlmc".format(tool_dir),
+                                 "-default-cfg", "{}/default.cfg".format(tool_dir), input_file],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf-8', text=True)
+        f = open(output_file, "r")
+        expected = "".join(f.readlines())
+        raw_result = remove_ansi_color(result.stdout)
+        f_size = find_size(raw_result)
+        m_result = find_result(raw_result)
+
+        stlmc_result = "size: {}\nresult: {}".format(f_size, m_result)
+        if expected != stlmc_result:
+            raise ValueError()
+        f.close()
+        print(": pass")
+
+
+def check_smt():
+    run_dreal()
+    run_z3()
+    run_yices()
+    run_stlmc()
+
+
+if __name__ == "__main__":
+    try:
+        check_program()
+        check_config_file()
+        check_smt()
+    except FileNotFoundError as err:
+        exec_file = str(err).split("\'")[1]
+        print(": fail (cannot find {} executable file)".format(exec_file))
+    except ValueError as e:
+        print(": fail")
+    except Exception as e:
+        print(": fail ({})".format(e))

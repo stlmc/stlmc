@@ -1,0 +1,78 @@
+# logging: linear
+bool r;
+bool d;
+[-100, 100] x1;
+[-100, 100] y1;
+[-100, 100] x2;
+[-100, 100] y2;
+
+#  car1 : straight 
+{
+    mode:
+        r = false;
+        d = false;
+    inv:
+        x2 - x1 <= 5;
+	y2 - y1 <= 5;
+    flow:
+        d/dt[x1] = 3;
+        d/dt[y1] = 0;
+	d/dt[x2] = 2;
+	d/dt[y2] = 2;
+    jump:
+        (y2 - y1) >= 3 =>
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+        (y2 - y1) <= -3 =>
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+}
+# car1 : up
+{
+    mode:
+        r = true;
+        d = false;
+    inv:
+	x2 - x1 >= -5;
+	y2 - y1 >= -5;
+    flow:
+        d/dt[x1] = 1.5;
+        d/dt[y1] = 3;
+        d/dt[x2] = 2;
+        d/dt[y2] = 2;
+    jump:
+	(and ((y2 - y1) <= 1) ((y2 - y1) >= -1)) =>
+		(and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2)); 
+        (y2 - y1) <= -3 =>
+                (and (r' = true) (d' = true) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+
+}
+# car1 : down
+{
+    mode:
+        r = true;
+        d = true;
+    inv:
+	x2 - x1 >= -5;
+        x2 - x1 <= 5;
+    flow:
+        d/dt[x1] = 1.5;
+        d/dt[y1] = -3;
+        d/dt[x2] = 2;
+        d/dt[y2] = 2;
+    jump:
+	(and ((y2 - y1) <= 1) ((y2 - y1) >= -1)) =>
+                (and (r' = false) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+        (y2 - y1) >= 3 =>
+                (and (r' = true) (d' = false) (x1' = x1) (y1' = y1) (x2' = x2) (y2' = y2));
+}
+
+
+init:
+(and not(r) not(d) (0 <= x1) (x1 <= 1) (0 <=y1) (y1 <= 1) (2 <= x2) (x2 <= 3) (2 <= y2) (y2 <= 3));
+
+proposition:
+
+# bound: 20, timebound: 40
+goal:
+[f1]: (<> [3, 5] (y2 - y1) <= 5) U[2, 10] ((y2 - y1) >= 8);  # threshold: 0.1
+[f2]: <> [3, 30] ([][5, 7] ((x2 - x1) >= 4));    # threshold: 2
+[f3]: ([][2, 5] (y2 - y1  <= 4)) R [0, 10) ((x2 - x1) >= 4);  # threshold: 1

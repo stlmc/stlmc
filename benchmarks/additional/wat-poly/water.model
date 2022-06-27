@@ -1,0 +1,80 @@
+# logging: poly
+bool a;
+[0, 10] x1;
+bool b;
+[0, 10] x2;
+{
+    mode:
+        a = false;
+        b = false ;
+    inv:
+        x1 > 1;
+        (x2 > 1);
+    flow:
+        x1(t) = 0.005 * t * t - 0.4 * t + x1(0); 
+        x2(t) = 0.005 * t * t - 0.6 * t + x2(0); 
+    jump:
+        x2 < 6 =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        (x1 < 5) =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = false;
+        b = true;
+    inv:
+        x1 > 1;
+        (x2 < 9);
+    flow:
+        x1(t) =  0.005 * t * t - 0.4 * t + x1(0); 
+        x2(t) = 0.5 * t + 0.02 * t * t + x2(0); 
+    jump:
+        x2 > 2 =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        x1 < 5 =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = false;
+    inv:
+        x1 < 8;
+        (x2 > 1);
+    flow:
+        x1(t) = 0.4 * t + 0.02 * t * t + x1(0); 
+        x2(t) = 0.005 * t * t - 0.6 * t + x2(0); 
+    jump:
+        x1 > 2 =>
+          (and (not a') (not b') (x1' = x1) (x2' = x2));
+        x2 < 6 =>
+          (and a' b' (x1' = x1) (x2' = x2));
+}
+{
+    mode:
+        a = true;
+        b = true;
+    inv:
+        x1 < 9;
+        (x2 < 8);
+    flow:
+        x1(t) = 0.4 * t + 0.02 * t * t + x1(0); 
+        x2(t) = 0.5 * t + 0.02 * t * t + x2(0); 
+    jump:
+        x1 > 2 =>
+          (and (not a') b' (x1' = x1) (x2' = x2));
+        x2 > 2 =>
+          (and a' (not b') (x1' = x1) (x2' = x2));
+}
+init:
+(and (not(a)) not(b) (4 <= x1) (x1 <= 5)  (5 <= x2) (x2 <= 6));
+
+proposition:
+
+# bound: 10, timebound: 10
+goal:
+[f1]: [][1,4] (x1 <= 6 U [2, 5] x2 >= 7); # threshold: 1.5
+[f2]: <>[0, 3] ([] [0, 4] (x2 < 4));     # threshold: 2
+[f3]: <>[2,4]((x2 <= 3) -> ([][3, 5] x2 >= 6)); # threshold: 4
+
