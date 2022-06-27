@@ -7,8 +7,8 @@ import csv
 import argparse
 import subprocess
 
-tool_dir = "./src"
-dreal_dir = "./3rd_party/dreal"
+tool_dir = "./stlmc/src"
+dreal_dir = "./stlmc/3rd_party/dreal"
 test_dir = "./tests/smt2"
 test_dir2 = "./tests/stlmc"
 
