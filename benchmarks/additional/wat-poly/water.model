@@ -75,6 +75,6 @@ proposition:
 # bound: 10, timebound: 10
 goal:
 [f1]: [][1,4] (x1 <= 6 U [2, 5] x2 >= 7); # threshold: 1.5
-[f2]: <>[0, 3] ([] [0, 4] (x2 < 4));     # threshold: 2
-[f3]: <>[2,4]((x2 <= 3) -> ([][3, 5] x2 >= 6)); # threshold: 4
+[f2]: <>[0, 3] (x1 >= 7 -> [] [3, 4] (x2 >= 4));   # threshold: 2
+[f3]: (<>[0,4]x2 >= 3) R[3, 5] x1 >=2; # threshold: 4
 

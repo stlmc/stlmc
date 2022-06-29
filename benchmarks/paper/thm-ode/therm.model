@@ -45,6 +45,6 @@ proposition:
   [p1]: x0 - x1 >= 4;    [p2]: x0 - x1 <= -3;
 goal:
   # bound: 5, timebound: 30, solver: dreal
-  [f1]: <>[0, 3](x0 >= 13 U[0, inf) x1 <= 22);  # threshold: 1.0, time-horizon: 7
+  [f1]: <>[0,15](x0 >= 14 U[0, inf) x1 <= 19); # threshold: 0.5, time-horizon: 7
   [f2]: [][2, 4](p1 -> <>[3, 10] p2);           # threshold: 2.0, time-horizon: 30
   [f3]: [][0,10] (x0 > 23 R[0,inf) p1);         # threshold: 2.0, time-horizon: 7
