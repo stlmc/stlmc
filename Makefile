@@ -1,6 +1,6 @@
 ANTLR_DIR := $(shell pwd)/src/stlmcPy/syntax
 TEST_DIR := $(shell pwd)/tests
-DREAL_DIR := $(shell pwd)/stlmc/3rd_party/dreal
+DREAL_DIR := $(shell pwd)/3rd_party/dreal
 
 all:    antlr perm
 
@@ -13,7 +13,7 @@ antlr:
 perm:
 	$(info set permission)
 	@sudo chmod +x ./scripts/run-exp ./scripts/gen-report ./scripts/gen-table
-	@sudo chmod +x ./tests/exec $(DREAL_DIR)/dReal $(DREAL_DIR)/dReal-darwin ./stlmc/src/stlmc ./stlmc/src/stlmc-vis
+	@sudo chmod +x ./tests/exec $(DREAL_DIR)/dReal $(DREAL_DIR)/dReal-darwin ./src/stlmc ./src/stlmc-vis
 
 clean:
 	$(info erase redundant in $(PWD))
