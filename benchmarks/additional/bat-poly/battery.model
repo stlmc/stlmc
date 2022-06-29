@@ -126,6 +126,6 @@ proposition:
 # bound: 10, timebound: 25
 goal:
 [f1]: [][3, 5] ((g2 >= 3) -> <>[6, 10] (d2 >= 4)); # threshold: 2.5
-[f2]: <>[4, 14] (g2 > 4 U[4, 10] d2 > 1);  # threshold: 1
+[f2] : ([][4, 14] g2 > 4) U[4, 10] d2 > 1; # threshold: 1
 [f3]: <>[0, 15] ((d1 <= 2) U[0, 6] (g1 < 4)); # threshold: 0.5
 
