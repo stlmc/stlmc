@@ -14,7 +14,6 @@ from ..objects.configuration import Configuration
 from ..solver.assignment import Assignment
 from ..solver.ode_solver import *
 from ..solver.ode_utils import expr_to_sympy, expr_to_sympy_inequality
-from ..util.logger import Logger
 
 
 class FlowStar:
@@ -465,7 +464,7 @@ class FlowStarAssignment(Assignment):
 
 
 @singledispatch
-def flowStarinfixReset(const: Constraint):
+def flowStarinfixReset(const: Formula):
     return str(const)
 
 

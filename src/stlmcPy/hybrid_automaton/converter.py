@@ -5,12 +5,12 @@ from ..objects.configuration import Configuration
 from sympy import simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Float
 
 from ..constraints.constraints import *
-from ..constraints.operations import substitution, reduce_not
+from ..constraints.aux.operations import reduce_not, _substitution
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
 from ..hybrid_automaton.utils import vars_in_ha
 from ..solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, find_index
 from ..solver.strategy import unit_split
-from ..util.print import Printer
+from ..util.printer import Printer
 
 
 class HaGenerator:
@@ -41,7 +41,7 @@ class HaGenerator:
             for s in _old_s_f_list:
                 _new_s = set()
                 for c in s:
-                    _new_s.add(substitution(c, _sigma))
+                    _new_s.add(_substitution(c, _sigma))
                 _new_s_f_list.append(_new_s)
             return _new_s_f_list
 
@@ -187,7 +187,7 @@ class HaGenerator:
 
         for c in s_forall_i:
             assert isinstance(c, Bool)
-            forall_const = substitution(c, sigma)
+            forall_const = _substitution(c, sigma)
 
             assert isinstance(forall_const, Forall)
             reduced_inv = reduce_not(forall_const.const)
@@ -226,21 +226,21 @@ class HaGenerator:
         for mode in ha.modes:
             for (var, exp) in mode.dynamics:
                 mode.remove_dynamic(var, exp)
-                new_var = substitution(var, subst_dict)
-                new_exp = substitution(exp, subst_dict)
+                new_var = _substitution(var, subst_dict)
+                new_exp = _substitution(exp, subst_dict)
 
                 mode.set_dynamic(new_var, new_exp)
 
             for inv in mode.invariant:
                 mode.remove_invariant(inv)
-                mode.set_invariant(substitution(inv, subst_dict))
+                mode.set_invariant(_substitution(inv, subst_dict))
 
         for transition in ha.transitions:
             guard_to_be_removed = set()
             guard_to_be_updated = set()
             for guard in transition.guard:
                 guard_to_be_removed.add(guard)
-                guard_to_be_updated.add(substitution(guard, subst_dict))
+                guard_to_be_updated.add(_substitution(guard, subst_dict))
             transition.remove_guards(guard_to_be_removed)
             for guard in guard_to_be_updated:
                 transition.set_guard(guard)
@@ -249,7 +249,7 @@ class HaGenerator:
             reset_to_be_updated = set()
             for reset in transition.reset:
                 reset_to_be_removed.add(reset)
-                reset_to_be_updated.add(substitution(reset, subst_dict))
+                reset_to_be_updated.add(_substitution(reset, subst_dict))
             transition.remove_resets(reset_to_be_removed)
 
             for reset in reset_to_be_updated:

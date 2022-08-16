@@ -2,14 +2,13 @@ from typing import Tuple, Optional, List, Set
 
 import z3
 
-from ..constraints.operations import *
+from ..constraints.aux.operations import *
 from ..exception.exception import NotSupportedError
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton, BaseMode, AggregatedMode, Transition, Mode
 from ..solver.ode_utils import remove_index
 from ..solver.strategy import unit_split
-from ..solver.z3 import z3Obj
+from ..solver.z3 import translate
 from ..tree.operations import elements_of_tree
-from ..util.logger import Logger
 
 
 def update_dynamics_with_replacement(dynamics: Dynamics, v: Variable, e: Expr):
@@ -103,7 +102,7 @@ def indexing(ha: HybridAutomaton):
 
 
 # p subsumes q, p >= q
-def subsumption(p: Constraint, q: Constraint):
+def subsumption(p: Formula, q: Formula):
     """
     check if p subsumes q.
 
@@ -149,7 +148,7 @@ def subsumption(p: Constraint, q: Constraint):
 
 
 # p subsumes q, p >= q
-def syntactic_subsumption(p: Constraint, q: Constraint):
+def syntactic_subsumption(p: Formula, q: Formula):
     """
     check if p subsumes q.
 
@@ -182,7 +181,7 @@ def syntactic_subsumption(p: Constraint, q: Constraint):
 
 def merge_mode_pool_syntatically(modes: Set[BaseMode], ha: HybridAutomaton) -> Tuple[
     Optional[AggregatedMode], bool]:
-    def _remove_forall_from_invariant(c: Constraint):
+    def _remove_forall_from_invariant(c: Formula):
         if c is None:
             return c
         # invariants are assumed to be None or And
@@ -259,7 +258,7 @@ def merge_mode_pool_syntatically(modes: Set[BaseMode], ha: HybridAutomaton) -> T
 
 def merge_mode_syntatically(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
     Optional[AggregatedMode], bool]:
-    def _remove_forall_from_invariant(c: Constraint):
+    def _remove_forall_from_invariant(c: Formula):
         if c is None:
             return c
         # invariants are assumed to be None or And
@@ -342,7 +341,7 @@ def merge_mode_syntatically(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> 
 
 def merge_mode(m1: BaseMode, m2: BaseMode, ha: HybridAutomaton) -> Tuple[
     Optional[AggregatedMode], bool]:
-    def _remove_forall_from_invariant(c: Constraint):
+    def _remove_forall_from_invariant(c: Formula):
         if c is None:
             return c
         # invariants are assumed to be None or And
@@ -983,7 +982,7 @@ def merge(*hybrid_automata, **option):
     return merged_ha
 
 
-def make_mode_from_formula(formula: Constraint, bound, max_bound, sigma):
+def make_mode_from_formula(formula: Formula, bound, max_bound, sigma):
     clause_of_formula = clause(formula)
     # print(formula)
     s_forall_i, s_integral_i, s_0_i, s_tau_i, s_reset_i, s_guard_i = unit_split(clause_of_formula, bound)
@@ -1063,7 +1062,7 @@ def add_mode(ha: HybridAutomaton, depth: int, mode: BaseMode):
         print("found no mergable mode", flush=True)
 
 
-def encode_possible_path_as_formula(formula: Constraint, bound: int, assignment: dict):
+def encode_possible_path_as_formula(formula: Formula, bound: int, assignment: dict):
     def _update_set_of_vars(_categorized_set: set, _set_of_vars: set):
         for cl in _categorized_set:
             _set_of_vars = _set_of_vars.union(get_vars(cl))

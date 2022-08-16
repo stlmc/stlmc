@@ -1,22 +1,17 @@
+import asyncio
 import os
 import platform
-import asyncio
 import random
-import subprocess
-import threading
-import time
-from functools import singledispatch, reduce
-from queue import Queue, Empty
+from functools import singledispatch
 from typing import Dict, List
 
 from ..constraints.constraints import *
-from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
+from ..constraints.aux.operations import get_max_bound
+from ..encoding.smt.model.stlmc_model import STLmcModel
 from ..exception.exception import NotSupportedError
-from ..objects.model import StlMC
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
+from ..solver.abstract_solver import SMTSolver
 from ..solver.assignment import Assignment
 from ..tree.operations import size_of_tree
-from ..util.logger import Logger
 
 
 class DrealAssignment(Assignment):
@@ -113,7 +108,7 @@ class newDRealSolver(SMTSolver):
         return asyncio.run(self._run(consts, stl_model))
 
     async def _dreal_check_sat(self, consts, logic):
-        assert self.logger is not None and isinstance(self.stl_model, StlMC)
+        assert self.logger is not None and isinstance(self.stl_model, STLmcModel)
         logger = self.logger
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
@@ -220,11 +215,11 @@ class newDRealSolver(SMTSolver):
     def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
         size = size_of_tree(all_consts)
         # abuse argument
-        assert isinstance(self.stl_model, StlMC)
+        assert isinstance(self.stl_model, STLmcModel)
         result, self._dreal_model = self.dreal_check_sat(all_consts, "")
         return result, size
 
-    def set_stl_model(self, stl_model: StlMC):
+    def set_stl_model(self, stl_model: STLmcModel):
         self.stl_model = stl_model
 
     def make_assignment(self):
@@ -248,7 +243,7 @@ def check_os():
 
 
 @singledispatch
-def dreal_obj(const: Constraint):
+def dreal_obj(const: Formula):
     raise NotSupportedError('Something wrong :: ' + str(const) + ":" + str(type(const)))
 
 

@@ -14,15 +14,20 @@ from bokeh.palettes import Dark2_5 as palette
 from bokeh.plotting import column
 from scipy.integrate import odeint
 
+from ..constraints.aux.operations import _substitution
 from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.aux.operations import *
 from ..exception.exception import *
 from bokeh.plotting import figure, show
+
+from ..objects.goal import Goal
+from ..objects.model import Model
+from ..solver.assignment import Assignment
 
 
 class Projector:
     def __init__(self, assignment, mode_var_dict: Dict[str, Variable],
-                 proposition_dict: Dict[Variable, Constraint], modules: Dict):
+                 proposition_dict: Dict[Variable, Formula], modules: Dict):
         self.assignment = assignment
         self.mode_var_dict = mode_var_dict
         self.proposition_dict = proposition_dict
@@ -205,10 +210,10 @@ class Visualizer:
         print("write counterexample graphs: \'{}.html\'".format(file_name))
 
     def generate_data(self, assignment: dict, modules: dict, mode_var_dict: Dict[str, Variable],
-                      propositions: Dict[Variable, Constraint], cont_var_dict: dict, prop_dict: dict,
-                      formula: Constraint, formula_label: str, delta: float):
+                      propositions: Dict[Variable, Formula], cont_var_dict: dict, prop_dict: dict,
+                      formula: Formula, formula_label: str, delta: float):
         self.assignment.clear()
-        ff = substitution(formula, prop_dict)
+        ff = _substitution(formula, prop_dict)
         subformulas, formula_id_dict = sub_formula(ff)
 
         projector = Projector(assignment, mode_var_dict, propositions, modules)
@@ -267,9 +272,14 @@ class Visualizer:
 
         return point_samples, robustness_dict, time_samples_list, formula_id_dict, formula_label, delta
 
+    def generate_plot2(self, model: Model, goal: Goal, assn: Assignment, label: str, delta: float):
+        print(model.get_abstraction())
+        print(goal.get_formula())
+        print(assn)
+
     def generate_plot(self, assignment: dict, modules: dict, mode_var_dict: Dict[str, Variable],
-                      propositions: Dict[Variable, Constraint], cont_var_dict: dict, prop_dict: dict,
-                      formula: Constraint, formula_label: str, delta: float, user_defined_groups: Dict[int, Set[str]]):
+                      propositions: Dict[Variable, Formula], cont_var_dict: dict, prop_dict: dict,
+                      formula: Formula, formula_label: str, delta: float, user_defined_groups: Dict[int, Set[str]]):
 
         point_samples, robustness_dict, time_samples_list, formula_id_dict, _, _ = self.generate_data(assignment,
                                                                                                       modules,
@@ -414,7 +424,7 @@ class Visualizer:
 
 
 @singledispatch
-def infix_float(const: Constraint, vec, var_list: list):
+def infix_float(const: Formula, vec, var_list: list):
     raise NotSupportedError("cannot convert this: {}".format(const))
 
 
@@ -509,7 +519,7 @@ def get_sub_time_samples(time_sample_list: List[List[float]], start: float, end:
 
 
 @singledispatch
-def robustness(const: Constraint, point_samples: Dict[Variable, List[List[float]]],
+def robustness(const: Formula, point_samples: Dict[Variable, List[List[float]]],
                discrete_samples: Dict[Variable, List[List[float]]],
                time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -535,7 +545,7 @@ def _(const: Implies, point_samples: Dict[Variable, List[List[float]]],
                         substitute_dict[v] = RealVal("-oo")
                     if v_val_str == "0":
                         substitute_dict[v] = RealVal("0")
-                expr = substitution(const, substitute_dict)
+                expr = _substitution(const, substitute_dict)
                 robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
                 dp_table[(const, t)] = robust_value
                 return robust_value
@@ -585,7 +595,7 @@ def _(const: Geq, point_samples: Dict[Variable, List[List[float]]],
                 substitute_dict: Dict[Real, RealVal] = dict()
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
+                expr = _substitution(lhs, substitute_dict)
                 robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
                 dp_table[(const, time)] = robust_value
                 return robust_value
@@ -606,7 +616,7 @@ def _(const: Gt, point_samples: Dict[Variable, List[List[float]]],
                 substitute_dict: Dict[Real, RealVal] = dict()
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
+                expr = _substitution(lhs, substitute_dict)
                 robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
                 dp_table[(const, time)] = robust_value
                 return robust_value
@@ -627,7 +637,7 @@ def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
                 substitute_dict: Dict[Real, RealVal] = dict()
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
+                expr = _substitution(lhs, substitute_dict)
                 robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
                 dp_table[(const, time)] = robust_value
                 return robust_value
@@ -648,7 +658,7 @@ def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
                 substitute_dict: Dict[Real, RealVal] = dict()
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
+                expr = _substitution(lhs, substitute_dict)
                 robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
                 dp_table[(const, time)] = robust_value
                 return robust_value

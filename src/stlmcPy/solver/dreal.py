@@ -1,26 +1,165 @@
 import os
 import platform
-import asyncio
 import random
 import subprocess
-import threading
 import time
-from functools import singledispatch
-from queue import Queue, Empty
-from typing import Dict, List
 
-from ..constraints.constraints import *
-from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
+from ..constraints.aux.operations import *
+from ..encoding.smt.model.aux import *
+from ..encoding.smt.model.stlmc_model import STLmcModel
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
+from ..objects.configuration import Configuration
+from ..solver.abstract_solver import SMTSolver
 from ..solver.assignment import Assignment
-from ..tree.operations import size_of_tree
-from ..util.logger import Logger
+from ..util.printer import indented_str
+
+
+class DrealSolver(SMTSolver):
+    def __init__(self, config: Configuration):
+        SMTSolver.__init__(self)
+        self._cache: List[List[Formula]] = [[]]
+        self._config = config
+        self._model = None
+
+    def check_sat(self, *assumption, **information):
+        cache_const = self._get_cache_const()
+        max_bound = int(self._config.get_section("common").get_value("bound"))
+        time_horizon = float(self._config.get_section("common").get_value("time-horizon"))
+        self._clear_model()
+
+        if len(assumption) > 0:
+            const = And([c for c in assumption])
+        else:
+            const = BoolVal("True")
+
+        if "model" in information.keys():
+            model: Union[STLmcModel, None] = information["model"]
+        else:
+            model = None
+
+        t_c = And([cache_const, const])
+        declarations = make_declarations(t_c, model)
+        time_declarations = declare_time_variables(max_bound, time_horizon)
+        ode_definitions = define_ode(model)
+
+        main_const = "\n".join(["(assert", translate(t_c, 2), ")"])
+
+        cur_bound = get_cur_bound(t_c)
+        time_const = make_time_const(cur_bound)
+
+        dreal_const = "\n".join(["(set-logic QF_NRA_ODE)",
+                                 declarations, time_declarations, ode_definitions,
+                                 main_const, time_const, "(check-sat)", "(exit)"])
+
+        rename_dict = make_flow_rename_dict(model)
+        dreal_const = rename_flow(dreal_const, rename_dict)
+
+        return self._check_sat(dreal_const)
+
+    def _check_sat(self, dreal_const: str):
+        dreal_section = self._config.get_section("dreal")
+        common_section = self._config.get_section("common")
+        ode_step = dreal_section.get_value("ode-step")
+        ode_order = dreal_section.get_value("ode-order")
+        exec_path = dreal_section.get_value("executable-path")
+
+        str_file_name = "dreal_model" + str(random.random())
+        with open(str_file_name + ".smt2", 'w') as mf:
+            mf.write(dreal_const)
+
+        current_os = check_os()
+        if "macOS" in current_os:
+            dreal_exec = "{}/dReal-darwin".format(exec_path)
+        elif "Linux" in current_os:
+            dreal_exec = "{}/dReal".format(exec_path)
+        else:
+            raise NotSupportedError("dreal is not supported for current os")
+
+        model_file_name = "{}.smt2".format(str_file_name)
+        # print(model_file_name)
+        proc = subprocess.Popen(
+            [dreal_exec, model_file_name, "--short_sat", "--model"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        start_time = time.time()
+        stdout, stderr = proc.communicate()
+        end_time = time.time()
+
+        # self.set_time("solving timer", end_time - start_time)
+        stdout_str = stdout.decode()
+        stderr_str = stderr.decode()
+        output_str = "{}\n{}".format(stdout.decode(), stderr.decode())
+        # print(f'[exited with {proc.returncode}]')
+        # if stdout:
+        #     print(f'[stdout]\n{stdout.decode()}')
+        # if stderr:
+        #     print(f'[stderr]\n{stderr.decode()}')
+
+        # if os.path.isfile(model_file_name):
+        #     os.remove(model_file_name)
+
+        # if "currentMode" in output_str:
+
+        if "delta-sat" in output_str and "Solution" in output_str:
+            cont_var_list = stdout_str[len("Solution:\n"): -1].split("\n")
+            bool_var_list = stderr_str.split("\n")
+
+            result_model = list()
+            result_model.extend(cont_var_list)
+            result_model.extend(bool_var_list)
+            result_model.remove("")
+
+            self._model = result_model
+
+            return SMTSolver.sat
+        elif "unsat" in stdout.decode():
+            return SMTSolver.unsat
+        else:
+            return SMTSolver.unknown
+
+    def make_assignment(self):
+        if self._model is None:
+            raise Exception("Dreal solver error occurred during making assignment (no model exists)")
+        return DrealAssignment(self._model)
+
+    def push(self):
+        self._cache.append(list())
+
+    def pop(self):
+        self._cache.pop(len(self._cache) - 1)
+
+    def reset(self):
+        self._cache.clear()
+        self._clear_model()
+
+    def add(self, formula: Formula):
+        self._cache[len(self._cache) - 1].append(formula)
+
+    def assert_and_track(self, formula: Formula, track_id: str):
+        pass
+
+    def unsat_core(self):
+        pass
+
+    def _get_cache_const(self):
+        consts = list()
+        for c_list in self._cache:
+            consts.extend(c_list)
+
+        if len(consts) > 0:
+            return And(consts)
+        else:
+            return BoolVal("True")
+
+    def _clear_model(self):
+        self._model = None
 
 
 class DrealAssignment(Assignment):
-    def __init__(self, _dreal_model):
-        self._dreal_model = _dreal_model
+    def __init__(self, dreal_model):
+        self._dreal_model = dreal_model
+        Assignment.__init__(self)
 
     @staticmethod
     def _sum(real_values: List[RealVal]):
@@ -52,7 +191,7 @@ class DrealAssignment(Assignment):
         return time_dict
 
     # solver_model_to_generalized_model
-    def get_assignments(self):
+    def _get_assignments(self):
         new_dict = dict()
         duration_dict = dict()
         for e in self._dreal_model:
@@ -62,7 +201,6 @@ class DrealAssignment(Assignment):
                 [var_name, var_type] = var_decl.split(":")
                 var_name = var_name.replace(" ", "")
                 if "Bool" in var_type:
-                    val = ""
                     if "true" in value:
                         val = "True"
                     elif "false" in value:
@@ -82,434 +220,109 @@ class DrealAssignment(Assignment):
         new_dict.update(time_dict)
         return new_dict
 
-    def eval(self, const):
+    def eval(self, const: Formula):
         pass
 
 
-class dRealSolver(ParallelSMTSolver):
-    def __init__(self):
-        SMTSolver.__init__(self)
-        self._dreal_model = None
-        self._cache = list()
-        self._cache_raw = list()
-        self._logic_list = ["QF_NRA_ODE"]
-        self._logic = "QF_NRA_ODE"
-        self._time_bound = None
-        self.stdout_msg = Queue()
-        self.stderr_msg = Queue()
-        self.done = False
-        self._parallel_result = None
-        self._parallel_model = None
-        self._parallel_s_time = 0.0
-        self._parallel_e_time = 0.0
-        self.file_name = ""
+def make_declarations(formula: Formula, model: Union[STLmcModel, None]):
+    declarations = set()
 
-    def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA_ODE')
-
-    def set_time_bound(self, time_bound: float):
-        pass
-
-    def add_reset_cond(self, bound: int):
-        result = list()
-        result.append(Eq(Real("tau_" + str(0)), Real("g@clock_0_0")))
-        for i in range(1, bound + 2):
-            result.append(Eq(Real("tau_" + str(i)), Real("g@clock_" + str(i - 1) + "_t")))
-            if i < bound + 1:
-                result.append(Eq(Real("g@clock_" + str(i) + "_0"), Real("g@clock_" + str(i - 1) + "_t")))
-        return result
-
-    def get_declared_variables(self, const, time_horizon: float, time_bound: float):
-        declare_list = list()
-        all_vars = set()
-        clause_set = clause(const)
-        variable_range = list()
-        # for i in self._cache:
-        #     clause_set = clause_set.union(clause(i))
-
-        for c in clause_set:
-            possible_range = isinstance(c, Eq) or isinstance(c, Lt) or isinstance(c, Leq) or isinstance(c,
-                                                                                                        Gt) or isinstance(
-                c, Geq)
-            if possible_range:
-                if c.is_range:
-                    variable_range.append(c)
-
-        continuous_vars = set()
-        time_vars = set()
-        clock_vars = set()
-        discrete_vars = set()
-        integrals = set()
-        consider_mode = set()
-        global_clock = Real("g@clock")
-        clock_vars.add(global_clock)
-        # for i in consts:
-        #     all_vars = all_vars.union(get_vars(i))
-        all_vars = get_vars(const)
-        for i in all_vars:
-            if isinstance(i, Real) and i.id.rfind("_") != i.id.find("_"):
-                continuous_vars.add(Real(i.id[0:i.id.find("_")]))
-            elif isinstance(i, Real) and "tau_" in i.id:
-                time_vars.add(i)
-            elif isinstance(i, Real) and "time_" in i.id:
-                pass
-            elif isinstance(i, Integral):
-                if not i.current_mode_number in consider_mode:
-                    consider_mode.add(i.current_mode_number)
-                    arb_end = i.end_vector[0].id
-                    arb_start = i.start_vector[0].id
-                    e_ind = arb_end[arb_end.find("_"):]
-                    s_ind = arb_start[arb_start.find("_"):]
-                    gt_end = Real("g@clock" + e_ind)
-                    gt_start = Real("g@clock" + s_ind)
-                    new_start_vec = i.start_vector.copy()
-                    new_end_vec = i.end_vector.copy()
-                    new_start_vec.append(gt_start)
-                    new_end_vec.append(gt_end)
-
-                    new_ode_var = i.dynamics.vars.copy()
-                    new_ode_val = i.dynamics.exps.copy()
-                    new_ode_var.append(Real(gt_start.id + "_t"))
-                    new_ode_val.append(RealVal("1"))
-
-                    new_ode = Ode(new_ode_var, new_ode_val)
-                    new_integral = Integral(i.current_mode_number, new_end_vec, new_start_vec, new_ode)
-                    # integrals.add(i)
-                    integrals.add(new_integral)
+    vs = get_vars(formula)
+    if model is None:
+        for v in vs:
+            dv = dreal_available_var(v)
+            declarations.add(declare_variable(dv))
+    else:
+        for v in vs:
+            nv = non_indexed_var(v)
+            dv = dreal_available_var(v)
+            if nv in model.range_info:
+                declarations.add(declare_cont_variable(dv, model.range_info[nv]))
             else:
-                discrete_vars.add(i)
+                if not is_tau(dv):
+                    declarations.add(declare_variable(dv))
 
-        var_range_dict = dict()
-        clock_range_dict = dict()
+    return "\n".join(declarations)
 
-        for i in continuous_vars:
-            var_range_dict[i.id] = ("[", -99999, 99999, "]")
-        for i in time_vars:
-            var_range_dict[i.id] = ("[", 0, time_bound, "]")
-        for i in clock_vars:
-            clock_range_dict[i.id] = ("[", 0, time_bound, "]")
-        for i in variable_range:
-            if i.left.id.find("_") == i.left.id.rfind("_"):
-                str_id = i.left.id
-            else:
-                str_id = i.left.id[0:i.left.id.find("_")]
-            (left_strict, lower, upper, right_strict) = var_range_dict[str_id]
-            if isinstance(i, Lt) or isinstance(i, Leq):
-                upper = float(i.right.value)
-                if isinstance(i, Lt):
-                    left_strict = "("
-            else:
-                lower = float(i.right.value)
-                if isinstance(i, Gt):
-                    right_strict = ")"
-            var_range_dict[str_id] = (left_strict, lower, upper, right_strict)
 
-        # get max bound
-        max_bound = -1
-        for i in time_vars:
-            if "tau_" in i.id:
-                cur_bound = int(i.id[i.id.find("_") + 1:])
-                if cur_bound > max_bound:
-                    max_bound = cur_bound - 1
+def declare_time_variables(max_bound: int, time_horizon: float):
+    declarations = set()
+    for b in range(max_bound + 1):
+        declarations.add("(declare-fun tau_{} () Real [0, {}])".format(b, time_horizon))
+        declarations.add("(declare-fun tau_{} () Real [0, {}])".format(b + 1, time_horizon))
 
-        for ki in range(0, max_bound + 1):
-            time_range = "(declare-fun time_{} () Real [0, {}])".format(ki, time_horizon)
-            declare_list.append(time_range)
+    for b in range(max_bound + 1):
+        declarations.add("(declare-fun time_{} () Real [0, {}])".format(b, time_horizon))
+    return "\n".join(declarations)
 
-        # continuous variables declaration
-        for i in var_range_dict:
-            (left_strict, lower, upper, right_strict) = var_range_dict[i]
-            range_str = "[{}, {}]".format(lower, upper)
-            if not ("tau_" in i):
-                sub_result = "(declare-fun " + i + " () Real "
-                sub_result = sub_result + range_str + ")"
-                declare_list.append(sub_result)
-                for j in range(max_bound + 1):
-                    sub_result = "(declare-fun " + i + "_" + str(j) + "_0 () Real " + range_str + ")"
-                    declare_list.append(sub_result)
-                    sub_result = "(declare-fun " + i + "_" + str(j) + "_t () Real " + range_str + ")"
-                    declare_list.append(sub_result)
-            elif "tau" in i:
-                sub_result = "(declare-fun " + i + " () Real "
-                sub_result = sub_result + range_str + ")"
-                declare_list.append(sub_result)
 
-        # time variables declaration
-        for i in clock_range_dict:
-            (left_strict, lower, upper, right_strict) = clock_range_dict[i]
-            range_str = "[{}, {}]".format(lower, upper)
-            declare_list.append("(declare-fun " + i + " () Real " + range_str + ")")
+def make_time_const(cur_bound: int):
+    consts = set()
+    for b in range(cur_bound + 1):
+        consts.add("(assert (= time_{} (- tau_{} tau_{})))".format(b, b + 1, b))
+    return "\n".join(consts)
 
-        for ki in range(0, max_bound + 1):
-            for i in clock_range_dict:
-                (left_strict, lower, upper, right_strict) = clock_range_dict[i]
-                range_str = "[{}, {}]".format(lower, upper)
-                declare_list.append("(declare-fun " + i + "_" + str(ki) + "_0 () Real " + range_str + ")")
-                declare_list.append("(declare-fun " + i + "_" + str(ki) + "_t () Real " + range_str + ")")
 
-        # discrete variables declaration
-        for i in discrete_vars:
-            op = {Real: "Real", Bool: "Bool", Int: "Int"}
-            type_str = op[type(i)]
-            if "currentMode_" in i.id:
-                type_str = "Int"
-            sub_result = "(declare-fun " + i.id + " () " + type_str + ")"
-            sub_result = sub_result.replace("{", "@")
-            sub_result = sub_result.replace("}", "@")
-            sub_result = sub_result.replace(",", "@")
-            declare_list.append(sub_result)
+def get_cur_bound(formula: Formula):
+    vs = get_vars(formula)
+    cur_bound = -1
 
-        # ode declaration
-        sub_dict = dict()
-        for i in var_range_dict:
-            for j in range(max_bound + 1):
-                sub_dict[Real(i + "_" + str(j) + "_0")] = Real(i)
-                sub_dict[Real(i + "_" + str(j) + "_t")] = Real(i)
+    for v in vs:
+        if "@" in v.id:
+            bound = get_bound_from_var(v)
+            if bound > cur_bound:
+                cur_bound = bound
 
-        for cur_integral in integrals:
-            sub_result = "(define-ode flow_" + str(int(cur_integral.current_mode_number) + 1) + " ("
-            for i in range(len(cur_integral.dynamics.exps)):
-                cur_id = cur_integral.end_vector[i].id[0:cur_integral.end_vector[i].id.find("_")]
-                cur_exp = substitution(cur_integral.dynamics.exps[i], sub_dict)
-                sub = "(= d/dt[" + cur_id + "] (" + drealObj(cur_exp) + "))"
-                sub_result = sub_result + " " + sub
-            sub_result = sub_result + "))"
-            declare_list.append(sub_result)
+    if cur_bound < 0:
+        raise NotSupportedError("cannot determine current bound")
 
-        return declare_list, max_bound
+    return cur_bound
 
-    async def _run(self, consts, logic):
-        try:
-            return await asyncio.wait_for(self._drealcheckSat(consts, logic), timeout=100000000.0)
-        except asyncio.TimeoutError:
-            print('timeout!')
 
-    @staticmethod
-    def enqueue_out(out, queue):
-        msg = list()
-        for line in iter(out.readline, b''):
-            msg.append(line.decode())
-        queue.put(msg)
-        out.close()
+def define_ode(model: Union[STLmcModel, None]):
+    if model is None:
+        return ""
+    else:
+        ode_definitions = set()
+        abs_dict = model.get_abstraction()
 
-    def set_file_name(self, name):
-        self.file_name = name
+        for _, k in abs_dict.items():
+            if isinstance(k, Integral):
+                ode_definitions.add(define_flow(k.dynamics, str(hash(k.dynamics))))
+        return "\n".join(ode_definitions)
 
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
-        dreal_section = self.config.get_section("dreal")
-        common_section = self.config.get_section("common")
-        ode_step = dreal_section.get_value("ode-step")
-        ode_order = dreal_section.get_value("ode-order")
-        time_horizon = common_section.get_value("time-horizon")
-        time_bound = common_section.get_value("time-bound")
-        exec_path = dreal_section.get_value("executable-path")
 
-        declares, bound = self.get_declared_variables(const, float(time_horizon), float(time_bound))
-        results = [drealObj(const)]
+def rename_flow(dreal_const: str, rename_dict: Dict):
+    for flow_name in rename_dict:
+        dreal_const = dreal_const.replace(flow_name, rename_dict[flow_name])
+    return dreal_const
 
-        reset_add = self.add_reset_cond(bound)
 
-        reset_dreal = list()
-        for i in reset_add:
-            reset_dreal.append(drealObj(i))
+def make_flow_rename_dict(model: Union[STLmcModel, None]):
+    if model is None:
+        return dict()
+    else:
+        rename_dict = dict()
+        abs_dict = model.get_abstraction()
+        for index, (_, k) in enumerate(abs_dict.items()):
+            if isinstance(k, Integral):
+                rename_dict["flow_{}".format(hash(k.dynamics))] = "flow_{}".format(index)
+        return rename_dict
 
-        str_file_name = "dreal_model" + str(random.random())
-        if self.file_name == "":
-            dir_name = "./dreal_log"
-            model_file_name = "{}/{}.smt2".format(dir_name, str_file_name)
-        else:
-            dir_name = "./dreal_log/{}".format(self.file_name)
-            model_file_name = "{}/{}.smt2".format(dir_name, str_file_name)
 
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        with open(model_file_name, 'w') as model_file:
-            model_file.write("(set-logic QF_NRA_ODE)\n")
-            model_file.write("\n".join(declares))
-            model_file.write("\n")
-            assertion = "(assert (and"
-            for i in results:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            assertion = "(assert (and"
-            for i in reset_dreal:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            model_file.write("(check-sat)\n")
-            model_file.write("(exit)\n")
+def declare_variable(v: Variable):
+    return "(declare-fun {} () {})".format(v.id, v.type.capitalize())
 
-        current_os = check_os()
-        if "macOS" in current_os:
-            dreal_exec = "{}/dReal-darwin".format(exec_path)
-        elif "Linux" in current_os:
-            dreal_exec = "{}/dReal".format(exec_path)
-        else:
-            raise NotSupportedError("dreal is not supported for current os")
 
-        self._parallel_s_time = time.time()
-        proc = subprocess.Popen(
-            [dreal_exec, model_file_name, "--short_sat", "--model"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+def declare_cont_variable(v: Variable, domain: Interval):
+    return "(declare-fun {} () {} {})".format(v.id, v.type.capitalize(), domain)
 
-        check_sat_thread = threading.Thread(target=self.parallel_check_sat, args=(main_queue, sema, proc))
-        check_sat_thread.daemon = True
-        check_sat_thread.start()
 
-        return proc
-
-    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen):
-        stdout, stderr = proc.communicate()
-        stdout_str = stdout.decode()[len("Solution:\n"):-1]
-        stderr_str = stderr.decode()
-        output_str = "{}\n{}".format(stdout_str, stderr_str)
-        # print(f'[exited with {proc.returncode}]')
-        # if stdout:
-        #     print(f'[stdout]\n{stdout.decode()}')
-        # if stderr:
-        #     print(f'[stderr]\n{stderr.decode()}')
-
-        # if os.path.isfile(model_file_name):
-        #    os.remove(model_file_name)
-
-        if "currentMode" in output_str:
-            result = "False"
-        elif "unsat" in stdout.decode():
-            result = "True"
-        else:
-            result = "Unknown"
-
-        cont_var_list = stdout_str.split("\n")
-        bool_var_list = stderr_str.split("\n")
-
-        result_model = list()
-        result_model.extend(cont_var_list)
-        result_model.extend(bool_var_list)
-
-        result_model.remove("")
-        main_queue.put((result, DrealAssignment(result_model), id(proc)))
-        sema.release()
-
-    def drealcheckSat(self, consts, logic):
-        return asyncio.run(self._run(consts, logic))
-
-    async def _drealcheckSat(self, consts, logic):
-        assert self.logger is not None
-        logger = self.logger
-        dreal_section = self.config.get_section("dreal")
-        common_section = self.config.get_section("common")
-        ode_step = dreal_section.get_value("ode-step")
-        ode_order = dreal_section.get_value("ode-order")
-        time_horizon = common_section.get_value("time-horizon")
-        time_bound = common_section.get_value("time-bound")
-        exec_path = dreal_section.get_value("executable-path")
-
-        declares, bound = self.get_declared_variables(And(consts.copy()), float(time_horizon), float(time_bound))
-        results = list()
-
-        for i in consts:
-            results.append(drealObj(i))
-
-        reset_add = self.add_reset_cond(bound)
-
-        reset_dreal = list()
-
-        for i in reset_add:
-            reset_dreal.append(drealObj(i))
-
-        str_file_name = "dreal_model" + str(random.random())
-        with open(str_file_name + ".smt2", 'w') as model_file:
-            model_file.write("(set-logic QF_NRA_ODE)\n")
-            model_file.write("\n".join(declares))
-            model_file.write("\n")
-            assertion = "(assert (and"
-            for i in results:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            assertion = "(assert (and"
-            for i in reset_dreal:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            model_file.write("(check-sat)\n")
-            model_file.write("(exit)\n")
-
-        current_os = check_os()
-        if "macOS" in current_os:
-            dreal_exec = "{}/dReal-darwin".format(exec_path)
-        elif "Linux" in current_os:
-            dreal_exec = "{}/dReal".format(exec_path)
-        else:
-            raise NotSupportedError("dreal is not supported for current os")
-
-        model_file_name = "{}.smt2".format(str_file_name)
-        proc = await asyncio.create_subprocess_exec(
-            dreal_exec, model_file_name,
-            "--short_sat",
-            "--model",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE)
-
-        logger.reset_timer()
-        logger.start_timer("solving timer")
-        stdout, stderr = await proc.communicate()
-        logger.stop_timer("solving timer")
-        self.set_time("solving timer", logger.get_duration_time("solving timer"))
-        stdout_str = stdout.decode()[len("Solution:\n"):-1]
-        stderr_str = stderr.decode()
-        output_str = "{}\n{}".format(stdout_str, stderr_str)
-        # print(f'[exited with {proc.returncode}]')
-        # if stdout:
-        #     print(f'[stdout]\n{stdout.decode()}')
-        # if stderr:
-        #     print(f'[stderr]\n{stderr.decode()}')
-
-        if os.path.isfile(model_file_name):
-            os.remove(model_file_name)
-
-        if "currentMode" in output_str:
-            result = "False"
-            cont_var_list = stdout_str.split("\n")
-            bool_var_list = stderr_str.split("\n")
-
-            result_model = list()
-            result_model.extend(cont_var_list)
-            result_model.extend(bool_var_list)
-
-            result_model.remove("")
-            return result, result_model
-        elif "unsat" in stdout.decode():
-            return "True", None
-        else:
-            return "Unknown", None
-
-    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        self._cache.clear()
-        if all_consts is not None:
-            self._cache.append(all_consts)
-            self._cache_raw.append(all_consts)
-        size = size_of_tree(And(self._cache_raw))
-        result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
-        return result, size
-
-    def make_assignment(self):
-        return DrealAssignment(self._dreal_model)
-
-    def clear(self):
-        self._cache = list()
-        self._cache_raw = list()
-
-    def simplify(self, consts):
-        pass
-
-    def substitution(self, const, *dicts):
-        pass
-
-    def add(self, const):
-        pass
+def define_flow(dyn: Dynamics, name: str):
+    flow = list()
+    for v, e in zip(dyn.vars, dyn.exps):
+        flow.append("  (= d/dt[{}] {})".format(v, translate(e)))
+    return "(define-ode flow_{} (\n{}\n))".format(name, "\n".join(flow))
 
 
 def check_os():
@@ -517,248 +330,354 @@ def check_os():
 
 
 @singledispatch
-def drealObj(const: Constraint):
-    raise NotSupportedError('Something wrong :: ' + str(const) + ":" + str(type(const)))
+def translate(const: Formula, indent=0):
+    raise NotSupportedError("fail to translate \"{}\" to Dreal object ".format(const))
 
 
-@drealObj.register(RealVal)
-def _(const: RealVal):
-    return str(const.value)
+@translate.register(Constant)
+def _(const: Constant, indent=0):
+    return indented_str(str(const.value).lower(), indent)
 
 
-@drealObj.register(IntVal)
-def _(const: IntVal):
-    return str(const.value)
+@translate.register(Variable)
+def _(const: Variable, indent=0):
+    v = dreal_available_var(const)
+    return indented_str(v.id, indent)
 
 
-@drealObj.register(BoolVal)
-def _(const: BoolVal):
-    if const.value == 'True':
-        return 'true'
-    elif const.value == 'False':
-        return 'false'
+@translate.register(Geq)
+def _(const, indent=0):
+    t = [
+        indented_str("(>=", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Gt)
+def _(const, indent=0):
+    t = [
+        indented_str("(>", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Leq)
+def _(const, indent=0):
+    t = [
+        indented_str("(<=", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Lt)
+def _(const, indent=0):
+    t = [
+        indented_str("(<", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Eq)
+def _(const, indent=0):
+    t = [
+        indented_str("(=", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Neq)
+def _(const, indent=0):
+    return translate(Not(const.left == const.right), indent)
+
+
+@translate.register(EqFormula)
+def _(const, indent=0):
+    t = [
+        indented_str("(=", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(NeqFormula)
+def _(const, indent=0):
+    return translate(Not(const.left == const.right), indent)
+
+
+@translate.register(Add)
+def _(const, indent=0):
+    t = [
+        indented_str("(+", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Sub)
+def _(const, indent=0):
+    t = [
+        indented_str("(-", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Pow)
+def _(const, indent=0):
+    t = [
+        indented_str("(^", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Mul)
+def _(const, indent=0):
+    t = [
+        indented_str("(*", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Div)
+def _(const, indent=0):
+    t = [
+        indented_str("(/", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Neg)
+def _(const, indent=0):
+    t = [
+        indented_str("(-", indent),
+        indented_str("0", indent + 2),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Sqrt)
+def _(const, indent=0):
+    t = [
+        indented_str("(sqrt", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Sin)
+def _(const, indent=0):
+    t = [
+        indented_str("(sin", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Cos)
+def _(const, indent=0):
+    t = [
+        indented_str("(cos", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Tan)
+def _(const, indent=0):
+    x = translate(const.child, indent + 4)
+    t = [
+        indented_str("(/", indent),
+        indented_str("(sin", indent + 2),
+        x,
+        indented_str(")", indent + 2),
+        indented_str("(cos", indent + 2),
+        x,
+        indented_str(")", indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Arcsin)
+def _(const, indent=0):
+    t = [
+        indented_str("(arcsin", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Arccos)
+def _(const, indent=0):
+    t = [
+        indented_str("(arccos", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Arctan)
+def _(const, indent=0):
+    x = translate(const.child, indent + 4)
+    t = [
+        indented_str("(/", indent),
+        indented_str("(cos", indent + 2),
+        x,
+        indented_str(")", indent + 2),
+        indented_str("(sin", indent + 2),
+        x,
+        indented_str(")", indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(And)
+def _(const, indent=0):
+    if len(const.children) < 1:
+        return indented_str("true", indent)
+    elif len(const.children) == 1:
+        return translate(const.children[0], indent)
     else:
-        raise NotSupportedError("Z3 solver cannot translate this")
+        consts = [indented_str("(and", indent)]
+        consts.extend([translate(c, indent + 2) for c in const.children])
+        consts.append(indented_str(")", indent))
+        return "\n".join(consts)
 
 
-@drealObj.register(Variable)
-def _(const: Variable):
-    v_id = str(const.id)
-    v_id = v_id.replace("{", "@")
-    v_id = v_id.replace("}", "@")
-    v_id = v_id.replace(",", "@")
-    return v_id
-
-
-@drealObj.register(Geq)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(>= ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Gt)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(> ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Leq)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(<= ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Lt)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(< ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Eq)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(= ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Neq)
-def _(const):
-    reduceNot = Not(Eq(const.left, const.right))
-    return drealObj(reduceNot)
-
-
-@drealObj.register(Add)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(+ ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Sub)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(- ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Pow)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(^ ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Mul)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(* ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Div)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(/ ' + x + ' ' + y + ')'
-    return result
-
-
-@drealObj.register(Neg)
-def _(const):
-    x = drealObj(const.child)
-    result = '(- ' + str(0) + ' ' + x + ')'
-    return result
-
-
-@drealObj.register(Sqrt)
-def _(const):
-    x = drealObj(const.child)
-    result = '(sqrt ' + x + ')'
-    return result
-
-
-@drealObj.register(Sin)
-def _(const):
-    x = drealObj(const.child)
-    result = '(sin ' + x + ')'
-    return result
-
-
-@drealObj.register(Cos)
-def _(const):
-    x = drealObj(const.child)
-    result = '(cos ' + x + ')'
-    return result
-
-
-@drealObj.register(Tan)
-def _(const):
-    x = drealObj(const.child)
-    result = '(/ (sin ' + x + ') (cos ' + x + '))'
-    return result
-
-
-@drealObj.register(Arcsin)
-def _(const):
-    x = drealObj(const.child)
-    result = '(arcsin ' + x + ')'
-    return result
-
-
-@drealObj.register(Arccos)
-def _(const):
-    x = drealObj(const.child)
-    result = '(arccos ' + x + ')'
-    return result
-
-
-@drealObj.register(Arctan)
-def _(const):
-    x = drealObj(const.child)
-    result = '(/ (cos ' + x + ') (sin ' + x + '))'
-    return result
-
-
-@drealObj.register(And)
-def _(const):
-    yicesargs = [drealObj(c) for c in const.children]
-    if len(yicesargs) < 1:
-        return 'true'
-    elif len(yicesargs) < 2:
-        return yicesargs[0]
+@translate.register(Or)
+def _(const, indent=0):
+    if len(const.children) < 1:
+        return indented_str("true", indent)
+    elif len(const.children) == 1:
+        return translate(const.children[0], indent)
     else:
-        result = '(and ' + ' '.join(yicesargs) + ')'
-        return result
+        consts = [indented_str("(or", indent)]
+        consts.extend([translate(c, indent + 2) for c in const.children])
+        consts.append(indented_str(")", indent))
+        return "\n".join(consts)
 
 
-@drealObj.register(Or)
-def _(const):
-    yicesargs = [drealObj(c) for c in const.children]
-    if len(yicesargs) < 1:
-        return 'true'
-    elif len(yicesargs) < 2:
-        return yicesargs[0]
+@translate.register(Implies)
+def _(const, indent=0):
+    t = [
+        indented_str("(=>", indent),
+        translate(const.left, indent + 2),
+        translate(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Not)
+def _(const, indent=0):
+    t = [
+        indented_str("(not", indent),
+        translate(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(t)
+
+
+@translate.register(Integral)
+def _(const: Integral, indent=0):
+    e_v = " ".join([str(v) for v in const.end_vector])
+    s_v = " ".join([str(v) for v in const.start_vector])
+
+    e_b = get_bound_from_vector(const.end_vector)
+    s_b = get_bound_from_vector(const.start_vector)
+
+    if e_b != s_b:
+        raise NotSupportedError("bound of the integral must be the same")
+
+    str_l = [
+        indented_str("(=", indent),
+        indented_str("[{}]".format(e_v), indent + 2),
+        indented_str("(integral 0. time_{} [{}] flow_{})".format(e_b, s_v, hash(const.dynamics)), indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(str_l)
+
+
+@translate.register(Forall)
+def _(const: Forall, indent=0):
+    cur_bound = get_bound_from_tau(const.start_tau)
+    vs = get_vars(const.const)
+
+    # build substitution
+    subst = Substitution()
+    for v in vs:
+        subst.add(v, indexed_var_t(v, cur_bound))
+
+    forall_c = subst.substitute(const.const)
+
+    t = [
+        indented_str("(forall_t {} [0 time_{}]".format(cur_bound + 1, cur_bound), indent),
+        translate(forall_c, indent + 2),
+        indented_str(")", indent)
+    ]
+
+    return "\n".join(t)
+
+
+def get_bound_from_vector(v_l: List[Variable]):
+    bound_list = [get_bound_from_var(v) for v in v_l]
+    bound_set = set(bound_list)
+    if len(bound_set) == 1:
+        return bound_list[0]
     else:
-        result = '(or ' + ' '.join(yicesargs) + ')'
-        return result
+        raise NotSupportedError("invalid bound information found")
 
 
-@drealObj.register(Implies)
-def _(const):
-    x = drealObj(const.left)
-    y = drealObj(const.right)
-    result = '(=> ' + x + ' ' + y + ')'
-    return result
+def get_bound_from_var(v: Variable):
+    return int(v.id.split("@")[1])
 
 
-@drealObj.register(Not)
-def _(const):
-    x = drealObj(const.child)
-    result = '(not ' + x + ')'
-    return result
+def get_bound_from_tau(v: Variable):
+    return int(v.id.split("_")[1])
 
 
-@drealObj.register(Integral)
-def _(const: Integral):
-    s = const.end_vector[0].id.find("_")
-    e = const.end_vector[0].id.rfind("_")
-
-    new_end_vector = const.end_vector.copy()
-    new_start_vector = const.start_vector.copy()
-
-    bound = const.end_vector[0].id[s + 1:e]
-
-    new_end_vector.append(Real("g@clock_" + str(bound) + "_t"))
-    new_start_vector.append(Real("g@clock_" + str(bound) + "_0"))
-
-    setting_end = "(= " + str(new_end_vector).replace(",", "") + " (integral 0. "
-
-    setting_end = setting_end + "time_" + bound + " " + str(new_start_vector).replace(",",
-                                                                                      "") + " flow_" + str(
-        int(const.current_mode_number) + 1) + "))"
-
-    return setting_end
+def dreal_available_var(v: Variable):
+    v_id = v.id.replace("{", "@").replace("}", "@").replace(",", "@")
+    return variable(v_id, v.type)
 
 
-@drealObj.register(Forall)
-def _(const: Forall):
-    cur_inv = substitution_zero2t(const.const)
-    # all bounds are same
-    bound = get_max_bound(const.const)
-    d_obj = drealObj(cur_inv)
-    return "(and (= currentMode_{} {}) (forall_t {} [0 time_{}] ({})))".format(bound, const.current_mode_number,
-                                                                               const.current_mode_number + 1, bound,
-                                                                               d_obj)
+def is_tau(v: Variable):
+    return "tau_" in v.id and isinstance(v, Real)

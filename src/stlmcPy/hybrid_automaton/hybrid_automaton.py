@@ -1,6 +1,6 @@
 from typing import Optional, Iterator, Set
 
-from ..constraints.constraints import Dynamics, Constraint, And
+from ..constraints.constraints import *
 
 # mutable
 
@@ -42,7 +42,7 @@ class BaseMode:
     def invariant(self):
         return self._invariant
 
-    def set_invariant(self, inv: Constraint):
+    def set_invariant(self, inv: Formula):
         # flatten "And"
         if isinstance(inv, And):
             for child in inv.children:
@@ -50,7 +50,7 @@ class BaseMode:
         else:
             self._invariant.add(inv)
 
-    def remove_invariant(self, inv: Constraint):
+    def remove_invariant(self, inv: Formula):
         try:
             self._invariant.remove(inv)
         except KeyError:
@@ -120,7 +120,7 @@ class Transition:
         self.guard = set()
         self.reset = set()
 
-    def set_guard(self, const: Constraint):
+    def set_guard(self, const: Formula):
         # flatten "And"
         if isinstance(const, And):
             for child in const.children:
@@ -128,7 +128,7 @@ class Transition:
         else:
             self.guard.add(const)
 
-    def remove_guard(self, const: Constraint):
+    def remove_guard(self, const: Formula):
         try:
             self.guard.remove(const)
         except KeyError:
@@ -137,7 +137,7 @@ class Transition:
     def remove_guards(self, guards: Set):
         self.guard = self.reset.difference(guards)
 
-    def set_reset(self, const: Constraint):
+    def set_reset(self, const: Formula):
         # flatten "And"
         if isinstance(const, And):
             for child in const.children:
@@ -145,7 +145,7 @@ class Transition:
         else:
             self.reset.add(const)
 
-    def remove_reset(self, const: Constraint):
+    def remove_reset(self, const: Formula):
         try:
             self.reset.remove(const)
         except KeyError:

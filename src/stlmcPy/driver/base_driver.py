@@ -1,13 +1,14 @@
 import argparse
 import os.path
 import sys
+import time
 
+from ..algorithm.algorithm_factory import AlgorithmFactory
+from ..constraints.aux.operations import _substitution
 from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
-from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
 from ..exception.exception import *
-from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, optimize, reach_goal
 from ..objects.model import Model
@@ -16,11 +17,10 @@ from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
 from ..solver.abstract_solver import SMTSolver
-from ..solver.dreal import dRealSolver
+from ..solver.dreal import DrealSolver
 from ..solver.solver_factory import SolverFactory
-from ..solver.z3 import z3Obj
-from ..util.logger import *
-from ..util.print import *
+from ..solver.z3 import translate
+from ..util.printer import *
 from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
 
@@ -40,9 +40,6 @@ class BaseDriverFactory(DriverFactory):
 
     def make_runner(self) -> Runner:
         return BaseRunner()
-
-    def make_logger(self) -> Logger:
-        return Logger()
 
     def make_printer(self) -> Printer:
         return Printer()
@@ -185,7 +182,7 @@ class BaseCmdParser(CmdParser):
 
 class BaseRunner(Runner):
     def run(self, config_parser: ConfigVisitor, model_parser: ModelVisitor,
-            cmd_parser: CmdParser, logger: Logger, printer: Printer):
+            cmd_parser: CmdParser, printer: Printer):
         try:
             sys.setrecursionlimit(1000000)
 
@@ -226,12 +223,11 @@ class BaseRunner(Runner):
 
             file_name = cmd_parser.file
 
-            object_manager = ObjectFactory(encoding).generate_object_manager()
+            model, PD, goals, goal_labels = ObjectFactory(config).generate_objects(file_name)
 
             if print_type == "true":
                 printer.verbose = True
 
-            model, PD, goals, goal_labels = object_manager.generate_objects(file_name)
             if underlying_solver == "auto":
                 dynamic_type = check_dynamics(model)
                 if dynamic_type == "ode":
@@ -251,9 +247,11 @@ class BaseRunner(Runner):
 
             solver = SolverFactory().generate_solver(config)
             algorithm = AlgorithmFactory(config).generate()
-            solver.append_logger(logger)
-            solver.set_config(config)
+            # solver.append_logger(logger)
+            # solver.set_config(config)
 
+            # print(goal_labels)
+            # print(len(goals))
             for goal in goals:
                 if len(f_labels) > 0:
                     g_formula = goal.get_formula()
@@ -271,15 +269,13 @@ class BaseRunner(Runner):
                 if goal.get_formula() in goal_labels:
                     label = goal_labels[goal.get_formula()]
 
-                formula_string = substitution(goal.get_formula(), PD)
+                formula_string = _substitution(goal.get_formula(), PD)
                 printer.print_normal("> running a model: {}".format(file_name))
                 printer.print_normal("> selected solver: {}".format(underlying_solver))
                 printer.print_verbose("> threshold : {}".format(delta))
 
                 time_start = time.time()
-                algorithm.set_debug("{}_{}_{}".format(os.path.basename(file_name), label, underlying_solver))
-                final_result, total_time, finished_bound, assn_dict = algorithm.run(model, goal, PD, config,
-                                                                                    solver, logger, printer)
+                final_result, total_time, finished_bound, assn = algorithm.run(model, goal, solver)
                 time_end = time.time()
                 total_time = time_end - time_start
 
@@ -299,13 +295,14 @@ class BaseRunner(Runner):
                                                             underlying_solver)
                         import pickle
                         with open("{}.counterexample".format(output_name), "wb") as fw:
-                            pickle.dump((assn_dict, model.modules, model.mode_var_dict, model.prop_dict,
-                                         model.range_dict, PD, goal.get_formula(), label, float(delta)), fw)
+                            pickle.dump((model, goal, assn, label, float(delta)), fw)
+                            # pickle.dump((assn.get_dict(), model.modules, model.mode_var_dict, model.prop_dict,
+                            #              model.range_dict, PD, goal.get_formula(), label, float(delta)), fw)
 
                         cfg_string = ["{", "# state variables: {}".format(
-                            " , ".join(map(lambda x: x.id, model.range_dict.keys())))]
+                            " , ".join(map(lambda x: x.id, model.range_info.keys())))]
 
-                        ff = substitution(goal.get_formula(), PD)
+                        ff = _substitution(goal.get_formula(), PD)
                         subformulas, formula_id_dict = vis_sub_formula(ff)
                         rob_string = list()
                         for f in subformulas:

@@ -6,7 +6,6 @@ from ..exception.exception import NotSupportedError
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
 from ..solver.assignment import Assignment
 from ..solver.ode_solver import *
-from ..util.logger import Logger
 
 
 class SpaceEx:
@@ -314,7 +313,7 @@ class SpaceExAssignment(Assignment):
 
 
 @singledispatch
-def spaceExinfix(const: Constraint):
+def spaceExinfix(const: Formula):
     return str(const)
 
 
@@ -332,9 +331,10 @@ def _(const: And):
 def _(const: Geq):
     return spaceExinfix(const.left) + " &gt;= " + spaceExinfix(const.right)
 
-@spaceExinfix.register(TimeBoundConst)
-def _(const: TimeBoundConst):
-    return spaceExinfix(const.left) + " &gt;= " + spaceExinfix(const.right)
+# TODO: replace this
+# @spaceExinfix.register(TimeBoundConst)
+# def _(const: TimeBoundConst):
+#     return spaceExinfix(const.left) + " &gt;= " + spaceExinfix(const.right)
 
 
 @spaceExinfix.register(Gt)
@@ -405,7 +405,7 @@ def _(const: Forall):
 
 
 @singledispatch
-def spaceExinfixReset(const: Constraint):
+def spaceExinfixReset(const: Formula):
     return str(const)
 
 
@@ -423,9 +423,10 @@ def _(const: And):
 def _(const: Geq):
     return spaceExinfixReset(const.left) + " &gt;= " + spaceExinfixReset(const.right)
 
-@spaceExinfixReset.register(TimeBoundConst)
-def _(const: TimeBoundConst):
-    return spaceExinfixReset(const.left) + " &gt;= " + spaceExinfixReset(const.right)
+# TODO: replace this
+# @spaceExinfixReset.register(TimeBoundConst)
+# def _(const: TimeBoundConst):
+#     return spaceExinfixReset(const.left) + " &gt;= " + spaceExinfixReset(const.right)
 
 
 @spaceExinfixReset.register(Gt)

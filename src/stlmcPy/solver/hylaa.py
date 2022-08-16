@@ -15,7 +15,7 @@ from sympy.core import relational
 # from hylaa.stateset import StateSet
 # from hylaa.stlmc_core import HylaaRawSolver, HylaaConverter
 from ..constraints.constraints import *
-from ..constraints.operations import substitution, reduce_not, get_vars, infix
+from ..constraints.aux.operations import reduce_not, get_vars, infix
 from ..exception.exception import NotSupportedError
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
 from ..solver.abstract_solver import BaseSolver, OdeSolver
@@ -23,8 +23,7 @@ from ..solver.assignment import Assignment
 from ..solver.strategy import UnsatCoreBuilder, unit_split
 from ..solver.z3 import Z3Solver
 from ..tree.operations import size_of_tree
-from ..util.logger import Logger
-from ..util.print import Printer
+from ..util.printer import Printer
 from ..exception.exception import *
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton as StlMCHybridAutomaton
 from ..hybrid_automaton.converter import AbstractConverter
@@ -184,7 +183,7 @@ class HylaaRawSolver:
 
 
 @singledispatch
-def remove_index(c: Constraint) -> Variable:
+def remove_index(c: Formula) -> Variable:
     raise NotSupportedError("input should be variable type : " + str(c))
 
 
@@ -912,7 +911,7 @@ def make_reset_pool(s_i_reset):
 
 
 @singledispatch
-def get_string(const: Constraint):
+def get_string(const: Formula):
     return {const}
 
 
@@ -953,7 +952,7 @@ def sympy_value(expr: Float):
 
 
 @singledispatch
-def expr_to_sympy(const: Constraint):
+def expr_to_sympy(const: Formula):
     raise NotSupportedError("cannot make it canonical : " + str(const))
 
 
@@ -1023,7 +1022,7 @@ def _(const: Neq):
 
 
 @singledispatch
-def remove_index(c: Constraint) -> Variable:
+def remove_index(c: Formula) -> Variable:
     raise NotSupportedError("input should be variable type : " + str(c))
 
 
@@ -1374,7 +1373,7 @@ def gen_net_assignment(mapping: dict, range_dict: dict):
 
 
 @singledispatch
-def gen_fresh_new_var_map_aux(const: Constraint, id_str=None):
+def gen_fresh_new_var_map_aux(const: Formula, id_str=None):
     raise NotSupportedError("cannot create mapping for integral and forall : " + str(const) + ", " + str(id_str))
 
 
@@ -1447,7 +1446,7 @@ def divide_dict(info_dict: dict):
 
 
 @singledispatch
-def clause(const: Constraint):
+def clause(const: Formula):
     return {const}
 
 

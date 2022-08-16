@@ -5,7 +5,7 @@ from ..solver.spaceex import SpaceExSolverUnsatCore, SpaceExSolverNaive
 from ..solver.ssmt import SsmtSolver
 from ..solver.yices import YicesSolver
 from ..solver.z3 import Z3Solver
-from ..solver.dreal import dRealSolver
+from ..solver.dreal import DrealSolver
 
 
 class SolverFactory:
@@ -18,16 +18,16 @@ class SolverFactory:
         is_reach = "false"
 
         if self.solver_type == 'z3':
-            return Z3Solver()
+            return Z3Solver(config)
         elif self.solver_type == 'dreal':
             if is_reach == "true":
                 return newDRealSolver()
             else:
-                return dRealSolver()
+                return DrealSolver(config)
         elif self.solver_type == 'yices':
             return YicesSolver()
         elif self.solver_type == 'dreal':
-            return dRealSolver()
+            return DrealSolver(config)
         elif self.solver_type == 'hylaa':
             return HylaaSolverNaive()
         elif self.solver_type == 'hylaa-reduction':

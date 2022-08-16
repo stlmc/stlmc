@@ -7,7 +7,6 @@ from stlmcPy.constraints.constraints import *
 from stlmcPy.solver.assignment import Assignment
 from stlmcPy.solver.strategy import unit_split
 from stlmcPy.solver.z3 import Z3Solver
-from stlmcPy.util.logger import Logger
 
 
 class Node:
@@ -232,7 +231,7 @@ class Generator:
 
 
 @singledispatch
-def small_clause(const: Constraint):
+def small_clause(const: Formula):
     return {const}
 
 

@@ -4,11 +4,10 @@ import copy
 from functools import reduce
 
 from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.aux.operations import *
 from ..solver.assignment import Assignment
 from ..solver.ode_utils import make_reset_pool
 from ..solver.z3 import Z3Solver
-from ..util.logger import Logger
 
 '''
 base strategy builder class

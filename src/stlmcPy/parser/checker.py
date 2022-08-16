@@ -3,9 +3,9 @@ from functools import reduce
 from typing import List
 
 from ..constraints.constraints import *
-from ..constraints.operations import get_vars
+from ..constraints.aux.operations import get_vars
+from ..encoding.smt.model.stlmc_model import STLmcModel
 from ..objects.configuration import Configuration
-from ..objects.model import StlMC
 
 
 def is_dynamics_constant(flows: Dynamics):
@@ -17,7 +17,7 @@ def is_dynamics_constant(flows: Dynamics):
     return True
 
 
-def is_model_dynamics_constant(stlmc_model: StlMC):
+def is_model_dynamics_constant(stlmc_model: STLmcModel):
     # constant
     for mode in stlmc_model.modules:
         if not is_dynamics_constant(mode["flow"]):
@@ -39,14 +39,14 @@ def is_dynamics_polynomial(flows: Dynamics):
     return False
 
 
-def is_model_dynamics_polynomial(stlmc_model: StlMC):
+def is_model_dynamics_polynomial(stlmc_model: STLmcModel):
     for mode in stlmc_model.modules:
         if not is_dynamics_polynomial(mode["flow"]):
             return False
     return True
 
 
-def check_dynamics(stlmc_model: StlMC):
+def check_dynamics(stlmc_model: STLmcModel):
     if is_model_dynamics_constant(stlmc_model):
         return "constant"
 

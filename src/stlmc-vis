@@ -237,8 +237,9 @@ if __name__ == '__main__':
 
         visualizer = Visualizer()
         if output == "html":
-            visualizer.generate_plot(*data, config_parser.group)
-            visualizer.write("{}".format(args.file))
+            visualizer.generate_plot2(*data)
+            # visualizer.generate_plot(*data, config_parser.group)
+            # visualizer.write("{}".format(args.file))
 
         elif output == "pdf":
             point_samples, robustness_dict, time_samples_list, formula_id_dict, formula_label, delta = visualizer.generate_data(*data)

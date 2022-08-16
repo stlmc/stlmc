@@ -2,16 +2,15 @@ from abc import ABC
 
 # basic wrapper interface for ode strategy
 from ..objects.configuration import *
-from ..util.logger import Logger
 
 from ..constraints.constraints import *
-from ..constraints.operations import get_vars, clause
+from ..constraints.aux.operations import get_vars, clause
 from ..hybrid_automaton.converter import *
 from ..hybrid_automaton.utils import *
 from ..solver.abstract_solver import BaseSolver, OdeSolver
 from ..solver.ode_utils import make_boolean_abstract, gen_net_assignment, get_bound
 from ..solver.strategy import UnsatCoreBuilder, DeltaDebugBuilder, NaiveBuilder
-from ..solver.z3 import Z3Solver, z3Obj
+from ..solver.z3 import Z3Solver, translate
 
 
 class CommonOdeStrategy:

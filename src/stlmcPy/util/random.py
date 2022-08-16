@@ -1,7 +1,7 @@
 import random
 
+from ..constraints.aux.operations import generate_id
 from ..constraints.constraints import *
-from ..constraints.operations import generate_id
 from ..exception.exception import NotSupportedError
 
 
@@ -55,7 +55,7 @@ def add_uncertainty(pool):
     return new_pool
 
 
-def set_formula(op, arity, children) -> Constraint:
+def set_formula(op, arity, children) -> Formula:
     if arity == 0:
         return op
 
@@ -90,7 +90,7 @@ def set_formula(op, arity, children) -> Constraint:
         raise NotSupportedError("cannot take arity {} for {}".format(arity, op))
 
 
-def make_empty_formula(op, arity) -> Constraint:
+def make_empty_formula(op, arity) -> Formula:
     if arity == 0:
         return op
 
@@ -117,7 +117,7 @@ def make_empty_formula(op, arity) -> Constraint:
         raise NotSupportedError("cannot take arity {} for {}".format(arity, op))
 
 
-def make_formula(op: Constraint, child: Constraint):
+def make_formula(op: Formula, child: Formula):
     if isinstance(op, Bool):
         return op
 

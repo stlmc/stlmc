@@ -1,15 +1,14 @@
 import sys
-from typing import Dict
+from typing import Dict, Tuple
 
 from antlr4 import FileStream, CommonTokenStream
 from antlr4.error.ErrorListener import ErrorListener
 
 from .error_listener import StlmcErrorListener
+from ..constraints.aux.generator import *
 from ..constraints.constraints import *
-from ..constraints.operations import substitution
+from ..encoding.smt.model.stlmc_model import STLmcModel
 from ..exception.exception import NotSupportedError
-from ..objects.goal import ReachGoal
-from ..objects.model import StlMC
 from ..syntax.model.modelLexer import modelLexer
 from ..syntax.model.modelParser import modelParser
 from ..syntax.model.modelVisitor import modelVisitor
@@ -19,16 +18,20 @@ class ModelVisitor(modelVisitor):
 
     def __init__(self):
         self.type_context = dict()
-        self.next_str = "##$%^&$%^&##'"
-        self.range_dict = dict()
-        self.constant_dict = dict()
-        self.variable_declare_dict = dict()
+        self.next_str = "$next"
+
+        # variable declarations
+        self.variable_decls = VariableDeclaration()
+
+        # range info
+        self.range_info: Dict[Real, Interval] = dict()
+        # constant info
+        self.constant_info = dict()
+
         self.proposition_dict = dict()
-        self.raw_proposition_dict = dict()
         self.goal_labels: Dict[Formula, str] = dict()
         self.temp_jump = None
         self.init_mode = None
-        self.decl_ids = set()
 
     def get_parse_tree(self, file_name: str):
         raw_model = FileStream(file_name)
@@ -48,19 +51,20 @@ class ModelVisitor(modelVisitor):
 
     def visitStlMC(self, ctx: modelParser.StlMCContext):
         module_declares = list()
-        prop_declares = dict()
 
-        # iterate through mode declaration
+        # iterate mode variables
         for i in range(len(ctx.mode_var_decl())):
             self.visit(ctx.mode_var_decl()[i])
 
+        # continuous
         for i in range(len(ctx.variable_var_decl())):
             self.visit(ctx.variable_var_decl()[i])
 
+        # constant
         for i in range(len(ctx.var_val_decl())):
             self.visit(ctx.var_val_decl()[i])
 
-        self._update_decl_set()
+        self.variable_decls.unique_checking()
 
         for i in range(len(ctx.mode_module())):
             module_declares.append(self.visit(ctx.mode_module()[i]))
@@ -68,164 +72,166 @@ class ModelVisitor(modelVisitor):
         init = self.visit(ctx.init_decl())
 
         if ctx.props():
-            self.raw_proposition_dict = self.visit(ctx.props())
-            self.proposition_dict = self.raw_proposition_dict.copy()
+            self.proposition_dict = self.visit(ctx.props())
 
         goals = self.visit(ctx.goal_decl())
-        return StlMC(self.variable_declare_dict, self.range_dict, self.constant_dict, self.raw_proposition_dict,
-                     module_declares, init, self.init_mode), self.proposition_dict, goals, self.goal_labels
+        # print(self.range_info)
+        # print(self.proposition_dict)
+        # print(self.constant_info)
+        variable_decl = self.variable_decls.get_declaration()
+        print(module_declares)
+        print(init)
+        return (module_declares, init, self.next_str, variable_decl, self.range_info, self.constant_info,
+                self.proposition_dict, self.init_mode), self.proposition_dict, goals, self.goal_labels
 
     '''
-    mode_var_decl
+    declaration of mode variables
     '''
 
     def visitMode_var_decl(self, ctx: modelParser.Mode_var_declContext):
-        op_dict = {'bool': Bool, 'real': Real, 'int': Int}
-        name = ctx.VARIABLE().getText()
-        v_type = ctx.var_type().getText()
+        name = str(ctx.VARIABLE().getText())
+        ty = str(ctx.var_type().getText())
 
-        new_var = op_dict[v_type](name)
-        if name in self.variable_declare_dict:
-            return new_var
-        else:
-            self.variable_declare_dict[name] = new_var
-            return new_var
+        if self.variable_decls.is_declared(name):
+            raise NotSupportedError("{} is already declared".format(name))
+
+        self.variable_decls.declare(name, ty, "mode")
+        return variable(name, ty)
 
     '''
-    variable_var_declaration
+    declaration of continuous variables
     '''
 
     def visitVariable_var_decl(self, ctx: modelParser.Variable_var_declContext):
-        new_var = Real(ctx.VARIABLE().getText())
-        if new_var in self.range_dict:
-            return new_var
-        else:
-            self.range_dict[new_var] = self.visit(ctx.var_range())
-            return new_var
+        name, ty = str(ctx.VARIABLE().getText()), "real"
+        v = variable(name, ty)
+
+        if self.variable_decls.is_declared(name):
+            raise NotSupportedError("{} is already declared".format(name))
+        self.variable_decls.declare(name, ty, "continuous")
+        self.range_info[v] = self.visit(ctx.var_range())
+
+        return v
 
     '''
-    variable_var_declaration
+    declaration of constant variables
     '''
 
     def visitVar_val_decl(self, ctx: modelParser.Var_val_declContext):
-        # return VarVal(ctx.var_type().getText(), ctx.VARIABLE().getText(), ctx.val.text)
-        op_dict = {'bool': Bool, 'real': Real, 'int': Int}
-        value_dict = {'bool': BoolVal, 'real': RealVal, 'int': IntVal}
+        name = str(ctx.VARIABLE().getText())
+        val_str = str(ctx.val.text).lower()
+
+        if self.variable_decls.is_declared(name):
+            raise NotSupportedError("{} is already declared".format(name))
 
         # infer type
-        if ctx.val.text == "true" or ctx.val.text == "false":
-            new_var = op_dict["bool"](ctx.VARIABLE().getText())
-            new_val = value_dict["bool"](ctx.val.text)
+        if val_str == "true" or val_str == "false":
+            val, ty = val_str.capitalize(), "bool"
         else:
             # try float conversion
             try:
-                float(ctx.val.text)
+                float(val_str)
             except ValueError:
-                raise NotSupportedError("wrong value: {}".format(ctx.val.text))
-            new_var = op_dict["real"](ctx.VARIABLE().getText())
-            new_val = value_dict["real"](ctx.val.text)
+                raise NotSupportedError("wrong value: {}".format(val_str))
+            val, ty = val_str, "real"
 
-        if new_var in self.constant_dict:
-            raise NotSupportedError("{} is already declared".format(new_var))
-        else:
-            self.constant_dict[new_var] = new_val
-            return new_var
-
-    def _update_decl_set(self):
-        self.decl_ids.update(self.variable_declare_dict.keys())
-        for c in self.constant_dict:
-            self.decl_ids.add(c.id)
-
-        for r in self.range_dict:
-            self.decl_ids.add(r.id)
+        v, val = variable(name, ty), value(val, ty)
+        self.variable_decls.declare(name, ty, "constant")
+        self.constant_info[v] = val
+        return v
 
     def visitBinaryExp(self, ctx: modelParser.BinaryExpContext):
-        op_dict = {'+': Add, '-': Sub, '*': Mul, '/': Div, '**': Pow}
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
-        return op_dict[ctx.op.text](left, right)
+        op_str = str(ctx.op.text)
+        return binary_expr(left, right, op_str)
 
     '''
     Not yet
     '''
 
     def visitUnaryExp(self, ctx: modelParser.UnaryExpContext):
-        op = {"sin": Sin, "cos": Cos, "tan": Tan, "sqrt": Sqrt, "arcsin": Arcsin, "arccos": Arccos, "arctan": Arctan}
-        if ctx.op.text in op.keys():
-            return op[ctx.op.text](self.visit(ctx.expression()))
-        elif ctx.op.text == "-":
+        op_str = str(ctx.op.text).lower()
+        if op_str == "-":
             return Neg(self.visit(ctx.expression()))
         else:
-            raise NotSupportedError("Can't support non-linear function")
+            unary_exp = unary_expr(self.visit(ctx.expression()), op_str)
+            if unary_exp is None:
+                raise NotSupportedError("Can't support non-linear function")
+            return unary_exp
 
     def visitParenthesisExp(self, ctx: modelParser.ParenthesisExpContext):
         return self.visit(ctx.expression())
 
     def visitConstantExp(self, ctx: modelParser.ConstantExpContext):
         if ctx.VARIABLE():
-            if str(ctx.VARIABLE()) not in self.decl_ids:
+            name = str(ctx.VARIABLE())
+            if not self.variable_decls.is_declared(name):
                 raise NotSupportedError("in the model file {}:{}, \'{}\' is not declared"
                                         .format(ctx.start.line, ctx.start.column, ctx.VARIABLE()))
-            return Real(ctx.VARIABLE().getText())
+            return variable(name, "real")
         elif ctx.TIME():
-            return Real('time')
+            return variable("time", "real")
         elif ctx.VALUE():
-            return RealVal(ctx.VALUE().getText())
+            val = str(ctx.VALUE().getText())
+            return value(val, "real")
         else:
             raise NotSupportedError("error in constant expression")
 
-    # TODO: New feature!
     def visitInitialValue(self, ctx: modelParser.InitialValueContext):
-        return Real(ctx.INITIALVAL().getText()[0:-3])
+        initial_name = str(ctx.INITIALVAL().getText())
+        name = initial_name[0:-3]
+        return variable(name, "real")
 
     def visitCompCond(self, ctx: modelParser.CompCondContext):
-        op_dict = {"=": Eq, "!=": Neq}
+        # op_dict = {"=": Eq, "!=": Neq}
         left = self.visit(ctx.condition()[0])
         right = self.visit(ctx.condition()[1])
+        op_str = str(ctx.op.text)
+
+        # reach
         if isinstance(left, Int):
             if "to" == left.id:
                 assert isinstance(right, RealVal)
                 self.init_mode = int(right.value)
                 return BoolVal("True")
-        return op_dict[ctx.op.text](left, right)
+        return binary_formula(left, right, op_str)
 
     def visitCompExp(self, ctx: modelParser.CompExpContext):
-        op_dict = {'<=': Leq, '>=': Geq, "<": Lt, ">": Gt, "=": Eq, "!=": Neq}
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
-        return op_dict[ctx.op.text](left, right)
+        op_str = str(ctx.op.text)
+        return binary_proposition(left, right, op_str)
 
     def visitConstantCond(self, ctx: modelParser.ConstantCondContext):
         if ctx.TRUE():
-            return BoolVal("True")
+            return value("True", "bool")
         elif ctx.FALSE():
-            return BoolVal("False")
+            return value("False", "bool")
         elif ctx.VALUE():
-            return RealVal(ctx.VALUE().getText())
+            val = str(ctx.VALUE().getText())
+            return value(val, "real")
         elif ctx.VARIABLE():
-            var_text = ctx.VARIABLE().getText()
-            guess_real_var = Real(var_text)
-            guess_bool_var = Bool(var_text)
-            if var_text in self.variable_declare_dict:
-                return self.variable_declare_dict[var_text]
-            elif guess_real_var in self.range_dict:
-                return guess_real_var
-            elif guess_bool_var in self.proposition_dict:
-                return guess_bool_var
-            else:
+            name = str(ctx.VARIABLE().getText())
+
+            if not self.variable_decls.is_declared(name):
                 raise NotSupportedError("in the model file {}:{}, \'{}\' is not declared"
-                                        .format(ctx.start.line, ctx.start.column, ctx.VARIABLE()))
-        raise NotSupportedError("error in constant condition")
+                                        .format(ctx.start.line, ctx.start.column, name))
+
+            ty = self.variable_decls.get_type(name)
+            return variable(name, ty)
+        else:
+            raise NotSupportedError("error in constant condition")
 
     def visitUnaryCond(self, ctx: modelParser.UnaryCondContext):
         return Not(self.visit(ctx.condition()))
 
     def visitMultyCond(self, ctx: modelParser.MultyCondContext):
-        op_dict = {'and': And, 'or': Or}
-        prop = list()
+        children = list()
         for i in range(len(ctx.condition())):
-            prop.append(self.visit(ctx.condition()[i]))
-        return op_dict[ctx.op.text](prop)
+            children.append(self.visit(ctx.condition()[i]))
+        op_str = str(ctx.op.text)
+        return multinary_formula(children, op_str)
 
     def visitParenthesisCond(self, ctx: modelParser.ParenthesisCondContext):
         return self.visit(ctx.condition())
@@ -238,11 +244,11 @@ class ModelVisitor(modelVisitor):
         return self.visit(ctx.jump_redecl())
 
     def visitMultyJump(self, ctx: modelParser.MultyJumpContext):
-        op_dict = {'and': And, 'or': Or}
-        prop = list()
+        children = list()
         for i in range(len(ctx.jump_redecl())):
-            prop.append(self.visit(ctx.jump_redecl()[i]))
-        return op_dict[ctx.op.text](prop)
+            children.append(self.visit(ctx.jump_redecl()[i]))
+        op_str = str(ctx.op.text)
+        return multinary_formula(children, op_str)
 
     def visitUnaryJump(self, ctx: modelParser.UnaryJumpContext):
         return Not(self.visit(ctx.jump_redecl()))
@@ -251,40 +257,30 @@ class ModelVisitor(modelVisitor):
         return Bool(ctx.NEXT_VAR().getText()[:-1] + self.next_str)
 
     def visitJumpMod(self, ctx: modelParser.JumpModContext):
+        primed_name = str(ctx.NEXT_VAR().getText())
+        name = primed_name[:-1]
+        new_primed_name = "{}{}".format(name, self.next_str)
         if ctx.TRUE():
-            return Eq(Bool(ctx.NEXT_VAR().getText()[:-1] + self.next_str), BoolVal("True"))
+            return Bool(new_primed_name) == BoolVal("True")
         elif ctx.FALSE():
-            return Eq(Bool(ctx.NEXT_VAR().getText()[:-1] + self.next_str), BoolVal("False"))
+            return Bool(new_primed_name) == BoolVal("False")
         else:
-            op_dict = {'<=': Leq, '>=': Geq, "<": Lt, ">": Gt, "=": Eq, "!=": Neq}
-            v_id = ctx.NEXT_VAR().getText()[:-1]
-            # guess
-            guess_var = Real(ctx.NEXT_VAR().getText()[:-1])
-            guess_var_bool = Bool(ctx.NEXT_VAR().getText()[:-1])
-            guess_var_int = Int(ctx.NEXT_VAR().getText()[:-1])
+            if not self.variable_decls.is_declared(name):
+                raise NotSupportedError("in the model file {}:{}, \'{}\' is not declared"
+                                        .format(ctx.start.line, ctx.start.column, name))
 
-            if "to" == v_id:
+            ty = self.variable_decls.get_type(name)
+
+            if "to" == name:
                 j = self.visit(ctx.expression())
                 assert isinstance(j, RealVal)
                 self.temp_jump = int(j.value)
                 return BoolVal("True")
 
-            real_var = Real(ctx.NEXT_VAR().getText()[:-1] + self.next_str)
-            bool_var = Bool(ctx.NEXT_VAR().getText()[:-1] + self.next_str)
-            int_var = Int(ctx.NEXT_VAR().getText()[:-1] + self.next_str)
-            if guess_var in self.range_dict:
-                return op_dict[ctx.op.text](real_var, self.visit(ctx.expression()))
-            elif guess_var_bool in self.variable_declare_dict:
-                return op_dict[ctx.op.text](bool_var, self.visit(ctx.expression()))
-            elif guess_var_int in self.variable_declare_dict:
-                return op_dict[ctx.op.text](int_var, self.visit(ctx.expression()))
-            elif guess_var in self.variable_declare_dict:
-                return op_dict[ctx.op.text](real_var, self.visit(ctx.expression()))
-            else:
-                if v_id not in self.decl_ids:
-                    raise NotSupportedError("in the model file {}:{}, \'{}\' is not declared"
-                                            .format(ctx.start.line, ctx.start.column, v_id))
-                raise NotSupportedError("Cannot visit jump mod")
+            left = variable(new_primed_name, ty)
+            right = self.visit(ctx.expression())
+            op_str = str(ctx.op.text)
+            return binary_proposition(left, right, op_str)
 
     def visitVar_type(self, ctx: modelParser.Var_typeContext):
         return ctx.varType.text
@@ -294,8 +290,8 @@ class ModelVisitor(modelVisitor):
     '''
 
     def visitExactValue(self, ctx: modelParser.ExactValueContext):
-        number = float(ctx.VALUE().getText())
-        return True, number, number, True
+        number = value(str(ctx.VALUE().getText()), "real")
+        return Interval(True, number, number, True)
 
     '''
     variable range
@@ -311,10 +307,10 @@ class ModelVisitor(modelVisitor):
         if ctx.rightParen.text == ')':
             right_bracket = False
 
-        left_number = float(ctx.leftVal.text)
-        right_number = float(ctx.rightVal.text)
+        left_number = value(str(ctx.leftVal.text), "real")
+        right_number = value(str(ctx.rightVal.text), "real")
 
-        return left_bracket, left_number, right_number, right_bracket
+        return Interval(left_bracket, left_number, right_number, right_bracket)
 
     '''
     flow differential equation type
@@ -351,7 +347,7 @@ class ModelVisitor(modelVisitor):
         for i in range(len(ctx.condition())):
             # CompCond type
             element.append(self.visit(ctx.condition()[i]))
-        return And(element)
+        return element
 
     '''
     invariant declaration
@@ -361,31 +357,27 @@ class ModelVisitor(modelVisitor):
         element = list()
         for i in range(len(ctx.condition())):
             element.append(self.visit(ctx.condition()[i]))
-        return And(element)
+        return element
 
     '''
     flow declaration
     '''
 
     def visitFlow_decl(self, ctx: modelParser.Flow_declContext):
-        vars = list()
+        vs = list()
         exps = list()
         if ctx.diff_eq():
             for i in range(len(ctx.diff_eq())):
-                var, exp = self.visit(ctx.diff_eq()[i])
-                vars.append(var)
+                v, exp = self.visit(ctx.diff_eq()[i])
+                vs.append(v)
                 exps.append(exp)
-            vars = [substitution(v, self.constant_dict) for v in vars]
-            exps = [substitution(e, self.constant_dict) for e in exps]
-            return Ode(vars, exps)
+            return Ode(vs, exps)
         elif ctx.sol_eq():
             for i in range(len(ctx.sol_eq())):
-                var, exp = self.visit(ctx.sol_eq()[i])
-                vars.append(var)
+                v, exp = self.visit(ctx.sol_eq()[i])
+                vs.append(v)
                 exps.append(exp)
-            vars = [substitution(v, self.constant_dict) for v in vars]
-            exps = [substitution(e, self.constant_dict) for e in exps]
-            return Function(vars, exps)
+            return Function(vs, exps)
 
     '''
     jump declaration
@@ -395,14 +387,14 @@ class ModelVisitor(modelVisitor):
         return self.visit(ctx.condition()), self.visit(ctx.jump_redecl())
 
     def visitJump_decl(self, ctx: modelParser.Jump_declContext):
-        result = dict()
+        result = list()
         jp_id_d = dict()
-        for i in range(len(ctx.jump_redecl_module())):
+        for jp in ctx.jump_redecl_module():
             assert self.temp_jump is None
-            cond, jump = self.visit(ctx.jump_redecl_module()[i])
-            result[cond] = jump
+            pre_jp, post_jp = self.visit(jp)
+            result.append((pre_jp, post_jp))
             if self.temp_jump is not None:
-                jp_id_d[cond] = self.temp_jump
+                jp_id_d[pre_jp] = self.temp_jump
                 self.temp_jump = None
         return result, jp_id_d
 
@@ -416,7 +408,7 @@ class ModelVisitor(modelVisitor):
         for i in range(len(ctx.condition())):
             # CompCond type
             cond.append(self.visit(ctx.condition()[i]))
-        return And(cond)
+        return cond
 
     # Visit a parse tree produced by modelParser#leftEnd.
     def visitLeftEnd(self, ctx: modelParser.LeftEndContext):
@@ -429,12 +421,13 @@ class ModelVisitor(modelVisitor):
     # Visit a parse tree produced by modelParser#interval.
     def visitInterval(self, ctx: modelParser.IntervalContext):
         if ctx.EQUAL():
-            number = RealVal(ctx.VALUE().getText())
-            return Interval(True, number, True, number)
+            val = str(ctx.VALUE().getText())
+            number = value(val, "real")
+            return Interval(True, number, number, True)
         else:
             left = self.visit(ctx.leftEnd())
             right = self.visit(ctx.rightEnd())
-            return Interval(left[0], RealVal(str(left[1])), right[0], RealVal(str(right[1])))
+            return Interval(left[0], RealVal(str(left[1])), RealVal(str(right[1])), right[0])
 
     # Visit a parse tree produced by modelParser#parenFormula.
     def visitParenFormula(self, ctx: modelParser.ParenFormulaContext):
@@ -442,41 +435,37 @@ class ModelVisitor(modelVisitor):
 
     # Visit a parse tree produced by modelParser#proposition.
     def visitProposition(self, ctx: modelParser.PropositionContext):
-        return Bool(ctx.VARIABLE().getText())
+        return Bool(str(ctx.VARIABLE().getText()))
 
     # Visit a parse tree produced by modelParser#constant.
     def visitConstFormula(self, ctx: modelParser.ConstFormulaContext):
-        return BoolVal(ctx.getText())
+        return BoolVal(str(ctx.getText()))
 
-    # TODO : Problem
     def visitDirectCond(self, ctx: modelParser.DirectCondContext):
-        new_var_str = "newPropDecl_" + str(len(self.proposition_dict))
-        new_var = Bool(new_var_str)
-        op_dict = {'<=': Leq, '>=': Geq, "<": Lt, ">": Gt, "=": Eq, "!=": Neq}
         left = self.visit(ctx.expression()[0])
         right = self.visit(ctx.expression()[1])
-        self.proposition_dict[new_var] = op_dict[ctx.op.text](left, right)
-        return new_var
+        op_str = str(ctx.op.text)
+        return binary_proposition(left, right, op_str)
 
     # Visit a parse tree produced by modelParser#binaryFormula.
     def visitBinaryFormula(self, ctx: modelParser.BinaryFormulaContext):
         left = self.visit(ctx.formula()[0])
         right = self.visit(ctx.formula()[1])
-        op = ctx.op.text
-        if op == '->':
+        op_str = str(ctx.op.text)
+        if op_str == '->':
             return Implies(left, right)
-        elif op == 'and':
-            return And([left, right])
-        elif op == 'or':
-            return Or([left, right])
         else:
-            raise NotSupportedError("something wrong")
+            f = multinary_formula([left, right], op_str)
+            if f is None:
+                raise NotSupportedError("{} is not a valid type".format(op_str))
+            return f
 
     def visitMultyFormula(self, ctx: modelParser.MultyFormulaContext):
         result = list()
         for i in range(len(ctx.formula())):
             result.append(self.visit(ctx.formula()[i]))
-        return {'and': And, 'or': Or, 'And': And, 'Or': Or}[ctx.op.text](result)
+        op_str = str(ctx.op.text).lower()
+        return multinary_formula(result, op_str)
 
     # Visit a parse tree produced by modelParser#unaryTemporalFormula.
     def visitUnaryTemporalFormula(self, ctx: modelParser.UnaryTemporalFormulaContext):
@@ -534,3 +523,74 @@ class ModelVisitor(modelVisitor):
                 self.goal_labels[goal] = label
             # type of formula
         return labeled_goals, unlabeled_goals, reach_goals
+
+
+class VariableDeclaration:
+    def __init__(self):
+        self._v_decls = dict()
+        self._v_decls["mode"] = set()
+        self._v_decls["continuous"] = set()
+        self._v_decls["constant"] = set()
+
+    def declare(self, v_name: str, v_ty: str, ty: str):
+        if self.is_declared(v_name):
+            return
+
+        is_mode = ty == "mode"
+        is_cont = ty == "continuous"
+        is_const = ty == "constant"
+
+        if is_mode:
+            self._v_decls["mode"].add(variable(v_name, v_ty))
+        elif is_cont:
+            self._v_decls["continuous"].add(variable(v_name, v_ty))
+        elif is_const:
+            self._v_decls["constant"].add(variable(v_name, v_ty))
+        else:
+            raise NotSupportedError("invalid type {}".format(ty))
+
+    def is_declared(self, name: str) -> bool:
+        is_int, is_real, is_bool = self._is_declared(name)
+        return is_int or is_real or is_bool
+
+    def _is_declared(self, name: str) -> Tuple[bool, bool, bool]:
+        mo_decl = self._v_decls["mode"]
+        cs_decl = self._v_decls["continuous"]
+        ct_decl = self._v_decls["constant"]
+
+        guess_int = variable(name, "int")
+        guess_real = variable(name, "real")
+        guess_bool = variable(name, "bool")
+
+        is_int = guess_int in mo_decl or guess_int in cs_decl or guess_int in ct_decl
+        is_real = guess_real in mo_decl or guess_real in cs_decl or guess_real in ct_decl
+        is_bool = guess_bool in mo_decl or guess_bool in cs_decl or guess_bool in ct_decl
+
+        return is_int, is_real, is_bool
+
+    def get_type(self, name: str) -> str:
+        is_int, is_real, is_bool = self._is_declared(name)
+
+        if is_int:
+            return "int"
+        elif is_real:
+            return "real"
+        elif is_bool:
+            return "bool"
+        else:
+            raise NotSupportedError("{} does not declared".format(name))
+
+    def get_declaration(self):
+        return self._v_decls
+
+    def unique_checking(self):
+        mo_decl = self._v_decls["mode"]
+        cs_decl = self._v_decls["continuous"]
+        ct_decl = self._v_decls["constant"]
+
+        # check if there are the same variable names
+        intersection = mo_decl.intersection(cs_decl).intersection(ct_decl)
+        if len(intersection) > 0:
+            raise NotSupportedError("there are variables "
+                                    "having the same name "
+                                    "but different types {}".format(" , ".join(intersection)))

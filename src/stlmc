@@ -2,7 +2,7 @@
 from stlmcPy.driver.abstract_driver import *
 from stlmcPy.driver.base_driver import *
 from stlmcPy.exception.exception import *
-from stlmcPy.util.print import *
+from stlmcPy.util.printer import *
 import traceback
 
 if __name__ == '__main__':

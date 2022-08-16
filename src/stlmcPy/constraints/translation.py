@@ -1,7 +1,7 @@
 from functools import singledispatch
 
+from .aux.operations import substitution_zero2t, diff, get_vars
 from .constraints import *
-from .operations import substitution_zero2t, diff, get_vars
 
 
 def make_forall_consts_aux(forall: Forall):

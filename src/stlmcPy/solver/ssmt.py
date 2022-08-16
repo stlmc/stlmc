@@ -5,7 +5,6 @@ from ..solver.abstract_solver import BaseSolver
 from ..solver.strategy import unit_split
 from ..solver.z3 import Z3Solver
 from ..strategy.core import Generator, SmtNode
-from ..util.logger import Logger
 
 
 class SsmtSolver(BaseSolver):

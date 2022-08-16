@@ -1,10 +1,12 @@
 from typing import *
 
 import z3
-from ..solver.z3 import z3Obj
+
+from ..constraints.aux.operations import _substitution
+from ..solver.z3 import translate
 
 from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.aux.operations import *
 from ..objects.model import Model
 
 
@@ -96,14 +98,14 @@ class StaticLearner:
 
             renamed_clause = set()
             for c in stl_clause:
-                renamed_clause.add(substitution(c, cont_rename_dict_0[i]))
-                renamed_clause.add(substitution(c, cont_rename_dict_t[i]))
-                renamed_clause.add(substitution(c, mode_rename_dict[i]))
+                renamed_clause.add(_substitution(c, cont_rename_dict_0[i]))
+                renamed_clause.add(_substitution(c, cont_rename_dict_t[i]))
+                renamed_clause.add(_substitution(c, mode_rename_dict[i]))
 
             for c in model_clause:
-                renamed_clause.add(substitution(c, cont_rename_dict_0[i]))
-                renamed_clause.add(substitution(c, cont_rename_dict_t[i]))
-                renamed_clause.add(substitution(c, mode_rename_dict[i]))
+                renamed_clause.add(_substitution(c, cont_rename_dict_0[i]))
+                renamed_clause.add(_substitution(c, cont_rename_dict_t[i]))
+                renamed_clause.add(_substitution(c, mode_rename_dict[i]))
 
             renamed_clause.difference_update(stl_clause)
             renamed_clause.difference_update(model_clause)

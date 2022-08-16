@@ -2,7 +2,6 @@ import asyncio
 import os
 import shutil
 
-from ..util.logger import Logger
 from functools import singledispatch
 from typing import *
 
@@ -287,7 +286,7 @@ class C2E2Assignment(Assignment):
 
 
 @singledispatch
-def C2E2infix(const: Constraint):
+def C2E2infix(const: Formula):
     return str(const)
 
 
@@ -374,7 +373,7 @@ def _(const: Forall):
 
 
 @singledispatch
-def C2E2infixReset(const: Constraint):
+def C2E2infixReset(const: Formula):
     return str(const)
 
 

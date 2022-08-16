@@ -4,9 +4,9 @@ from itertools import product
 from sympy import *
 
 from ..constraints.constraints import *
-from ..constraints.operations import get_vars, clause
+from ..constraints.aux.operations import get_vars, clause
 from ..exception.exception import NotSupportedError
-from ..solver.z3 import Z3Solver
+from ..solver.z3 import Z3Solver, translate
 
 
 def make_tau_guard(tau_dict, max_bound):
@@ -41,7 +41,8 @@ def make_boolean_abstract(abstracted_consts):
         else:
             original_bool.append(c)
 
-    boolean_abstracted = solver.substitution(abstracted_consts, sub_dict)
+    substitute_list = [(z3Obj(v), z3Obj(sub_dict[v])) for v in sub_dict]
+    boolean_abstracted = solver.solver.substitute(z3Obj(abstracted_consts), substitute_list)
 
     for o in original_bool:
         sub_dict[o] = o
@@ -110,7 +111,7 @@ def gen_net_assignment(mapping: dict, range_dict: dict):
 
 
 @singledispatch
-def remove_index(c: Constraint) -> Variable:
+def remove_index(c: Formula) -> Variable:
     raise NotSupportedError("input should be variable type : " + str(c))
 
 
@@ -147,7 +148,7 @@ def find_index(input_list: list, v: Variable):
 
 
 @singledispatch
-def expr_to_sympy(const: Constraint):
+def expr_to_sympy(const: Formula):
     raise NotSupportedError("cannot make it canonical : {} of type {}".format(const, type(const)))
 
 
@@ -229,7 +230,7 @@ def _(const: Forall):
 # optimize version translator
 
 @singledispatch
-def expr_to_sympy_inequality(const: Constraint):
+def expr_to_sympy_inequality(const: Formula):
     raise NotSupportedError("cannot make it canonical : {} of type {}".format(const, type(const)))
 
 
