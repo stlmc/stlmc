@@ -42,6 +42,10 @@ class ExceptionPrinter(BasePrinter):
         super().__init__("red", "magenta", "grey", "white")
 
 
+def pprint(const: Formula, indent: int):
+    print(p_string(const, indent))
+
+
 def indented_str(s: str, indent: int):
     li = [" " for _ in range(indent)]
     li.append(s)
@@ -49,49 +53,60 @@ def indented_str(s: str, indent: int):
 
 
 @singledispatch
-def pprint(const: Formula, indent: int):
-    print(indented_str(str(const), indent))
+def p_string(const: Formula, indent: int):
+    return indented_str(str(const), indent)
 
 
-@pprint.register(Leaf)
+@p_string.register(Leaf)
 def _(const: Formula, indent: int):
-    print(indented_str(str(const), indent))
+    return indented_str(str(const), indent)
 
 
-@pprint.register(Integral)
+@p_string.register(Integral)
 def _(const: Integral, indent: int):
-    print(indented_str("(integral {}".format(const.current_mode_number), indent))
-    print(indented_str("[{}]".format(", ".join([str(v) for v in const.end_vector])), indent + 2))
-    print(indented_str("[{}]".format(", ".join([str(v) for v in const.start_vector])), indent + 2))
-    dynamics_pprint(const.dynamics, indent + 2)
-    print(indented_str(")", indent))
+    s = [
+        indented_str("(integral {}".format(const.current_mode_number), indent),
+        indented_str("[{}]".format(", ".join([str(v) for v in const.end_vector])), indent + 2),
+        indented_str("[{}]".format(", ".join([str(v) for v in const.start_vector])), indent + 2),
+        dynamics_p_string(const.dynamics, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(s)
 
 
-@pprint.register(UnaryFormula)
+@p_string.register(UnaryFormula)
 def _(const: UnaryFormula, indent: int):
-    print(indented_str("{} (".format(const.type), indent))
-    pprint(const.child, indent + 2)
-    print(indented_str(")", indent))
+    s = [
+        indented_str("{} (".format(const.type), indent),
+        p_string(const.child, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(s)
 
 
-@pprint.register(BinaryFormula)
+@p_string.register(BinaryFormula)
 def _(const: BinaryFormula, indent: int):
-    print(indented_str("{} (".format(const.type), indent))
-    pprint(const.left, indent + 2)
-    pprint(const.right, indent + 2)
-    print(indented_str(")", indent))
+    s = [
+        indented_str("{} (".format(const.type), indent),
+        p_string(const.left, indent + 2),
+        p_string(const.right, indent + 2),
+        indented_str(")", indent)
+    ]
+    return "\n".join(s)
 
 
-@pprint.register(MultinaryFormula)
+@p_string.register(MultinaryFormula)
 def _(const: MultinaryFormula, indent: int):
-    print(indented_str("{} (".format(const.type), indent))
+    s = [indented_str("{} (".format(const.type), indent)]
     for e in const.children:
-        pprint(e, indent + 2)
-    print(indented_str(")", indent))
+        s.append(p_string(e, indent + 2))
+    s.append(indented_str(")", indent))
+    return "\n".join(s)
 
 
-def dynamics_pprint(dynamic: Dynamics, indent: int):
-    print(indented_str("{} (".format(dynamic.type), indent))
+def dynamics_p_string(dynamic: Dynamics, indent: int):
+    s = [indented_str("{} (".format(dynamic.type), indent)]
     li = [indented_str("{} = {}".format(v, e), indent + 2) for (v, e) in zip(dynamic.vars, dynamic.exps)]
-    print("\n".join(li))
-    print(indented_str(")", indent))
+    s.append("\n".join(li))
+    s.append(indented_str(")", indent))
+    return "\n".join(s)

@@ -1,7 +1,6 @@
-from typing import Dict, List, Set
+from typing import Dict
 
 from ....constraints.aux.generator import *
-from ....constraints.aux.operations import Substitution
 from ....constraints.constraints import *
 
 

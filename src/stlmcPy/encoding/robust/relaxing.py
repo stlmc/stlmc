@@ -1,8 +1,8 @@
 from functools import singledispatch
 from typing import Union
 
-from ....constraints.aux.generator import *
-from ....constraints.constraints import *
+from ...constraints.aux.generator import *
+from ...constraints.constraints import *
 
 
 @singledispatch

@@ -87,7 +87,7 @@ class SpaceEx:
 
 
 
-class SpaceExConverter(AbstractConverter):
+class SpaceExConverter:
     def solve(self, config: Configuration):
         spaceex_core_solver = SpaceEx()
         assert len(self.convert_result) == 2

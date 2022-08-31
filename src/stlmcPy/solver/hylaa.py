@@ -26,10 +26,9 @@ from ..tree.operations import size_of_tree
 from ..util.printer import Printer
 from ..exception.exception import *
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton as StlMCHybridAutomaton
-from ..hybrid_automaton.converter import AbstractConverter
 
 
-class HylaaConverter(AbstractConverter):
+class HylaaConverter:
     def __init__(self, l_v):
         self.var_set = set()
         # self.ha = HybridAutomaton('ha')

@@ -1,7 +1,4 @@
-# start of base_objects
-
 from ..tree.tree import Leaf, NonLeaf
-from ..exception.exception import ElementNotFoundError
 
 
 class Interval:
@@ -12,6 +9,24 @@ class Interval:
         self.right_end: bool = right_end
         self._str = None
 
+    def __add__(self, other):
+        l_end = self.left_end and other.left_end
+        r_end = self.right_end and other.right_end
+
+        return Interval(l_end, self.left + other.left, self.right + other.right, r_end)
+
+    def __sub__(self, other):
+        l_end = self.left_end and other.right_end
+        r_end = self.right_end and other.left_end
+
+        return Interval(l_end, self.left - other.right, self.right - other.left, r_end)
+
+    def __eq__(self, other):
+        t_c = isinstance(other, Interval)
+        l_c = float(self.left.value) == float(other.left.value) and self.left_end == other.left_end
+        r_c = float(self.right.value) == float(other.right.value) and self.right_end == other.right_end
+        return t_c and l_c and r_c
+
     def __hash__(self):
         return hash((hash(self.left_end), hash(self.left), hash(self.right_end), hash(self.right)))
 
@@ -21,11 +36,6 @@ class Interval:
             r_par = "]" if self.right_end else ")"
             self._str = "{} {}, {} {}".format(l_par, repr(self.left), repr(self.right), r_par)
         return self._str
-
-    def __eq__(self, other):
-        return isinstance(other,
-                          Interval) and other.left_end == self.left_end and other.right_end == self.right_end and hash(
-            other.left) == hash(self.left) and hash(other.right) == hash(self.right)
 
 
 # immutable
@@ -283,7 +293,7 @@ class BoolVal(Constant, Formula):
         Constant.__init__(self, "bool", value)
 
 
-universeInterval = Interval(True, RealVal("0.0"), False, RealVal('inf'))
+universeInterval = Interval(True, RealVal("0.0"), RealVal('inf'), False)
 
 
 class Add(BinaryExpr):
@@ -526,14 +536,16 @@ class Forall(Proposition):
         return self._str
 
 
-# end of boolean_objects
-## hashing
-
-class UnaryTemporalFormula(UnaryFormula):
-    def __init__(self, local_time: Interval, global_time: Interval, child: Formula, hash_root: str, op_str: str):
-        UnaryFormula.__init__(self, child, hash_root, op_str)
+class Temporal:
+    def __init__(self, local_time: Interval, global_time: Interval):
         self.local_time = local_time
         self.global_time = global_time
+
+
+class UnaryTemporalFormula(UnaryFormula, Temporal):
+    def __init__(self, local_time: Interval, global_time: Interval, child: Formula, hash_root: str, op_str: str):
+        UnaryFormula.__init__(self, child, hash_root, op_str)
+        Temporal.__init__(self, local_time, global_time)
         # self._str = "({}_{}^{} {})".format(op_str, self.local_time, self.global_time, self.child)
         self._str = "({}{} {})".format(op_str, self.local_time, self.child)
         self._hash = hash((hash(self.local_time), hash(self.global_time), self._hash))
@@ -550,27 +562,16 @@ class GloballyFormula(UnaryTemporalFormula):
         UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globally", "[]")
 
 
-class GloballyT1Formula(UnaryTemporalFormula):
-    def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globallyT1", "[1]")
-
-
-class GloballyT2Formula(UnaryTemporalFormula):
-    def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "globallyT2", "[2]")
-
-
 class FinallyFormula(UnaryTemporalFormula):
     def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
         UnaryTemporalFormula.__init__(self, local_time, global_time, child, "finally", "<>")
 
 
-class BinaryTemporalFormula(BinaryFormula):
+class BinaryTemporalFormula(BinaryFormula, Temporal):
     def __init__(self, local_time: Interval, global_time: Interval,
                  left: Formula, right: Formula, hash_root: str, op_str: str):
         BinaryFormula.__init__(self, left, right, hash_root, op_str)
-        self.local_time = local_time
-        self.global_time = global_time
+        Temporal.__init__(self, local_time, global_time)
         self._str = "({} {}{} {})".format(self.left, op_str, self.local_time, self.right)
         self._hash = hash((hash(self.local_time), hash(self.global_time), self._hash))
 

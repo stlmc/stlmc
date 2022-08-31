@@ -1,6 +1,6 @@
 from functools import singledispatch
 
-from ....constraints.constraints import *
+from ...constraints.constraints import *
 
 
 @singledispatch

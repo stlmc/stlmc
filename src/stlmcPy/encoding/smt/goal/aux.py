@@ -1,9 +1,14 @@
 from typing import Set
 
-from ..robust.reduction import remove_binary
-from ..robust.relaxing import weakening
+from ...robust.reduction import remove_binary
+from ...robust.relaxing import weakening
 from ....constraints.aux.operations import reduce_not, sub_formula
 from ....constraints.constraints import *
+
+
+class ValidGloballyFormula(UnaryTemporalFormula):
+    def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
+        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "validGlobally", "[*]")
 
 
 def is_left_time(sub_formulas: Set[Formula]):
@@ -98,7 +103,7 @@ def calc_sub_formulas(formula: Formula) -> Set[Formula]:
 
     for f in sub_formulas:
         if isinstance(f, FinallyFormula):
-            local_time = Interval(True, RealVal("0.0"), f.local_time.left, False)
+            local_time = Interval(True, RealVal("0.0"), f.local_time.left, True)
             new_formulas.add(GloballyFormula(local_time, f.global_time, f.child))
     return sub_formulas.union(new_formulas)
 

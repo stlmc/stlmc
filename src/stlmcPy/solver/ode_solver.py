@@ -29,7 +29,7 @@ class CommonOdeStrategy:
 
 
 class CommonSolvingStrategy:
-    def __init__(self, converter: AbstractConverter):
+    def __init__(self, converter):
         self.converter = converter
 
     @abc.abstractmethod

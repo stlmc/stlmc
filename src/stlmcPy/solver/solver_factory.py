@@ -25,7 +25,7 @@ class SolverFactory:
             else:
                 return DrealSolver(config)
         elif self.solver_type == 'yices':
-            return YicesSolver()
+            return YicesSolver(config)
         elif self.solver_type == 'dreal':
             return DrealSolver(config)
         elif self.solver_type == 'hylaa':
@@ -44,4 +44,4 @@ class SolverFactory:
             return C2E2SolverUnsatCore()
         elif self.solver_type == 'ssmt':
             return SsmtSolver()
-        return YicesSolver()
+        return YicesSolver(config)

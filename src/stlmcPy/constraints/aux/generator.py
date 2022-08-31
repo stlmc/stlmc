@@ -61,7 +61,7 @@ def multinary_formula(children: List, ty: str):
 
 
 def unary_temporal_formula(local_t: Interval, global_t: Interval, child: Formula, ty: str):
-    type_dict = {"[]": GloballyFormula, "[1]": GloballyT1Formula, "[2]": GloballyT2Formula, "<>": FinallyFormula}
+    type_dict = {"[]": GloballyFormula, "<>": FinallyFormula}
     if ty not in type_dict:
         return None
     return type_dict[ty](local_t, global_t, child)

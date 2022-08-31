@@ -223,7 +223,7 @@ def symbolic_goal(f: Formula, i: int, d: int):
         return left == right
 
     if isinstance(f, FinallyFormula):
-        new_interval = Interval(True, RealVal("0.0"), f.local_time.left, False)
+        new_interval = Interval(True, RealVal("0.0"), f.local_time.left, True)
         left = chi(i, d, f)
         right = Or([And([t3(i, d, f), chi(d, d, f.child),
                          chi(i, d, GloballyFormula(new_interval, f.global_time, f.child)),

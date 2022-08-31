@@ -22,7 +22,7 @@ class ConfigVisitor(configVisitor):
 
         self.section_argument_dict["common"] = {
             "threshold", "bound", "time-bound",
-            "solver", "goal", "time-horizon"
+            "solver", "goal", "time-horizon", "encoding",
         }
         self.section_argument_dict["z3"] = {"logic"}
         self.section_argument_dict["yices"] = {"logic"}
@@ -30,6 +30,7 @@ class ConfigVisitor(configVisitor):
 
         self.type_check_dict["common"] = {
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
+            ("encoding", frozenset({"smt", "automata"})),
             ("solver", frozenset({"z3", "yices", "dreal"})), ("goal", "string"), ("time-horizon", "float")
         }
         self.type_check_dict["z3"] = {("logic", frozenset({"qf_nra", "qf_lra"}))}

@@ -9,7 +9,6 @@ from sympy import simplify, Equality
 
 from ..constraints.constraints import *
 from ..exception.exception import NotSupportedError
-from ..hybrid_automaton.converter import AbstractConverter
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
 from ..hybrid_automaton.utils import calc_initial_terminal_modes, vars_in_ha
 from ..solver.assignment import Assignment
@@ -21,7 +20,6 @@ from ..solver.ode_utils import expr_to_sympy, expr_to_sympy_inequality
 class C2E2:
     def __init__(self):
         self.result = None
-        self.logger = Logger()
 
     def _check_if_string_in_file(self, file_name, string_to_search):
         """ Check if any line in the file contains given string """
@@ -86,7 +84,7 @@ class C2E2:
         return asyncio.run(self._run(model_string))
 
 
-class C2E2Converter(AbstractConverter):
+class C2E2Converter:
     def solve(self):
         c2e2_core_solver = C2E2()
         c2e2_core_solver.run(self.convert_result)

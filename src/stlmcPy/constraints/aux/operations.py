@@ -19,6 +19,17 @@ class Substitution:
         return _substitution(formula, self._subst_dict)
 
 
+class VarSubstitution:
+    def __init__(self):
+        self._subst_dict: Dict[Variable, Expr] = dict()
+
+    def add(self, src: Variable, dst: Expr):
+        self._subst_dict[src] = dst
+
+    def substitute(self, formula: Formula):
+        return _substitution(formula, self._subst_dict)
+
+
 @singledispatch
 def _substitution(const: Union[Formula, Expr], substitution_dict):
     return const
@@ -825,3 +836,6 @@ def sub_formula(formula: Formula) -> Set[Formula]:
             continue
     return set_of_formulas
 
+
+def variable_equal(v1: Variable, v2: Variable):
+    return v1.type == v2.type and v1.id == v2.id

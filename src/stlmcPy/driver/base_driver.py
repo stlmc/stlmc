@@ -6,22 +6,15 @@ import time
 from ..algorithm.algorithm_factory import AlgorithmFactory
 from ..constraints.aux.operations import _substitution
 from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
-from ..encoding.monolithic import clause as monolithic_clause
-from ..encoding.static_learning import StaticLearner
 from ..exception.exception import *
 from ..objects.configuration import Configuration
-from ..objects.goal import Goal, optimize, reach_goal
-from ..objects.model import Model
+from ..objects.goal import reach_goal
 from ..objects.object_factory import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
-from ..solver.abstract_solver import SMTSolver
-from ..solver.dreal import DrealSolver
 from ..solver.solver_factory import SolverFactory
-from ..solver.z3 import translate
 from ..util.printer import *
-from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
 
 

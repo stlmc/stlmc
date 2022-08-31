@@ -1,273 +1,342 @@
 import abc
-from typing import *
 
-from ..objects.configuration import Configuration
-from sympy import simplify, StrictGreaterThan, GreaterThan, LessThan, StrictLessThan, Float
-
-from ..constraints.constraints import *
-from ..constraints.aux.operations import reduce_not, _substitution
-from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
-from ..hybrid_automaton.utils import vars_in_ha
-from ..solver.ode_utils import remove_index, expr_to_sympy, get_vars_from_set, find_index
-from ..solver.strategy import unit_split
-from ..util.printer import Printer
+from .flowstar import *
+from .spaceex import *
+from .hybrid_automaton import HybridAutomaton
 
 
-class HaGenerator:
+class Converter:
+    @abc.abstractmethod
+    def convert(self, ha: HybridAutomaton, time_bound: float):
+        pass
+
+    @abc.abstractmethod
+    def get_model_string(self) -> str:
+        pass
+
+    @abc.abstractmethod
+    def get_config_string(self) -> str:
+        pass
+
+    @abc.abstractmethod
+    def write(self, file_name: str):
+        pass
+
+
+class SpaceExConverter(Converter):
     def __init__(self):
-        self.s_f_list = None
-        self.max_bound = None
-        self.sigma = None
-        # s_f_list, max_bound, sigma, conf_dict
+        self.model_string = ""
+        self.config_string = ""
 
-    def _reset(self):
-        self.s_f_list = None
-        self.max_bound = None
-        self.sigma = None
+    def convert(self, ha: HybridAutomaton, time_bound: float):
+        # set variable declaration string
+        var_set = ha.get_vars()
 
-    def _check_pre_cond(self):
-        assert self.s_f_list is not None
-        assert self.max_bound is not None
-        assert self.sigma is not None
-
-    def set(self, s_f_list: list, max_bound, sigma: dict):
-        self.s_f_list = s_f_list
-        self.max_bound = max_bound
-        self.sigma = sigma
-
-    def generate(self):
-        def _instantiate(_old_s_f_list, _sigma):
-            _new_s_f_list = list()
-            for s in _old_s_f_list:
-                _new_s = set()
-                for c in s:
-                    _new_s.add(_substitution(c, _sigma))
-                _new_s_f_list.append(_new_s)
-            return _new_s_f_list
-
-        def _make_variable_ordering(_s_f_list):
-            _variable_ordering = list()
-            _var_set = get_vars_from_set(_s_f_list)
-            for _var in _var_set:
-                _var_without_index = remove_index(_var)
-                if _var_without_index.id not in _variable_ordering:
-                    _variable_ordering.append(_var_without_index.id)
-            # get its canonical form
-            return sorted(_variable_ordering)
-
-        def _make_bound_box(_var_ordering: list, _init_consts: set):
-            _sympy_bound_box = list()
-            for _ in _var_ordering:
-                _sympy_bound_box.append([None, None])
-
-            for t in _var_ordering:
-                if ("tau" in t) or ("timeStep" in t):
-                    index = find_index(_var_ordering, Real(t))
-                    _sympy_bound_box[index][0] = Float(0.0)
-                    _sympy_bound_box[index][1] = Float(0.0)
-
-            _sympy_init_constraints = list()
-
-            for c in _init_consts:
-                _sympy_init_constraints.append(simplify(expr_to_sympy(reduce_not(c))))
-
-            for expr in _sympy_init_constraints:
-                if isinstance(expr, GreaterThan) or isinstance(expr, StrictGreaterThan):
-                    # left is variable
-                    if expr.lhs.is_symbol:
-                        var_id = str(expr.lhs)
-                        index = find_index(_var_ordering, Real(var_id))
-                        if _sympy_bound_box[index][0] is None:
-                            _sympy_bound_box[index][0] = expr.rhs
-                        else:
-                            if str(simplify(_sympy_bound_box[index][0] <= expr.rhs)) == "True":
-                                _sympy_bound_box[index][0] = expr.rhs
-                    elif expr.rhs.is_symbol:
-                        var_id = str(expr.rhs)
-                        index = find_index(_var_ordering, Real(var_id))
-                        if _sympy_bound_box[index][1] is None:
-                            _sympy_bound_box[index][1] = expr.lhs
-                        else:
-                            if str(simplify(_sympy_bound_box[index][1] <= expr.lhs)) == "True":
-                                _sympy_bound_box[index][1] = expr.lhs
-
-                elif isinstance(expr, LessThan) or isinstance(expr, StrictLessThan):
-                    # left is variable
-                    if expr.lhs.is_symbol:
-                        var_id = str(expr.lhs)
-                        index = find_index(_var_ordering, Real(var_id))
-                        if _sympy_bound_box[index][1] is None:
-                            _sympy_bound_box[index][1] = expr.rhs
-                        else:
-                            if str(simplify(_sympy_bound_box[index][1] >= expr.rhs)) == "True":
-                                _sympy_bound_box[index][1] = expr.rhs
-                    elif expr.rhs.is_symbol:
-                        var_id = str(expr.rhs)
-                        index = find_index(_var_ordering, Real(var_id))
-                        if _sympy_bound_box[index][0] is None:
-                            _sympy_bound_box[index][0] = expr.lhs
-                        else:
-                            if str(simplify(_sympy_bound_box[index][0] >= expr.lhs)) == "True":
-                                _sympy_bound_box[index][0] = expr.lhs
-
-            _bound_box_list = list()
-            for e in _sympy_bound_box:
-                printer.print_debug("bound box list test : {}".format(e))
-                bound_box_left = -float("inf")
-                bound_box_right = float("inf")
-                if e[0] is not None:
-                    bound_box_left = float(e[0])
-                if e[1] is not None:
-                    bound_box_right = float(e[1])
-                _bound_box_list.append([bound_box_left, bound_box_right])
-
-            return _bound_box_list
-
-        self._check_pre_cond()
-        printer = Printer()
-        new_s_f_list = _instantiate(self.s_f_list, self.sigma)
-        variable_ordering = _make_variable_ordering(new_s_f_list)
-
-        s_forall = list()
-        s_integral = list()
-        s_0 = list()
-        s_tau = list()
-        s_reset = list()
-        s_guard = list()
-
-        for i in range(self.max_bound + 1):
-            s_forall_i, s_integral_i, s_0_i, s_tau_i, s_reset_i, s_guard_i = unit_split(self.s_f_list[i], i)
-            s_forall.append(s_forall_i)
-            s_integral.append(s_integral_i)
-            s_0.append(s_0_i)
-            s_tau.append(s_tau_i)
-            s_reset.append(s_reset_i)
-            s_guard.append(s_guard_i)
-
-        ha = HybridAutomaton('ha')
-        l_mode = list()
-
-        for i in range(self.max_bound + 1):
-            l_mode.append(
-                HaGenerator.make_mode(
-                    s_integral[i], s_forall[i], i, self.max_bound, ha, self.sigma
-                )
+        var_str_list = list()
+        map_str_list = list()
+        for _var in var_set:
+            var_str_list.append(
+                "\t\t<param name=\"{}\" type=\"{}\" local=\"false\" "
+                "d1=\"1\" d2=\"1\" dynamics=\"any\" />\n".format(_var.id, _var.type)
             )
 
-        l_mode.append(ha.new_mode("error"))
+            map_str_list.append(
+                "<map key=\"{}\">{}</map>\n".format(_var.id, _var.id)
+            )
 
-        for i in range(self.max_bound + 1):
-            HaGenerator.make_transition(self.s_f_list[i], i, ha, l_mode[i], l_mode[i + 1])
+        mode_str_list = list()
+        mode_id_dict = dict()
+        for uid, mode in enumerate(ha.modes):
+            mode_id_dict[mode] = uid
+            loc_str_begin = "<location id=\"{}\" name=\"mode_id_{}\" x=\"100\" y=\"100\" " \
+                            "width=\"50\" height=\"50\">\n".format(uid, uid)
 
-        HaGenerator.refine_ha(ha)
-        _, _, init_set, _, _, _ = unit_split(self.s_f_list[0], self.max_bound)
-        bound_box = _make_bound_box(variable_ordering, init_set)
-        self._reset()
-        return ha, bound_box, variable_ordering
-
-    @staticmethod
-    def make_mode(s_integral_i, s_forall_i, i, max_bound, ha: HybridAutomaton, sigma):
-        mode_i = ha.new_mode("mode" + str(i))
-        for integral in s_integral_i:
-            if integral in sigma:
-                dyns = sigma[integral].dynamics
-
-                # add tau dynamics
-                for j in range(1, i + 1):
-                    dyns.vars.append(Real("tau_" + str(j)))
-                    dyns.exps.append(RealVal("0"))
-
-                for j in range(i + 1, max_bound + 2):
-                    dyns.vars.append(Real("tau_" + str(j)))
-                    dyns.exps.append(RealVal("1"))
-
-                assert len(dyns.vars) == len(dyns.exps)
-                for k, v in enumerate(dyns.vars):
-                    mode_i.set_dynamic(v, dyns.exps[k])
-
-        for c in s_forall_i:
-            assert isinstance(c, Bool)
-            forall_const = _substitution(c, sigma)
-
-            assert isinstance(forall_const, Forall)
-            reduced_inv = reduce_not(forall_const.const)
-
-            mode_i.set_invariant(reduced_inv)
-
-        return mode_i
-
-    @staticmethod
-    def make_transition(s_psi_abs_i, i, ha: HybridAutomaton, mode_p, mode_n):
-        trans_i = ha.new_transition("trans{}".format(i), mode_p, mode_n)
-        s_forall_i, s_integral_i, s_0, s_tau_i, s_reset_i, s_guard_i = unit_split(s_psi_abs_i, i)
-
-        guard_tau_consts = s_guard_i.union(s_tau_i)
-
-        for const in guard_tau_consts:
-            trans_i.set_guard(const)
-
-        for const in s_reset_i:
-            trans_i.set_reset(const)
-
-    @staticmethod
-    def refine_ha(ha: HybridAutomaton):
-        def _make_subst_dict_and_var_set(_var_set: set):
-            _var_set_without_index = set()
-            _subst_dict = dict()
-            for _var in _var_set:
-                _var_without_index = remove_index(_var)
-                _var_set_without_index.add(_var_without_index)
-                _subst_dict[_var] = _var_without_index
-            return _subst_dict, _var_set_without_index
-
-        indexed_var_set = vars_in_ha(ha)
-        subst_dict, _ = _make_subst_dict_and_var_set(indexed_var_set)
-
-        for mode in ha.modes:
+            # flows
+            flow_str_list = list()
             for (var, exp) in mode.dynamics:
-                mode.remove_dynamic(var, exp)
-                new_var = _substitution(var, subst_dict)
-                new_exp = _substitution(exp, subst_dict)
+                flow_str_list.append("{}\' == {}".format(var, obj2se(exp, is_reset=False)))
+            flow_str = "<flow>{}</flow>\n".format("&amp;".join(flow_str_list))
 
-                mode.set_dynamic(new_var, new_exp)
-
+            # invs
+            inv_str_list = list()
             for inv in mode.invariant:
-                mode.remove_invariant(inv)
-                mode.set_invariant(_substitution(inv, subst_dict))
+                inv_str_list.append(obj2se(inv, is_reset=False))
+            inv_str = "<invariant>{}</invariant> \n".format("&amp;".join(inv_str_list))
+
+            loc_str_end = "</location>\n"
+
+            mode_str_list.append(loc_str_begin + inv_str + flow_str + loc_str_end)
+
+        # trans_label_str_list = list()
+        trans_str_list = list()
 
         for transition in ha.transitions:
-            guard_to_be_removed = set()
-            guard_to_be_updated = set()
+            # trans_label_str_list.append(
+            #    "\t\t<param name=\"{}\" type=\"label\" local=\"false\" />".format(transition.name)
+            # )
+
+            t_str_begin = "<transition source=\"{}\" target=\"{}\">\n".format(mode_id_dict[transition.src],
+                                                                              mode_id_dict[transition.trg])
+            # t_label = "<label>{}</label>\n".format(transition.name)
+            t_label_position = "<labelposition x=\"200\" y=\"200\" width=\"20\" height=\"10\"/>\n"
+
+            # guard
+            guard_str_list = list()
             for guard in transition.guard:
-                guard_to_be_removed.add(guard)
-                guard_to_be_updated.add(_substitution(guard, subst_dict))
-            transition.remove_guards(guard_to_be_removed)
-            for guard in guard_to_be_updated:
-                transition.set_guard(guard)
+                guard_str_list.append(obj2se(guard, is_reset=False))
+            guard_str = "<guard>{}</guard>\n".format("&amp;".join(guard_str_list))
 
-            reset_to_be_removed = set()
-            reset_to_be_updated = set()
+            # reset
+            reset_str_list = list()
             for reset in transition.reset:
-                reset_to_be_removed.add(reset)
-                reset_to_be_updated.add(_substitution(reset, subst_dict))
-            transition.remove_resets(reset_to_be_removed)
+                reset_str_list.append(obj2se(reset, is_reset=True))
+            reset_str = "<assignment>{}</assignment>\n".format("&amp;".join(reset_str_list))
 
-            for reset in reset_to_be_updated:
-                transition.set_reset(reset)
+            t_str_end = "</transition>\n"
+            trans_str_list.append(t_str_begin + guard_str + reset_str + t_label_position + t_str_end)
+
+        hybrid_automaton_component = '''<component id=\"{}\">
+                {}{}{}
+                </component>
+                '''.format(ha.name, "\n".join(var_str_list), "\n".join(mode_str_list), "\n".join(trans_str_list))
+
+        system_component = '''<component id=\"system\">
+                {}
+                <bind component=\"{}\" as=\"{}_system\" x=\"300\" y=\"200\">
+                {}
+                </bind>
+                </component>
+                '''.format("\n".join(var_str_list), ha.name, ha.name, "\n".join(map_str_list))
+
+        model_string = '''<?xml version="1.0" encoding="UTF-8"?>
+        <sspaceex xmlns="http://www-verimag.imag.fr/xml-namespaces/sspaceex" version="0.2" math="SpaceEx"> 
+        {}
+        {}
+        </sspaceex>
+                '''.format(hybrid_automaton_component, system_component)
+
+        initial_state_str = list()
+        for m in ha.initial_modes:
+            initial_state_str.append("loc({}_system) == mode_id_{}".format(ha.name, mode_id_dict[m]))
+
+        forbidden_state_str = list()
+        for m in ha.final_modes:
+            forbidden_state_str.append("loc({}_system) == mode_id_{}".format(ha.name, mode_id_dict[m]))
+
+        init_cond_list = list()
+        for init_cond in ha.initial_conditions:
+            init_cond_list.append(obj2se(init_cond, is_reset=False, is_initial=True))
+
+        assert len(var_set) > 0
+        random_var = var_set.copy().pop()
+
+        net_dict = dict()
+        net_dict["system"] = "\"system\""
+        net_dict["initially"] = "\"{} & ({})\"".format(" & ".join(init_cond_list), " || ".join(initial_state_str))
+        net_dict["forbidden"] = "\"{}\"".format(" || ".join(forbidden_state_str))
+        net_dict["scenario"] = "\"stc\""
+        net_dict["directions"] = "\"oct\""
+        net_dict["set-aggregation"] = "chull"
+        net_dict["flowpipe-tolerance"] = "1"
+        net_dict["flowpipe-tolerance-rel"] = "0"
+        net_dict["time-horizon"] = "{}".format(time_bound)
+        net_dict["iter-max"] = "-1"
+        net_dict["output-variables"] = "\"{}, {}\"".format(random_var, random_var)
+        net_dict["output-format"] = "\"INTV\""
+
+        conf_str_list = list()
+        for k in net_dict:
+            conf_str_list.append("{} = {}".format(k, net_dict[k]))
+
+        conf_string = "\n".join(conf_str_list)
+
+        #
+        self.model_string, self.config_string = model_string, conf_string
+
+    def get_model_string(self) -> str:
+        return self.model_string
+
+    def get_config_string(self) -> str:
+        return self.config_string
+
+    def write(self, file_name: str):
+        f = open("{}_se.xml".format(file_name), "w")
+        f.write(self.model_string)
+        f.close()
+
+        f = open("{}_se.cfg".format(file_name), "w")
+        f.write(self.config_string)
+        f.close()
 
 
-class AbstractConverter:
+class FlowStarConverter(Converter):
     def __init__(self):
-        self.convert_result = None
+        self.model_string = ""
+        self.config_string = ""
 
-    @abc.abstractmethod
-    def convert(self, ha: HybridAutomaton, setting: Dict, variable_ordering: List, bound_box: List):
-        pass
-
-    @abc.abstractmethod
-    def solve(self, config: Configuration):
-        pass
-
-    @abc.abstractmethod
     def preprocessing(self, ha: HybridAutomaton):
-        pass
+        # add unique, dummy init mode
+        # initials = ha.initial_modes.copy()
+        #
+        # start_mode = ha.add_mode("start")
+        # for init_mode in initials:
+        #     ha.add_transition("start_{}__id_{}".format(init_mode.name, id(init_mode)), start_mode, init_mode)
+
+        # ha.initial_modes.clear()
+        # ha.mark_initial(start_mode)
+
+        ff = Real("ff")
+        zero = RealVal("0")
+
+        # ff > 0
+        ff_inv = ff > zero
+
+        for mode in ha.modes:
+            mode.set_dynamic((ff, zero))
+            mode.set_invariant(ff_inv)
+
+    def convert(self, ha: HybridAutomaton, time_bound: float):
+        self.preprocessing(ha)
+
+        modes_str_list = list()
+        for mode in ha.modes:
+            mode_str = "{}__id_{}{{\n".format(mode.name, id(mode))
+            mode_str += "poly ode 1\n{"
+
+            for (v, e) in mode.dynamics:
+                mode_str += "{}\' = {}\n".format(v, str(obj2fs(e))).replace("**", "^")
+            mode_str += "}\n"
+
+            mode_str += "inv {\n"
+            for inv in mode.invariant:
+                mode_str += "{}\n".format(obj2fs(inv)) \
+                    .replace(">", ">=").replace("<", "<=") \
+                    .replace(">==", ">=").replace("<==", "<=").replace("**", "^")
+            mode_str += "}\n}"
+            modes_str_list.append(mode_str)
+        modes_str = "modes {{\n {}\n}}\n".format("\n".join(modes_str_list))
+
+        trans_str_list = list()
+        for transition in ha.transitions:
+            t_str = "{}__id_{} -> {}__id_{}\n".format(transition.src.name,
+                                                      id(transition.src),
+                                                      transition.trg.name,
+                                                      id(transition.trg))
+
+            t_str += "guard {\n"
+            for guard in transition.guard:
+                _str = "{}\n".format(obj2fs(guard))
+                t_str += _str.replace(">", ">=").replace("<", "<=").replace(">==", ">=").replace("<==", "<=").replace(
+                    "**", "^")
+            t_str += "}\n"
+
+            # reset
+            t_str += "reset {\n"
+            for le, ri in transition.reset:
+                # simplified_reset = expr2sympy(reset, is_reset=True)
+                # _str = ""
+                # if isinstance(simplified_reset, Equality):
+                #     _str = "{}\' := {}\n".format(simplified_reset.lhs, simplified_reset.rhs)
+                # else:
+                #     _str = "{}\n".format(simplified_reset)
+                assert isinstance(le, Variable)
+                _str = "{}\' := {}\n".format(le, obj2fs(ri))
+                t_str += _str.replace("**", "^").replace("True", "")
+            t_str += "}\n"
+
+            t_str += "parallelotope aggregation { }\n"
+            trans_str_list.append(t_str)
+
+        trans_str = "jumps {{\n {} \n }}\n".format("\n".join(trans_str_list))
+
+        var_set = ha.get_vars()
+        # add initial conditions for special variables: ff = 1, t = 0
+        ha.initial_conditions.add(Eq(Real("ff"), RealVal("1.0")))
+
+        bound_box = ha.get_bound_bound()
+
+        init_child_str = ""
+        for start_mode in ha.initial_modes:
+            init_child_str += "{}__id_{} {{".format(start_mode.name, id(start_mode))
+            for variable in var_set:
+                assert variable in bound_box
+                bb = bound_box[variable]
+                init_child_str += "{} in [{}, {}]\n".format(variable, bb.left, bb.right)
+            init_child_str += "}"
+
+        init_str = "init {{\n {}\n}}\n".format(init_child_str)
+
+        unsafe_str = ""
+        terminal_modes_str = list()
+        for final_mode in ha.final_modes:
+            terminal_modes_str.append("{}__id_{}".format(final_mode.name, id(final_mode)))
+
+        for m in ha.modes:
+            real_name = "{}__id_{}".format(m.name, id(m))
+            if real_name in terminal_modes_str:
+                unsafe_str += "{}{{}}\n".format(real_name)
+            else:
+                unsafe_str += "{}{{ ff  <= 0 }}\n".format(real_name)
+
+        var_str = "state var "
+        for i, v in enumerate(var_set):
+            if i == len(var_set) - 1:
+                var_str += v.id
+            else:
+                var_str += v.id + ", "
+
+        assert len(var_set) > 0
+        picked = var_set.pop()
+
+        # config
+        net_dict = dict()
+        net_dict["adaptive steps"] = "{min 0.01, max 0.05}"
+        net_dict["time"] = "15"
+        net_dict["remainder estimation"] = "1e-2"
+        net_dict["identity precondition"] = ""
+        net_dict["gnuplot octagon"] = "{},{} fixed orders 2".format(picked, picked)
+        net_dict["cutoff"] = "1e-12"
+        net_dict["precision"] = "53"
+        net_dict["no output"] = ""
+        net_dict["max jumps"] = "5"
+        net_dict["print on"] = ""
+
+        conf_str_list = list()
+        for k in net_dict:
+            conf_str_list.append("{} {}".format(k, net_dict[k]))
+
+        setting_str = "setting {{\n {} \n}}\n".format("\n".join(conf_str_list))
+
+        self.model_string = "hybrid reachability {{\n {}\n {}\n {}\n {}\n {}\n}}\n unsafe {{\n {} \n }}\n".format(
+            var_str,
+            setting_str,
+            modes_str,
+            trans_str,
+            init_str,
+            unsafe_str)
+
+    def get_model_string(self) -> str:
+        return self.model_string
+
+    def get_config_string(self) -> str:
+        return self.config_string
+
+    def write(self, file_name: str):
+        f = open("{}_fs.model".format(file_name), "w")
+        f.write(self.model_string)
+        f.close()
+
+
+class ConverterFactory:
+    SE = 10
+    FS = 11
+
+    @staticmethod
+    def generate_converter(converter_type: int) -> Converter:
+        assert ConverterFactory.SE <= converter_type <= ConverterFactory.FS
+        if converter_type == ConverterFactory.SE:
+            return SpaceExConverter()
+        elif converter_type == ConverterFactory.FS:
+            return FlowStarConverter()
+        else:
+            raise NotImplementedError("unsupported converter type")

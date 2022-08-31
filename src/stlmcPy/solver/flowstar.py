@@ -7,7 +7,6 @@ from sympy import simplify, Equality
 
 from ..constraints.constraints import *
 from ..exception.exception import *
-from ..hybrid_automaton.converter import AbstractConverter
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
 from ..hybrid_automaton.utils import calc_initial_terminal_modes, vars_in_ha
 from ..objects.configuration import Configuration
@@ -101,7 +100,7 @@ class FlowStar:
 
 
 
-class FlowStarConverter(AbstractConverter):
+class FlowStarConverter:
     def preprocessing(self, ha: HybridAutomaton):
         initial_modes, _ = calc_initial_terminal_modes(ha)
         # add unique init mode
