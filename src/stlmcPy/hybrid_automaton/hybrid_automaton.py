@@ -1,315 +1,204 @@
-from itertools import product
-from typing import Set, Tuple, Dict
+from typing import Set, Dict, Tuple
 
-from ..constraints.aux.operations import get_vars
 from ..constraints.constraints import *
 from ..exception.exception import NotSupportedError
 from ..util.printer import indented_str, p_string
 
-Constraint = Formula
-
 
 class HybridAutomaton:
-    def __init__(self, name: str):
-        self.name: str = name
+    def __init__(self):
         self.modes: Set[Mode] = set()
-        self.transitions: Set[Transition] = set()
+        self.init: Set[Formula] = set()
 
-        # for special purpose
-        self.final_modes: Set[Mode] = set()
-        self.initial_modes: Set[Mode] = set()
+    def add_init(self, *inits):
+        for init in inits:
+            self.init.add(init)
 
-        self.initial_conditions: Set[Constraint] = set()
-        self.final_conditions: Set[Constraint] = set()
+    def add_mode(self, mode: 'Mode'):
+        self.modes.add(mode)
 
-    def get_vars(self) -> Set[Variable]:
-        var_set = set()
-        for mode in self.modes:
-            for (var, exp) in mode.dynamics:
-                # add left hand variable
-                var_set.add(var)
+    def remove_mode(self, mode: 'Mode'):
+        self.modes.discard(mode)
+        jp_be_removed = set()
+        for m in mode.p_jumps:
+            jp_be_removed.update(mode.p_jumps[m])
 
-                # add variables in exp
-                exp_var_set = get_vars(exp)
-                var_set = var_set.union(exp_var_set)
+        for m in mode.s_jumps:
+            jp_be_removed.update(mode.s_jumps[m])
 
-            for inv in mode.invariant:
-                inv_var_set = get_vars(inv)
-                var_set = var_set.union(inv_var_set)
-
-        for transition in self.transitions:
-            for guard in transition.guard:
-                var_set = var_set.union(get_vars(guard))
-
-            for le, ri in transition.reset:
-                var_set.add(le)
-                var_set = var_set.union(get_vars(ri))
-
-        return var_set
+        for jp in jp_be_removed:
+            remove_jump(jp)
 
     def get_bound_bound(self) -> 'BoundBox':
         bound_box = BoundBox()
-        queue = self.initial_conditions.copy()
+        queue = self.init.copy()
         while len(queue) > 0:
             const = queue.pop()
             if isinstance(const, MultinaryFormula):
-                queue.update(set(const.children))
+                queue.update(const.children)
             elif isinstance(const, Proposition):
                 bound_box.put(const)
             else:
                 raise NotSupportedError("error in initial conditions")
         return bound_box
 
-    def add_mode(self, name: str) -> 'Mode':
-        mode = Mode(name, self)
-        self.modes.add(mode)
-        return mode
-
-    def remove_mode(self, mode: 'Mode'):
-        self.modes.discard(mode)
-
-    def mark_final(self, mode: 'Mode'):
-        assert mode in self.modes
-        self.final_modes.add(mode)
-
-    def mark_initial(self, mode: 'Mode'):
-        assert mode in self.modes
-        self.initial_modes.add(mode)
-
-    def add_transition(self, name: str, src: 'Mode', trg: 'Mode') -> 'Transition':
-        trans = Transition(name, src, trg, self)
-        self.transitions.add(trans)
-        src.outgoing.add(trans)
-        trg.incoming.add(trans)
-        return trans
-
     def __repr__(self):
-        exact_name = self.name
-        if len(exact_name) > 20:
-            exact_name = "{} ...".format(exact_name[:20])
+        init_m, final_m, total_m = set(), set(), set()
+        for m in self.modes:
+            total_m.add(str(m.id))
+            if m.is_initial():
+                init_m.add(str(m.id))
+            if m.is_final():
+                final_m.add(str(m.id))
 
-        init_str = "\n".join([indented_str(m.name, 4) for m in self.initial_modes])
-        final_str = "\n".join([indented_str(m.name, 4) for m in self.final_modes])
+        init_str = "\n".join([indented_str("mode {}".format(m_id), 4) for m_id in init_m])
+        final_str = "\n".join([indented_str("mode {}".format(m_id), 4) for m_id in final_m])
+        total_str = "\n".join([indented_str("mode {}".format(m_id), 4) for m_id in total_m])
 
-        ha_str = "hybrid automaton ({})\n".format(exact_name)
-        ha_str += indented_str("initial:\n{}\n".format(init_str), 2)
-        ha_str += indented_str("final:\n{}\n".format(final_str), 2)
+        ha_str = "hybrid automaton\n"
+        ha_str += indented_str("initial modes:\n{}\n".format(init_str), 2)
+        ha_str += indented_str("final modes:\n{}\n".format(final_str), 2)
+        ha_str += indented_str("total modes:\n{}\n".format(total_str), 2)
         ha_str += indented_str("Modes:\n", 2)
         ha_str += "\n".join([indented_str(str(m), 2) for m in self.modes])
+        ha_str += "\n"
 
-        for i, trans in enumerate(self.transitions):
-            if i == 0:
-                ha_str += "\n  Transitions:\n  {}\n".format(trans)
-            elif i < len(self.transitions) - 1:
-                ha_str += "  {}\n".format(trans)
-            else:
-                ha_str += "  {}".format(trans)
+        jp_s = set()
+        for mode in self.modes:
+            for m in mode.p_jumps:
+                jp_s.update(mode.p_jumps[m])
+
+            for m in mode.s_jumps:
+                jp_s.update(mode.s_jumps[m])
+
+        ha_str += indented_str("Transitions:\n", 2)
+
+        jp_str = set()
+        for jp in jp_s:
+            jp_str.add(indented_str(str(jp), 2))
+
+        ha_str += "\n".join(jp_str)
         return ha_str
 
 
 class Mode:
-    def __init__(self, name, ha: HybridAutomaton):
-        self.incoming: Set[Transition] = set()
-        self.outgoing: Set[Transition] = set()
+    def __init__(self, identifier: int):
+        self.succ: Set[Mode] = set()
+        self.pred: Set[Mode] = set()
 
-        self._dynamics: Set[Tuple[Variable, Expr]] = set()
-        self._invariant: Set[Constraint] = set()
+        self.p_jumps: Dict[Mode, Set[Transition]] = dict()
+        self.s_jumps: Dict[Mode, Set[Transition]] = dict()
 
-        self.ha = ha
-        self.name = name
+        self.dynamics: Dict[Variable, Expr] = dict()
+        self.invariant: Set[Formula] = set()
+        self.id = identifier
 
-    def __hash__(self):
-        return hash(id(self))
+        self._is_initial = False
+        self._is_final = False
 
-    def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+    def add_dynamic(self, *dyns):
+        for v, e in dyns:
+            if v in self.dynamics:
+                raise Exception("variable {} already has dynamics".format(v))
 
-    @property
-    def dynamics(self):
-        return self._dynamics
+            self.dynamics[v] = e
 
-    def set_dynamic(self, *dyns):
-        for dyn in dyns:
-            self._dynamics.add(dyn)
-
-    def remove_dynamic(self, *dyns):
-        for dyn in dyns:
-            self._dynamics.discard(dyn)
-
-    @property
-    def invariant(self) -> Set[Formula]:
-        return self._invariant
-
-    def set_invariant(self, *invariants):
+    def add_invariant(self, *invariants):
         for inv in invariants:
-            self._invariant.add(inv)
+            self.invariant.add(inv)
 
-    def remove_invariant(self, *invariants):
-        for inv in invariants:
-            self._invariant.discard(inv)
+    def set_as_final(self):
+        self._is_final = True
 
-    def belongs_to(self) -> HybridAutomaton:
-        return self.ha
+    def set_as_non_final(self):
+        self._is_final = False
+
+    def set_as_initial(self):
+        self._is_initial = True
+
+    def set_as_non_initial(self):
+        self._is_initial = False
+
+    def is_final(self):
+        return self._is_final
+
+    def is_initial(self):
+        return self._is_initial
 
     def __repr__(self):
-        if self.ha is None:
-            ha_name = "n/a"
-        else:
-            ha_name = self.ha.name
-
-        if len(ha_name) > 20:
-            simple_ha = "{} ...".format(ha_name[:20])
-
-        mode_name = self.name
-        if len(mode_name) > 20:
-            mode_name = "{} ...".format(mode_name[:20])
-
-        name = indented_str("name: {}, ha: {}".format(mode_name, ha_name), 4)
-        dyn_body = "\n".join([indented_str("{} = {}".format(v, e), 6) for v, e in self.dynamics])
+        dyn_body = "\n".join([indented_str("{} = {}".format(v, self.dynamics[v]), 6) for v in self.dynamics])
         dyn_str = indented_str("dyn:\n{}".format(dyn_body), 4)
 
         inv_body = "\n".join([p_string(inv, 6) for inv in self.invariant])
         inv_str = indented_str("inv:\n{}".format(inv_body), 4)
 
-        return "( mode \n{}\n{}\n{}\n  )".format(name, dyn_str, inv_str)
+        return "( mode {}\n{}\n{}\n  )".format(self.id, dyn_str, inv_str)
 
 
 class Transition:
-    def __init__(self, name: str, src: Mode, trg: Mode, ha: HybridAutomaton):
-        self.ha = ha
-        self.name = name
-
-        self.src = src
-        self.trg = trg
-
-        self.guard: Set[Constraint] = set()
+    def __init__(self, src: Mode, trg: Mode):
+        self.src, self.trg = src, trg
+        self.guard: Set[Formula] = set()
         self.reset: Set[Tuple[Variable, Formula]] = set()
 
-    def set_guard(self, *guards):
+    def add_guard(self, *guards):
         for guard in guards:
             self.guard.add(guard)
 
-    def remove_guard(self, *guards):
-        for guard in guards:
-            self.guard.discard(guard)
-
-    def set_reset(self, *resets):
-        for reset in resets:
-            self.reset.add(reset)
-
-    def remove_reset(self, *resets):
-        for reset in resets:
-            self.reset.discard(reset)
-
-    def belongs_to(self) -> HybridAutomaton:
-        return self.ha
+    def add_reset(self, *resets):
+        for v, f in resets:
+            self.reset.add((v, f))
 
     def __hash__(self):
-        return hash(id(self))
+        return hash((self.src, self.trg, frozenset(self.guard), frozenset(self.reset)))
 
     def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+        return hash(self) == hash(other)
 
     def __repr__(self):
-        ha_name = self.ha.name
-        if len(ha_name) > 20:
-            ha_name = "{} ...".format(ha_name[:20])
-
-        trans_name = self.name
-        if len(trans_name) > 20:
-            trans_name = "{} ...".format(trans_name[:20])
-
-        name = indented_str("name: {}, ha: {}".format(trans_name, ha_name), 4)
         guard_body = "\n".join([p_string(g, 6) for g in self.guard])
         guard_str = indented_str("guard:\n{}".format(guard_body), 4)
 
         reset_body = "\n".join([indented_str("{} := {}".format(v, f), 6) for v, f in self.reset])
         reset_str = indented_str("reset:\n{}".format(reset_body), 4)
 
-        jp_body = indented_str("{} -> {}".format(self.src.name, self.trg.name), 4)
+        jp_body = indented_str("{} -> {}".format(self.src.id, self.trg.id), 4)
 
-        return "( jump \n{}\n{}\n{}\n{}\n  )".format(name, guard_str, reset_str, jp_body)
+        return "( jump \n{}\n{}\n{}\n  )".format(guard_str, reset_str, jp_body)
 
 
-def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
-    ha = HybridAutomaton("composed_ha_{}_{}".format(ha1.name, ha2.name))
+def make_jump(mode1: Mode, mode2: Mode) -> Transition:
+    mode1.succ.add(mode2)
+    mode2.pred.add(mode1)
 
-    ha1vars = ha1.get_vars()
-    ha2vars = ha2.get_vars()
-    v_s = ha1vars.union(ha2vars)
+    jp = Transition(mode1, mode2)
 
-    ha.initial_conditions.update(ha1.initial_conditions)
-    ha.initial_conditions.update(ha2.initial_conditions)
+    if mode1 in mode1.s_jumps:
+        mode1.s_jumps[mode2].add(jp)
+    else:
+        mode1.s_jumps[mode2] = {jp}
 
-    candidate_modes: Set[Tuple[Mode, Mode]] = set(product(ha1.modes, ha2.modes))
-    uid_dict: Dict[Mode, int] = dict()
-    mode_dict: Dict[Tuple[Mode, Mode], Mode] = dict()
+    if mode2 in mode2.p_jumps:
+        mode2.p_jumps[mode1].add(jp)
+    else:
+        mode2.p_jumps[mode1] = {jp}
 
-    for uid, (mode1, mode2) in enumerate(candidate_modes):
-        is_mode1_initial = mode1 in ha1.initial_modes
-        is_mode2_initial = mode2 in ha2.initial_modes
+    return jp
 
-        is_mode1_final = mode1 in ha1.final_modes
-        is_mode2_final = mode2 in ha2.final_modes
 
-        mode = ha.add_mode("m_{}".format(uid))
-        mode_dict[(mode1, mode2)] = mode
-        uid_dict[mode] = uid
+def remove_jump(jump: Transition):
+    mode1, mode2 = jump.src, jump.trg
 
-        mode.set_dynamic(*mode1.dynamics)
-        mode.set_dynamic(*mode2.dynamics)
+    mode1.succ.discard(mode2)
+    mode2.pred.discard(mode1)
 
-        mode.set_invariant(*mode1.invariant)
-        mode.set_invariant(*mode2.invariant)
+    assert mode2 in mode1.s_jumps
+    assert mode1 in mode2.p_jumps
 
-        if is_mode1_initial and is_mode2_initial:
-            ha.mark_initial(mode)
+    mode1.s_jumps[mode2].discard(jump)
+    mode2.p_jumps[mode1].discard(jump)
 
-        if is_mode1_final and is_mode2_final:
-            ha.mark_final(mode)
-
-    for pair in candidate_modes:
-        (mode1, mode2) = pair
-        mode_src = mode_dict[pair]
-
-        trans1_exist = len(mode1.outgoing) > 0
-        trans2_exist = len(mode2.outgoing) > 0
-
-        if trans1_exist:
-            for trans1 in mode1.outgoing:
-                trg_key = (trans1.trg, mode2)
-                assert trg_key in mode_dict
-                mode_trg = mode_dict[trg_key]
-
-                transition = ha.add_transition("t_{}_{}".format(id(mode_src), id(mode_trg)), mode_src, mode_trg)
-
-                transition.set_guard(*trans1.guard)
-                transition.set_reset(*[(v, v) for v in v_s])
-                transition.set_reset(*trans1.reset)
-
-        if trans2_exist:
-            for trans2 in mode2.outgoing:
-                trg_key = (mode1, trans2.trg)
-                assert trg_key in mode_dict
-                mode_trg = mode_dict[trg_key]
-
-                transition = ha.add_transition("t_{}_{}".format(id(mode_src), id(mode_trg)), mode_src, mode_trg)
-                for g in trans2.guard:
-                    transition.set_guard(g)
-
-                for r in trans2.reset:
-                    transition.set_reset(r)
-
-                # set identity reset
-                for v in ha1vars.difference(ha2vars):
-                    transition.set_reset((v, v))
-
-    # assert no redundant mode exists
-    for mode in ha.modes.copy():
-        if len(mode.incoming) == 0 and len(mode.outgoing) == 0:
-            assert mode not in ha.initial_modes or mode not in ha.final_modes
-
-    return ha
+    del jump
 
 
 class BoundBox:
@@ -390,7 +279,7 @@ class BoundBox:
 
         raise NotSupportedError("cannot make an interval")
 
-    def put(self, const: Constraint):
+    def put(self, const: Formula):
         # check if correct
         op_type = BoundBox.err
         # get type first

@@ -10,7 +10,6 @@ from sympy import simplify, Equality
 from ..constraints.constraints import *
 from ..exception.exception import NotSupportedError
 from ..hybrid_automaton.hybrid_automaton import HybridAutomaton
-from ..hybrid_automaton.utils import calc_initial_terminal_modes, vars_in_ha
 from ..solver.assignment import Assignment
 from ..solver.ode_solver import CommonOdeSolver, NaiveStrategyManager, ReductionStrategyManager, \
     UnsatCoreStrategyManager, NormalSolvingStrategy

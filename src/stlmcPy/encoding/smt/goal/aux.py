@@ -6,11 +6,6 @@ from ....constraints.aux.operations import reduce_not, sub_formula
 from ....constraints.constraints import *
 
 
-class ValidGloballyFormula(UnaryTemporalFormula):
-    def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "validGlobally", "[*]")
-
-
 def is_left_time(sub_formulas: Set[Formula]):
     for f in sub_formulas:
         if isinstance(f, UntilFormula) or isinstance(f, FinallyFormula):

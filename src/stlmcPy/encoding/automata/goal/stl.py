@@ -1,19 +1,18 @@
-import functools
 import time
-from typing import Any
-
-from z3 import z3
 
 from .aux import *
+from .graph import *
 from .optimizer import PropositionOptimizer
 from .subsumption import ForwardSubsumption, BackwardSubsumption, PathSubsumption
 from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
+from ....hybrid_automaton.utils import make_jump
 from ....objects.goal import Goal
-from ....objects.graph import *
 from ....util.printer import indented_str
-import xml.etree.ElementTree as ElemT
+
+
+# import xml.etree.ElementTree as ElemT
 
 
 class StlGoal(Goal):
@@ -67,9 +66,12 @@ class StlGoal(Goal):
         print(self._time_order)
 
         #
-        self._optimizer = PropositionOptimizer(self.tau_subst, self._hash_dict, self._interval_hash_dict)
-        self._graph_generator = GraphGenerator(self._hash_dict, self._interval_hash_dict, self._optimizer)
-        self._extend_cache: Dict[Label, LabelSet] = dict()
+        self._optimizer = PropositionOptimizer(self.tau_subst)
+        self._graph_generator = GraphGenerator(self._optimizer)
+
+        self._extend_cache1: Dict[LabelInfo, Set[Labels]] = dict()
+        self._extend_cache2: Dict[LabelInfo, Set[Labels]] = dict()
+
         self._forward_subsumption = ForwardSubsumption()
         self._backward_subsumption = BackwardSubsumption()
         self._path_subsumption = PathSubsumption(self._forward_subsumption.get_relation(),
@@ -81,32 +83,24 @@ class StlGoal(Goal):
         print(self.st_formula)
 
         alg_s_t = time.time()
-        init_labels = init(self.st_formula)
+        init_labels = init(frozenset({Chi(1, 1, self.st_formula)}), self._extend_cache1)
+        init_labels = self._apply_reduction(init_labels)
+
         # make initial nodes
         for label in init_labels:
-            # TODO
-            if self._optimizer.check_contradiction(label):
-                continue
-
-            self._optimizer.calc_label_reduction(label)
             self._graph_generator.make_node(label, 1)
 
-        wait_queue: LabelSet = init_labels
-        next_queue: LabelSet = set()
+        wait_queue: Set[Labels] = init_labels
+        next_queue: Set[Labels] = set()
         # wait_queue = [init_labels]
         # next_queue = list()
 
         total_label = 0
         total_nodes = 0
-        depth, final_depth = 1, 2 * bound + 2
+        depth, final_depth = 1, bound + 1
         while True:
             if depth > final_depth:
                 break
-
-            # if depth == 5:
-            #     print(len(wait_queue))
-            #     for ll in wait_queue:
-            #         print(ll)
 
             s = time.time()
             num_labels = len(wait_queue)
@@ -117,29 +111,18 @@ class StlGoal(Goal):
                 if self._optimizer.check_contradiction(label):
                     continue
 
-                if label in self._extend_cache:
-                    n = self._extend_cache[label]
-                else:
-                    n = expand(label, self._hash_dict)
-                    # TODO
-                    for la in n.copy():
-                        if self._optimizer.check_contradiction(la):
-                            n.discard(la)
-
-                    self._extend_cache[label] = n
+                n = expand(label, self._extend_cache1, self._extend_cache2)
+                n = self._apply_reduction(n)
 
                 next_queue.update(n)
-                # print("label : {} --> {}".format(label, n))
+                # next_queue = canonicalize(next_queue)
+                # print_extend(label, n)
 
                 if final_depth > depth:
                     self._graph_generator.make_posts(label, n, depth + 1)
 
-                # calculate label reduction
-                self._optimizer.calc_label_reduction(label)
-                self._optimizer.calc_label_reduction(*next_queue)
-
             e = time.time()
-            wait_queue = next_queue.copy()
+            wait_queue = self._apply_reduction(next_queue)
             next_queue.clear()
             cur_nodes = len(self._graph_generator.graph.get_nodes_at(depth))
 
@@ -163,18 +146,17 @@ class StlGoal(Goal):
             depth += 1
 
         alg_e_t = time.time()
-        print("wow")
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
 
         graph = self._graph_generator.graph
-        print_graph_info(graph)
+        # print_graph_info(graph)
 
         print("after remove unreachable")
         s_t = time.time()
         self._graph_generator.remove_unreachable()
         e_t = time.time()
         print("unreach remove : {:.3f}s".format(e_t - s_t))
-        print_graph_info(graph)
+        # print_graph_info(graph)
 
         print("reduce proposition")
         self._graph_generator.apply_prop_reduction()
@@ -197,7 +179,11 @@ class StlGoal(Goal):
         print("subsumption")
         print_graph_info(graph)
 
-        print(graph)
+        # print_graph_info(graph)
+        # for node in graph.get_nodes_at(1):
+        #     print(node)
+
+        # print(graph)
         # test_graph = Graph()
         # case 1)
         # node1 = Node(1, 1)
@@ -243,50 +229,54 @@ class StlGoal(Goal):
         # self._graph_generator.backward_equiv()
         # print_graph_info(graph)
 
-        return _graph2ha(graph, self.tau_subst, self._hash_dict, self._interval_hash_dict)
+        # print(graph)
+        # print_graph_info(graph)
+        return _graph2ha(graph, self.tau_subst)
+
+    def _apply_reduction(self, labels_set: Set[Labels]):
+        n_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x), labels_set))
+        self._optimizer.calc_label_reduction(*n_labels)
+        return canonicalize(n_labels)
 
 
 class GraphGenerator:
-    def __init__(self, hash_dict1: Dict[hash, Formula], hash_dict2: Dict[hash, Interval],
-                 prop_optimizer: PropositionOptimizer):
+    def __init__(self, prop_optimizer: PropositionOptimizer):
         self.graph = Graph()
-        self.node_id_dict: Dict[Label, Node] = dict()
-        self._hash_dict1 = hash_dict1
-        self._hash_dict2 = hash_dict2
+        self.node_id_dict: Dict[Labels, Node] = dict()
         self._optimizer = prop_optimizer
 
     def clear(self):
         self.graph = Graph()
         self.node_id_dict = dict()
 
-    def make_posts(self, parent_label: Label, post_labels: LabelSet, depth: int):
+    def make_posts(self, parent_labels: Labels, post_labels: Set[Labels], depth: int):
         post_nodes = set()
         for post in post_labels:
             # do not make node for empty label
-            if not is_empty_label(post):
+            if not is_empty_labels(post):
                 post_nodes.add(self.make_node(post, depth))
 
         # if parent
-        if parent_label in self.node_id_dict:
-            parent = self.node_id_dict[parent_label]
+        if parent_labels in self.node_id_dict:
+            parent = self.node_id_dict[parent_labels]
 
             for node in post_nodes:
                 connect(parent, node)
 
-    def make_node(self, label: Label, depth: int):
+    def make_node(self, labels: Labels, depth: int):
         # do not make node for empty label
-        if is_empty_label(label):
+        if is_empty_labels(labels):
             return
 
         # if node is already exists
-        if label in self.node_id_dict:
-            return self.node_id_dict[label]
+        if labels in self.node_id_dict:
+            return self.node_id_dict[labels]
 
-        node = Node(hash(label), depth)
-        node.ap, node.non_ap = split_label(label, self._hash_dict1)
+        node = Node(hash(labels), depth)
+        node.non_intermediate, node.intermediate = split_label(labels)
 
         self.graph.add_node(node)
-        self.node_id_dict[label] = node
+        self.node_id_dict[labels] = node
 
         if _is_final_node(node):
             node.set_as_final()
@@ -310,12 +300,13 @@ class GraphGenerator:
 
     def apply_prop_reduction(self):
         for node in self.graph.nodes:
-            label = frozenset(node.ap.union(node.non_ap))
-            node.ap, node.non_ap = self._optimizer.reduce_label(label)
+            labels = frozenset(node.non_intermediate.union(node.intermediate))
+            non_intermediate, intermediate = self._optimizer.reduce_label(labels)
+            node.non_intermediate, node.intermediate = frozenset(non_intermediate), frozenset(intermediate)
 
 
-def is_empty_label(label: Label):
-    return len(label) == 0
+def is_empty_labels(labels: Labels):
+    return len(labels) == 0
 
 
 def _find_reachable(graph: Graph) -> Set[Node]:
@@ -341,7 +332,7 @@ def _find_reachable(graph: Graph) -> Set[Node]:
 
 
 def _is_final_node(node: Node):
-    return len(node.non_ap) == 0
+    return len(node.intermediate) == 0
 
 
 def _is_initial_node(node: Node):
@@ -356,114 +347,108 @@ def print_graph_info(graph: Graph):
         #     print(indented_str("node{} --> pred: {}, succ: {}".format(index, len(node.pred), len(node.succ)), 2))
 
 
-def _graph2ha(graph: Graph, tau_subst: VarSubstitution,
-              hash_dict1: Dict[hash, Formula], hash_dict2: Dict[hash, Interval]):
-    automata = HybridAutomaton("stl_ha_{}".format(id(graph)))
+def print_extend(label: Labels, labels_set: Set[Labels]):
+    print("extend label")
+    _print_labels(label, 2)
+    print()
+    print(indented_str("------>", 2))
+    print()
+    _print_labels_set(labels_set)
+
+
+def _print_labels_set(labels_set: Set[Labels]):
+    for labels in labels_set:
+        print(indented_str("(", 2))
+        _print_labels(labels, 4)
+        print(indented_str(")", 2))
+    print("========")
+
+
+def _print_labels(labels: Labels, indent: int):
+    for label in labels:
+        print(indented_str(str(label), indent))
+
+
+def _graph2ha(graph: Graph, tau_subst: VarSubstitution):
+    automata = HybridAutomaton()
     max_depth = graph.get_max_depth()
 
-    init_mode = automata.add_mode("init_mode")
-    init_time_dyns = _init_time_dynamics(max_depth)
-    init_mode.set_dynamic(*init_time_dyns)
-    automata.mark_initial(init_mode)
+    init_mode = Mode(0)
+    # automata.add_mode("init_mode")
+    zero_time_dyns = _zero_time_dynamics(max_depth)
+    init_mode.add_dynamic(*zero_time_dyns)
+    init_mode.set_as_initial()
 
     node2mode_dict: Dict[Node, Mode] = dict()
-    time_dyns = _time_dynamics(max_depth)
+    time_dyns_dict = _time_dynamics(max_depth)
     init_cond = _time_init_cond(max_depth)
+    time_rsts = _time_resets(max_depth)
 
-    automata.initial_conditions.update(init_cond)
+    automata.add_init(*init_cond)
 
-    cur_depth = 2
-    while True:
-        if cur_depth > max_depth:
-            break
+    time_guard: Dict[Mode, Set[Formula]] = dict()
 
-        nodes = graph.get_nodes_at(cur_depth)
-        for index, node in enumerate(nodes):
-            mode = automata.add_mode("mode@{}${}".format(cur_depth, index))
-            mode.set_invariant(*translate(node.ap, tau_subst, hash_dict1, hash_dict2))
-            mode.set_dynamic(*time_dyns)
-            node2mode_dict[node] = mode
+    for index, node in enumerate(graph.nodes):
+        mode = Mode(index + 1)
+        mode.add_dynamic(*time_dyns_dict[node.depth])
 
-            if node.is_initial():
-                automata.mark_initial(mode)
+        if node.is_final():
+            mode.set_as_final()
 
-            if node.is_final():
-                automata.mark_final(mode)
-                _add_final_time_inv(mode, cur_depth, tau_subst)
+        if node.is_initial():
+            mode.set_as_initial()
 
-        cur_depth += 2
-
-    cur_depth = 1
-    while True:
-        if cur_depth > max_depth:
-            break
-
-        time_rsts = _time_resets(cur_depth, max_depth)
-
-        final_mode = automata.add_mode("f_mode@{}".format(cur_depth + 1))
-        _add_final_time_inv(final_mode, cur_depth + 1, tau_subst)
-        nodes = graph.get_nodes_at(cur_depth)
-
-        for index1, node in enumerate(nodes):
-            guards = translate(node.ap, tau_subst, hash_dict1, hash_dict2)
-            if node.is_initial() and node.is_final():
-                jp = automata.add_transition("jp@{}${}".format(cur_depth, index1), init_mode, final_mode)
-                jp.set_guard(*guards)
-                jp.set_reset(*time_rsts)
-            elif node.is_initial():
-                for index2, s in enumerate(node.succ):
-                    s_mode = node2mode_dict[s]
-                    jp = automata.add_transition("jp@{}${}_{}".format(cur_depth, index1, index2), init_mode, s_mode)
-                    jp.set_guard(*guards)
-                    jp.set_reset(*time_rsts)
-            elif node.is_final():
-                for index2, p in enumerate(node.pred):
-                    p_mode = node2mode_dict[p]
-                    jp = automata.add_transition("jp@{}${}_{}".format(cur_depth, index1, index2), p_mode, final_mode)
-                    jp.set_guard(*guards)
-                    jp.set_reset(*time_rsts)
+        # set inv
+        for label in node.non_intermediate:
+            if is_timed_label(label):
+                t_f = tau_subst.substitute(translate(label))
+                if mode in time_guard:
+                    time_guard[mode].add(t_f)
+                else:
+                    time_guard[mode] = {t_f}
             else:
-                for index2, (p, s) in enumerate(set(product(node.pred, node.succ))):
-                    p_mode, s_mode = node2mode_dict[p], node2mode_dict[s]
-                    jp = automata.add_transition("jp@{}${}_{}".format(cur_depth, index1, index2), p_mode, s_mode)
-                    jp.set_guard(*guards)
-                    jp.set_reset(*time_rsts)
+                mode.add_invariant(translate(label))
 
-        if len(final_mode.incoming) == 0 and len(final_mode.outgoing) == 0:
-            automata.remove_mode(final_mode)
+        automata.add_mode(mode)
+        node2mode_dict[node] = mode
+
+    for node in graph.nodes:
+        mode = node2mode_dict[node]
+
+        for p_node in node.pred:
+            p_mode = node2mode_dict[p_node]
+            jp = make_jump(p_mode, mode)
+            jp.add_reset(*time_rsts)
+
+        for s_node in node.succ:
+            s_mode = node2mode_dict[s_node]
+            jp = make_jump(mode, s_mode)
+            jp.add_reset(*time_rsts)
+
+    # print(time_guard)
+    # move time guard to the next jump
+    empty_final_mode = Mode(-10)
+    empty_final_mode.add_dynamic(*zero_time_dyns)
+    empty_final_mode.set_as_final()
+    automata.add_mode(empty_final_mode)
+
+    for mode in time_guard:
+        t_fs = time_guard[mode]
+        if mode.is_final():
+            mode.set_as_non_final()
+            jp = make_jump(mode, empty_final_mode)
+            jp.add_guard(*t_fs)
         else:
-            automata.mark_final(final_mode)
-
-        cur_depth += 2
+            for m in mode.s_jumps:
+                s_jps = mode.s_jumps[m]
+                for jp in s_jps:
+                    jp.add_guard(*t_fs)
 
     return automata
 
 
-# def _time_dynamics(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
-#     time_dict: Dict[Real, Expr] = dict()
-#     time_vars: List[Real] = _time_variables(max_depth)
-#     time_dyns: Set[Tuple[Real, Expr]] = {(Real("clk"), RealVal("1.0"))}
-#
-#     zero, one = RealVal("0.0"), RealVal("1.0")
-#     inf, sup = symbolic_inf(cur_depth), symbolic_sup(cur_depth)
-#     for time_v in time_vars:
-#         if variable_equal(inf, time_v):
-#             time_dict[time_v] = one
-#         else:
-#             time_dict[time_v] = zero
-#
-#         if variable_equal(sup, time_v):
-#             time_dict[time_v] = one
-#         else:
-#             time_dict[time_v] = zero
-#
-#     for v in time_dict:
-#         time_dyns.add((v, time_dict[v]))
-#
-#     return time_dyns
-
 def _time_init_cond(max_depth: int) -> Set[Formula]:
-    s = {_global_clk() == RealVal("0.0")}
+    s = set()
     time_vars: List[Real] = _time_variables(max_depth)
     zero = RealVal("0.0")
     for v in time_vars:
@@ -485,9 +470,40 @@ def _time_ordering(max_depth: int) -> And:
     return And(time_order)
 
 
-def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
+def _time_dynamics(max_depth: int) -> Dict[int, Set[Tuple[Real, Expr]]]:
+    time_dict: Dict[int, Set[Tuple[Real, Expr]]] = dict()
+    cur_depth = 1
+    while max_depth >= cur_depth:
+        time_dict[cur_depth] = _time_dynamics_at(cur_depth, max_depth)
+        cur_depth += 1
+
+    return time_dict
+
+
+def _time_dynamics_at(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
+    time_dyns: Set[Tuple[Real, Expr]] = set()
+    zero, one = RealVal("0.0"), RealVal("1.0")
+
+    depth = 1
+    while max_depth >= depth:
+        s_v, e_v = partition_inf(depth), partition_sup(depth)
+
+        if depth < cur_depth:
+            time_dyns.update({(s_v, zero), (e_v, zero)})
+
+        elif depth == cur_depth:
+            time_dyns.update({(s_v, zero), (e_v, one)})
+        else:
+            time_dyns.update({(s_v, one), (e_v, one)})
+
+        depth += 1
+
+    return time_dyns
+
+
+def _zero_time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
     time_vars: List[Real] = _time_variables(max_depth)
-    time_dyns: Set[Tuple[Real, Expr]] = {(_global_clk(), RealVal("1.0"))}
+    time_dyns: Set[Tuple[Real, Expr]] = set()
 
     zero = RealVal("0.0")
     for v in time_vars:
@@ -496,31 +512,12 @@ def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
     return time_dyns
 
 
-def _init_time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
+def _time_resets(max_depth: int) -> Set[Tuple[Variable, Expr]]:
     time_vars: List[Real] = _time_variables(max_depth)
-    time_dyns: Set[Tuple[Real, Expr]] = {(_global_clk(), RealVal("0.0"))}
-
-    zero = RealVal("0.0")
-    for v in time_vars:
-        time_dyns.add((v, zero))
-
-    return time_dyns
-
-
-def _time_resets(cur_depth: int, max_depth: int) -> Set[Tuple[Variable, Expr]]:
-    time_vars: List[Real] = _time_variables(max_depth)
-    time_dict: Dict[Variable, Expr] = dict()
     time_rsts: Set[Tuple[Variable, Expr]] = set()
 
-    inf = symbolic_inf(cur_depth)
     for time_v in time_vars:
-        if variable_equal(inf, time_v):
-            time_dict[time_v] = _global_clk()
-        else:
-            time_dict[time_v] = time_v
-
-    for v in time_dict:
-        time_rsts.add((v, time_dict[v]))
+        time_rsts.add((time_v, time_v))
 
     return time_rsts
 
@@ -531,16 +528,10 @@ def _time_variables(max_depth: int) -> List[Real]:
     while True:
         if cur_depth > max_depth:
             break
-        time_vars.update({symbolic_inf(cur_depth), symbolic_sup(cur_depth)})
+        time_vars.update({partition_inf(cur_depth), partition_sup(cur_depth)})
 
         cur_depth += 1
 
     return sorted(time_vars, key=lambda x: x.id)
 
 
-def _add_final_time_inv(mode: Mode, cur_depth: int, tau_subst: VarSubstitution):
-    mode.set_invariant(tau_subst.substitute(symbolic_inf(cur_depth) == tau_max()))
-
-
-def _global_clk():
-    return Real("clk")

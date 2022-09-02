@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from ....constraints.aux.generator import variable
-from ....constraints.aux.operations import Substitution, clause
+from ....constraints.aux.operations import Substitution, clause, get_vars
 from ....hybrid_automaton.hybrid_automaton import *
 from ....objects.model import Model
 
@@ -32,7 +32,7 @@ class STLmcModel(Model):
         self._cache = dict()
 
     def encode(self):
-        ha = HybridAutomaton("model_ha")
+        ha = HybridAutomaton()
 
         # make init
         init_m_c = self._make_init(ha)
@@ -69,7 +69,7 @@ class STLmcModel(Model):
         init_cont_c = set(filter(lambda c: m_v not in get_vars(c), init_consts))
         init_mode_c = set(filter(lambda c: m_v in get_vars(c), init_consts))
 
-        ha.initial_conditions = init_cont_c
+        ha.add_init(*init_cont_c)
 
         assert len(init_mode_c) == 1
         return init_mode_c
@@ -78,14 +78,15 @@ class STLmcModel(Model):
         m_c_children = self.modules[module_index]["mode"]
 
         mode_id = calc_hash(m_c_children)
-        mode = ha.add_mode("m_{}".format(mode_id))
+        mode = Mode(mode_id)
+        ha.add_mode(mode)
 
         # matches initial condition
         if init_mode_c.issubset(m_c_children):
-            ha.mark_initial(mode)
+            mode.set_as_initial()
 
         # for default all modes are finals
-        ha.mark_final(mode)
+        mode.set_as_final()
 
         self._add_dynamics(module_index, mode)
         self._add_invariant(module_index, mode)
@@ -137,15 +138,13 @@ class STLmcModel(Model):
 
             trg_mode = mode_dict[trg_m_id]
 
-            transition = ha.add_transition("t_{}_{}".format(src_m_id, trg_m_id), src_mode, trg_mode)
-
-            for g in jp_pre_cl:
-                transition.set_guard(g)
+            transition = make_jump(src_mode, trg_mode)
+            transition.add_guard(*jp_pre_cl)
 
             for r in jp_post_cont:
                 assert isinstance(r, Eq)
                 # assume left is a next variable
-                transition.set_reset((r.left, r.right))
+                transition.add_reset((r.left, r.right))
 
     def _add_dynamics(self, module_index: int, mode: Mode):
         f_c = self.modules[module_index]["flow"]
@@ -158,7 +157,7 @@ class STLmcModel(Model):
         # currently support ode only
         assert isinstance(f_c, Ode)
         for v, e in zip(f_c.vars, f_c.exps):
-            mode.set_dynamic((subst.substitute(v), subst.substitute(e)))
+            mode.add_dynamic((subst.substitute(v), subst.substitute(e)))
 
     def _add_invariant(self, module_index: int, mode: Mode):
         i_c_children_raw = self.modules[module_index]["inv"]
@@ -171,7 +170,7 @@ class STLmcModel(Model):
         i_c_children = [subst.substitute(i_c) for i_c in i_c_children_raw]
 
         for inv in i_c_children:
-            mode.set_invariant(inv)
+            mode.add_invariant(inv)
 
     def _check_valid(self):
         m_v = Int(self.mode_var_name)

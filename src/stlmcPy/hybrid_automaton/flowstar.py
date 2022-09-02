@@ -47,12 +47,7 @@ def _(const: Geq):
 
 @obj2fs.register(Eq)
 def _(const: Eq):
-    if isinstance(const.left, Real):
-        return "{} = {}".format(const.left.id, obj2fs(const.right))
-    elif isinstance(const.left, Int):
-        return "{} = {}".format(const.left.id, obj2fs(const.right))
-    else:
-        raise Exception()
+    return "{} - {} = 0.0".format(obj2fs(const.left), obj2fs(const.right))
 
 
 # cannot support this

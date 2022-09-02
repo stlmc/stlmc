@@ -1,20 +1,10 @@
-from typing import Dict, Set
-
-from ..algorithm import Algorithm, PathGenerator, FormulaStack
-from ..runner import SmtSolverRunner
-from ...constraints.aux.operations import Substitution, get_vars
-from ...constraints.constraints import *
-from ...encoding.smt.goal.aux import is_chi, get_hash, symbolic_sup, symbolic_inf, get_chi_depth
-from ...encoding.smt.goal.stl import StlGoal
-from ...encoding.smt.model.aux import indexed_var_t
-from ...encoding.smt.model.stlmc_model import STLmcModel
+from ..algorithm import Algorithm
 from ...hybrid_automaton.converter import FlowStarConverter
-from ...hybrid_automaton.hybrid_automaton import composition
+from ...hybrid_automaton.utils import composition, get_jumps
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
 from ...objects.model import Model
 from ...solver.abstract_solver import SMTSolver
-from ...util.printer import pprint
 
 
 class OneStepAlgorithm(Algorithm):
@@ -32,11 +22,11 @@ class OneStepAlgorithm(Algorithm):
         m_a, g_a = model.encode(), goal.encode()
         # print(g_a)
         # print(m_a)
-        print("stl v: {}, e: {}".format(len(g_a.modes), len(g_a.transitions)))
         automata = composition(m_a, g_a)
-        print("v: {}, e: {}".format(len(automata.modes), len(automata.transitions)))
+
+        print("stl v: {}, e: {}".format(len(g_a.modes), len(get_jumps(g_a))))
+        print("v: {}, e: {}".format(len(automata.modes), len(get_jumps(automata))))
         fsc = FlowStarConverter()
-        fsc.preprocessing(automata)
         fsc.convert(automata, bound)
         fsc.write("test")
         # print(automata)

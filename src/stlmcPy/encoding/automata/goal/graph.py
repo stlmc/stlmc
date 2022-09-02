@@ -1,7 +1,9 @@
-from typing import Set, Dict
+from itertools import product
+from typing import Set, Dict, FrozenSet, Tuple
 
-from ..constraints.constraints import *
-from ..util.printer import indented_str
+from .aux import Label, Labels, split_label
+from ....constraints.constraints import Real, Expr
+from ....util.printer import indented_str
 
 
 class Graph:
@@ -49,8 +51,8 @@ class Node:
         self.pred: Set[Node] = set()
         self.succ: Set[Node] = set()
 
-        self.ap: Set[Bool] = set()
-        self.non_ap: Set[Bool] = set()
+        self.non_intermediate: Labels = frozenset()
+        self.intermediate: Labels = frozenset()
 
         self._node_id = node_id
         self._depth = depth
@@ -59,11 +61,11 @@ class Node:
 
     def __repr__(self):
         ap_str_list = list()
-        for b in self.ap:
+        for b in self.non_intermediate:
             ap_str_list.append(indented_str(str(b), 6))
 
         non_str_list = list()
-        for b in self.non_ap:
+        for b in self.intermediate:
             non_str_list.append(indented_str(str(b), 6))
 
         id_info = indented_str("id: {}".format(self._node_id), 4)
@@ -108,3 +110,63 @@ def connect(n1: Node, n2: Node):
 def disconnect(n1: Node, n2: Node):
     n1.succ.discard(n2)
     n2.pred.discard(n1)
+
+
+# def composition(graph1: Graph, graph2: Graph):
+#     graph = Graph()
+#
+#     candidate_nodes: Set[Tuple[Node, Node]] = set(product(graph1.nodes, graph2.nodes))
+#     node_dict: Dict[Tuple[Node, Node], Node] = dict()
+#
+#     for node1, node2 in candidate_nodes:
+#         node = _compose_node(node1, node2)
+#         graph.add_node(node)
+#
+#     for node1, node2 in candidate_nodes:
+#         node_src = node_dict[(node1, node2)]
+#
+#         for succ in node1.succ:
+#             trg_nodes = _find_composed_nodes(succ, node_dict)
+#
+#             for trg_node in trg_nodes:
+#                 connect(node_src, trg_node)
+#
+#         for succ in node2.succ:
+#             trg_nodes = _find_composed_nodes(succ, node_dict)
+#
+#             for trg_node in trg_nodes:
+#                 connect(node_src, trg_node)
+#
+#     return graph
+#
+#
+# def _compose_node(node1: Node, node2: Node) -> Node:
+#     labels_non_intermediate = node1.non_intermediate.union(node2.non_intermediate)
+#     labels_intermediate = node1.intermediate.union(node2.intermediate)
+#
+#     labels = frozenset(labels_non_intermediate.union(labels_intermediate))
+#     node = Node(hash(labels), -1)
+#     node.non_intermediate, node.intermediate = split_label(labels)
+#
+#     for v in node1.dynamics:
+#         node.dynamics[v] = node1.dynamics[v]
+#
+#     for v in node2.dynamics:
+#         node.dynamics[v] = node2.dynamics[v]
+#
+#     if node1.is_initial() and node2.is_initial():
+#         node.set_as_initial()
+#
+#     if node1.is_final() and node2.is_final():
+#         node.set_as_final()
+#
+#     return node
+#
+#
+# def _find_composed_nodes(node: Node, node_dict: Dict[Tuple[Node, Node], Node]) -> Set[Node]:
+#     found: Set[Node] = set()
+#     for pair in node_dict:
+#         if node in pair:
+#             found.add(node_dict[pair])
+#
+#     return found

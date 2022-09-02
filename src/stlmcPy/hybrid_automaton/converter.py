@@ -2,7 +2,8 @@ import abc
 
 from .flowstar import *
 from .spaceex import *
-from .hybrid_automaton import HybridAutomaton
+from .hybrid_automaton import *
+from .utils import get_ha_vars, get_jumps
 
 
 class Converter:
@@ -30,7 +31,7 @@ class SpaceExConverter(Converter):
 
     def convert(self, ha: HybridAutomaton, time_bound: float):
         # set variable declaration string
-        var_set = ha.get_vars()
+        var_set = get_ha_vars(ha)
 
         var_str_list = list()
         map_str_list = list()
@@ -184,7 +185,6 @@ class FlowStarConverter(Converter):
 
         # ha.initial_modes.clear()
         # ha.mark_initial(start_mode)
-
         ff = Real("ff")
         zero = RealVal("0")
 
@@ -192,18 +192,32 @@ class FlowStarConverter(Converter):
         ff_inv = ff > zero
 
         for mode in ha.modes:
-            mode.set_dynamic((ff, zero))
-            mode.set_invariant(ff_inv)
+            mode.add_dynamic((ff, zero))
+            mode.add_invariant(ff_inv)
+
+        initials = set()
+        for mode in ha.modes:
+            if mode.is_initial():
+                initials.add(mode)
+                mode.set_as_non_initial()
+
+        initial_mode = Mode(0)
+        initial_mode.set_as_initial()
+        ha.add_mode(initial_mode)
+
+        for mode in initials:
+            make_jump(initial_mode, mode)
 
     def convert(self, ha: HybridAutomaton, time_bound: float):
         self.preprocessing(ha)
 
         modes_str_list = list()
         for mode in ha.modes:
-            mode_str = "{}__id_{}{{\n".format(mode.name, id(mode))
+            mode_str = "mode_{}{{\n".format(mode.id)
             mode_str += "poly ode 1\n{"
 
-            for (v, e) in mode.dynamics:
+            for v in mode.dynamics:
+                e = mode.dynamics[v]
                 mode_str += "{}\' = {}\n".format(v, str(obj2fs(e))).replace("**", "^")
             mode_str += "}\n"
 
@@ -217,12 +231,9 @@ class FlowStarConverter(Converter):
         modes_str = "modes {{\n {}\n}}\n".format("\n".join(modes_str_list))
 
         trans_str_list = list()
-        for transition in ha.transitions:
-            t_str = "{}__id_{} -> {}__id_{}\n".format(transition.src.name,
-                                                      id(transition.src),
-                                                      transition.trg.name,
-                                                      id(transition.trg))
-
+        jumps = get_jumps(ha)
+        for transition in jumps:
+            t_str = "mode_{} -> mode_{}\n".format(transition.src.id, transition.trg.id)
             t_str += "guard {\n"
             for guard in transition.guard:
                 _str = "{}\n".format(obj2fs(guard))
@@ -249,34 +260,40 @@ class FlowStarConverter(Converter):
 
         trans_str = "jumps {{\n {} \n }}\n".format("\n".join(trans_str_list))
 
-        var_set = ha.get_vars()
+        var_set = get_ha_vars(ha)
         # add initial conditions for special variables: ff = 1, t = 0
-        ha.initial_conditions.add(Eq(Real("ff"), RealVal("1.0")))
+        ha.add_init(Real("ff") == RealVal("1.0"))
 
         bound_box = ha.get_bound_bound()
+        initial_modes = set(filter(lambda x: x.is_initial(), ha.modes))
+        final_modes = set(filter(lambda x: x.is_final(), ha.modes))
+
+        init_cond_str = ""
+        for variable in var_set:
+            assert variable in bound_box
+            bb = bound_box[variable]
+            init_cond_str += "{} in [{}, {}]\n".format(variable, bb.left, bb.right)
 
         init_child_str = ""
-        for start_mode in ha.initial_modes:
-            init_child_str += "{}__id_{} {{".format(start_mode.name, id(start_mode))
-            for variable in var_set:
-                assert variable in bound_box
-                bb = bound_box[variable]
-                init_child_str += "{} in [{}, {}]\n".format(variable, bb.left, bb.right)
+        assert len(initial_modes) == 1
+        for start_mode in initial_modes:
+            init_child_str += "mode_{} {{".format(start_mode.id)
+            init_child_str += init_cond_str
             init_child_str += "}"
 
         init_str = "init {{\n {}\n}}\n".format(init_child_str)
 
         unsafe_str = ""
         terminal_modes_str = list()
-        for final_mode in ha.final_modes:
-            terminal_modes_str.append("{}__id_{}".format(final_mode.name, id(final_mode)))
+        for final_mode in final_modes:
+            terminal_modes_str.append("mode_{}".format(final_mode.id))
 
         for m in ha.modes:
-            real_name = "{}__id_{}".format(m.name, id(m))
+            real_name = "mode_{}".format(m.id)
             if real_name in terminal_modes_str:
                 unsafe_str += "{}{{}}\n".format(real_name)
             else:
-                unsafe_str += "{}{{ ff  <= 0 }}\n".format(real_name)
+                unsafe_str += "{}{{ ff <= 0 }}\n".format(real_name)
 
         var_str = "state var "
         for i, v in enumerate(var_set):

@@ -1,7 +1,6 @@
 import abc
-from typing import Set, Dict, List
 
-from ....objects.graph import *
+from .graph import *
 
 
 class Subsumption:
@@ -99,7 +98,7 @@ class ForwardSubsumption(Subsumption):
                         waiting.difference_update(self._relation[n])
 
     def _forward_relation(self, node1: Node, node2: Node):
-        c1 = node1.ap.issuperset(node2.ap)
+        c1 = node1.non_intermediate.issuperset(node2.non_intermediate)
         c2 = not node1.is_initial() or node2.is_initial()
 
         if not c1 or not c2:
@@ -199,7 +198,7 @@ class BackwardSubsumption(Subsumption):
                         waiting.difference_update(self._relation[n])
 
     def _backward_relation(self, node1: Node, node2: Node):
-        c1 = node1.ap.issuperset(node2.ap)
+        c1 = node1.non_intermediate.issuperset(node2.non_intermediate)
         c2 = not node1.is_final() or node2.is_final()
 
         if not c1 or not c2:
@@ -264,109 +263,3 @@ class PathSubsumption:
         c2 = node2 in self._backward_relation[node1]
 
         return c1 and c2
-
-
-# def _propagate(self):
-#     pre_status: Dict[Node, Set[Node]] = self._relation.copy()
-#     while True:
-#         for cycle in self._cycle_paths:
-#             for node in cycle:
-#                 assert node in self._relation
-#                 self._relation[node].update(cycle)
-#
-#         cur_status = self._relation
-#         if cur_status == pre_status:
-#             return
-#
-#         pre_status = self._relation.copy()
-
-# def _reflexive(self, nodes: Set[Node]):
-#     for node in nodes:
-#         self._add_to_relation(node, node)
-
-# def _calc_relation(self, nodes: Set[Node]):
-#     seen = set()
-#
-#     # reflexivity
-#     self._reflexive(nodes)
-#
-#     counter = 0
-#     while seen != nodes:
-#         # print("seen")
-#         # print(seen)
-#         # print("nodes")
-#         # print(nodes)
-#         self._ordering_graph(nodes, list(), seen)
-#         counter += 1
-#         # if counter > 10:
-#         #     break
-#     print(len(self._cycle_paths))
-#     print(self._cycle_paths)
-#     self._propagate()
-#     print(self._relation)
-#     self._cycle_paths.clear()
-#
-# def _ordering_graph(self, nodes: Set[Node], path: List[Node], seen: Set[Node]):
-#     child_nodes = nodes.difference(seen.union(path))
-#     if len(child_nodes) <= 0:
-#         print("no children")
-#         if len(path) > 0:
-#             # check parents
-#             root, last = path[0], path[len(path) - 1]
-#             # seen.add(last)
-#             if root == last:
-#                 # do nothing
-#                 pass
-#             else:
-#                 if self._forward_relation(last, root):
-#                     # cycle exists
-#                     self._cycle_paths.append(path.copy())
-#                     print("add cycle")
-#
-#             # reflexive
-#             # self._add_to_relation(last, last)
-#         return
-#
-#     if len(path) <= 0:
-#         root = child_nodes.pop()
-#         path.append(root)
-#         print("picked")
-#         print(root)
-#
-#     # pick latest
-#     node = path[len(path) - 1]
-#
-#     print("pat/h")
-#     print(path)
-#     print("<<<>> seen")
-#     print(seen)
-#     print("=====")
-#
-#     child_nodes = nodes.difference(seen.union(path))
-#     while True:
-#         if len(child_nodes) <= 0:
-#             break
-#
-#         n = child_nodes.pop()
-#
-#         if n == node:
-#             continue
-#
-#         if self._forward_relation(node, n):
-#             self._add_to_relation(node, n)
-#             print("    go further with")
-#             # print(n)
-#             # go further
-#             path.append(n)
-#             self._ordering_graph(nodes, path, seen)
-#             path.pop(len(path) - 1)
-#             child_nodes = nodes.difference(seen.union(path))
-#         print("gogo")
-#         print("pat/h")
-#         print(path)
-#         print("<<<>> seen")
-#         print(seen)
-#         print("=====")
-#     # seen.add(node)
-#     print("end")
-
