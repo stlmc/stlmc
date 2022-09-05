@@ -124,7 +124,12 @@ class StlGoal(Goal):
             e = time.time()
             wait_queue = self._apply_reduction(next_queue)
             next_queue.clear()
-            cur_nodes = len(self._graph_generator.graph.get_nodes_at(depth))
+
+            #
+            if depth <= self._graph_generator.graph.get_max_depth():
+                cur_nodes = len(self._graph_generator.graph.get_nodes_at(depth))
+            else:
+                cur_nodes = 0
 
             total_label += num_labels
             total_nodes += cur_nodes
@@ -430,11 +435,12 @@ def _graph2ha(graph: Graph, tau_subst: VarSubstitution):
     empty_final_mode = Mode(-10)
     empty_final_mode.add_dynamic(*zero_time_dyns)
     empty_final_mode.set_as_final()
-    automata.add_mode(empty_final_mode)
+    is_empty_final_needed = False
 
     for mode in time_guard:
         t_fs = time_guard[mode]
         if mode.is_final():
+            is_empty_final_needed = True
             mode.set_as_non_final()
             jp = make_jump(mode, empty_final_mode)
             jp.add_guard(*t_fs)
@@ -443,6 +449,9 @@ def _graph2ha(graph: Graph, tau_subst: VarSubstitution):
                 s_jps = mode.s_jumps[m]
                 for jp in s_jps:
                     jp.add_guard(*t_fs)
+
+    if is_empty_final_needed:
+        automata.add_mode(empty_final_mode)
 
     return automata
 

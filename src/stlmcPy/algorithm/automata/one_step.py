@@ -26,7 +26,7 @@ class OneStepAlgorithm(Algorithm):
 
         print("stl v: {}, e: {}".format(len(g_a.modes), len(get_jumps(g_a))))
         print("v: {}, e: {}".format(len(automata.modes), len(get_jumps(automata))))
-        fsc = FlowStarConverter()
+        fsc = FlowStarConverter(self._config)
         fsc.convert(automata, bound)
         fsc.write("test")
         # print(automata)

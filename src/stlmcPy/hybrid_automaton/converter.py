@@ -4,6 +4,7 @@ from .flowstar import *
 from .spaceex import *
 from .hybrid_automaton import *
 from .utils import get_ha_vars, get_jumps
+from ..objects.configuration import Configuration
 
 
 class Converter:
@@ -171,9 +172,10 @@ class SpaceExConverter(Converter):
 
 
 class FlowStarConverter(Converter):
-    def __init__(self):
+    def __init__(self, config: Configuration):
         self.model_string = ""
         self.config_string = ""
+        self.config: Configuration = config
 
     def preprocessing(self, ha: HybridAutomaton):
         # add unique, dummy init mode
@@ -214,7 +216,9 @@ class FlowStarConverter(Converter):
         modes_str_list = list()
         for mode in ha.modes:
             mode_str = "mode_{}{{\n".format(mode.id)
-            mode_str += "poly ode 1\n{"
+            # mode_str += "nonpoly ode\n{"
+            # mode_str += "poly ode 1\n{"
+            mode_str += "poly ode 3\n{"
 
             for v in mode.dynamics:
                 e = mode.dynamics[v]
@@ -305,17 +309,20 @@ class FlowStarConverter(Converter):
         assert len(var_set) > 0
         picked = var_set.pop()
 
+        common_section = self.config.get_section("common")
+        tb = common_section.get_value("time-bound")
+
         # config
         net_dict = dict()
-        net_dict["adaptive steps"] = "{min 0.01, max 0.05}"
-        net_dict["time"] = "15"
+        net_dict["adaptive steps"] = "{min 0.001, max 0.05}"
+        net_dict["time"] = tb
         net_dict["remainder estimation"] = "1e-2"
         net_dict["identity precondition"] = ""
-        net_dict["gnuplot octagon"] = "{},{} fixed orders 2".format(picked, picked)
+        net_dict["gnuplot octagon"] = "{},{} fixed orders 3".format(picked, picked)
         net_dict["cutoff"] = "1e-12"
         net_dict["precision"] = "53"
         net_dict["no output"] = ""
-        net_dict["max jumps"] = "5"
+        net_dict["max jumps"] = "15"
         net_dict["print on"] = ""
 
         conf_str_list = list()

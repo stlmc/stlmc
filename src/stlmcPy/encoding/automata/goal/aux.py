@@ -54,12 +54,26 @@ def _(formula: Proposition, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]])
 
 @_next.register(And)
 def _(formula: And, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    return singleton()
+    assert i == k
+    label_info = (i, k, formula)
+
+    if label_info in cache:
+        return cache[label_info]
+    else:
+        cache[label_info] = labels_product(*{_next(c, k, k, cache) for c in formula.children})
+        return cache[label_info]
 
 
 @_next.register(Or)
 def _(formula: Or, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    return singleton()
+    assert i == k
+    label_info = (i, k, formula)
+
+    if label_info in cache:
+        return cache[label_info]
+    else:
+        cache[label_info] = labels_union(*{_next(c, k, k, cache) for c in formula.children})
+        return cache[label_info]
 
 
 @_next.register(UntilFormula)
@@ -106,7 +120,8 @@ def _(formula: FinallyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels
     else:
         if is_untimed(formula.local_time):
             assert i == k
-            cache[label_info] = {frozenset({Chi(i + 1, k + 1, formula.child)}), frozenset({Chi(i + 1, k + 1, formula)})}
+            cache[label_info] = {frozenset({Chi(i + 1, k + 1, formula.child)}),
+                                 frozenset({Chi(i + 1, k + 1, formula)})}
         else:
             interval = Interval(True, RealVal("0.0"), formula.local_time.left, True)
             f = GloballyFormula(interval, formula.global_time, formula.child)
