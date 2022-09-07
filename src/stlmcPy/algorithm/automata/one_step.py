@@ -1,3 +1,5 @@
+import pickle
+
 from ..algorithm import Algorithm
 from ...hybrid_automaton.converter import FlowStarConverter
 from ...hybrid_automaton.utils import composition, get_jumps
@@ -29,6 +31,9 @@ class OneStepAlgorithm(Algorithm):
         fsc = FlowStarConverter(self._config)
         fsc.convert(automata, bound)
         fsc.write("test")
+
+        # with open("{}.automata".format("test"), "wb") as fw:
+        #     pickle.dump(automata, fw)
         # print(automata)
         # print(g_a)
         # print(m_a)

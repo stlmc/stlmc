@@ -23,9 +23,7 @@ def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
         ha.add_mode(mode)
 
     for mode1, mode2 in candidate_modes:
-        mode = mode_dict[(mode1, mode2)]
-        make_composed_jump(mode, mode1, mode_dict)
-        make_composed_jump(mode, mode2, mode_dict)
+        make_composed_jump((mode1, mode2), mode_dict)
 
     # assert no redundant mode exists
     for mode in ha.modes.copy():
@@ -53,37 +51,52 @@ def _compose_modes(mode1: Mode, mode2: Mode, m_id: int) -> Mode:
     return mode
 
 
-def make_composed_jump(composed_mode: Mode, mode: Mode, mode_dict: Dict[Tuple[Mode, Mode], Mode]):
-    for succ in mode.succ:
-        found = _find_composed_modes(succ, mode_dict)
+def make_composed_jump(composed_mode: Tuple[Mode, Mode], mode_dict: Dict[Tuple[Mode, Mode], Mode]):
+    (mode1, mode2), c_mode = composed_mode, mode_dict[composed_mode]
+    mode1_set, mode2_set = _find_composed_modes(composed_mode, mode_dict)
 
-        assert succ in mode.s_jumps
-        jp_s = mode.s_jumps[succ]
+    for m_1 in mode1_set:
+        # assert (m_1, mode2) in mode_dict
+        trg_mode = mode_dict[(m_1, mode2)]
 
-        for m_found in found:
-            for jp in jp_s:
-                new_jp = make_jump(composed_mode, m_found)
+        if _jp_exists(mode1, m_1):
+            for jp in _get_jp_s(mode1, m_1):
+                new_jp = make_jump(c_mode, trg_mode)
                 _copy_jump(jp, new_jp)
 
-    for pred in mode.pred:
-        found = _find_composed_modes(pred, mode_dict)
+    for m_2 in mode2_set:
+        # assert (mode1, m_2) in mode_dict
+        trg_mode = mode_dict[(mode1, m_2)]
 
-        assert pred in mode.p_jumps
-        jp_s = mode.p_jumps[pred]
-
-        for m_found in found:
-            for jp in jp_s:
-                new_jp = make_jump(m_found, composed_mode)
+        if _jp_exists(mode2, m_2):
+            for jp in _get_jp_s(mode2, m_2):
+                new_jp = make_jump(c_mode, trg_mode)
                 _copy_jump(jp, new_jp)
 
+def _jp_exists(src: Mode, trg: Mode) -> bool:
+    return trg in src.succ
 
-def _find_composed_modes(mode: Mode, mode_dict: Dict[Tuple[Mode, Mode], Mode]) -> Set[Mode]:
-    found: Set[Mode] = set()
-    for pair in mode_dict:
-        if mode in pair:
-            found.add(mode_dict[pair])
+def _get_jp_s(src: Mode, trg: Mode) -> Set[Transition]:
+    if trg not in src.s_jumps:
+        raise Exception("jump does not exist")
+    return src.s_jumps[trg]
 
-    return found
+
+
+def _find_composed_modes(composed_mode: Tuple[Mode, Mode],
+                         mode_dict: Dict[Tuple[Mode, Mode], Mode]) -> Tuple[Set[Mode], Set[Mode]]:
+    mode1_set: Set[Mode] = set()
+    mode2_set: Set[Mode] = set()
+
+    mode1, mode2 = composed_mode
+    for m1, m2 in mode_dict:
+        if m2 == mode2:
+            mode1_set.add(m1)
+
+        if m1 == mode1:
+            mode2_set.add(m2)
+
+    return mode1_set, mode2_set
 
 
 def _copy_jump(src_jp: Transition, trg_jp: Transition):
