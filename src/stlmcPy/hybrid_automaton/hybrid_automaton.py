@@ -149,12 +149,6 @@ class Transition:
         for v, f in resets:
             self.reset.add((v, f))
 
-    def __hash__(self):
-        return hash((self.src, self.trg, frozenset(self.guard), frozenset(self.reset)))
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
     def __repr__(self):
         guard_body = "\n".join([p_string(g, 6) for g in self.guard])
         guard_str = indented_str("guard:\n{}".format(guard_body), 4)
@@ -167,18 +161,24 @@ class Transition:
         return "( jump \n{}\n{}\n{}\n  )".format(guard_str, reset_str, jp_body)
 
 
-def make_jump(mode1: Mode, mode2: Mode) -> Transition:
+def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
     mode1.succ.add(mode2)
     mode2.pred.add(mode1)
 
     jp = Transition(mode1, mode2)
 
-    if mode1 in mode1.s_jumps:
+    if "guards" in consts:
+        jp.add_guard(*consts["guards"])
+
+    if "resets" in consts:
+        jp.add_reset(*consts["resets"])
+
+    if mode2 in mode1.s_jumps:
         mode1.s_jumps[mode2].add(jp)
     else:
         mode1.s_jumps[mode2] = {jp}
 
-    if mode2 in mode2.p_jumps:
+    if mode1 in mode2.p_jumps:
         mode2.p_jumps[mode1].add(jp)
     else:
         mode2.p_jumps[mode1] = {jp}
@@ -195,8 +195,8 @@ def remove_jump(jump: Transition):
     assert mode2 in mode1.s_jumps
     assert mode1 in mode2.p_jumps
 
-    mode1.s_jumps[mode2].discard(jump)
-    mode2.p_jumps[mode1].discard(jump)
+    mode1.s_jumps[mode2].remove(jump)
+    mode2.p_jumps[mode1].remove(jump)
 
     del jump
 

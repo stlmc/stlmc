@@ -3,7 +3,7 @@ import abc
 from .flowstar import *
 from .spaceex import *
 from .hybrid_automaton import *
-from .utils import get_ha_vars, get_jumps
+from .utils import *
 from ..objects.configuration import Configuration
 
 
@@ -187,14 +187,19 @@ class FlowStarConverter(Converter):
 
         # ha.initial_modes.clear()
         # ha.mark_initial(start_mode)
-        ff = Real("ff")
-        zero = RealVal("0")
+        ff, tt = Real("ff"), Real("tt")
+        zero, one = RealVal("0"), RealVal("1")
+
+        # add initial conditions for special variables: ff = 1, t = 0
+        ha.add_init(ff == one)
+        ha.add_init(tt == zero)
 
         # ff > 0
         ff_inv = ff > zero
 
         for mode in ha.modes:
             mode.add_dynamic((ff, zero))
+            mode.add_dynamic((tt, one))
             mode.add_invariant(ff_inv)
 
         initials = set()
@@ -209,6 +214,21 @@ class FlowStarConverter(Converter):
 
         for mode in initials:
             make_jump(initial_mode, mode)
+
+        common_section = self.config.get_section("common")
+        tb = float(common_section.get_value("time-bound"))
+
+        precision = 50
+        delta = 0.001
+        jp_s = get_jumps(ha)
+        for jp in jp_s:
+            for i in range(precision):
+                low, high = i * (tb / precision), (i + 1) * (tb / precision) - delta
+                n_jp = make_jump(jp.src, jp.trg, guards={RealVal(str(low)) <= tt, tt <= RealVal(str(high))})
+                copy_jump(jp, n_jp)
+            remove_jump(jp)
+
+        remove_equal_jumps(ha)
 
     def convert(self, ha: HybridAutomaton, time_bound: float):
         self.preprocessing(ha)
@@ -265,8 +285,6 @@ class FlowStarConverter(Converter):
         trans_str = "jumps {{\n {} \n }}\n".format("\n".join(trans_str_list))
 
         var_set = get_ha_vars(ha)
-        # add initial conditions for special variables: ff = 1, t = 0
-        ha.add_init(Real("ff") == RealVal("1.0"))
 
         bound_box = ha.get_bound_bound()
         initial_modes = set(filter(lambda x: x.is_initial(), ha.modes))

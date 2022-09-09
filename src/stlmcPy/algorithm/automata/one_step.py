@@ -2,7 +2,7 @@ import pickle
 
 from ..algorithm import Algorithm
 from ...hybrid_automaton.converter import FlowStarConverter
-from ...hybrid_automaton.utils import composition, get_jumps
+from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
 from ...objects.model import Model
@@ -26,11 +26,12 @@ class OneStepAlgorithm(Algorithm):
         # print(m_a)
         automata = composition(m_a, g_a)
 
-        print("stl v: {}, e: {}".format(len(g_a.modes), len(get_jumps(g_a))))
-        print("v: {}, e: {}".format(len(automata.modes), len(get_jumps(automata))))
+        print_ha_size("stl", g_a)
         fsc = FlowStarConverter(self._config)
         fsc.convert(automata, bound)
         fsc.write("test")
+
+        print_ha_size("main", automata)
 
         # with open("{}.automata".format("test"), "wb") as fw:
         #     pickle.dump(automata, fw)
