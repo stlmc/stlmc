@@ -182,7 +182,7 @@ def get_max_bound(literal):
 
 
 @singledispatch
-def get_vars(const: Formula):
+def get_vars(const: Union[Formula, Expr]):
     return set()
 
 

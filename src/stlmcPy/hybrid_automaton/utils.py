@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Tuple, FrozenSet
+from typing import FrozenSet
 
 from ..constraints.aux.operations import get_vars
 from ..hybrid_automaton.hybrid_automaton import *

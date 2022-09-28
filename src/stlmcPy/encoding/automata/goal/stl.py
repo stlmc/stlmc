@@ -240,7 +240,7 @@ class StlGoal(Goal):
 
     def _apply_reduction(self, labels_set: Set[Labels]):
         n_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x), labels_set))
-        self._optimizer.calc_label_reduction(*n_labels)
+        self._optimizer.calc_label_reduction(*n_labels, assumptions=self._time_order.children)
         return canonicalize(n_labels)
 
 

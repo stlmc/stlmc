@@ -42,7 +42,7 @@ class PropositionOptimizer:
     def calc_label_reduction(self, *labels_list, **optional):
         assumptions = list()
         if "assumptions" in optional:
-            assumptions = optional["assumptions"]
+            assumptions = list(map(lambda x: self._tau_subst.substitute(x), optional["assumptions"]))
 
         for labels in labels_list:
             self._calc_label_reduction(labels, *assumptions)
