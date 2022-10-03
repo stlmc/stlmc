@@ -1,343 +1,177 @@
-from functools import singledispatch, reduce
-from itertools import product
-from typing import Dict, Tuple, Set, FrozenSet
+from functools import singledispatch
+from typing import Dict, List
 
 from .label import *
+from ....constraints.aux.operations import inf, sup
 from ....constraints.constraints import *
 
-Labels = FrozenSet[Label]
-LabelInfo = Tuple[int, int, Formula]
+
+def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Label]:
+    if label in cache:
+        return cache[label]
+
+    c, n, f = label.cur, label.nxt, label.forbidden
+    labels: Set[Label] = set()
+
+    waiting_list = [(n.copy(), empty_label())]
+    loop = 0
+    while len(waiting_list) > 0:
+        p_c, p_l = waiting_list.pop()
+        if len(p_c) <= 0:
+            labels.add(p_l)
+            continue
+
+        # if p_l in cache:
+        #     waiting_list.extend(cache[p_l])
+        # else:
+        loop += 1
+        p_f = p_c.pop()
+        lbs = _label_expand(p_f, c, depth)
+
+        update_queue = _apply_forbidden(update_waiting_list(p_f, lbs, (p_c, p_l)), f)
+        waiting_list.extend(update_queue)
+
+    print("# iteration {}".format(loop))
+    return labels
 
 
-class ValidGloballyFormula(UnaryTemporalFormula):
-    def __init__(self, local_time: Interval, global_time: Interval, child: Formula):
-        UnaryTemporalFormula.__init__(self, local_time, global_time, child, "validGlobally", "[*]")
-
-
-def init(labels: Labels, cache1: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    if len(labels) > 0:
-        return canonicalize(labels_product(*[_apply_current(label, cache1) for label in labels]))
-    else:
-        return singleton()
-
-
-def expand(labels: Labels, cache1: Dict[LabelInfo, Set[Labels]],
-           cache2: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    if len(labels) > 0:
-        return canonicalize(labels_product(*[_apply_next(label, cache1, cache2) for label in labels]))
-    else:
-        return singleton()
-
-
-def _apply_next(label: Label, cache1: Dict[LabelInfo, Set[Labels]],
-                cache2: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    if isinstance(label, Chi):
-        if not label.is_intermediate():
-            return singleton()
-
-    if isinstance(label, TimeLabel):
-        return singleton()
-
-    nxt_labels = _next(label.formula, label.i, label.k, cache2)
-    return labels_union(*[labels_product(*[_apply_current(lab, cache1) for lab in labels]) for labels in nxt_labels])
+def init(formula: Formula, cache: Dict[Label, Set[Label]]):
+    s_label = Label(singleton(), singleton(formula), singleton())
+    return expand(s_label, 1, cache)
 
 
 @singledispatch
-def _next(formula: Formula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
+def _label_expand(formula: Formula, ctx: Set[Formula], depth: int) -> Set[Label]:
     raise Exception("cannot find a matching rule ({})".format(formula))
 
 
-@_next.register(Proposition)
-def _(formula: Proposition, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    return singleton()
+@_label_expand.register(Proposition)
+def _(formula: Proposition, ctx: Set[Formula], depth: int) -> Set[Label]:
+    return {Label(singleton(), singleton(), singleton())}
 
 
-@_next.register(And)
-def _(formula: And, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
+@_label_expand.register(GloballyFormula)
+def _(formula: GloballyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
+    if formula not in ctx:
+        j_i, interval = symbolic_interval(depth), formula.local_time
+        return {Label(singleton(GloballyUp(j_i, interval, formula.child)), singleton(), singleton())}
     else:
-        cache[label_info] = labels_product(*{_next(c, k, k, cache) for c in formula.children})
-        return cache[label_info]
+        return {Label(singleton(), singleton(), singleton())}
 
 
-@_next.register(Or)
-def _(formula: Or, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
-    label_info = (i, k, formula)
+@_label_expand.register(GloballyUp)
+def _(formula: GloballyUp, ctx: Set[Formula], depth: int) -> Set[Label]:
+    f = formula.child
+    j_i, j_k, interval = formula.i, symbolic_interval(depth), formula.interval
+    pre = TimePre(j_i, j_k, interval)
+    its = TimeIntersect(j_i, j_k, interval)
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        cache[label_info] = labels_union(*{_next(c, k, k, cache) for c in formula.children})
-        return cache[label_info]
-
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    f1 = GloballyFormula(interval, g, f)
+    f2 = GloballyUpIntersect(j_i, interval, f)
 
-@_next.register(UntilFormula)
-def _(formula: UntilFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
+    label1 = Label(singleton(pre, GloballyUpDown(j_i, j_k, interval, f)), singleton(), singleton(f1))
+    label2 = Label(singleton(pre), singleton(formula), singleton())
+    label3 = Label(singleton(its, f), singleton(f2), singleton())
 
-    label_info = (i, k, formula)
+    return {label1, label2, label3}
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        c1 = Chi(i + 1, i + 1, formula.left)
-        c2 = Chi(i + 1, i + 1, formula.right)
-        c3 = Chi(i + 1, i + 1, formula)
 
-        cache[label_info] = {frozenset({c1, c2}), frozenset({c1, c3})}
-        return cache[label_info]
+@_label_expand.register(GloballyUpDown)
+def _(formula: GloballyUpDown, ctx: Set[Formula], depth: int) -> Set[Label]:
+    f = formula.child
+    j_i, j_j, j_k, interval = formula.i, formula.k, symbolic_interval(depth), formula.interval
 
+    pre = TimePre(j_i, j_k, interval)
+    tls = TimeLast(j_k)
+    its = TimeIntersect(j_i, j_k, interval)
 
-@_next.register(ReleaseFormula)
-def _(formula: ReleaseFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
+    f1 = GloballyUpIntersectDown(j_j, interval, f)
 
-    label_info = (i, k, formula)
+    label1 = Label(singleton(its, f1), singleton(), singleton())
+    label2 = Label(singleton(pre), singleton(formula), singleton())
+    label3 = Label(singleton(pre, tls), singleton(), singleton())
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        c1 = Chi(i + 1, i + 1, formula.left)
-        c2 = Chi(i + 1, i + 1, formula.right)
-        c3 = Chi(i + 1, i + 1, formula)
-        c4 = TimeLast(i + 1)
+    return {label1, label2, label3}
 
-        cache[label_info] = {frozenset({c1}), frozenset({c2, c3}), frozenset({c2, c4})}
-        return cache[label_info]
 
+@_label_expand.register(GloballyUpIntersect)
+def _(formula: GloballyUpIntersect, ctx: Set[Formula], depth: int) -> Set[Label]:
+    f, j_k, interval = formula.child, symbolic_interval(depth), formula.interval
 
-@_next.register(FinallyFormula)
-def _(formula: FinallyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    f1 = GloballyUpIntersectDown(j_k, interval, f)
+    f2 = GloballyFormula(interval, g, f)
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        if is_untimed(formula.local_time):
-            assert i == k
-            cache[label_info] = {frozenset({Chi(i + 1, k + 1, formula.child)}),
-                                 frozenset({Chi(i + 1, k + 1, formula)})}
-        else:
-            interval = Interval(True, RealVal("0.0"), formula.local_time.left, True)
-            f = GloballyFormula(interval, formula.global_time, formula.child)
+    label1 = Label(singleton(f1), singleton(), singleton(f2))
+    label2 = Label(singleton(f), singleton(formula), singleton())
 
-            c1 = Chi(i, k + 1, f)
-            c2 = TimeIn(i, k + 1, formula.local_time)
-            c3 = Chi(i, k + 1, formula)
+    return {label1, label2}
 
-            cache[label_info] = {frozenset({c1, c2}), frozenset({c3})}
 
-        return cache[label_info]
+@_label_expand.register(GloballyUpIntersectDown)
+def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int) -> Set[Label]:
+    f, j_i, j_k, interval = formula.child, formula.i, symbolic_interval(depth), formula.interval
 
+    # inf(j_k) <= sup(j_i) + sup(interval), sup(j_i) + sup(interval) <= sup(j_k)
+    tps, n_tps = TimePost(j_i, j_k, interval), TimeNotPost(j_i, j_k, interval)
+    tls = TimeLast(j_k)
 
-@_next.register(GloballyFormula)
-def _(formula: GloballyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
+    label1 = Label(singleton(tps, f), singleton(), singleton())
+    label2 = Label(singleton(tls, f), singleton(), singleton())
+    label3 = Label(singleton(n_tps, f), singleton(formula), singleton())
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        if is_untimed(formula.local_time):
-            assert i == k
-            c1 = Chi(i + 1, k + 1, formula.child)
-            c2 = Chi(i + 1, k + 1, formula)
-            cache[label_info] = {frozenset({c1, c2}), frozenset({c1, TimeLast(k + 1)})}
-        else:
-            f = ValidGloballyFormula(formula.local_time, formula.global_time, formula.child)
+    return {label1, label2, label3}
 
-            c1 = TimePre(i, k + 1, formula.local_time)
-            c2 = Chi(i, k + 1, formula)
-            c3 = Chi(k + 1, k + 1, formula.child)
-            c4 = Chi(i, k + 1, f)
-            c5 = TimeLast(k + 1)
 
-            cache[label_info] = {frozenset({c1, c2}), frozenset({c3, c4}), frozenset({c1, c5})}
-        return cache[label_info]
+def update_waiting_list(formula: Formula, labels: Set[Label],
+                        elem: Tuple[Set[Formula], Label]) -> List[Tuple[Set[Formula], Label]]:
+    w_f, lb = elem
 
+    # update label
+    lbs = update_labels(formula, labels, lb)
+    return [(w_f.union(nc), u_lb) for nc, u_lb in lbs]
 
-@_next.register(ValidGloballyFormula)
-def _(formula: ValidGloballyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        c1 = Chi(k + 1, k + 1, formula.child)
-        c2 = Chi(i, k + 1, formula)
-        c3 = TimePost(i, k + 1, formula.local_time)
-        c4 = TimeLast(k + 1)
+def _apply_forbidden(waiting_queue: List[Tuple[Set[Formula], Label]],
+                     forbidden: Set[Formula]) -> List[Tuple[Set[Formula], Label]]:
+    n_queue = list()
+    for p_c, p_l in waiting_queue:
+        if not p_l.cur.intersection(forbidden):
+            n_queue.append((p_c, p_l))
+    return n_queue
 
-        cache[label_info] = {frozenset({c1, c2}), frozenset({c1, c3}), frozenset({c1, c4})}
-        return cache[label_info]
 
+def update_labels(formula: Formula, labels: Set[Label], label: Label) -> List[Tuple[Set[Formula], Label]]:
+    return [(lb.cur, Label(label.cur.union({formula}), label.nxt.union(lb.nxt),
+                           label.forbidden.union(lb.forbidden))) for lb in labels]
 
-def _apply_current(label: Label, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    if isinstance(label, Chi):
-        if not label.is_intermediate():
-            return singleton(label)
 
-    if isinstance(label, TimeLabel):
-        return singleton(label)
+def empty_label() -> Label:
+    return Label(singleton(), singleton(), singleton())
 
-    return _current(label.formula, label.i, label.k, cache)
 
+def singleton(*formulas) -> Set[Formula]:
+    return set(formulas)
 
-@singledispatch
-def _current(formula: Formula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    raise Exception("cannot find a matching rule1 ({})".format(formula))
 
+def intersection(interval1: Interval, interval2: Interval):
+    return inf(interval1) <= sup(interval2), inf(interval2) <= sup(interval1)
 
-@_current.register(Proposition)
-def _(formula: Proposition, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
 
-    label_info = (i, k, formula)
+def symbolic_interval(num: int):
+    # [tau_{num - 1}, tau_{num})
+    lv = Real("tau_{}".format(num - 1))
+    rv = Real("tau_{}".format(num))
+    return Interval(True, lv, rv, True)
 
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        cache[label_info] = singleton(Chi(*label_info))
-        return cache[label_info]
 
-
-@_current.register(And)
-def _(formula: And, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
-
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        cache[label_info] = labels_product(*[_current(c, i, k, cache) for c in formula.children])
-        return cache[label_info]
-
-
-@_current.register(Or)
-def _(formula: Or, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert i == k
-
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        cache[label_info] = labels_union(*[_current(c, i, k, cache) for c in formula.children])
-        return cache[label_info]
-
-
-@_current.register(UntilFormula)
-def _(formula: UntilFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert is_untimed(formula.local_time) and i == k
-
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-
-        left, right = _current(formula.left, i, k, cache), _current(formula.right, i, k, cache)
-        prod1 = labels_product(left, right)
-        prod2 = labels_product(left, singleton(Chi(i, k, formula)))
-
-        cache[label_info] = labels_union(prod1, prod2)
-
-        return cache[label_info]
-
-
-@_current.register(ReleaseFormula)
-def _(formula: ReleaseFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    assert is_untimed(formula.local_time) and i == k
-
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-
-        left, right = _current(formula.left, i, k, cache), _current(formula.right, i, k, cache)
-        prod1 = labels_product(right, singleton(Chi(i, k, formula)))
-        prod2 = labels_product(right, singleton(TimeLast(i)))
-
-        cache[label_info] = labels_union(left, prod1, prod2)
-        return cache[label_info]
-
-
-@_current.register(FinallyFormula)
-def _(formula: FinallyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-
-        # untimed
-        if is_untimed(formula.local_time):
-            assert i == k
-            cache[label_info] = labels_union(_current(formula.child, i, k, cache), singleton(Chi(i, k, formula)))
-        else:
-            # timed
-            interval = Interval(True, RealVal("0.0"), formula.local_time.left, True)
-            left = _current(GloballyFormula(interval, formula.global_time, formula.child), i, k, cache)
-            prod = labels_product(left, singleton(TimeIn(i, k, formula.local_time)))
-            cache[label_info] = labels_union(prod, singleton(Chi(i, k, formula)))
-
-        return cache[label_info]
-
-
-@_current.register(GloballyFormula)
-def _(formula: GloballyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        if is_untimed(formula.local_time):
-            assert i == k
-            c0 = _current(formula.child, i, k, cache)
-            c1 = labels_product(c0, singleton(Chi(i, k, formula)))
-            c2 = labels_product(c0, singleton(TimeLast(i)))
-            cache[label_info] = labels_union(c1, c2)
-        else:
-            pre = TimePre(i, k, formula.local_time)
-            f = ValidGloballyFormula(formula.local_time, formula.global_time, formula.child)
-
-            c1 = singleton(pre, Chi(i, k, formula))
-            c2 = singleton(pre, TimeLast(k))
-            c3 = labels_product(_current(formula.child, k, k, cache), _current(f, i, k, cache))
-            cache[label_info] = labels_union(c1, c2, c3)
-
-        return cache[label_info]
-
-
-@_current.register(ValidGloballyFormula)
-def _(formula: ValidGloballyFormula, i: int, k: int, cache: Dict[LabelInfo, Set[Labels]]) -> Set[Labels]:
-    label_info = (i, k, formula)
-
-    if label_info in cache:
-        return cache[label_info]
-    else:
-        c1 = _current(formula.child, k, k, cache)
-
-        prod1 = labels_product(c1, singleton(TimeLast(k)))
-        prod2 = labels_product(c1, singleton(Chi(i, k, formula)))
-        prod3 = labels_product(c1, singleton(TimePost(i, k, formula.local_time)))
-
-        cache[label_info] = labels_union(prod1, prod2, prod3)
-        return cache[label_info]
-
-
-def canonicalize(labels_set: Set[Labels]):
-    labels_s = set(filter(lambda x: len(x) > 0, labels_set))
-    subsume: Dict[Labels, Set[Labels]] = dict()
-    pre_status: Dict[Labels, Set[Labels]] = dict()
+def canonicalize(*label):
+    labels: Set[Label] = set(label)
+    subsume: Dict[Label, Set[Label]] = dict()
+    pre_status: Dict[Label, Set[Label]] = dict()
     while True:
-        _calc_label_subsume(labels_s, subsume)
+        _calc_label_subsume(labels, subsume)
 
         cur_status = subsume
         if cur_status == pre_status:
@@ -346,140 +180,84 @@ def canonicalize(labels_set: Set[Labels]):
         pre_status = subsume.copy()
 
     # ignore self
-    for labels in subsume:
-        subsume[labels].discard(labels)
+    for label in subsume:
+        subsume[label].discard(label)
 
     removed = set()
-    for labels in labels_s:
-        assert labels in subsume
-        if len(subsume[labels]) > 0:
-            removed.add(labels)
+    for label in labels:
+        assert label in subsume
+        if len(subsume[label]) > 0:
+            removed.add(label)
 
-    return labels_s.difference(removed)
+    return labels.difference(removed)
 
 
-def _calc_label_subsume(labels_set: Set[Labels], subsume: Dict[Labels, Set[Labels]]):
-    def _add_to_dict(_k: Labels, *_vs):
+def _calc_label_subsume(labels: Set[Label], subsume: Dict[Label, Set[Label]]):
+    def _add_to_dict(_k: Label, *_vs):
         if _k not in subsume:
             subsume[_k] = {_v for _v in _vs}
         else:
             for _v in _vs:
                 subsume[_k].add(_v)
 
-    for labels in labels_set:
-        waiting = labels_set.copy()
+    for label in labels:
+        waiting = labels.copy()
         while len(waiting) > 0:
             n = waiting.pop()
-            if _labels_subsume(labels, n):
-                _add_to_dict(labels, n)
+            if _label_subsume(n, label):
+                _add_to_dict(label, n)
                 if n in subsume:
-                    _add_to_dict(labels, *subsume[n])
+                    _add_to_dict(label, *subsume[n])
                     waiting.difference_update(subsume[n])
 
 
-def _labels_subsume(labels1: Labels, labels2: Labels) -> bool:
-    for label in labels2:
-        if label not in labels1:
-            return False
-    return True
-
-
-def labels_product(*labels):
-    return reduce(_labels_product, labels)
-
-
-def labels_union(*labels):
-    return reduce(_labels_union, labels)
-
-
-def _labels_product(left: Set[Labels], right: Set[Labels]):
-    labels = set()
-    for l1, l2 in set(product(left, right)):
-        labels.add(frozenset(l1.union(l2)))
-    return labels
-
-
-def _labels_union(left: Set[Labels], right: Set[Labels]):
-    return left.union(right)
-
-
-def singleton(*labels) -> Set[Labels]:
-    return {frozenset(labels)}
-
-
-def is_untimed(interval: Interval):
-    untimed = Interval(True, RealVal("0.0"), RealVal("inf"), False)
-    return interval == untimed
-
-
-def is_timed_label(label: Label):
-    return isinstance(label, TimeLabel)
-
-
-def is_post_time(label: Label):
-    return isinstance(label, TimePost)
-
-
-def update_sub_formula(formulas: Set[Formula]):
-    # TODO
-    new_globally_formula: Set[ValidGloballyFormula] = set()
-    for f in formulas:
-        if isinstance(f, GloballyFormula) and not is_untimed(f.local_time):
-            new_globally_formula.add(ValidGloballyFormula(f.local_time, f.global_time, f.child))
-
-    formulas.update(new_globally_formula)
-
-
-def translate(label: Label) -> Formula:
-    if isinstance(label, Chi):
-        return label.formula
-    elif isinstance(label, TimeLabel):
-        return _get_time_formula(label)
-    else:
-        raise Exception("fail to translate a label ({})".format(label))
-
-
-def _get_time_formula(label: Label) -> Formula:
-    assert isinstance(label, TimeLabel)
-
-    if isinstance(label, TimeLast):
-        assert label.i == label.k
-        return partition_sup(label.i) == tau_max()
-    elif isinstance(label, TimeIn):
-        l_c = partition_inf(label.k) - label.interval.right <= partition_inf(label.i)
-        r_c = partition_sup(label.i) <= tau_max()
-        return And([l_c, r_c])
-    elif isinstance(label, TimePre):
-        return partition_sup(label.k) <= partition_inf(label.i) + label.interval.left
-    elif isinstance(label, TimePost):
-        return partition_sup(label.i) + label.interval.right == partition_sup(label.k)
-    else:
-        raise Exception("wrong type of time label")
-
-
-def partition_sup(index: int):
-    return Real("tau_{}".format(index))
-
-
-def partition_inf(index: int):
-    return Real("tau_{}".format(index - 1))
+def _label_subsume(label1: Label, label2: Label) -> bool:
+    c1 = label1.cur.issubset(label2.cur)
+    c2 = label1.nxt.issubset(label2.nxt)
+    c3 = label1.forbidden.issubset(label2.forbidden)
+    return c1 and c2 and c3
 
 
 def tau_max():
     return Real("tau_max")
 
 
-def split_label(labels: Labels) -> Tuple[Labels, Labels]:
-    non_intermediate, intermediate = set(), set()
-    for label in labels:
-        if isinstance(label, TimeLabel):
-            non_intermediate.add(label)
+def translate(label: Label) -> Set[Formula]:
+    non_intermediate, _ = split_label(label)
+    f_s = set()
+    for lb_f in non_intermediate:
+        if isinstance(lb_f, TimeProposition):
+            f_s.add(_time_translate(lb_f))
+        elif isinstance(lb_f, Proposition):
+            f_s.add(lb_f)
         else:
-            if isinstance(label, Chi):
-                if label.is_intermediate():
-                    intermediate.add(label)
-                else:
-                    non_intermediate.add(label)
-            else:
-                raise Exception("unknown label type")
-    return frozenset(non_intermediate), frozenset(intermediate)
+            raise Exception("fail to translate a label ({})".format(label))
+    return f_s
+
+
+def _time_translate(time_f: TimeProposition) -> Formula:
+    assert isinstance(time_f, TimeProposition)
+
+    if isinstance(time_f, TimeLast):
+        return sup(time_f.i) >= tau_max()
+    elif isinstance(time_f, TimeIntersect):
+        return inf(time_f.i) + inf(time_f.interval) <= sup(time_f.k)
+    elif isinstance(time_f, TimePre):
+        return sup(time_f.k) <= inf(time_f.i) + inf(time_f.interval)
+    elif isinstance(time_f, TimePost):
+        return And([inf(time_f.k) <= sup(time_f.i) + sup(time_f.interval),
+                    sup(time_f.i) + sup(time_f.interval) <= sup(time_f.k)])
+    elif isinstance(time_f, TimeNotPost):
+        return sup(time_f.k) <= sup(time_f.i) + sup(time_f.interval)
+    else:
+        raise Exception("wrong type of time label")
+
+
+def split_label(label: Label) -> Tuple[Set[Formula], Set[Formula]]:
+    non_intermediate, intermediate = set(), set()
+    for lb in label.cur:
+        if isinstance(lb, Proposition):
+            non_intermediate.add(lb)
+        else:
+            intermediate.add(lb)
+    return non_intermediate, intermediate

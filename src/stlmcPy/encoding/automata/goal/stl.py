@@ -10,6 +10,7 @@ from ....hybrid_automaton.hybrid_automaton import *
 from ....hybrid_automaton.utils import make_jump
 from ....objects.goal import Goal
 from ....util.printer import indented_str
+from .label import *
 
 
 # import xml.etree.ElementTree as ElemT
@@ -46,7 +47,7 @@ class StlGoal(Goal):
         self.st_formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
         self.sub_formulas = calc_sub_formulas(self.st_formula)
 
-        update_sub_formula(self.sub_formulas)
+        # update_sub_formula(self.sub_formulas)
 
         #
         self._hash_dict: Dict[hash, Formula] = dict()
@@ -69,8 +70,9 @@ class StlGoal(Goal):
         self._optimizer = PropositionOptimizer(self.tau_subst)
         self._graph_generator = GraphGenerator(self._optimizer)
 
-        self._extend_cache1: Dict[LabelInfo, Set[Labels]] = dict()
-        self._extend_cache2: Dict[LabelInfo, Set[Labels]] = dict()
+        self._expand_cache: Dict[Label, Set[Label]] = dict()
+        # self._extend_cache1: Dict[LabelInfo, Set[Labels]] = dict()
+        # self._extend_cache2: Dict[LabelInfo, Set[Labels]] = dict()
 
         self._forward_subsumption = ForwardSubsumption()
         self._backward_subsumption = BackwardSubsumption()
@@ -83,21 +85,20 @@ class StlGoal(Goal):
         print(self.st_formula)
 
         alg_s_t = time.time()
-        init_labels = init(frozenset({Chi(1, 1, self.st_formula)}), self._extend_cache1)
-        init_labels = self._apply_reduction(init_labels)
+        init_labels = init(self.st_formula, self._expand_cache)
+        # init_labels = self._apply_reduction(init_labels)
 
         # make initial nodes
         for label in init_labels:
             self._graph_generator.make_node(label, 1)
 
-        wait_queue: Set[Labels] = init_labels
-        next_queue: Set[Labels] = set()
-        # wait_queue = [init_labels]
-        # next_queue = list()
+        wait_queue: Set[Label] = init_labels
+        next_queue: Set[Label] = set()
+        st_queue: Set[Label] = set()
 
         total_label = 0
         total_nodes = 0
-        depth, final_depth = 1, bound + 1
+        depth, final_depth = 1, bound
         while True:
             if depth > final_depth:
                 break
@@ -111,8 +112,8 @@ class StlGoal(Goal):
                 if self._optimizer.check_contradiction(label):
                     continue
 
-                n = expand(label, self._extend_cache1, self._extend_cache2)
-                n = self._apply_reduction(n)
+                n = expand(label, depth, self._expand_cache)
+                # n = self._apply_reduction(n)
 
                 next_queue.update(n)
                 # next_queue = canonicalize(next_queue)
@@ -122,7 +123,8 @@ class StlGoal(Goal):
                     self._graph_generator.make_posts(label, n, depth + 1)
 
             e = time.time()
-            wait_queue = self._apply_reduction(next_queue)
+            wait_queue = next_queue.copy()
+            # wait_queue = self._apply_reduction(next_queue)
             next_queue.clear()
 
             #
@@ -161,7 +163,7 @@ class StlGoal(Goal):
         self._graph_generator.remove_unreachable()
         e_t = time.time()
         print("unreach remove : {:.3f}s".format(e_t - s_t))
-        # print_graph_info(graph)
+        print_graph_info(graph)
 
         print("reduce proposition")
         self._graph_generator.apply_prop_reduction()
@@ -184,77 +186,25 @@ class StlGoal(Goal):
         print("subsumption")
         print_graph_info(graph)
 
-        # print_graph_info(graph)
-        # for node in graph.get_nodes_at(1):
-        #     print(node)
-
-        # print(graph)
-        # test_graph = Graph()
-        # case 1)
-        # node1 = Node(1, 1)
-        # node1.ap = {chi(1, 1, Bool("p"))}
-        # node2 = Node(2, 1)
-        # node2.ap = {chi(1, 1, Bool("p")), chi(1, 1, Bool("q"))}
-        # node3 = Node(3, 1)
-        # node3.ap = {chi(1, 1, Bool("q"))}
-        # node4 = Node(4, 1)
-        # node4.ap = {chi(1, 1, Bool("a"))}
-        # nodes = [node1, node2, node3, node4]
-
-        # case 2)
-        # node1 = Node(1, 1)
-        # node1.ap = {chi(1, 1, Bool("p"))}
-        # node2 = Node(2, 1)
-        # node2.ap = {chi(1, 1, Bool("p"))}
-        # node3 = Node(3, 1)
-        # node3.ap = {chi(1, 1, Bool("p"))}
-        # node4 = Node(4, 1)
-        # node4.ap = {chi(1, 1, Bool("p"))}
-        # nodes = [node1, node2, node3, node4]
-
-        # case 3)
-        # node1 = Node(1, 1)
-        # node1.ap = {chi(1, 1, Bool("p"))}
-        # node2 = Node(2, 1)
-        # node2.ap = {chi(1, 1, Bool("q"))}
-        # node3 = Node(3, 1)
-        # node3.ap = {chi(1, 1, Bool("r"))}
-        # node4 = Node(4, 1)
-        # node4.ap = {chi(1, 1, Bool("s"))}
-        # nodes = [node1, node2, node3, node4]
-        # for node in nodes:
-        #     node.set_as_initial()
-        #     # node.ap = {chi(1, 1, Bool("wow{}".format(ix)))}
-        #
-        #     test_graph.add_node(node)
-        #
-        # self._forward_subsumption.calc_relation(test_graph)
-
-        # print("after backward equiv")
-        # self._graph_generator.backward_equiv()
-        # print_graph_info(graph)
-
-        # print(graph)
-        # print_graph_info(graph)
         return _graph2ha(graph, self.tau_subst)
 
-    def _apply_reduction(self, labels_set: Set[Labels]):
+    def _apply_reduction(self, labels_set: Set[Label]):
         n_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x), labels_set))
         self._optimizer.calc_label_reduction(*n_labels, assumptions=self._time_order.children)
-        return canonicalize(n_labels)
+        return canonicalize(*n_labels)
 
 
 class GraphGenerator:
     def __init__(self, prop_optimizer: PropositionOptimizer):
         self.graph = Graph()
-        self.node_id_dict: Dict[Labels, Node] = dict()
+        self.node_id_dict: Dict[Label, Node] = dict()
         self._optimizer = prop_optimizer
 
     def clear(self):
         self.graph = Graph()
         self.node_id_dict = dict()
 
-    def make_posts(self, parent_labels: Labels, post_labels: Set[Labels], depth: int):
+    def make_posts(self, parent_label: Label, post_labels: Set[Label], depth: int):
         post_nodes = set()
         for post in post_labels:
             # do not make node for empty label
@@ -262,28 +212,28 @@ class GraphGenerator:
                 post_nodes.add(self.make_node(post, depth))
 
         # if parent
-        if parent_labels in self.node_id_dict:
-            parent = self.node_id_dict[parent_labels]
+        if parent_label in self.node_id_dict:
+            parent = self.node_id_dict[parent_label]
 
             for node in post_nodes:
                 connect(parent, node)
 
-    def make_node(self, labels: Labels, depth: int):
+    def make_node(self, label: Label, depth: int):
         # do not make node for empty label
-        if is_empty_labels(labels):
-            return
+        if is_empty_labels(label):
+            raise Exception("label cannot be empty")
 
         # if node is already exists
-        if labels in self.node_id_dict:
-            return self.node_id_dict[labels]
+        if label in self.node_id_dict:
+            return self.node_id_dict[label]
 
-        node = Node(hash(labels), depth)
-        node.non_intermediate, node.intermediate = split_label(labels)
+        node = Node(hash(label), depth)
+        node.non_intermediate, node.intermediate = split_label(label)
 
         self.graph.add_node(node)
-        self.node_id_dict[labels] = node
+        self.node_id_dict[label] = node
 
-        if _is_final_node(node):
+        if _is_final_label(label):
             node.set_as_final()
 
         if _is_initial_node(node):
@@ -310,8 +260,8 @@ class GraphGenerator:
             node.non_intermediate, node.intermediate = frozenset(non_intermediate), frozenset(intermediate)
 
 
-def is_empty_labels(labels: Labels):
-    return len(labels) == 0
+def is_empty_labels(label: Label):
+    return len(label.cur) == 0
 
 
 def _find_reachable(graph: Graph) -> Set[Node]:
@@ -336,12 +286,26 @@ def _find_reachable(graph: Graph) -> Set[Node]:
     return reach
 
 
-def _is_final_node(node: Node):
-    return len(node.intermediate) == 0
+def _is_final_label(label: Label):
+    return len(label.nxt) == 0
 
 
 def _is_initial_node(node: Node):
     return node.depth == 1
+
+
+# def print_wait_queue(wait_queue: List[Tuple[Set[Formula], Label]]):
+#     print()
+#     print("lb wait queue >")
+#     for p_c, p_l in wait_queue:
+#         print(indented_str("\n".join([indented_str(str(f), 4) for f in p_c]), 2))
+#         print(indented_str(str(p_l), 2))
+
+def print_wait_queue(wait_queue: Set[Label]):
+    print()
+    print("lb wait queue >")
+    for p_l in wait_queue:
+        print(indented_str(str(p_l), 2))
 
 
 def print_graph_info(graph: Graph):
@@ -352,26 +316,21 @@ def print_graph_info(graph: Graph):
         #     print(indented_str("node{} --> pred: {}, succ: {}".format(index, len(node.pred), len(node.succ)), 2))
 
 
-def print_extend(label: Labels, labels_set: Set[Labels]):
+def print_extend(label: Label, labels_set: Set[Label]):
     print("extend label")
-    _print_labels(label, 2)
+    print(indented_str(str(label), 2))
     print()
     print(indented_str("------>", 2))
     print()
     _print_labels_set(labels_set)
 
 
-def _print_labels_set(labels_set: Set[Labels]):
-    for labels in labels_set:
+def _print_labels_set(labels: Set[Label]):
+    for label in labels:
         print(indented_str("(", 2))
-        _print_labels(labels, 4)
+        print(indented_str(str(label), 4))
         print(indented_str(")", 2))
     print("========")
-
-
-def _print_labels(labels: Labels, indent: int):
-    for label in labels:
-        print(indented_str(str(label), indent))
 
 
 def _graph2ha(graph: Graph, tau_subst: VarSubstitution):

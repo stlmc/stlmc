@@ -2,18 +2,22 @@ import time
 import z3
 from typing import Dict, Set, Tuple
 
+from .aux import split_label, translate
+from .label import Label
 from ....constraints.aux.operations import VarSubstitution
 from ....constraints.constraints import *
-from ....encoding.automata.goal.aux import Label, split_label, translate, Labels
+# from ....encoding.automata.goal.aux import Label, split_label, translate, Labels
 from ....solver.z3 import translate as z3translate
+
+Labels = Set[Label]
 
 
 class PropositionOptimizer:
     def __init__(self, tau_subst: VarSubstitution):
-        self._contradiction_cache: Dict[Labels, bool] = dict()
+        self._contradiction_cache: Dict[Label, bool] = dict()
         self._reduction_cache: Dict[Labels, Tuple[Set[Label], Set[Label]]] = dict()
         self._reduction_label_cache: Dict[Label, bool] = dict()
-        self._translate_cache: Dict[Label, Formula] = dict()
+        self._translate_cache: Dict[Label, Set[Formula]] = dict()
 
         self._tau_subst = tau_subst
 
@@ -26,12 +30,12 @@ class PropositionOptimizer:
         self.z3obj_time = 0.0
         self.contradiction_time = 0.0
 
-    def check_contradiction(self, labels: Labels, *assumptions):
-        if labels in self._contradiction_cache:
-            return self._contradiction_cache[labels]
+    def check_contradiction(self, label: Label, *assumptions):
+        if label in self._contradiction_cache:
+            return self._contradiction_cache[label]
         else:
-            self._contradiction_cache[labels] = True if self._check_contradiction(labels, *assumptions) else False
-            return self._contradiction_cache[labels]
+            self._contradiction_cache[label] = True if self._check_contradiction(label, *assumptions) else False
+            return self._contradiction_cache[label]
 
     def reduce_label(self, labels: Labels) -> Tuple[Set[Label], Set[Label]]:
         if labels not in self._reduction_cache:
@@ -39,21 +43,21 @@ class PropositionOptimizer:
             raise Exception("calculate label reduction first")
         return self._reduction_cache[labels]
 
-    def calc_label_reduction(self, *labels_list, **optional):
+    def calc_label_reduction(self, *labels, **optional):
         assumptions = list()
         if "assumptions" in optional:
             assumptions = list(map(lambda x: self._tau_subst.substitute(x), optional["assumptions"]))
 
-        for labels in labels_list:
-            self._calc_label_reduction(labels, *assumptions)
+        for label in labels:
+            self._calc_label_reduction(label, *assumptions)
 
     def _calc_label_reduction(self, labels: Labels, *assumptions):
         if labels not in self._reduction_cache:
             self._reduction_cache[labels] = self._calc_prop_reduction(labels, *assumptions)
 
-    def _check_contradiction(self, labels: Labels, *assumptions) -> bool:
+    def _check_contradiction(self, label: Label, *assumptions) -> bool:
         self.contradiction_call += 1
-        f_set = self._labels2_formula(labels)
+        f_set = self._label2_formula(label)
         f, a = self._formula2_z3obj(*f_set), self._formula2_z3obj(*assumptions)
         r, t = self._z3_check_sat(f, a)
         self.contradiction_time += t
@@ -61,7 +65,7 @@ class PropositionOptimizer:
             return True
         return False
 
-    def _calc_prop_reduction(self, labels: Labels, *assumptions) -> Tuple[Set[Label], Set[Label]]:
+    def _calc_prop_reduction(self, labels: Set[Label], *assumptions) -> Tuple[Set[Label], Set[Label]]:
         self.reduction_call += 1
         self._labels2_formula(labels)
         non_intermediate, intermediate = set(), set()
@@ -101,19 +105,16 @@ class PropositionOptimizer:
         e = time.time()
         return r, e - s
 
-    def _labels2_formula(self, labels: Labels) -> Set[Formula]:
+    def _label2_formula(self, label: Label) -> Set[Formula]:
         s = time.time()
-        f_set: Set[Formula] = set()
-        non_intermediate, _ = split_label(labels)
-        for label in non_intermediate:
-            if label in self._translate_cache:
-                f_set.add(self._translate_cache[label])
-            else:
-                self._translate_cache[label] = self._tau_subst.substitute(translate(label))
-                f_set.add(self._translate_cache[label])
+        if label in self._translate_cache:
+            r = self._translate_cache[label]
+        else:
+            self._translate_cache[label] = {self._tau_subst.substitute(f) for f in translate(label)}
+            r = self._translate_cache[label]
         e = time.time()
         self.translate_time += e - s
-        return f_set
+        return r
 
     def _formula2_z3obj(self, *formula):
         if len(formula) < 1:

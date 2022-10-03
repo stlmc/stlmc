@@ -30,6 +30,14 @@ class VarSubstitution:
         return _substitution(formula, self._subst_dict)
 
 
+def inf(interval: Interval) -> Union[Real, RealVal]:
+    return interval.left
+
+
+def sup(interval: Interval) -> Union[Real, RealVal]:
+    return interval.right
+
+
 @singledispatch
 def _substitution(const: Union[Formula, Expr], substitution_dict):
     return const
