@@ -228,7 +228,6 @@ class PathSubsumption:
         max_depth = graph.get_max_depth()
         cur_depth = max_depth
         while cur_depth > 0:
-            # print("cur depth {}".format(cur_depth))
             self._reduce_at(graph.get_nodes_at(cur_depth), graph)
             cur_depth -= 1
 
@@ -242,7 +241,10 @@ class PathSubsumption:
             node = waiting.pop()
 
             remove = set()
-            for n in waiting:
+            for n in nodes:
+                # ignore self subsumption
+                if n == node:
+                    continue
                 if self._subsume(n, node):
                     assert node in reduce
                     reduce[node].add(n)

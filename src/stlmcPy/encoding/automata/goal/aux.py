@@ -29,7 +29,7 @@ def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Labe
         update_queue = _apply_forbidden(update_waiting_list(p_f, lbs, (p_c, p_l)), f)
         waiting_list.extend(update_queue)
 
-    print("# iteration {}".format(loop))
+    # print("# iteration {}".format(loop))
     return labels
 
 
@@ -220,8 +220,8 @@ def tau_max():
     return Real("tau_max")
 
 
-def translate(label: Label) -> Set[Formula]:
-    non_intermediate, _ = split_label(label)
+def translate(label: Label) -> Tuple[Set[Formula], Set[Formula]]:
+    non_intermediate, intermediate = split_label(label)
     f_s = set()
     for lb_f in non_intermediate:
         if isinstance(lb_f, TimeProposition):
@@ -230,7 +230,7 @@ def translate(label: Label) -> Set[Formula]:
             f_s.add(lb_f)
         else:
             raise Exception("fail to translate a label ({})".format(label))
-    return f_s
+    return f_s, intermediate
 
 
 def _time_translate(time_f: TimeProposition) -> Formula:
@@ -239,7 +239,8 @@ def _time_translate(time_f: TimeProposition) -> Formula:
     if isinstance(time_f, TimeLast):
         return sup(time_f.i) >= tau_max()
     elif isinstance(time_f, TimeIntersect):
-        return inf(time_f.i) + inf(time_f.interval) <= sup(time_f.k)
+        return And([inf(time_f.k) <= inf(time_f.i) + inf(time_f.interval),
+                    inf(time_f.i) + inf(time_f.interval) <= sup(time_f.k)])
     elif isinstance(time_f, TimePre):
         return sup(time_f.k) <= inf(time_f.i) + inf(time_f.interval)
     elif isinstance(time_f, TimePost):

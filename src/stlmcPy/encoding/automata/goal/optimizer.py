@@ -13,22 +13,27 @@ Labels = Set[Label]
 
 
 class PropositionOptimizer:
-    def __init__(self, tau_subst: VarSubstitution):
+    def __init__(self, tau_subst: VarSubstitution, *assumptions):
         self._contradiction_cache: Dict[Label, bool] = dict()
         self._reduction_cache: Dict[Labels, Tuple[Set[Label], Set[Label]]] = dict()
         self._reduction_label_cache: Dict[Label, bool] = dict()
-        self._translate_cache: Dict[Label, Set[Formula]] = dict()
+        self._translate_cache: Dict[Formula, Formula] = dict()
 
         self._tau_subst = tau_subst
-
-        self._z3_solver = z3.SolverFor("QF_LRA")
-
         self.contradiction_call = 0
         self.reduction_call = 0
         self.reduction_time = 0.0
         self.translate_time = 0.0
         self.z3obj_time = 0.0
         self.contradiction_time = 0.0
+
+        self._z3_solver = z3.SolverFor("QF_LRA")
+
+        if len(assumptions) > 0:
+            a = {self._tau_subst.substitute(a) for a in assumptions}
+            self._z3_solver.add(self._formula2_z3obj(*a))
+            print("wow")
+            print(self._z3_solver.assertions())
 
     def check_contradiction(self, label: Label, *assumptions):
         if label in self._contradiction_cache:
@@ -107,14 +112,17 @@ class PropositionOptimizer:
 
     def _label2_formula(self, label: Label) -> Set[Formula]:
         s = time.time()
-        if label in self._translate_cache:
-            r = self._translate_cache[label]
-        else:
-            self._translate_cache[label] = {self._tau_subst.substitute(f) for f in translate(label)}
-            r = self._translate_cache[label]
+        f_set, (tr_f_set, _) = set(), translate(label)
+        for f in tr_f_set:
+            if f in self._translate_cache:
+                f_set.add(self._translate_cache[f])
+            else:
+                r = self._tau_subst.substitute(f)
+                self._translate_cache[f] = r
+                f_set.add(r)
         e = time.time()
         self.translate_time += e - s
-        return r
+        return f_set
 
     def _formula2_z3obj(self, *formula):
         if len(formula) < 1:

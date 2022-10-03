@@ -67,8 +67,8 @@ class StlGoal(Goal):
         print(self._time_order)
 
         #
-        self._optimizer = PropositionOptimizer(self.tau_subst)
-        self._graph_generator = GraphGenerator(self._optimizer)
+        self._optimizer = PropositionOptimizer(self.tau_subst, self._time_order)
+        self._graph_generator = GraphGenerator(self.tau_subst, self._optimizer)
 
         self._expand_cache: Dict[Label, Set[Label]] = dict()
         # self._extend_cache1: Dict[LabelInfo, Set[Labels]] = dict()
@@ -81,6 +81,7 @@ class StlGoal(Goal):
 
     def encode(self):
         self._graph_generator.clear()
+        graph = self._graph_generator.graph
         bound = self.bound
         print(self.st_formula)
 
@@ -94,17 +95,15 @@ class StlGoal(Goal):
 
         wait_queue: Set[Label] = init_labels
         next_queue: Set[Label] = set()
-        st_queue: Set[Label] = set()
 
-        total_label = 0
-        total_nodes = 0
-        depth, final_depth = 1, bound
+        total_label = len(init_labels)
+        total_nodes = len(graph.get_nodes_at(1))
+        depth, final_depth = 2, bound
         while True:
             if depth > final_depth:
                 break
 
             s = time.time()
-            num_labels = len(wait_queue)
             # print("depth : {}".format(depth))
             for label in wait_queue:
                 # check
@@ -119,8 +118,8 @@ class StlGoal(Goal):
                 # next_queue = canonicalize(next_queue)
                 # print_extend(label, n)
 
-                if final_depth > depth:
-                    self._graph_generator.make_posts(label, n, depth + 1)
+                if final_depth >= depth:
+                    self._graph_generator.make_posts(label, n, depth)
 
             e = time.time()
             wait_queue = next_queue.copy()
@@ -128,11 +127,12 @@ class StlGoal(Goal):
             next_queue.clear()
 
             #
-            if depth <= self._graph_generator.graph.get_max_depth():
-                cur_nodes = len(self._graph_generator.graph.get_nodes_at(depth))
+            if depth <= graph.get_max_depth():
+                cur_nodes = len(graph.get_nodes_at(depth))
             else:
                 cur_nodes = 0
 
+            num_labels = len(wait_queue)
             total_label += num_labels
             total_nodes += cur_nodes
 
@@ -154,9 +154,6 @@ class StlGoal(Goal):
 
         alg_e_t = time.time()
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
-
-        graph = self._graph_generator.graph
-        # print_graph_info(graph)
 
         print("after remove unreachable")
         s_t = time.time()
@@ -195,10 +192,12 @@ class StlGoal(Goal):
 
 
 class GraphGenerator:
-    def __init__(self, prop_optimizer: PropositionOptimizer):
+    def __init__(self, tau_subst: VarSubstitution,
+                 prop_optimizer: PropositionOptimizer):
         self.graph = Graph()
-        self.node_id_dict: Dict[Label, Node] = dict()
+        self.node_id_dict: Dict[Tuple[Label, int], Node] = dict()
         self._optimizer = prop_optimizer
+        self._tau_subst = tau_subst
 
     def clear(self):
         self.graph = Graph()
@@ -212,11 +211,13 @@ class GraphGenerator:
                 post_nodes.add(self.make_node(post, depth))
 
         # if parent
-        if parent_label in self.node_id_dict:
-            parent = self.node_id_dict[parent_label]
+        if (parent_label, depth - 1) in self.node_id_dict:
+            parent = self.node_id_dict[(parent_label, depth - 1)]
 
             for node in post_nodes:
                 connect(parent, node)
+        else:
+            raise Exception("labels should have a parent")
 
     def make_node(self, label: Label, depth: int):
         # do not make node for empty label
@@ -225,13 +226,15 @@ class GraphGenerator:
 
         # if node is already exists
         if label in self.node_id_dict:
-            return self.node_id_dict[label]
+            return self.node_id_dict[(label, depth)]
 
         node = Node(hash(label), depth)
-        node.non_intermediate, node.intermediate = split_label(label)
+        non_intermediate, intermediate = translate(label)
+        non_intermediate = set(map(lambda x: self._tau_subst.substitute(x), non_intermediate))
+        node.non_intermediate, node.intermediate = non_intermediate, intermediate
 
         self.graph.add_node(node)
-        self.node_id_dict[label] = node
+        self.node_id_dict[(label, depth)] = node
 
         if _is_final_label(label):
             node.set_as_final()
