@@ -7,11 +7,12 @@ from ....constraints.constraints import *
 
 
 def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Label]:
-    if label in cache:
-        return cache[label]
-
     c, n, f = label.cur, label.nxt, label.forbidden
     labels: Set[Label] = set()
+
+    # do not expand when next is empty
+    if len(n) <= 0:
+        return set()
 
     waiting_list = [(n.copy(), empty_label())]
     loop = 0
@@ -21,9 +22,6 @@ def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Labe
             labels.add(p_l)
             continue
 
-        # if p_l in cache:
-        #     waiting_list.extend(cache[p_l])
-        # else:
         loop += 1
         p_f = p_c.pop()
         lbs = _label_expand(p_f, c, depth)
