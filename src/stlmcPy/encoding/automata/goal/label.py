@@ -130,12 +130,12 @@ class FinallyUpIntersectDown(UpIntersectionDown):
 
 
 class TimeProposition(Proposition):
-    def __init__(self, i: Interval, k: Interval, interval: Interval, name: str):
+    def __init__(self, i: Interval, k: Interval, interval: Interval, name: str, string: str):
         Proposition.__init__(self)
-        self.i, self.k, self.interval, self._name = i, k, interval, name
+        self.i, self.k, self.interval, self._name, self._string = i, k, interval, name, string
 
     def __repr__(self):
-        return self._name
+        return self._string
 
     def __hash__(self):
         return hash(self._name)
@@ -146,25 +146,34 @@ class TimeProposition(Proposition):
 
 class TimeIntersect(TimeProposition):
     def __init__(self, i: Interval, k: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, k, interval, "({} /\\ {} + {} != empty)_in".format(k, i, interval))
+        TimeProposition.__init__(self, i, k, interval,
+                                 "(J_k /\\ {} + {} != empty)_in".format(i, interval),
+                                 "({} /\\ {} + {} != empty)_in".format(k, i, interval))
 
 
 class TimePre(TimeProposition):
     def __init__(self, i: Interval, k: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, k, interval, "({} < {} + {})_pre".format(k, i, interval))
+        TimeProposition.__init__(self, i, k, interval,
+                                 "(J_k < {} + {})_pre".format(i, interval),
+                                 "({} < {} + {})_pre".format(k, i, interval))
 
 
 class TimePost(TimeProposition):
     def __init__(self, i: Interval, k: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, k, interval, "({} + {} <! {})_post".format(i, interval, k))
+        TimeProposition.__init__(self, i, k, interval,
+                                 "({} + {} <! J_k)_post".format(i, interval),
+                                 "({} + {} <! {})_post".format(i, interval, k))
 
 
 class TimeNotPost(TimeProposition):
     def __init__(self, i: Interval, k: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, k, interval, "({} <! {} + {})_!post".format(k, i, interval))
+        TimeProposition.__init__(self, i, k, interval,
+                                 "(J_k <! {} + {})_!post".format(i, interval),
+                                 "({} <! {} + {})_!post".format(k, i, interval))
 
 
 class TimeLast(TimeProposition):
     def __init__(self, i: Interval):
         TimeProposition.__init__(self, i, i, Interval(True, "tau_0", "tau_max", False),
+                                 "(J_k >= tau_max)_last",
                                  "({} >= tau_max)_last".format(i))

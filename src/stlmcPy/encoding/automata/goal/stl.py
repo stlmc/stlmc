@@ -67,7 +67,7 @@ class StlGoal(Goal):
         print(self._time_order)
 
         #
-        self._optimizer = PropositionOptimizer(self.tau_subst, self._time_order)
+        self._optimizer = PropositionOptimizer(self.tau_subst)
         self._graph_generator = GraphGenerator(self.tau_subst, self._optimizer)
 
         self._expand_cache: Dict[Label, Set[Label]] = dict()
@@ -428,15 +428,15 @@ def _time_init_cond(max_depth: int) -> Set[Formula]:
 
 
 def _time_ordering(max_depth: int) -> And:
-    assert max_depth % 2 == 0
-    # 0 = \tau_0 < \tau_1 < ... < \tau_{i / 2} <= \tau_max
+    # 0 = \tau_0 <= \tau_1 <= ... <= \tau_{i / 2} <= \tau_max
     time_order: List[Formula] = [RealVal("0") == Real("tau_0")]
 
-    for depth in range(2, max_depth + 1, 2):
-        assert depth % 2 == 0
-        time_order.append(symbolic_inf(depth) < symbolic_sup(depth))
+    for depth in range(1, max_depth + 1):
+        iv = symbolic_interval(depth)
+        time_order.append(inf(iv) <= sup(iv))
 
-    time_order.append(symbolic_sup(max_depth) <= tau_max())
+    last_iv = symbolic_interval(max_depth)
+    time_order.append(sup(last_iv) <= tau_max())
 
     return And(time_order)
 

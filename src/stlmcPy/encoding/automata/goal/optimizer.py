@@ -2,38 +2,31 @@ import time
 import z3
 from typing import Dict, Set, Tuple
 
-from .aux import split_label, translate
+from .aux import translate
 from .label import Label
 from ....constraints.aux.operations import VarSubstitution
 from ....constraints.constraints import *
-# from ....encoding.automata.goal.aux import Label, split_label, translate, Labels
 from ....solver.z3 import translate as z3translate
 
 Labels = Set[Label]
 
 
 class PropositionOptimizer:
-    def __init__(self, tau_subst: VarSubstitution, *assumptions):
+    def __init__(self, tau_subst: VarSubstitution):
         self._contradiction_cache: Dict[Label, bool] = dict()
         self._reduction_cache: Dict[Labels, Tuple[Set[Label], Set[Label]]] = dict()
         self._reduction_label_cache: Dict[Label, bool] = dict()
         self._translate_cache: Dict[Formula, Formula] = dict()
 
         self._tau_subst = tau_subst
+        self._z3_solver = z3.SolverFor("QF_LRA")
+
         self.contradiction_call = 0
         self.reduction_call = 0
         self.reduction_time = 0.0
         self.translate_time = 0.0
         self.z3obj_time = 0.0
         self.contradiction_time = 0.0
-
-        self._z3_solver = z3.SolverFor("QF_LRA")
-
-        if len(assumptions) > 0:
-            a = {self._tau_subst.substitute(a) for a in assumptions}
-            self._z3_solver.add(self._formula2_z3obj(*a))
-            print("wow")
-            print(self._z3_solver.assertions())
 
     def check_contradiction(self, label: Label, *assumptions):
         if label in self._contradiction_cache:

@@ -1,11 +1,13 @@
+from typing import Union
+
 from ..tree.tree import Leaf, NonLeaf
 
 
 class Interval:
     def __init__(self, left_end, left, right, right_end):
         self.left_end: bool = left_end
-        self.left: RealVal = left
-        self.right: RealVal = right
+        self.left: Union[RealVal, Real] = left
+        self.right: Union[RealVal, Real] = right
         self.right_end: bool = right_end
         self._str = None
 
@@ -22,10 +24,28 @@ class Interval:
         return Interval(l_end, self.left - other.right, self.right - other.left, r_end)
 
     def __eq__(self, other):
+        def _val_check(_l, _r):
+            return isinstance(_l, RealVal) and isinstance(_r, RealVal)
+
+        def _var_check(_l, _r):
+            return isinstance(_l, Real) and isinstance(_r, Real)
+
         t_c = isinstance(other, Interval)
-        l_c = float(self.left.value) == float(other.left.value) and self.left_end == other.left_end
-        r_c = float(self.right.value) == float(other.right.value) and self.right_end == other.right_end
-        return t_c and l_c and r_c
+        l_c_e, r_c_e = self.left_end == other.left_end, self.right_end == other.right_end
+        if _val_check(self.left, other.left):
+            l_c = float(self.left.value) == float(other.left.value)
+        elif _var_check(self.left, other.left):
+            l_c = self.left.id == other.left.id
+        else:
+            l_c = False
+
+        if _val_check(self.right, other.right):
+            r_c = float(self.right.value) == float(other.right.value)
+        elif _var_check(self.right, other.right):
+            r_c = self.right.id == other.right.id
+        else:
+            r_c = False
+        return t_c and l_c and r_c and l_c_e and r_c_e
 
     def __hash__(self):
         return hash((hash(self.left_end), hash(self.left), hash(self.right_end), hash(self.right)))

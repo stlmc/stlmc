@@ -242,9 +242,6 @@ class PathSubsumption:
 
             remove = set()
             for n in nodes:
-                # ignore self subsumption
-                if n == node:
-                    continue
                 if self._subsume(n, node):
                     assert node in reduce
                     reduce[node].add(n)

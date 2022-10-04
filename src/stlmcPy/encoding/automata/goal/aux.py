@@ -159,8 +159,9 @@ def intersection(interval1: Interval, interval2: Interval):
 
 def symbolic_interval(num: int):
     # [tau_{num - 1}, tau_{num})
-    lv = Real("tau_{}".format(num - 1))
-    rv = Real("tau_{}".format(num))
+    l_n, r_n = 2 * num - 2, 2 * num - 1
+    lv = Real("tau_{}".format(l_n))
+    rv = Real("tau_{}".format(r_n))
     return Interval(True, lv, rv, True)
 
 
@@ -260,3 +261,28 @@ def split_label(label: Label) -> Tuple[Set[Formula], Set[Formula]]:
         else:
             intermediate.add(lb)
     return non_intermediate, intermediate
+
+
+def stuttering(label: Label, labels: Set[Label], depth: int) -> Set[Label]:
+    removed = set()
+    for lb in labels:
+        if _stuttering_equal(label, lb):
+            removed.add(lb)
+    return labels.difference(removed)
+
+
+def _stuttering_equal(label1: Label, label2: Label):
+    return label1.cur == label2.cur
+
+
+# def _stuttering_time_equal(f1: TimeProposition, f2: TimeProposition) -> bool:
+#     assert isinstance(f1, TimeProposition) and isinstance(f2, TimeProposition)
+#
+#     is_eq = f1.i == f2.i and f1.interval == f2.interval
+#     ty_eq = any([isinstance(f1, TimeLast) and isinstance(f2, TimeLast),
+#                  isinstance(f1, TimeIntersect) and isinstance(f2, TimeIntersect),
+#                  isinstance(f1, TimePre) and isinstance(f2, TimePre),
+#                  isinstance(f1, TimePost) and isinstance(f2, TimePost),
+#                  isinstance(f1, TimeNotPost) and isinstance(f2, TimeNotPost)])
+#
+#     return is_eq and ty_eq
