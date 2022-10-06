@@ -28,11 +28,11 @@ class PropositionOptimizer:
         self.z3obj_time = 0.0
         self.contradiction_time = 0.0
 
-    def check_contradiction(self, label: Label, *assumptions):
+    def check_contradiction(self, label: Label, depth: int, *assumptions):
         if label in self._contradiction_cache:
             return self._contradiction_cache[label]
         else:
-            self._contradiction_cache[label] = True if self._check_contradiction(label, *assumptions) else False
+            self._contradiction_cache[label] = True if self._check_contradiction(label, depth, *assumptions) else False
             return self._contradiction_cache[label]
 
     def reduce_label(self, labels: Labels) -> Tuple[Set[Label], Set[Label]]:
@@ -53,9 +53,9 @@ class PropositionOptimizer:
         if labels not in self._reduction_cache:
             self._reduction_cache[labels] = self._calc_prop_reduction(labels, *assumptions)
 
-    def _check_contradiction(self, label: Label, *assumptions) -> bool:
+    def _check_contradiction(self, label: Label, depth: int, *assumptions) -> bool:
         self.contradiction_call += 1
-        f_set = self._label2_formula(label)
+        f_set = self._label2_formula(label, depth)
         f, a = self._formula2_z3obj(*f_set), self._formula2_z3obj(*assumptions)
         r, t = self._z3_check_sat(f, a)
         self.contradiction_time += t
@@ -103,9 +103,9 @@ class PropositionOptimizer:
         e = time.time()
         return r, e - s
 
-    def _label2_formula(self, label: Label) -> Set[Formula]:
+    def _label2_formula(self, label: Label, depth: int) -> Set[Formula]:
         s = time.time()
-        f_set, (tr_f_set, _) = set(), translate(label)
+        f_set, (tr_f_set, _) = set(), translate(label, depth)
         for f in tr_f_set:
             if f in self._translate_cache:
                 f_set.add(self._translate_cache[f])

@@ -87,7 +87,7 @@ class StlGoal(Goal):
 
         alg_s_t = time.time()
         init_labels = init(self.st_formula, self._expand_cache)
-        # init_labels = self._apply_reduction(init_labels)
+        init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1), init_labels))
 
         # make initial nodes
         for label in init_labels:
@@ -108,11 +108,13 @@ class StlGoal(Goal):
             for label in wait_queue:
                 # check
                 # print("  label: {}".format(label))
-                if self._optimizer.check_contradiction(label):
+                if self._optimizer.check_contradiction(label, depth):
                     continue
 
                 n = expand(label, depth, self._expand_cache)
+                n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth), n))
                 # n = self._apply_reduction(n)
+                n = stuttering(label, n, depth)
 
                 next_queue.update(n)
                 # next_queue = canonicalize(next_queue)
@@ -229,7 +231,7 @@ class GraphGenerator:
             return self.node_id_dict[(label, depth)]
 
         node = Node(hash(label), depth)
-        non_intermediate, intermediate = translate(label)
+        non_intermediate, intermediate = translate(label, depth)
         non_intermediate = set(map(lambda x: self._tau_subst.substitute(x), non_intermediate))
         node.non_intermediate, node.intermediate = non_intermediate, intermediate
 
