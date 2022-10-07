@@ -54,11 +54,11 @@ def _(formula: Proposition, ctx: Set[Formula], depth: int) -> Set[Label]:
 
 @_label_expand.register(GloballyFormula)
 def _(formula: GloballyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
-    if formula not in ctx:
-        if is_untimed(formula.local_time):
-            lb = Label(singleton(formula.child), singleton(formula), singleton(), singleton())
-            return {lb}
-        else:
+    if is_untimed(formula.local_time):
+        lb = Label(singleton(formula.child), singleton(formula), singleton(), singleton())
+        return {lb}
+    else:
+        if formula not in ctx:
             f, start, interval = formula.child, symbolic_interval(depth), formula.local_time
 
             f1, f2 = GloballyUp(start, interval, f), GloballyUpIntersect(interval, f)
@@ -74,8 +74,8 @@ def _(formula: GloballyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
             lb3 = Label(singleton(f3, t_pre), singleton(), singleton(nxt), singleton())
             lb4 = Label(singleton(f4, t_in), singleton(), singleton(nxt), singleton())
             return {lb1, lb2, lb3, lb4}
-    else:
-        return {empty_label()}
+        else:
+            return {empty_label()}
 
 
 @_label_expand.register(GloballyUp)
