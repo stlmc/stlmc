@@ -3,11 +3,28 @@ from itertools import product
 from typing import Dict, List
 
 from .label import *
-from ....constraints.aux.operations import inf, sup
+from ...robust.relaxing import strengthening
+from ....constraints.aux.operations import inf, sup, reduce_not
 from ....constraints.constraints import *
 
 
-def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Label]:
+class LabelGenerator:
+    def __init__(self, formula: Formula, **args):
+        if "threshold" in args:
+            self._threshold = float(args["threshold"])
+        else:
+            raise Exception("threshold should be given")
+
+        self._formula = formula
+
+    def expand(self, label: Label, depth: int):
+        return _expand(label, depth, self._threshold)
+
+    def init(self):
+        return _init(self._formula, self._threshold)
+
+
+def _expand(label: Label, depth: int, threshold: float) -> Set[Label]:
     c, n, f = label.cur, label.nxt, label.forbidden
     labels: Set[Label] = set()
 
@@ -25,7 +42,7 @@ def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Labe
 
         loop += 1
         p_f = p_c.pop()
-        lbs = _label_expand(p_f, c, depth)
+        lbs = _label_expand(p_f, c, depth, threshold)
 
         update_queue = update_waiting_list(p_f, lbs, (p_c, p_l))
         update_queue = _remove_invalid_label(update_queue)
@@ -37,23 +54,23 @@ def expand(label: Label, depth: int, cache: Dict[Label, Set[Label]]) -> Set[Labe
     return labels
 
 
-def init(formula: Formula, cache: Dict[Label, Set[Label]]):
+def _init(formula: Formula, threshold: float):
     s_label = Label(singleton(), singleton(formula), singleton(), singleton())
-    return expand(s_label, 1, cache)
+    return _expand(s_label, 1, threshold)
 
 
 @singledispatch
-def _label_expand(formula: Formula, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _label_expand(formula: Formula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     raise Exception("cannot find a matching rule ({})".format(formula))
 
 
 @_label_expand.register(Proposition)
-def _(formula: Proposition, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: Proposition, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     return {Label(singleton(), singleton(), singleton(), singleton())}
 
 
 @_label_expand.register(GloballyFormula)
-def _(formula: GloballyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: GloballyFormula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     if is_untimed(formula.local_time):
         lb = Label(singleton(formula.child), singleton(formula), singleton(), singleton())
         return {lb}
@@ -66,20 +83,17 @@ def _(formula: GloballyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
             t_pre = TimePre(start, interval)
             t_in = TimeIntersect(start, interval)
 
-            g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
-            nxt = GloballyFormula(interval, g, f)
-
-            lb1 = Label(singleton(f1, t_pre), singleton(), singleton(), singleton(nxt))
-            lb2 = Label(singleton(f2, t_in), singleton(), singleton(), singleton(nxt))
-            lb3 = Label(singleton(f3, t_pre), singleton(), singleton(nxt), singleton())
-            lb4 = Label(singleton(f4, t_in), singleton(), singleton(nxt), singleton())
+            lb1 = Label(singleton(f1, t_pre), singleton(), singleton(), singleton())
+            lb2 = Label(singleton(f2, t_in), singleton(), singleton(), singleton())
+            lb3 = Label(singleton(f3, t_pre), singleton(), singleton(), singleton())
+            lb4 = Label(singleton(f4, t_in), singleton(), singleton(), singleton())
             return {lb1, lb2, lb3, lb4}
         else:
             return {empty_label()}
 
 
 @_label_expand.register(GloballyUp)
-def _(formula: GloballyUp, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: GloballyUp, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     f, base, n_interval, interval = formula.child, formula.i, symbolic_interval(depth + 1), formula.interval
     pre = TimePre(base, interval)
     its = TimeIntersect(base, interval)
@@ -93,13 +107,13 @@ def _(formula: GloballyUp, ctx: Set[Formula], depth: int) -> Set[Label]:
 
     label1 = Label(singleton(), singleton(f1, pre), singleton(), singleton(nxt))
     label2 = Label(singleton(), singleton(f2, its), singleton(), singleton(nxt))
-    label3 = Label(singleton(), singleton(f3, pre), singleton(nxt), singleton())
-    label4 = Label(singleton(), singleton(f4, its), singleton(nxt), singleton())
+    label3 = Label(singleton(), singleton(f3, pre), singleton(), singleton(nxt))
+    label4 = Label(singleton(), singleton(f4, its), singleton(), singleton(nxt))
     return {label1, label2, label3, label4}
 
 
 @_label_expand.register(GloballyUpDown)
-def _(formula: GloballyUpDown, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: GloballyUpDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     f = formula.child
     base, end, cur, interval = formula.i, formula.k, symbolic_interval(depth), formula.interval
 
@@ -119,21 +133,21 @@ def _(formula: GloballyUpDown, ctx: Set[Formula], depth: int) -> Set[Label]:
 
 
 @_label_expand.register(GloballyUpIntersect)
-def _(formula: GloballyUpIntersect, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: GloballyUpIntersect, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     f, end, interval = formula.child, symbolic_interval(depth), formula.interval
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     f1 = GloballyUpIntersectDown(end, interval, f)
     nxt = GloballyFormula(interval, g, f)
 
-    label1 = Label(singleton(), singleton(f1), singleton(nxt), singleton())
+    label1 = Label(singleton(), singleton(f1), singleton(), singleton(nxt))
     label2 = Label(singleton(f), singleton(formula), singleton(), singleton(nxt))
 
     return {label1, label2}
 
 
 @_label_expand.register(GloballyUpIntersectDown)
-def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     f, end, current, interval = formula.child, formula.i, symbolic_interval(depth), formula.interval
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
@@ -144,13 +158,13 @@ def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int) -> Set[La
 
     label1 = Label(singleton(tps, f), singleton(), singleton(nxt), singleton())
     label2 = Label(singleton(tls, f), singleton(), singleton(nxt), singleton())
-    label3 = Label(singleton(f), singleton(formula), singleton(), singleton(nxt))
+    label3 = Label(singleton(f), singleton(formula), singleton(nxt), singleton())
 
     return {label1, label2, label3}
 
 
 @_label_expand.register(FinallyFormula)
-def _(formula: FinallyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
+def _(formula: FinallyFormula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     if is_untimed(formula.local_time):
         label1 = Label(singleton(formula.child), singleton(), singleton(), singleton())
         label2 = Label(singleton(), singleton(formula), singleton(), singleton())
@@ -158,20 +172,92 @@ def _(formula: FinallyFormula, ctx: Set[Formula], depth: int) -> Set[Label]:
     else:
         if formula not in ctx:
             cur, interval, f = symbolic_interval(depth), formula.local_time, formula.child
-            f1 = FinallyUp(cur, interval, f)
-            f2 = FinallyUpIntersect(interval, f)
 
-            label1 = Label(singleton(f1, TimePre(cur, interval)), singleton(), singleton(), singleton())
-            label2 = Label(singleton(f2, f, TimeIntersect(cur, interval)), singleton(), singleton(), singleton())
+            t_pre = TimePreFinally(cur, interval)
+            t_in = TimeIntersectFinally(cur, interval)
+            f1, f2 = FinallyUp(cur, interval, f), FinallyUpIntersect(interval, f)
+            f3, f4 = FinallyUpDown(cur, cur, interval, f), FinallyUpIntersectDown(cur, interval, f)
 
-            return {label1, label2}
+            label1 = Label(singleton(f1, t_pre), singleton(), singleton(), singleton())
+            label2 = Label(singleton(f2, f, t_in), singleton(), singleton(), singleton())
+            label3 = Label(singleton(f3, t_pre), singleton(), singleton(), singleton())
+            label4 = Label(singleton(f4, f, t_in), singleton(), singleton(), singleton())
+
+            return {label1, label2, label3, label4}
         else:
             return {empty_label()}
 
 
 @_label_expand.register(FinallyUp)
-def _(formula: FinallyUp, ctx: Set[Formula], depth: int) -> Set[Label]:
-    label1 = FinallyUp
+def _(formula: FinallyUp, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    f, base, nxt_interval, interval = formula.child, formula.i, symbolic_interval(depth + 1), formula.interval
+    t_pre = TimePreFinally(base, interval)
+    t_in = TimeIntersectFinally(base, interval)
+
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    f1, f2 = FinallyUp(base, interval, f), FinallyUpIntersect(interval, f)
+    f3, f4 = FinallyUpDown(base, nxt_interval, interval, f), FinallyUpIntersectDown(nxt_interval, interval, f)
+    nxt = FinallyFormula(interval, g, f)
+
+    label1 = Label(singleton(), singleton(f1, t_pre), singleton(), singleton(nxt))
+    label2 = Label(singleton(), singleton(t_in, f, f2), singleton(), singleton(nxt))
+    label3 = Label(singleton(), singleton(f3, t_pre), singleton(), singleton(nxt))
+    label4 = Label(singleton(), singleton(f4, f, t_in), singleton(), singleton(nxt))
+
+    return {label1, label2, label3, label4}
+
+
+@_label_expand.register(FinallyUpDown)
+def _(formula: FinallyUpDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    f, base, end, interval = formula.child, formula.i, formula.k, formula.interval
+    t_pre = TimePreFinally(base, interval)
+    t_in = TimeIntersectFinally(base, interval)
+
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    nxt = FinallyFormula(interval, g, f)
+
+    f1 = FinallyUpIntersectDown(end, interval, f)
+    label1 = Label(singleton(), singleton(t_pre, formula), singleton(nxt), singleton())
+    label2 = Label(singleton(), singleton(f, t_in, f1), singleton(nxt), singleton())
+
+    return {label1, label2}
+
+
+@_label_expand.register(FinallyUpIntersect)
+def _(formula: FinallyUpIntersect, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    cur, f, interval = symbolic_interval(depth), formula.child, formula.interval
+    nxt_interval = symbolic_interval(depth + 1)
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    nxt = FinallyFormula(interval, g, f)
+
+    n_interval = Interval(True, inf(cur - interval), Real("tau_max"), False)
+    f1 = FinallyUp(n_interval, interval, f)
+    f2 = FinallyUpIntersectDown(nxt_interval, interval, f)
+
+    label1 = Label(singleton(), singleton(f, formula), singleton(), singleton(nxt))
+    label2 = Label(singleton(), singleton(f1, _nnf(f, threshold)), singleton(), singleton(nxt))
+    label3 = Label(singleton(), singleton(f2, f), singleton(), singleton(nxt))
+
+    return {label1, label2, label3}
+
+
+@_label_expand.register(FinallyUpIntersectDown)
+def _(formula: FinallyUpIntersectDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    end, f, interval = formula.i, formula.child, formula.interval
+    cur = symbolic_interval(depth)
+    lst = TimePostFinally(end, interval)
+
+    g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
+    nxt = FinallyFormula(interval, g, f)
+    n_interval = Interval(True, inf(cur - interval), Real("tau_max"), False)
+
+    f1 = FinallyUpDown(n_interval, end, interval, f)
+
+    label1 = Label(singleton(lst), singleton(), singleton(nxt), singleton())
+    label2 = Label(singleton(), singleton(formula, f), singleton(nxt), singleton())
+    label3 = Label(singleton(), singleton(f1, _nnf(f, threshold)), singleton(nxt), singleton())
+
+    return {label1, label2, label3}
 
 
 def update_waiting_list(formula: Formula, labels: Set[Label],
@@ -309,24 +395,61 @@ def translate(label: Label, depth: int) -> Tuple[Set[Formula], Set[Formula]]:
     return f_s, intermediate
 
 
-def _time_translate(time_f: TimeProposition, depth: int) -> Formula:
-    assert isinstance(time_f, TimeProposition)
-    cur = symbolic_interval(depth)
+@singledispatch
+def _time_translate(formula: TimeProposition, depth: int) -> Formula:
+    raise Exception("cannot translate {} to a time formula".format(formula))
 
-    if isinstance(time_f, TimeLast):
-        return sup(cur) >= tau_max()
-    elif isinstance(time_f, TimeIntersect):
-        return And([inf(cur) <= inf(time_f.i) + inf(time_f.interval),
-                    inf(time_f.i) + inf(time_f.interval) <= sup(cur)])
-    elif isinstance(time_f, TimePre):
-        return sup(cur) <= inf(time_f.i) + inf(time_f.interval)
-    elif isinstance(time_f, TimePost):
-        return And([inf(cur) <= sup(time_f.i) + sup(time_f.interval),
-                    sup(time_f.i) + sup(time_f.interval) <= sup(cur)])
-    elif isinstance(time_f, TimeNotPost):
-        return sup(cur) <= sup(time_f.i) + sup(time_f.interval)
-    else:
-        raise Exception("wrong type of time label")
+
+@_time_translate.register(TimeLast)
+def _(formula: TimeLast, depth: int) -> Formula:
+    cur = symbolic_interval(depth)
+    return sup(cur) >= tau_max()
+
+
+@_time_translate.register(TimeIntersect)
+def _(formula: TimeIntersect, depth: int) -> Formula:
+    cur = symbolic_interval(depth)
+    return And([inf(cur) <= inf(formula.i) + inf(formula.interval),
+                inf(formula.i) + inf(formula.interval) <= sup(cur)])
+
+
+@_time_translate.register(TimePre)
+def _(formula: TimePre, depth: int) -> Formula:
+    cur = symbolic_interval(depth)
+    return sup(cur) <= inf(formula.i) + inf(formula.interval)
+
+
+@_time_translate.register(TimePost)
+def _(formula: TimePost, depth: int) -> Formula:
+    cur = symbolic_interval(depth)
+    return And([inf(cur) <= sup(formula.i) + sup(formula.interval),
+                sup(formula.i) + sup(formula.interval) <= sup(cur)])
+
+
+@_time_translate.register(TimeNotPost)
+def _(formula: TimeNotPost, depth: int) -> Formula:
+    cur = symbolic_interval(depth)
+    return sup(cur) <= sup(formula.i) + sup(formula.interval)
+
+
+@_time_translate.register(TimePreFinally)
+def _(formula: TimePreFinally, depth: int) -> Formula:
+    base, cur, interval = formula.i, symbolic_interval(depth), formula.interval
+    return inf(cur - interval) <= inf(base)
+
+
+@_time_translate.register(TimeIntersectFinally)
+def _(formula: TimeIntersectFinally, depth: int) -> Formula:
+    base, cur, interval = formula.i, symbolic_interval(depth), formula.interval
+    target = cur - interval
+    return And([inf(target) <= inf(base), inf(base) <= sup(target)])
+
+
+@_time_translate.register(TimePostFinally)
+def _(formula: TimePostFinally, depth: int) -> Formula:
+    base, cur, interval = formula.i, symbolic_interval(depth), formula.interval
+    target = cur - interval
+    return And([inf(target) <= sup(base), sup(base) <= sup(target)])
 
 
 def split_label(label: Label) -> Tuple[Set[Formula], Set[Formula]]:
@@ -360,8 +483,8 @@ def _stuttering_equivalent(label1: Label, label2: Label):
 
         "up&down[]": lambda x: isinstance(x, GloballyUpDown),
         "up[*]down[]": lambda x: isinstance(x, GloballyUpIntersectDown),
-        "up&down<>": lambda x: isinstance(x, GloballyUpDown),
-        "up<*>down<>": lambda x: isinstance(x, GloballyUpIntersectDown)
+        "up&down<>": lambda x: isinstance(x, FinallyUpDown),
+        "up<*>down<>": lambda x: isinstance(x, FinallyUpIntersectDown)
     }
 
     c1, c2 = set(filter(filters["non-time"], label1.cur)), set(filter(filters["non-time"], label2.cur))
@@ -405,3 +528,8 @@ def _stuttering_pair(cur: Formula, nxt: Formula) -> bool:
 def is_untimed(interval: Interval):
     untimed = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     return interval == untimed
+
+
+def _nnf(formula: Formula, threshold: float):
+    f = strengthening(formula, threshold)
+    return reduce_not(Not(f))

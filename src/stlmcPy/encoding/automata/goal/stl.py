@@ -9,7 +9,6 @@ from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
 from ....hybrid_automaton.utils import make_jump
 from ....objects.goal import Goal
-from ....util.printer import indented_str
 from .label import *
 
 
@@ -44,35 +43,12 @@ class StlGoal(Goal):
         self.tau_subst.add(tau_max(), RealVal(str(self.tau_max)))
 
         # get an eps-strengthening reduced formula
-        self.st_formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
-        self.sub_formulas = calc_sub_formulas(self.st_formula)
-
-        # update_sub_formula(self.sub_formulas)
-
-        #
-        self._hash_dict: Dict[hash, Formula] = dict()
-        self._interval_hash_dict: Dict[hash, Interval] = dict()
-
-        print("===============")
-        print("subformula of {}".format(indented_str(str(self.st_formula), 0)))
-        for idx, f in enumerate(self.sub_formulas):
-            self._hash_dict[hash(f)] = f
-            if isinstance(f, Temporal):
-                self._interval_hash_dict[hash(f.local_time)] = f.local_time
-            print(indented_str("#{}: {} --> {}".format(idx, f, hash(f)), 2))
-        print("===============")
-
-        print("time ordering")
-        self._time_order = _time_ordering(2 * self.bound + 2)
-        print(self._time_order)
+        self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
 
         #
         self._optimizer = PropositionOptimizer(self.tau_subst)
+        self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
         self._graph_generator = GraphGenerator(self.tau_subst, self._optimizer)
-
-        self._expand_cache: Dict[Label, Set[Label]] = dict()
-        # self._extend_cache1: Dict[LabelInfo, Set[Labels]] = dict()
-        # self._extend_cache2: Dict[LabelInfo, Set[Labels]] = dict()
 
         self._forward_subsumption = ForwardSubsumption()
         self._backward_subsumption = BackwardSubsumption()
@@ -82,11 +58,11 @@ class StlGoal(Goal):
     def encode(self):
         self._graph_generator.clear()
         graph = self._graph_generator.graph
+        lg = self._label_generator
         bound = self.bound
-        print(self.st_formula)
 
         alg_s_t = time.time()
-        init_labels = init(self.st_formula, self._expand_cache)
+        init_labels = lg.init()
         init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1), init_labels))
 
         # make initial nodes
@@ -111,7 +87,7 @@ class StlGoal(Goal):
                 if self._optimizer.check_contradiction(label, depth):
                     continue
 
-                n = expand(label, depth, self._expand_cache)
+                n = lg.expand(label, depth)
                 n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth), n))
                 # n = self._apply_reduction(n)
                 n = stuttering(label, n, depth)

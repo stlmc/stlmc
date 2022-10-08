@@ -194,3 +194,8 @@ class TimeIntersectFinally(TimeProposition):
     def __init__(self, i: Interval, interval: Interval):
         TimeProposition.__init__(self, i, interval, "(inf({}) in J_k - {})_<>in".format(i, interval))
 
+
+class TimePostFinally(TimeProposition):
+    def __init__(self, i: Interval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(sup({}) in J_k - I)_<>post".format(i, interval))
+
