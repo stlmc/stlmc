@@ -72,8 +72,9 @@ def _(formula: Proposition, ctx: Set[Formula], depth: int, threshold: float) -> 
 @_label_expand.register(GloballyFormula)
 def _(formula: GloballyFormula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
     if is_untimed(formula.local_time):
-        lb = Label(singleton(formula.child), singleton(formula), singleton(), singleton())
-        return {lb}
+        lb1 = Label(singleton(formula.child), singleton(formula), singleton(), singleton())
+        lb2 = Label(singleton(formula.child, TimeLast()), singleton(), singleton(), singleton())
+        return {lb1, lb2}
     else:
         if formula not in ctx:
             f, start, interval = formula.child, symbolic_interval(depth), formula.local_time
@@ -230,7 +231,7 @@ def _(formula: FinallyUpIntersect, ctx: Set[Formula], depth: int, threshold: flo
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     nxt = FinallyFormula(interval, g, f)
 
-    n_interval = Interval(True, inf(cur - interval), Real("tau_max"), False)
+    n_interval = Interval(True, sup(cur - interval), Real("tau_max"), False)
     f1 = FinallyUp(n_interval, interval, f)
     f2 = FinallyUpIntersectDown(nxt_interval, interval, f)
 
@@ -249,7 +250,7 @@ def _(formula: FinallyUpIntersectDown, ctx: Set[Formula], depth: int, threshold:
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     nxt = FinallyFormula(interval, g, f)
-    n_interval = Interval(True, inf(cur - interval), Real("tau_max"), False)
+    n_interval = Interval(True, sup(cur - interval), Real("tau_max"), False)
 
     f1 = FinallyUpDown(n_interval, end, interval, f)
 
@@ -258,6 +259,42 @@ def _(formula: FinallyUpIntersectDown, ctx: Set[Formula], depth: int, threshold:
     label3 = Label(singleton(), singleton(f1, _nnf(f, threshold)), singleton(nxt), singleton())
 
     return {label1, label2, label3}
+
+
+@_label_expand.register(UntilFormula)
+def _(formula: UntilFormula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    lf, rf, interval = formula.left, formula.right, formula.local_time
+    assert is_untimed(interval)
+
+    lb1 = Label(singleton(lf), singleton(formula), singleton(), singleton())
+    lb2 = Label(singleton(lf, rf), singleton(), singleton(), singleton())
+    return {lb1, lb2}
+
+
+@_label_expand.register(ReleaseFormula)
+def _(formula: ReleaseFormula, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    lf, rf, interval = formula.left, formula.right, formula.local_time
+    assert is_untimed(interval)
+
+    lb1 = Label(singleton(lf), singleton(), singleton(), singleton())
+    lb2 = Label(singleton(rf, TimeLast()), singleton(), singleton(), singleton())
+    lb3 = Label(singleton(rf), singleton(formula), singleton(), singleton())
+    return {lb1, lb2, lb3}
+
+
+@_label_expand.register(And)
+def _(formula: And, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    assert len(formula.children) == 2
+    lf, rf = formula.children[0], formula.children[1]
+    return {Label(singleton(lf, rf), singleton(), singleton(), singleton())}
+
+
+@_label_expand.register(Or)
+def _(formula: Or, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
+    assert len(formula.children) == 2
+    lf, rf = formula.children[0], formula.children[1]
+    return {Label(singleton(lf), singleton(), singleton(), singleton()),
+            Label(singleton(rf), singleton(), singleton(), singleton())}
 
 
 def update_waiting_list(formula: Formula, labels: Set[Label],
@@ -320,7 +357,7 @@ def intersection(interval1: Interval, interval2: Interval):
 
 def symbolic_interval(num: int):
     # [tau_{num - 1}, tau_{num})
-    l_n, r_n = 2 * num - 2, 2 * num - 1
+    l_n, r_n = num - 1, num
     lv = Real("tau_{}".format(l_n))
     rv = Real("tau_{}".format(r_n))
     return Interval(True, lv, rv, True)
@@ -386,13 +423,20 @@ def translate(label: Label, depth: int) -> Tuple[Set[Formula], Set[Formula]]:
     non_intermediate, intermediate = split_label(label)
     f_s = set()
     for lb_f in non_intermediate:
-        if isinstance(lb_f, TimeProposition):
-            f_s.add(_time_translate(lb_f, depth))
-        elif isinstance(lb_f, Proposition):
-            f_s.add(lb_f)
-        else:
+        try:
+            f_s.add(translate_formula(lb_f, depth))
+        except Exception:
             raise Exception("fail to translate a label ({})".format(label))
     return f_s, intermediate
+
+
+def translate_formula(formula: Formula, depth: int) -> Formula:
+    if isinstance(formula, TimeProposition):
+        return _time_translate(formula, depth)
+    elif isinstance(formula, Proposition):
+        return formula
+    else:
+        raise Exception("fail to translate a formula ({})".format(formula))
 
 
 @singledispatch

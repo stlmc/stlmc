@@ -189,8 +189,8 @@ def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
 def remove_jump(jump: Transition):
     mode1, mode2 = jump.src, jump.trg
 
-    mode1.succ.discard(mode2)
-    mode2.pred.discard(mode1)
+    mode1.succ.remove(mode2)
+    mode2.pred.remove(mode1)
 
     assert mode2 in mode1.s_jumps
     assert mode1 in mode2.p_jumps
