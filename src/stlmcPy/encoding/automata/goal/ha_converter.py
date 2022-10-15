@@ -3,6 +3,7 @@ from typing import List
 from .aux import translate_formula, symbolic_interval, tau_max
 from .graph import *
 from .label import TimeProposition
+from .optimizer import reduce
 from ....constraints.aux.operations import VarSubstitution, inf, sup, get_vars, variable_equal
 from ....hybrid_automaton.hybrid_automaton import *
 
@@ -20,6 +21,7 @@ class HAConverter:
 
         #
         self._node2mode_dict: Dict[Node, Mode] = dict()
+        self._mode_depth_dict: Dict[Mode, int] = dict()
         self._empty_final_mode = Mode(-1)
         self._empty_initial_mode = Mode(-2)
 
@@ -30,6 +32,7 @@ class HAConverter:
         self._time_dyns.clear()
         self._time_resets_dict.clear()
         self._node2mode_dict.clear()
+        self._mode_depth_dict.clear()
         self._empty_final_mode = Mode(-1)
         self._empty_initial_mode = Mode(-2)
 
@@ -54,7 +57,7 @@ class HAConverter:
         for node in graph.nodes:
             self._add_time_condition_at(automata, node)
 
-        _remove_equivalent_modes(automata)
+        # _remove_equivalent_modes(automata, self._mode_depth_dict)
         # print(automata)
         return automata
 
@@ -78,11 +81,16 @@ class HAConverter:
                 t_f = tau_subst.substitute(translate_formula(f, node.depth))
                 t_f = clk_subst.substitute(t_f)
                 # print("@{} :: {} --> {}".format(node.depth, f, t_f))
-                self._add_to_guard(mode, t_f)
+
+                t_f, r = reduce(t_f)
+
+                if r:
+                    self._add_to_guard(mode, t_f)
             else:
                 mode.add_invariant(translate_formula(f, node.depth))
 
         self._node2mode_dict[node] = mode
+        self._mode_depth_dict[mode] = node.depth
         return mode
 
     def _make_jp(self, node: Node):
@@ -148,6 +156,9 @@ class HAConverter:
         self._empty_final_mode.add_dynamic(*t_dyn)
         self._empty_final_mode.set_as_final()
 
+        self._mode_depth_dict[self._empty_initial_mode] = self._empty_initial_mode.id
+        self._mode_depth_dict[self._empty_final_mode] = self._empty_final_mode.id
+
     def _add_to_guard(self, mode: Mode, t_f: Formula):
         # if global clk contained move the post guard
         if _is_global_clk_in(t_f):
@@ -164,20 +175,6 @@ def _add_time_init(automaton: HybridAutomaton, max_depth: int):
     for v in time_vars:
         s.add(v == zero)
     automaton.add_init(*s)
-
-
-def _time_ordering(max_depth: int) -> And:
-    # 0 = \tau_0 <= \tau_1 <= ... <= \tau_{i / 2} <= \tau_max
-    time_order: List[Formula] = [RealVal("0") == Real("tau_0")]
-
-    for depth in range(1, max_depth + 1):
-        iv = symbolic_interval(depth)
-        time_order.append(inf(iv) <= sup(iv))
-
-    last_iv = symbolic_interval(max_depth)
-    time_order.append(sup(last_iv) <= tau_max())
-
-    return And(time_order)
 
 
 def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
@@ -284,8 +281,8 @@ def _add_to_guard_dict(guard_dict: Dict[Mode, Set[Formula]], mode: Mode, t_f: Fo
         guard_dict[mode] = {t_f}
 
 
-def _remove_equivalent_modes(ha: HybridAutomaton):
-    equiv_rel = _calc_equivalent_relation(ha)
+def _remove_equivalent_modes(ha: HybridAutomaton, mode_depth_dict: Dict[Mode, int]):
+    equiv_rel = _calc_equivalent_relation(ha, mode_depth_dict)
     new_jps = set()
     to_be_removed = set()
     for mode in ha.modes:
@@ -302,19 +299,22 @@ def _remove_equivalent_modes(ha: HybridAutomaton):
         jp.add_reset(*r)
 
 
-def _calc_equivalent_relation(ha: HybridAutomaton) -> Dict[Mode, Mode]:
+def _calc_equivalent_relation(ha: HybridAutomaton, mode_depth_dict: Dict[Mode, int]) -> Dict[Mode, Mode]:
     equiv: Dict[Mode, Set[Mode]] = dict()
     equiv_rel: Dict[Mode, Mode] = dict()
     waiting = ha.modes.copy()
     while len(waiting) > 0:
         mode = waiting.pop()
+        mode_depth = mode_depth_dict[mode]
 
         to_be_removed = False
         for m in equiv:
+            m_depth = mode_depth_dict[m]
             dyn_eq = m.dynamics == mode.dynamics
             inv_eq = m.invariant == mode.invariant
             type_eq = mode.is_final() == m.is_final() and mode.is_initial() == m.is_initial()
-            if dyn_eq and inv_eq and type_eq:
+            depth_eq = mode_depth == m_depth
+            if dyn_eq and inv_eq and type_eq and depth_eq:
                 equiv[m].add(mode)
                 to_be_removed = True
 

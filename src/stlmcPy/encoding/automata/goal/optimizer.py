@@ -1,4 +1,6 @@
 import time
+from functools import singledispatch
+
 import z3
 from typing import Dict, Set, Tuple
 
@@ -11,7 +13,7 @@ from ....solver.z3 import translate as z3translate
 Labels = Set[Label]
 
 
-class PropositionOptimizer:
+class ContradictionChecker:
     def __init__(self, tau_subst: VarSubstitution):
         self._contradiction_cache: Dict[Label, bool] = dict()
         self._reduction_cache: Dict[Labels, Tuple[Set[Label], Set[Label]]] = dict()
@@ -22,8 +24,6 @@ class PropositionOptimizer:
         self._z3_solver = z3.SolverFor("QF_LRA")
 
         self.contradiction_call = 0
-        self.reduction_call = 0
-        self.reduction_time = 0.0
         self.translate_time = 0.0
         self.z3obj_time = 0.0
         self.contradiction_time = 0.0
@@ -35,24 +35,6 @@ class PropositionOptimizer:
             self._contradiction_cache[label] = True if self._check_contradiction(label, depth, *assumptions) else False
             return self._contradiction_cache[label]
 
-    def reduce_label(self, labels: Labels) -> Tuple[Set[Label], Set[Label]]:
-        if labels not in self._reduction_cache:
-            print(labels)
-            raise Exception("calculate label reduction first")
-        return self._reduction_cache[labels]
-
-    def calc_label_reduction(self, *labels, **optional):
-        assumptions = list()
-        if "assumptions" in optional:
-            assumptions = list(map(lambda x: self._tau_subst.substitute(x), optional["assumptions"]))
-
-        for label in labels:
-            self._calc_label_reduction(label, *assumptions)
-
-    def _calc_label_reduction(self, labels: Labels, *assumptions):
-        if labels not in self._reduction_cache:
-            self._reduction_cache[labels] = self._calc_prop_reduction(labels, *assumptions)
-
     def _check_contradiction(self, label: Label, depth: int, *assumptions) -> bool:
         self.contradiction_call += 1
         f_set = self._label2_formula(label, depth)
@@ -62,36 +44,6 @@ class PropositionOptimizer:
         if r == z3.z3.unsat:
             return True
         return False
-
-    def _calc_prop_reduction(self, labels: Set[Label], *assumptions) -> Tuple[Set[Label], Set[Label]]:
-        self.reduction_call += 1
-        self._labels2_formula(labels)
-        non_intermediate, intermediate = set(), set()
-
-        for label in labels:
-            # use cache
-            if label in self._reduction_label_cache:
-                # check if it is non-trivial
-                if not self._reduction_label_cache[label]:
-                    non_intermediate.add(label)
-            else:
-                # if in translate cache = non_intermediate
-                if label in self._translate_cache:
-                    p_f = self._translate_cache[label]
-
-                    f, a = self._formula2_z3obj(Not(p_f)), self._formula2_z3obj(*assumptions)
-                    r, t = self._z3_check_sat(f, a)
-                    self.reduction_time += t
-
-                    if r == z3.z3.unsat:
-                        self._reduction_label_cache[label] = True
-                    else:
-                        self._reduction_label_cache[label] = False
-                        non_intermediate.add(label)
-                else:
-                    intermediate.add(label)
-
-        return non_intermediate, intermediate
 
     def _z3_check_sat(self, f, *assumptions):
         s = time.time()
@@ -129,8 +81,39 @@ class PropositionOptimizer:
 
     def time_clear(self):
         self.contradiction_call = 0
-        self.reduction_call = 0
         self.translate_time = 0.0
-        self.reduction_time = 0.0
         self.contradiction_time = 0.0
         self.z3obj_time = 0.0
+
+
+def reduce(*formula) -> Tuple[Union[Formula, None], bool]:
+    all_f: Set[Formula] = set()
+    for f in formula:
+        all_f.update(_flat_formula(f))
+
+    reduced: Set[Formula] = set()
+    for f in all_f:
+        if not _reducible(f):
+            reduced.add(f)
+
+    if len(reduced) <= 0:
+        return None, False
+    elif len(reduced) == 1:
+        return reduced.pop(), True
+    else:
+        return And(list(reduced)), True
+
+
+def _reducible(formula):
+    f = z3translate(formula)
+    return z3.is_true(z3.simplify(f))
+
+
+@singledispatch
+def _flat_formula(formula: Formula) -> Set[Formula]:
+    return {formula}
+
+
+@_flat_formula.register(And)
+def _(formula: And) -> Set[Formula]:
+    return set(formula.children)

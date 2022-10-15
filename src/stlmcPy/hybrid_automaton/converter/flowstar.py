@@ -103,15 +103,15 @@ class FlowStarConverter(Converter):
 
         # config
         net_dict = dict()
-        net_dict["adaptive steps"] = "{min 0.001, max 0.05}"
+        net_dict["adaptive steps"] = "{min 0.001, max 0.5}"
         net_dict["time"] = tb
-        net_dict["remainder estimation"] = "1e-2"
+        net_dict["remainder estimation"] = "1e-8"
         net_dict["identity precondition"] = ""
-        net_dict["gnuplot octagon"] = "{},{} fixed orders 3".format(picked, picked)
-        net_dict["cutoff"] = "1e-12"
+        net_dict["gnuplot octagon"] = "{},{} fixed orders 4".format(picked, picked)
+        net_dict["cutoff"] = "1e-13"
         net_dict["precision"] = "53"
         net_dict["no output"] = ""
-        net_dict["max jumps"] = "15"
+        net_dict["max jumps"] = "500000"
         net_dict["print on"] = ""
 
         conf_str_list = list()

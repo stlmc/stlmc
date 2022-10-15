@@ -544,7 +544,7 @@ def _stuttering_equivalent(label1: Label, label2: Label):
         c2_fs = c2_cg[idx]
         for f1, f2 in product(c1_fs, c2_fs):
             if _stuttering_pair(f1, f2):
-                pair.update((f1, f2))
+                pair.add((f1, f2))
 
     c1_cpy, c2_cpy = c1.copy(), c2.copy()
     for f1, f2 in pair:

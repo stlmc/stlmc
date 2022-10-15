@@ -3,7 +3,7 @@ import time
 from .aux import *
 from .graph import *
 from .ha_converter import HAConverter
-from .optimizer import PropositionOptimizer
+from .optimizer import ContradictionChecker
 from .subsumption import ForwardSubsumption, BackwardSubsumption, PathSubsumption
 from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
@@ -43,9 +43,9 @@ class StlGoal(Goal):
         self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
 
         #
-        self._optimizer = PropositionOptimizer(self.tau_subst)
+        self._optimizer = ContradictionChecker(self.tau_subst)
         self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
-        self._graph_generator = GraphGenerator(self._optimizer)
+        self._graph_generator = GraphGenerator()
         self._hybrid_converter = HAConverter(self.tau_subst)
 
         self._forward_subsumption = ForwardSubsumption()
@@ -63,8 +63,8 @@ class StlGoal(Goal):
 
         alg_s_t = time.time()
         init_labels = lg.init()
-        init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1), init_labels))
-
+        init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(1)), init_labels))
+        
         # make initial nodes
         for label in init_labels:
             self._graph_generator.make_node(label, 1)
@@ -88,7 +88,7 @@ class StlGoal(Goal):
                     continue
 
                 n = lg.expand(label, depth)
-                n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth), n))
+                n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(depth)), n))
                 # n = self._apply_reduction(n)
                 n = stuttering(label, n, depth)
 
@@ -122,7 +122,6 @@ class StlGoal(Goal):
             logging = ["translate: {:.3f}".format(self._optimizer.translate_time),
                        "contradiction: {:.3f}".format(self._optimizer.contradiction_time),
                        "contradiction call# {}".format(self._optimizer.contradiction_call),
-                       "reduction time: {:.3f}".format(self._optimizer.reduction_time),
                        "solver time: {:.3f}".format(self._optimizer.z3obj_time),
                        "total: {:.3f}".format(e - s)]
 
@@ -138,10 +137,6 @@ class StlGoal(Goal):
         self._graph_generator.remove_unreachable()
         e_t = time.time()
         print("unreach remove : {:.3f}s".format(e_t - s_t))
-        print_graph_info(graph)
-
-        print("reduce proposition")
-        self._graph_generator.apply_prop_reduction()
         print_graph_info(graph)
 
         self._forward_subsumption.calc_relation(graph)
@@ -169,17 +164,11 @@ class StlGoal(Goal):
         #     pickle.dump(ha, fw)
         return ha
 
-    def _apply_reduction(self, labels_set: Set[Label]):
-        n_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x), labels_set))
-        self._optimizer.calc_label_reduction(*n_labels, assumptions=self._time_order.children)
-        return canonicalize(*n_labels)
-
 
 class GraphGenerator:
-    def __init__(self, prop_optimizer: PropositionOptimizer):
+    def __init__(self):
         self.graph = Graph()
         self.node_id_dict: Dict[Tuple[Label, int], Node] = dict()
-        self._optimizer = prop_optimizer
 
     def clear(self):
         self.graph = Graph()
@@ -235,12 +224,6 @@ class GraphGenerator:
 
         for node in remove:
             self.graph.remove_node(node)
-
-    def apply_prop_reduction(self):
-        for node in self.graph.nodes:
-            labels = frozenset(node.non_intermediate.union(node.intermediate))
-            non_intermediate, intermediate = self._optimizer.reduce_label(labels)
-            node.non_intermediate, node.intermediate = frozenset(non_intermediate), frozenset(intermediate)
 
 
 def is_empty_labels(label: Label):
@@ -316,3 +299,15 @@ def _print_labels_set(labels: Set[Label]):
     print("========")
 
 
+def _time_ordering(max_depth: int) -> List[Formula]:
+    # 0 = \tau_0 <= \tau_1 <= ... <= \tau_{i / 2} <= \tau_max
+    time_order: List[Formula] = [RealVal("0") == Real("tau_0")]
+
+    for depth in range(1, max_depth + 1):
+        iv = symbolic_interval(depth)
+        time_order.append(inf(iv) <= sup(iv))
+
+    last_iv = symbolic_interval(max_depth)
+    time_order.append(sup(last_iv) <= tau_max())
+
+    return time_order

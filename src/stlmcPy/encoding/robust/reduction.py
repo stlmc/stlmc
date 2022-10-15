@@ -58,7 +58,7 @@ def _(f: UntilFormula):
         left_formula_1 = GloballyFormula(Interval(False, RealVal("0"), left_time, False), f.global_time, left)
         subFormula = Or([right, And([left, UntilFormula(universeInterval, f.global_time, left, right)])])
         left_formula_2 = GloballyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return And([left_formula_1, left_formula_2, right_formula])
+        return And([And([left_formula_1, left_formula_2]), right_formula])
     else:
         subFormula = And([left, UntilFormula(universeInterval, f.global_time, left, right)])
         final_left = GloballyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
@@ -86,7 +86,7 @@ def _(f: ReleaseFormula):
         left_formula_1 = FinallyFormula(Interval(False, RealVal("0"), left_time, False), f.global_time, left)
         subFormula = And([right, Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])])
         left_formula_2 = FinallyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return Or([left_formula_1, left_formula_2, right_formula])
+        return Or([And([left_formula_1, left_formula_2]), right_formula])
     else:
         subFormula = Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])
         final_left = FinallyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
