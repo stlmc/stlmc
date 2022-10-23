@@ -1,7 +1,7 @@
-from typing import Tuple, Set, FrozenSet
+from typing import Set
 
+from .interval import SymbolicInterval, Partition
 from ....constraints.constraints import *
-
 # Label = Tuple[FrozenSet[Formula], FrozenSet[Formula], FrozenSet[Formula]]
 from ....util.printer import indented_str
 
@@ -23,11 +23,11 @@ class Label:
         n = indented_str("nxt:\n{}".format("\n".join([indented_str(str(n), 4) for n in self.nxt])), 2)
         f = indented_str("forbidden:\n{}".format("\n".join([indented_str(str(fb), 4) for fb in self.forbidden])), 2)
         a = indented_str("assertions:\n{}".format("\n".join([indented_str(str(ast), 4) for ast in self.assertion])), 2)
-        return "\n".join([s, c, n, f, e, a])
+        return "\n".join([s, c, n, f, a, e])
 
 
 class Up(UnaryFormula):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula, temporal: str):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula, temporal: str):
         super().__init__(formula, "", "")
         self.i, self.interval, self._temporal = i, interval, temporal
         self._name = "(up{}^{}_{} {})".format(temporal, hash(i), hash(interval), hash(formula))
@@ -36,7 +36,7 @@ class Up(UnaryFormula):
         return hash(self._name)
 
     def __repr__(self):
-        return "{} (J:{}, I:{} {})".format(self._name, self.i, self.interval, self.child)
+        return "(up{}^{}_{} {})".format(self._temporal, self.i, self.interval, self.child)
 
 
 class UpIntersect(UnaryFormula):
@@ -49,24 +49,12 @@ class UpIntersect(UnaryFormula):
         return hash(self._name)
 
     def __repr__(self):
-        return "{} (I:{} {})".format(self._name, self.interval, self.child)
-
-
-class Down(UnaryFormula):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula, temporal: str):
-        super().__init__(formula, "", "")
-        self.i, self.interval, self._temporal = i, interval, temporal
-        self._name = "(down{}^{}_{} {})".format(temporal, hash(i), hash(interval), hash(formula))
-
-    def __hash__(self):
-        return hash(self._name)
-
-    def __repr__(self):
-        return "{} (J:{}, I:{}, {})".format(self._name, self.i, self.interval, self.child)
+        return "(up{}_{} {})".format(self._temporal, self.interval, self.child)
 
 
 class UpDown(UnaryFormula):
-    def __init__(self, i: Interval, k: Interval, interval: Interval, formula: Formula, temporal):
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula, temporal):
         super().__init__(formula, "", "")
         self._temporal, self.i, self.k, self.interval = temporal, i, k, interval
         self._name = "((up&down{}^{{{}, {}}})_{} {})".format(temporal, hash(i), hash(k),
@@ -76,11 +64,11 @@ class UpDown(UnaryFormula):
         return hash(self._name)
 
     def __repr__(self):
-        return "{} (J:{}, K:{}, I:{}, {})".format(self._name, self.i, self.k, self.interval, self.child)
+        return "(up&down{}^{{{}, {}}})_{} {})".format(self._temporal, self.i, self.k, self.interval, self.child)
 
 
-class UpIntersectionDown(UnaryFormula):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula, temporal1: str, temporal2: str):
+class UpIntersectDown(UnaryFormula):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula, temporal1: str, temporal2: str):
         super().__init__(formula, "", "")
         self.i, self.interval = i, interval
         self._temporal1, self._temporal2 = temporal1, temporal2
@@ -91,11 +79,12 @@ class UpIntersectionDown(UnaryFormula):
         return hash(self._name)
 
     def __repr__(self):
-        return "{} (J:{}, I:{}, {})".format(self._name, self.i, self.interval, self.child)
+        return "((up{}&down{})^{}_{} {})".format(self._temporal1, self._temporal2,
+                                                 self.i, self.interval, self.child)
 
 
 class GloballyUp(Up):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
         super().__init__(i, interval, formula, "[]")
 
 
@@ -104,23 +93,19 @@ class GloballyUpIntersect(UpIntersect):
         super().__init__(interval, formula, "[*]")
 
 
-class GloballyDown(Down):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
-        super().__init__(i, interval, formula, "[]")
-
-
 class GloballyUpDown(UpDown):
-    def __init__(self, i: Interval, k: Interval, interval: Interval, formula: Formula):
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula):
         super().__init__(i, k, interval, formula, "[]")
 
 
-class GloballyUpIntersectDown(UpIntersectionDown):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
+class GloballyUpIntersectDown(UpIntersectDown):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
         super().__init__(i, interval, formula, "[*]", "[]")
 
 
 class FinallyUp(Up):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
         super().__init__(i, interval, formula, "<>")
 
 
@@ -129,23 +114,19 @@ class FinallyUpIntersect(UpIntersect):
         super().__init__(interval, formula, "<*>")
 
 
-class FinallyDown(Down):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
-        super().__init__(i, interval, formula, "<>")
-
-
 class FinallyUpDown(UpDown):
-    def __init__(self, i: Interval, k: Interval, interval: Interval, formula: Formula):
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula):
         super().__init__(i, k, interval, formula, "<>")
 
 
-class FinallyUpIntersectDown(UpIntersectionDown):
-    def __init__(self, i: Interval, interval: Interval, formula: Formula):
+class FinallyUpIntersectDown(UpIntersectDown):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
         super().__init__(i, interval, formula, "<*>", "<>")
 
 
 class TimeProposition(Proposition):
-    def __init__(self, i: Interval, interval: Interval, name: str):
+    def __init__(self, i: SymbolicInterval, interval: Interval, name: str):
         Proposition.__init__(self)
         self.i, self.interval, self._name = i, interval, name
 
@@ -160,42 +141,41 @@ class TimeProposition(Proposition):
 
 
 class TimeIntersect(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(J_k /\\ {} + {} != empty)_in".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(K /\\ {} + {} != empty)_in".format(i, interval))
 
 
 class TimePre(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(J_k < {} + {})_pre".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(K < {} + {})_pre".format(i, interval))
 
 
 class TimePost(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "({} + {} <! J_k)_post".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "({} + {} <! K)_post".format(i, interval))
 
 
 class TimeNotPost(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(J_k <! {} + {})_!post".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(K <! {} + {})_!post".format(i, interval))
 
 
 class TimeLast(TimeProposition):
     def __init__(self):
-        glb_itv = Interval(True, "tau_0", "tau_max", False)
-        TimeProposition.__init__(self, glb_itv, glb_itv, "(J_k >= tau_max)_last")
+        dummy, glb_itv = Partition(-1), Interval(True, "tau_0", "tau_max", False)
+        TimeProposition.__init__(self, dummy, glb_itv, "(K >= tau_max)_last")
 
 
 class TimePreFinally(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(rc({}) issubset_of rc(J_k - {}))_<>pre".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(rc({}) issubset_of rc(K - {}))_<>pre".format(i, interval))
 
 
 class TimeIntersectFinally(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(inf({}) in J_k - {})_<>in".format(i, interval))
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(inf({}) in K - {})_<>in".format(i, interval))
 
 
 class TimePostFinally(TimeProposition):
-    def __init__(self, i: Interval, interval: Interval):
-        TimeProposition.__init__(self, i, interval, "(sup({}) in J_k - I)_<>post".format(i, interval))
-
+    def __init__(self, i: SymbolicInterval, interval: Interval):
+        TimeProposition.__init__(self, i, interval, "(sup({}) in K - I)_<>post".format(i, interval))

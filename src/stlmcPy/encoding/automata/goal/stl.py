@@ -1,6 +1,7 @@
 import time
 
 from .aux import *
+from .equivalence import ShiftingEquivalenceChecker
 from .graph import *
 from .ha_converter import HAConverter
 from .optimizer import ContradictionChecker
@@ -45,7 +46,7 @@ class StlGoal(Goal):
         #
         self._optimizer = ContradictionChecker(self.tau_subst)
         self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
-        self._graph_generator = GraphGenerator()
+        self._graph_generator = GraphGenerator(self._formula, shift_mode=True)
         self._hybrid_converter = HAConverter(self.tau_subst)
 
         self._forward_subsumption = ForwardSubsumption()
@@ -90,7 +91,7 @@ class StlGoal(Goal):
                 n = lg.expand(label, depth)
                 n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(depth)), n))
                 # n = self._apply_reduction(n)
-                n = stuttering(label, n, depth)
+                n = stuttering(label, n)
 
                 next_queue.update(n)
                 # next_queue = canonicalize(next_queue)
@@ -166,50 +167,72 @@ class StlGoal(Goal):
 
 
 class GraphGenerator:
-    def __init__(self):
+    def __init__(self, formula, shift_mode=False):
         self.graph = Graph()
-        self.node_id_dict: Dict[Tuple[Label, int], Node] = dict()
+        self._resets: Dict[Tuple[Node, Node], Set[int]] = dict()
+        self._shifting_checker = ShiftingEquivalenceChecker()
+
+        # graph info
+        self._node_id_dict: Dict[Tuple[FrozenSet[Formula], int], Node] = dict()
+        self._lb_node_dict: Dict[Label, Node] = dict()
+        self.shifting_mode = shift_mode
+
+        # for initial label
+        self._formula = formula
 
     def clear(self):
         self.graph = Graph()
-        self.node_id_dict = dict()
+        self._resets = dict()
+        self._node_id_dict = dict()
+        self._lb_node_dict = dict()
 
     def make_posts(self, parent_label: Label, post_labels: Set[Label], depth: int):
         post_nodes = set()
         for post in post_labels:
             # do not make node for empty label
-            if not is_empty_labels(post):
-                post_nodes.add(self.make_node(post, depth))
+            assert not is_empty_labels(post)
+            post_nodes.add(self._shift_eq_node(post, depth))
 
-        # if parent
-        if (parent_label, depth - 1) in self.node_id_dict:
-            parent = self.node_id_dict[(parent_label, depth - 1)]
+        # if parent exists
+        if parent_label in self._lb_node_dict:
+            parent = self._lb_node_dict[parent_label]
 
-            for node in post_nodes:
+            for is_shift_node, node in post_nodes:
                 connect(parent, node)
+
+                if is_shift_node:
+                    shift = self._shifting_checker.get_shifting()
+                    self._update_resets(parent, node, shift)
         else:
             raise Exception("labels should have a parent")
 
     def make_node(self, label: Label, depth: int):
+        lb = frozenset(label.cur)
+
         # do not make node for empty label
         if is_empty_labels(label):
             raise Exception("label cannot be empty")
 
-        # if node is already exists
-        if label in self.node_id_dict:
-            return self.node_id_dict[(label, depth)]
+        # if node already exists
+        if (lb, depth) in self._node_id_dict:
+            node = self._node_id_dict[(lb, depth)]
+            self._lb_node_dict[label] = node
+            return node
 
         node = Node(hash(label), depth)
         node.non_intermediate, node.intermediate = split_label(label)
+        self._initial_reduction(node.intermediate, depth)
 
         self.graph.add_node(node)
-        self.node_id_dict[(label, depth)] = node
+        self._node_id_dict[(lb, depth)] = node
+        self._lb_node_dict[label] = node
 
         if _is_final_label(label):
             node.set_as_final()
 
         if _is_initial_node(node):
             node.set_as_initial()
+
         return node
 
     def remove_unreachable(self):
@@ -225,29 +248,56 @@ class GraphGenerator:
         for node in remove:
             self.graph.remove_node(node)
 
+    def _shift_eq_node(self, label: Label, depth: int) -> Tuple[bool, Node]:
+        if self.shifting_mode:
+            # get nodes less than current depth and find
+            prev_nodes = set(filter(lambda n: n.depth < depth, self.graph.nodes))
+
+            for node in prev_nodes:
+                # infer label
+                node_lb = Label(singleton(*node.non_intermediate.union(node.intermediate)),
+                                singleton(), singleton(), singleton())
+                # return if any found
+                if self._shifting_checker.equivalent(node_lb, label):
+                    self._lb_node_dict[label] = node
+                    return True, node
+
+        # make a new node
+        return False, self.make_node(label, depth)
+
+    def _update_resets(self, parent: Node, child: Node, shift: int):
+        if (parent, child) in self._resets:
+            self._resets[(parent, child)].add(shift)
+        else:
+            self._resets[(parent, child)] = {shift}
+
+    def _initial_reduction(self, intermediate: Set[Formula], depth: int):
+        if depth == 1:
+            intermediate.discard(self._formula)
+
 
 def is_empty_labels(label: Label):
     return len(label.cur) == 0
 
 
 def _find_reachable(graph: Graph) -> Set[Node]:
-    reach: Set[Node] = set()
+    # set finals as reachable nodes
+    reach, un_reach = set(filter(lambda n: n.is_final(), graph.nodes)), set()
 
-    max_depth = graph.get_max_depth()
-    cur_depth = max_depth
-    while cur_depth > 0:
-        nodes = graph.get_nodes_at(cur_depth)
-
-        for node in nodes:
-            # final is reachable
-            if node.is_final():
+    # prepare rest of the nodes
+    waiting = graph.nodes.difference(reach)
+    while len(waiting) > 0:
+        for node in waiting:
+            # else at least one successor is reachable
+            if len(node.succ.intersection(reach)) > 0:
                 reach.add(node)
-            else:
-                # else at least one successor is reachable
-                if len(node.succ.intersection(reach)) > 0:
-                    reach.add(node)
 
-        cur_depth -= 1
+            # all successors are unreachable
+            if node.succ.issubset(un_reach):
+                un_reach.add(node)
+
+        waiting.difference_update(reach)
+        waiting.difference_update(un_reach)
 
     return reach
 
@@ -259,13 +309,6 @@ def _is_final_label(label: Label):
 def _is_initial_node(node: Node):
     return node.depth == 1
 
-
-# def print_wait_queue(wait_queue: List[Tuple[Set[Formula], Label]]):
-#     print()
-#     print("lb wait queue >")
-#     for p_c, p_l in wait_queue:
-#         print(indented_str("\n".join([indented_str(str(f), 4) for f in p_c]), 2))
-#         print(indented_str(str(p_l), 2))
 
 def print_wait_queue(wait_queue: Set[Label]):
     print()

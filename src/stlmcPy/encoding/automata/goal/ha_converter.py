@@ -1,6 +1,6 @@
 from typing import List
 
-from .aux import translate_formula, symbolic_interval, tau_max
+from .aux import translate_formula, symbolic_interval
 from .graph import *
 from .label import TimeProposition
 from .optimizer import reduce
