@@ -1,7 +1,7 @@
 import time
 
 from .aux import *
-from .equivalence import ShiftingEquivalenceChecker
+from .equivalence import ShiftingEquivalenceChecker, StutteringEquivalenceChecker
 from .graph import *
 from .ha_converter import HAConverter
 from .optimizer import ContradictionChecker
@@ -46,7 +46,9 @@ class StlGoal(Goal):
         #
         self._optimizer = ContradictionChecker(self.tau_subst)
         self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
-        self._graph_generator = GraphGenerator(self._formula, shift_mode=True)
+        self._stuttering_checker = StutteringEquivalenceChecker(self._formula)
+        self._shifting_checker = ShiftingEquivalenceChecker(self._formula)
+        self._graph_generator = GraphGenerator(self._shifting_checker, shift_mode=True)
         self._hybrid_converter = HAConverter(self.tau_subst)
 
         self._forward_subsumption = ForwardSubsumption()
@@ -60,12 +62,13 @@ class StlGoal(Goal):
         graph = self._graph_generator.graph
         converter = self._hybrid_converter
         lg = self._label_generator
+        st_checker = self._stuttering_checker
         bound = self.bound
 
         alg_s_t = time.time()
         init_labels = lg.init()
         init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(1)), init_labels))
-        
+
         # make initial nodes
         for label in init_labels:
             self._graph_generator.make_node(label, 1)
@@ -91,7 +94,7 @@ class StlGoal(Goal):
                 n = lg.expand(label, depth)
                 n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(depth)), n))
                 # n = self._apply_reduction(n)
-                n = stuttering(label, n)
+                n = st_checker.stuttering(label, n)
 
                 next_queue.update(n)
                 # next_queue = canonicalize(next_queue)
@@ -157,7 +160,7 @@ class StlGoal(Goal):
         print("subsumption")
         print_graph_info(graph)
 
-        ha = converter.convert(graph)
+        ha = converter.convert(graph, self._graph_generator._resets)
         # import pickle
         # with open("{}.graph".format("stl"), "wb") as fw:
         #     pickle.dump(graph, fw)
@@ -167,18 +170,15 @@ class StlGoal(Goal):
 
 
 class GraphGenerator:
-    def __init__(self, formula, shift_mode=False):
+    def __init__(self, shifting_checker: ShiftingEquivalenceChecker, shift_mode=False):
         self.graph = Graph()
         self._resets: Dict[Tuple[Node, Node], Set[int]] = dict()
-        self._shifting_checker = ShiftingEquivalenceChecker()
+        self._shifting_checker = shifting_checker
 
         # graph info
         self._node_id_dict: Dict[Tuple[FrozenSet[Formula], int], Node] = dict()
-        self._lb_node_dict: Dict[Label, Node] = dict()
+        self._lb_node_dict: Dict[Tuple[Label, int], Node] = dict()
         self.shifting_mode = shift_mode
-
-        # for initial label
-        self._formula = formula
 
     def clear(self):
         self.graph = Graph()
@@ -194,8 +194,8 @@ class GraphGenerator:
             post_nodes.add(self._shift_eq_node(post, depth))
 
         # if parent exists
-        if parent_label in self._lb_node_dict:
-            parent = self._lb_node_dict[parent_label]
+        if (parent_label, depth - 1) in self._lb_node_dict:
+            parent = self._lb_node_dict[(parent_label, depth - 1)]
 
             for is_shift_node, node in post_nodes:
                 connect(parent, node)
@@ -216,16 +216,15 @@ class GraphGenerator:
         # if node already exists
         if (lb, depth) in self._node_id_dict:
             node = self._node_id_dict[(lb, depth)]
-            self._lb_node_dict[label] = node
+            self._lb_node_dict[(label, depth)] = node
             return node
 
-        node = Node(hash(label), depth)
+        node = Node(hash((label, depth)), depth)
         node.non_intermediate, node.intermediate = split_label(label)
-        self._initial_reduction(node.intermediate, depth)
 
         self.graph.add_node(node)
         self._node_id_dict[(lb, depth)] = node
-        self._lb_node_dict[label] = node
+        self._lb_node_dict[(label, depth)] = node
 
         if _is_final_label(label):
             node.set_as_final()
@@ -257,9 +256,19 @@ class GraphGenerator:
                 # infer label
                 node_lb = Label(singleton(*node.non_intermediate.union(node.intermediate)),
                                 singleton(), singleton(), singleton())
+                # get depths
+                depth1, depth2 = node.depth, depth
+
                 # return if any found
-                if self._shifting_checker.equivalent(node_lb, label):
-                    self._lb_node_dict[label] = node
+                if self._shifting_checker.equivalent(node_lb, label, is_full=True,
+                                                     depth1=depth1, depth2=depth2):
+                    self._lb_node_dict[(label, depth)] = node
+                    return True, node
+
+                # return if any found
+                if self._shifting_checker.equivalent(node_lb, label, is_full=False,
+                                                     depth1=depth1, depth2=depth2,):
+                    self._lb_node_dict[(label, depth)] = node
                     return True, node
 
         # make a new node
@@ -270,10 +279,6 @@ class GraphGenerator:
             self._resets[(parent, child)].add(shift)
         else:
             self._resets[(parent, child)] = {shift}
-
-    def _initial_reduction(self, intermediate: Set[Formula], depth: int):
-        if depth == 1:
-            intermediate.discard(self._formula)
 
 
 def is_empty_labels(label: Label):

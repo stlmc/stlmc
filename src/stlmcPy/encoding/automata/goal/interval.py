@@ -26,6 +26,9 @@ class Partition(SymbolicInterval):
         self._name = "J_{}".format(index)
         SymbolicInterval.__init__(self, index, "J")
 
+    def __hash__(self):
+        return hash(self._name)
+
     def __repr__(self):
         return self._name
 
@@ -47,6 +50,9 @@ class Subtraction(SymbolicInterval):
         self.interval = interval
         self._inf, self._sup = _inf(self.index), _sup(self.index)
         self._name = "J_{} - {}".format(self.index, interval)
+
+    def __hash__(self):
+        return hash(self._name)
 
     def __repr__(self):
         return self._name

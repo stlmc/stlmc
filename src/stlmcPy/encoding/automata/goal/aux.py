@@ -1,8 +1,6 @@
 from functools import singledispatch
-from itertools import product
 from typing import Dict, List, Tuple
 
-from .equivalence import StutteringEquivalenceChecker
 from .label import *
 from ...robust.relaxing import strengthening
 from ....constraints.aux.operations import inf, sup, reduce_not
@@ -503,15 +501,6 @@ def split_label(label: Label) -> Tuple[Set[Formula], Set[Formula]]:
         else:
             intermediate.add(lb)
     return non_intermediate, intermediate
-
-
-def stuttering(label: Label, labels: Set[Label]) -> Set[Label]:
-    removed = set()
-    checker = StutteringEquivalenceChecker()
-    for lb in labels:
-        if checker.equivalent(label, lb):
-            removed.add(lb)
-    return labels.difference(removed)
 
 
 def is_untimed(interval: Interval):

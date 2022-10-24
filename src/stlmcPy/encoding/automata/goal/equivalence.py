@@ -8,7 +8,8 @@ from .label import *
 
 
 class LabelEquivalenceChecker:
-    def __init__(self):
+    def __init__(self, top_formula: Formula):
+        self._top_formula = top_formula
         self._filters = {
             "up[]": lambda x: isinstance(x, GloballyUp),
             "up[*]": lambda x: isinstance(x, GloballyUpIntersect),
@@ -22,7 +23,7 @@ class LabelEquivalenceChecker:
         }
 
     @abc.abstractmethod
-    def equivalent(self, label1: Label, label2: Label) -> bool:
+    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
         pass
 
     def _apply_filter(self, formulas: Set[Formula], *names) -> List[Set[Formula]]:
@@ -35,13 +36,24 @@ class LabelEquivalenceChecker:
             categories.append(set(filter(self._filters[name], formulas)))
         return categories
 
+    def _ignore_top_formula(self, *list_formulas):
+        for formulas in list_formulas:
+            formulas.discard(self._top_formula)
+
 
 class StutteringEquivalenceChecker(LabelEquivalenceChecker):
-    def __init__(self):
-        LabelEquivalenceChecker.__init__(self)
+    def __init__(self, top_formula: Formula):
+        LabelEquivalenceChecker.__init__(self, top_formula)
         self._filters["non-time"] = lambda x: not isinstance(x, TimeProposition)
 
-    def equivalent(self, label1: Label, label2: Label) -> bool:
+    def stuttering(self, label: Label, labels: Set[Label]) -> Set[Label]:
+        removed = set()
+        for lb in labels:
+            if self.equivalent(label, lb):
+                removed.add(lb)
+        return labels.difference(removed)
+
+    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
         # get non-time goals
         c1 = self._apply_filter(label1.cur, "non-time").pop()
         c2 = self._apply_filter(label2.cur, "non-time").pop()
@@ -55,7 +67,17 @@ class StutteringEquivalenceChecker(LabelEquivalenceChecker):
                 if self._stuttering_pair(f1, f2):
                     pair.add((f1, f2))
 
+        # if no stuttering pair found
+        if len(pair) <= 0:
+            c1_cpy, c2_cpy = c1.copy(), c2.copy()
+            # ignore top formula when checking stuttering
+            self._ignore_top_formula(c1_cpy, c2_cpy)
+            return c1_cpy == c2_cpy
+
         c1_cpy, c2_cpy = c1.copy(), c2.copy()
+        # ignore top formula when checking stuttering
+        self._ignore_top_formula(c1_cpy, c2_cpy)
+
         for f1, f2 in pair:
             c1_cpy.remove(f1)
             c2_cpy.remove(f2)
@@ -86,11 +108,19 @@ class StutteringEquivalenceChecker(LabelEquivalenceChecker):
 
 
 class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
-    def __init__(self):
-        LabelEquivalenceChecker.__init__(self)
+    def __init__(self, top_formula: Formula):
+        LabelEquivalenceChecker.__init__(self, top_formula)
         self._shifting = 0
 
-    def equivalent(self, label1: Label, label2: Label) -> bool:
+    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
+        assert "depth1" in options.keys() and "depth2" in options.keys()
+        depth1, depth2 = options["depth1"], options["depth2"]
+
+        if "is_full" in options.keys():
+            is_full = options["is_full"]
+        else:
+            is_full = False
+
         self._clear()
         # get current
         c1, c2 = label1.cur.copy(), label2.cur.copy()
@@ -101,33 +131,33 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
         c2_cg = self._apply_filter(c2, "up[]", "up[*]", "up<>", "up<*>",
                                    "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
 
+        self._shifting = depth2 - depth1
+        if is_full:
+            shifting, is_first = depth2 - depth1, False
+        else:
+            shifting, is_first = 0, True
+
         pair = set()
-        self._shifting = 0
-        is_first = True
         for c1_fs, c2_fs in zip(c1_cg, c2_cg):
             for f1, f2 in product(c1_fs, c2_fs):
                 if self._shifting_pair(f1, f2):
                     pair.add((f1, f2))
-                    # no need to update shifting for UpIntersect
-                    # really?
-                    if is_up_intersect(f1, f2):
-                        continue
+                    prev_shifting = shifting
+                    shifting = _calc_shifting(f1, f2)
+                    if is_first:
+                        # do not check the first
+                        is_first = False
                     else:
-                        prev_shifting = self._shifting
-                        self._shifting = _calc_shifting(f1, f2)
-                        if is_first:
-                            # do not check
-                            is_first = False
-                        else:
-                            # conclude that the labels are not equivalent
-                            if prev_shifting != self._shifting:
-                                return False
+                        # conclude that the labels are not equivalent
+                        if prev_shifting != shifting:
+                            return False
 
         c1_cpy, c2_cpy = c1.copy(), c2.copy()
         for f1, f2 in pair:
             c1_cpy.remove(f1)
             c2_cpy.remove(f2)
 
+        self._ignore_top_formula(c1_cpy, c2_cpy)
         return c1_cpy == c2_cpy
 
     def get_shifting(self):
@@ -188,7 +218,7 @@ def _(cur: Up, nxt: Up):
 @_calc_shifting.register(UpDown)
 def _(cur: UpDown, nxt: UpDown):
     assert isinstance(nxt, UpDown)
-    # assert cur.k.index - cur.i.index == nxt.k.index - nxt.i.index
+    assert cur.k.index - cur.i.index == nxt.k.index - nxt.i.index
     return nxt.i.index - cur.i.index
 
 

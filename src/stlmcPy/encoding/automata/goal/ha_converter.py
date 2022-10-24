@@ -36,7 +36,7 @@ class HAConverter:
         self._empty_final_mode = Mode(-1)
         self._empty_initial_mode = Mode(-2)
 
-    def convert(self, graph: Graph):
+    def convert(self, graph: Graph, resets: Dict[Tuple[Node, Node], Set[int]]):
         automata = HybridAutomaton()
         max_depth = graph.get_max_depth()
         self._prepare(max_depth)
@@ -52,6 +52,7 @@ class HAConverter:
         # make outgoing jp
         for node in graph.nodes:
             self._make_jp(node)
+        # self._make_from_resets(resets)
 
         # add time conditions
         for node in graph.nodes:
@@ -100,6 +101,17 @@ class HAConverter:
             s_mode = self._node2mode_dict[s_node]
             jp = make_jump(mode, s_mode)
             jp.add_reset(*self._time_resets_dict[node.depth])
+
+    # TODO: Testing purpose
+    def _make_from_resets(self, resets: Dict[Tuple[Node, Node], Set[int]]):
+        for p, s in resets:
+            if not p in self._node2mode_dict or not s in self._node2mode_dict:
+                continue
+
+            for r in resets[(p, s)]:
+                p_m, s_m = self._node2mode_dict[p], self._node2mode_dict[s]
+                jp = make_jump(p_m, s_m)
+                jp.add_guard(Bool("shifting {}".format(r)))
 
     def _add_time_condition_at(self, automaton: HybridAutomaton, node: Node):
         # move time guard to the next jump

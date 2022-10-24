@@ -17,6 +17,7 @@ data/
 reports/
 3rd_party/
 *.jar
+*.jl
 
 # Virtual Env for python
 venv/
