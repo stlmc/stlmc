@@ -21,38 +21,12 @@ class ForwardSubsumption(Subsumption):
     def __init__(self):
         self._relation: Dict[Node, Set[Node]] = dict()
 
-    def calc_relation(self, graph: Graph):
-        max_depth = graph.get_max_depth()
-        cur_depth = 1
-        while max_depth >= cur_depth:
-            # print("cur depth {}".format(cur_depth))
-            self._calc_relation_until(graph.get_nodes_at(cur_depth))
-            cur_depth += 1
-        # print(self._relation)
+    def calc_relation(self, graph: TableauGraph):
+        self._calc_relation_until(graph.nodes)
 
-    def reduce(self, graph: Graph):
-        max_depth = graph.get_max_depth()
-        cur_depth = 1
-        while max_depth >= cur_depth:
-            # print("cur depth {}".format(cur_depth))
-            self._reduce_at(graph.get_nodes_at(cur_depth), graph)
-            cur_depth += 1
+    def reduce(self, graph: TableauGraph):
+        nodes = graph.nodes.copy()
 
-    def get_relation(self):
-        return self._relation
-
-    def _calc_relation_until(self, nodes: Set[Node]):
-        pre_status: Dict[Node, Set[Node]] = self._relation.copy()
-        while True:
-            self._calc_relation(nodes)
-
-            cur_status = self._relation
-            if cur_status == pre_status:
-                return
-
-            pre_status = self._relation.copy()
-
-    def _reduce_at(self, nodes: Set[Node], graph: Graph):
         waiting = nodes.copy()
         reduce: Dict[Node, Set[Node]] = dict()
         for node in nodes:
@@ -73,14 +47,33 @@ class ForwardSubsumption(Subsumption):
         for representative in reduce:
             for node in reduce[representative]:
                 if node != representative:
-                    node_p, node_s = node.pred.copy(), node.succ.copy()
+                    p_jp_s, s_jp_s = node.get_in_edges(), node.get_out_edges()
+
+                    for p_jp in p_jp_s:
+                        n_jp = copy_jump(p_jp)
+                        n_jp.trg = representative
+                        connect(n_jp)
+
+                    for s_jp in s_jp_s:
+                        n_jp = copy_jump(s_jp)
+                        n_jp.src = representative
+                        connect(n_jp)
+
                     graph.remove_node(node)
 
-                    for pred in node_p:
-                        connect(pred, representative)
+    def get_relation(self):
+        return self._relation
 
-                    for succ in node_s:
-                        connect(representative, succ)
+    def _calc_relation_until(self, nodes: Set[Node]):
+        pre_status: Dict[Node, Set[Node]] = self._relation.copy()
+        while True:
+            self._calc_relation(nodes)
+
+            cur_status = self._relation
+            if cur_status == pre_status:
+                return
+
+            pre_status = self._relation.copy()
 
     def _equivalent(self, node1: Node, node2: Node):
         assert node1 in self._relation and node2 in self._relation
@@ -105,7 +98,11 @@ class ForwardSubsumption(Subsumption):
             return False
 
         for pred in node1.pred:
-            assert pred in self._relation
+            # temporarily not forward relation
+            # assert in self._relation
+            if pred not in self._relation:
+                return False
+
             if len(self._relation[pred].intersection(node2.pred)) <= 0:
                 return False
         return True
@@ -122,37 +119,12 @@ class BackwardSubsumption(Subsumption):
     def __init__(self):
         self._relation: Dict[Node, Set[Node]] = dict()
 
-    def calc_relation(self, graph: Graph):
-        max_depth = graph.get_max_depth()
-        cur_depth = max_depth
-        while cur_depth > 0:
-            # print("cur depth {}".format(cur_depth))
-            self._calc_relation_until(graph.get_nodes_at(cur_depth))
-            cur_depth -= 1
+    def calc_relation(self, graph: TableauGraph):
+        self._calc_relation_until(graph.nodes)
 
-    def reduce(self, graph: Graph):
-        max_depth = graph.get_max_depth()
-        cur_depth = max_depth
-        while cur_depth > 0:
-            # print("cur depth {}".format(cur_depth))
-            self._reduce_at(graph.get_nodes_at(cur_depth), graph)
-            cur_depth -= 1
+    def reduce(self, graph: TableauGraph):
+        nodes = graph.nodes.copy()
 
-    def get_relation(self):
-        return self._relation
-
-    def _calc_relation_until(self, nodes: Set[Node]):
-        pre_status: Dict[Node, Set[Node]] = self._relation.copy()
-        while True:
-            self._calc_relation(nodes)
-
-            cur_status = self._relation
-            if cur_status == pre_status:
-                return
-
-            pre_status = self._relation.copy()
-
-    def _reduce_at(self, nodes: Set[Node], graph: Graph):
         waiting = nodes.copy()
         reduce: Dict[Node, Set[Node]] = dict()
         for node in nodes:
@@ -173,14 +145,33 @@ class BackwardSubsumption(Subsumption):
         for representative in reduce:
             for node in reduce[representative]:
                 if node != representative:
-                    node_p, node_s = node.pred.copy(), node.succ.copy()
+                    p_jp_s, s_jp_s = node.get_in_edges(), node.get_out_edges()
+
+                    for p_jp in p_jp_s:
+                        n_jp = copy_jump(p_jp)
+                        n_jp.trg = representative
+                        connect(n_jp)
+
+                    for s_jp in s_jp_s:
+                        n_jp = copy_jump(s_jp)
+                        n_jp.src = representative
+                        connect(n_jp)
+
                     graph.remove_node(node)
 
-                    for pred in node_p:
-                        connect(pred, representative)
+    def get_relation(self):
+        return self._relation
 
-                    for succ in node_s:
-                        connect(representative, succ)
+    def _calc_relation_until(self, nodes: Set[Node]):
+        pre_status: Dict[Node, Set[Node]] = self._relation.copy()
+        while True:
+            self._calc_relation(nodes)
+
+            cur_status = self._relation
+            if cur_status == pre_status:
+                return
+
+            pre_status = self._relation.copy()
 
     def _equivalent(self, node1: Node, node2: Node):
         assert node1 in self._relation and node2 in self._relation
@@ -205,7 +196,9 @@ class BackwardSubsumption(Subsumption):
             return False
 
         for succ in node1.succ:
-            assert succ in self._relation
+            if succ not in self._relation:
+                return False
+
             if len(self._relation[succ].intersection(node2.succ)) <= 0:
                 return False
         return True
@@ -224,14 +217,9 @@ class PathSubsumption:
         self._forward_relation: Dict[Node, Set[Node]] = forward_relation
         self._backward_relation: Dict[Node, Set[Node]] = backward_relation
 
-    def reduce(self, graph: Graph):
-        max_depth = graph.get_max_depth()
-        cur_depth = max_depth
-        while cur_depth > 0:
-            self._reduce_at(graph.get_nodes_at(cur_depth), graph)
-            cur_depth -= 1
+    def reduce(self, graph: TableauGraph):
+        nodes = graph.nodes.copy()
 
-    def _reduce_at(self, nodes: Set[Node], graph: Graph):
         waiting = nodes.copy()
         reduce: Dict[Node, Set[Node]] = dict()
         for node in nodes:

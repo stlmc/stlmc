@@ -140,6 +140,7 @@ class FlowStarConverter(Converter):
 def preprocessing(ha: HybridAutomaton):
     ff = Real("ff")
     zero, one = RealVal("0"), RealVal("1")
+    tau_zero = Real("tau_0")
 
     # add initial conditions for special variables: ff = 1
     ha.add_init(ff == one)
@@ -156,10 +157,12 @@ def preprocessing(ha: HybridAutomaton):
 
     initial_mode = Mode(0)
     initial_mode.set_as_initial()
+    initial_mode.add_invariant(tau_zero <= zero)
     ha.add_mode(initial_mode)
 
     for mode in initials:
-        make_jump(initial_mode, mode)
+        jp = make_jump(initial_mode, mode)
+        jp.add_guard(tau_zero >= zero)
 
     remove_equal_jumps(ha)
 

@@ -1,10 +1,9 @@
-from typing import List
-
-from .aux import translate_formula, symbolic_interval
+from .aux import translate_formula
+from .clock import *
 from .graph import *
 from .label import TimeProposition
 from .optimizer import reduce
-from ....constraints.aux.operations import VarSubstitution, inf, sup, get_vars, variable_equal
+from ....constraints.aux.operations import VarSubstitution, inf, sup, variable_equal
 from ....hybrid_automaton.hybrid_automaton import *
 
 
@@ -36,8 +35,10 @@ class HAConverter:
         self._empty_final_mode = Mode(-1)
         self._empty_initial_mode = Mode(-2)
 
-    def convert(self, graph: Graph, resets: Dict[Tuple[Node, Node], Set[int]]):
+    def convert(self, graph: TableauGraph, shift_jumps: Set[Jump]):
+        self.clear()
         automata = HybridAutomaton()
+        jumps = get_node_jumps(graph)
         max_depth = graph.get_max_depth()
         self._prepare(max_depth)
 
@@ -49,10 +50,9 @@ class HAConverter:
             mode = self._make_mode(node, index + 1)
             automata.add_mode(mode)
 
-        # make outgoing jp
-        for node in graph.nodes:
-            self._make_jp(node)
-        # self._make_from_resets(resets)
+        # make jp
+        for jp in jumps:
+            self._make_jp(jp, shift_jumps)
 
         # add time conditions
         for node in graph.nodes:
@@ -94,24 +94,15 @@ class HAConverter:
         self._mode_depth_dict[mode] = node.depth
         return mode
 
-    def _make_jp(self, node: Node):
-        mode = self._node2mode_dict[node]
+    def _make_jp(self, jump: Jump, shift_jumps: Set[Jump]):
+        s_mode = self._node2mode_dict[jump.src]
+        t_mode = self._node2mode_dict[jump.trg]
 
-        for s_node in node.succ:
-            s_mode = self._node2mode_dict[s_node]
-            jp = make_jump(mode, s_mode)
-            jp.add_reset(*self._time_resets_dict[node.depth])
-
-    # TODO: Testing purpose
-    def _make_from_resets(self, resets: Dict[Tuple[Node, Node], Set[int]]):
-        for p, s in resets:
-            if not p in self._node2mode_dict or not s in self._node2mode_dict:
-                continue
-
-            for r in resets[(p, s)]:
-                p_m, s_m = self._node2mode_dict[p], self._node2mode_dict[s]
-                jp = make_jump(p_m, s_m)
-                jp.add_guard(Bool("shifting {}".format(r)))
+        jp = make_jump(s_mode, t_mode)
+        if jump in shift_jumps:
+            jp.add_reset(*jump.reset)
+        else:
+            jp.add_reset(*self._time_resets_dict[jump.src.depth])
 
     def _add_time_condition_at(self, automaton: HybridAutomaton, node: Node):
         # move time guard to the next jump
@@ -129,9 +120,9 @@ class HAConverter:
                 jp = make_jump(empty_initial_mode, mode)
                 jp.add_guard(*t_pre_fs)
             else:
-                for p_m in mode.p_jumps:
-                    for p_jp in mode.p_jumps[p_m]:
-                        p_jp.add_guard(*t_pre_fs)
+                p_jp_s = mode.get_in_edges()
+                for p_jp in p_jp_s:
+                    p_jp.add_guard(*t_pre_fs)
 
         # check if there's something to propagate
         if mode in self._time_post_guard:
@@ -143,9 +134,9 @@ class HAConverter:
                 jp.add_guard(*t_post_fs)
                 jp.add_reset(*self._time_resets_dict[node.depth])
             else:
-                for s_m in mode.s_jumps:
-                    for s_jp in mode.s_jumps[s_m]:
-                        s_jp.add_guard(*t_post_fs)
+                s_jp_s = mode.get_out_edges()
+                for s_jp in s_jp_s:
+                    s_jp.add_guard(*t_post_fs)
 
         if is_empty_final_needed:
             automaton.add_mode(empty_final_mode)
@@ -154,7 +145,7 @@ class HAConverter:
             automaton.add_mode(empty_initial_mode)
 
     def _prepare(self, max_depth: int):
-        self._clk_subst_dict = _global_clk_subst(max_depth)
+        self._clk_subst_dict = global_clk_subst(max_depth)
         self._time_dyns = _time_dynamics(max_depth)
         self._time_resets_dict = _time_resets(max_depth)
         self._prepare_empty_mode(max_depth)
@@ -173,7 +164,7 @@ class HAConverter:
 
     def _add_to_guard(self, mode: Mode, t_f: Formula):
         # if global clk contained move the post guard
-        if _is_global_clk_in(t_f):
+        if is_global_clk_in(t_f):
             _add_to_guard_dict(self._time_post_guard, mode, t_f)
         else:
             _add_to_guard_dict(self._time_pre_guard, mode, t_f)
@@ -182,7 +173,7 @@ class HAConverter:
 def _add_time_init(automaton: HybridAutomaton, max_depth: int):
     s = set()
     time_vars: Set[Real] = _time_variables(max_depth)
-    time_vars.add(_global_clk())
+    time_vars.add(global_clk())
     zero = RealVal("0.0")
     for v in time_vars:
         s.add(v == zero)
@@ -193,7 +184,7 @@ def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
     time_vars: Set[Real] = _time_variables(max_depth)
     time_dyns: Set[Tuple[Real, Expr]] = set()
 
-    clk = _global_clk()
+    clk = global_clk()
     one, zero = RealVal("1.0"), RealVal("0.0")
     for v in time_vars:
         if variable_equal(v, clk):
@@ -226,7 +217,7 @@ def _time_resets(max_depth: int) -> Dict[int, Set[Tuple[Real, Expr]]]:
 
 def _time_resets_at(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
     time_resets: Set[Tuple[Real, Expr]] = set()
-    clk = _global_clk()
+    clk = global_clk()
 
     depth = 1
     while max_depth >= depth:
@@ -246,7 +237,7 @@ def _time_resets_at(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
 
 
 def _time_variables(max_depth: int) -> Set[Real]:
-    time_vars: Set[Real] = {_global_clk()}
+    time_vars: Set[Real] = {global_clk()}
     cur_depth = 1
     while True:
         if cur_depth > max_depth:
@@ -259,33 +250,6 @@ def _time_variables(max_depth: int) -> Set[Real]:
     return time_vars
 
 
-def _global_clk_subst(max_depth: int) -> Dict[int, VarSubstitution]:
-    clk_dict: Dict[int, VarSubstitution] = dict()
-
-    cur_depth = 1
-    while cur_depth <= max_depth:
-        clk_dict[cur_depth] = _global_clk_subst_at(cur_depth)
-        cur_depth += 1
-
-    return clk_dict
-
-
-def _global_clk_subst_at(cur_depth: int) -> VarSubstitution:
-    interval = symbolic_interval(cur_depth)
-
-    subst = VarSubstitution()
-    subst.add(sup(interval), _global_clk())
-    return subst
-
-
-def _global_clk():
-    return Real("g@clk")
-
-
-def _is_global_clk_in(formula: Formula) -> bool:
-    return _global_clk() in get_vars(formula)
-
-
 def _add_to_guard_dict(guard_dict: Dict[Mode, Set[Formula]], mode: Mode, t_f: Formula):
     if mode in guard_dict:
         guard_dict[mode].add(t_f)
@@ -293,69 +257,46 @@ def _add_to_guard_dict(guard_dict: Dict[Mode, Set[Formula]], mode: Mode, t_f: Fo
         guard_dict[mode] = {t_f}
 
 
-def _remove_equivalent_modes(ha: HybridAutomaton, mode_depth_dict: Dict[Mode, int]):
-    equiv_rel = _calc_equivalent_relation(ha, mode_depth_dict)
-    new_jps = set()
-    to_be_removed = set()
-    for mode in ha.modes:
-        if _redundant_mode(mode, equiv_rel):
-            to_be_removed.add(mode)
-            new_jps.update(_reduce_mode(mode, equiv_rel))
-
-    for m in to_be_removed:
-        ha.remove_mode(m)
-
-    for p, s, g, r in new_jps:
-        jp = make_jump(p, s)
-        jp.add_guard(*g)
-        jp.add_reset(*r)
+def _tau_index(tau: Real) -> int:
+    return int(tau.id.split("_")[1])
 
 
-def _calc_equivalent_relation(ha: HybridAutomaton, mode_depth_dict: Dict[Mode, int]) -> Dict[Mode, Mode]:
-    equiv: Dict[Mode, Set[Mode]] = dict()
-    equiv_rel: Dict[Mode, Mode] = dict()
-    waiting = ha.modes.copy()
-    while len(waiting) > 0:
-        mode = waiting.pop()
-        mode_depth = mode_depth_dict[mode]
-
-        to_be_removed = False
-        for m in equiv:
-            m_depth = mode_depth_dict[m]
-            dyn_eq = m.dynamics == mode.dynamics
-            inv_eq = m.invariant == mode.invariant
-            type_eq = mode.is_final() == m.is_final() and mode.is_initial() == m.is_initial()
-            depth_eq = mode_depth == m_depth
-            if dyn_eq and inv_eq and type_eq and depth_eq:
-                equiv[m].add(mode)
-                to_be_removed = True
-
-        if not to_be_removed:
-            assert mode not in equiv
-            equiv[mode] = {mode}
-
-    for mode in equiv:
-        modes = equiv[mode]
-        for m in modes:
-            assert m not in equiv_rel
-            equiv_rel[m] = mode
-
-    return equiv_rel
+def _shift_tau(tau: Real, shift: int):
+    t_index = _tau_index(tau)
+    assert t_index - shift >= 0
+    return Real("tau_{}".format(t_index - shift))
 
 
-def _redundant_mode(mode: Mode, equiv_rel: Dict[Mode, Mode]) -> bool:
-    rep = equiv_rel[mode]
-    return mode != rep
+def shift_reset(src: int, shift: int, max_depth: int) -> Set[Tuple[Real, Real]]:
+    resets: Set[Tuple[Real, Real]] = set()
 
+    interval = symbolic_interval(src)
+    _, e_tau = inf(interval), sup(interval)
 
-def _reduce_mode(mode: Mode, equiv_rel: Dict[Mode, Mode]):
-    new_jps: Set[Tuple[Mode, Mode, FrozenSet[Formula], FrozenSet[Tuple[Variable, Formula]]]] = set()
-    rep = equiv_rel[mode]
+    glk = global_clk()
 
-    for s in mode.s_jumps:
-        r_s = equiv_rel[s]
-        for s_jp in mode.s_jumps[s]:
-            new_jps.add((rep, r_s, frozenset(s_jp.guard), frozenset(s_jp.reset)))
+    t_vs_all = _time_variables(max_depth)
+    t_vs = _time_variables(src)
 
-    return new_jps
+    # remove global clk
+    t_vs_all.discard(glk)
+    t_vs.discard(glk)
 
+    used = set()
+    for t_v in t_vs:
+        t_index = _tau_index(t_v)
+        if t_index - shift < 0:
+            continue
+
+        shifted_tau = _shift_tau(t_v, shift)
+        used.add(shifted_tau)
+
+        if variable_equal(t_v, e_tau):
+            resets.add((shifted_tau, glk))
+        else:
+            resets.add((shifted_tau, t_v))
+
+    l_vs = t_vs_all.difference(used)
+    resets = resets.union({(t_v, t_v) for t_v in l_vs})
+
+    return resets

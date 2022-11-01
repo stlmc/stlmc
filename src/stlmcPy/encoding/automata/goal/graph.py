@@ -3,10 +3,11 @@ from typing import Set, Dict, FrozenSet, Tuple
 
 # from .aux import Label, Labels, split_label
 from ....constraints.constraints import Real, Expr, Formula
-from ....util.printer import indented_str
+from ....graph.graph import *
+from ....util.printer import indented_str, p_string
 
 
-class Graph:
+class TableauGraph(Graph['Node', 'Jump']):
     def __init__(self):
         self.nodes: Set[Node] = set()
         self.depths: Dict[int, Set[Node]] = dict()
@@ -25,13 +26,31 @@ class Graph:
         if node_depth in self.depths:
             self.depths[node_depth].discard(node)
 
-        node_pred = node.pred.copy()
-        for pred in node_pred:
-            disconnect(pred, node)
+        pred = node.get_in_edges()
+        succ = node.get_out_edges()
 
-        node_succ = node.succ.copy()
-        for succ in node_succ:
-            disconnect(node, succ)
+        for e in pred:
+            disconnect(e)
+
+        for e in succ:
+            disconnect(e)
+
+    def remove_jump(self, jp: 'Jump'):
+        jp_s = get_node_jumps(self)
+        assert jp in jp_s
+
+        src, trg = jp.src, jp.trg
+        src.succ[trg].remove(jp)
+
+        if len(src.succ[trg]) <= 0:
+            del src.succ[trg]
+
+        trg.pred[src].remove(jp)
+
+        if len(trg.pred[src]) <= 0:
+            del trg.pred[src]
+
+        del jp
 
     def get_max_depth(self) -> int:
         if len(self.depths) == 0:
@@ -46,10 +65,9 @@ class Graph:
         return "\n".join([str(node) for node in self.nodes])
 
 
-class Node:
+class Node(Vertex['Node', 'Jump']):
     def __init__(self, node_id: hash, depth: int):
-        self.pred: Set[Node] = set()
-        self.succ: Set[Node] = set()
+        Vertex.__init__(self)
 
         self.non_intermediate: Set[Formula] = set()
         self.intermediate: Set[Formula] = set()
@@ -73,10 +91,13 @@ class Node:
         ap_info = indented_str("ap:\n{}".format("\n".join(ap_str_list)), 4)
         non_info = indented_str("non ap:\n{}".format("\n".join(non_str_list)), 4)
 
-        pred_body = "\n".join([indented_str(str(p.node_id), 6) for p in self.pred])
+        pred: Set[Node] = self.get_in_vertices()
+        succ: Set[Node] = self.get_out_vertices()
+
+        pred_body = "\n".join([indented_str(str(p.node_id), 6) for p in pred])
         pred_info = indented_str("pred:\n{}".format(pred_body), 4)
 
-        succ_body = "\n".join([indented_str(str(s.node_id), 6) for s in self.succ])
+        succ_body = "\n".join([indented_str(str(s.node_id), 6) for s in succ])
         succ_info = indented_str("succ:\n{}".format(succ_body), 4)
 
         return "( Node\n{}\n)".format("\n".join([id_info, depth_info, ap_info, non_info, pred_info, succ_info]))
@@ -102,12 +123,34 @@ class Node:
         return self._is_initial
 
 
-def connect(n1: Node, n2: Node):
-    n1.succ.add(n2)
-    n2.pred.add(n1)
+class Jump(Edge[Node]):
+    def __init__(self, src: Node, trg: Node):
+        Edge.__init__(self, src, trg)
+        self.reset: Set[Tuple[Real, Formula]] = set()
+
+    def add_reset(self, *resets):
+        for v, f in resets:
+            self.reset.add((v, f))
+
+    def __repr__(self):
+        reset_body = "\n".join([indented_str("{} := {}".format(v, f), 6) for v, f in self.reset])
+        reset_str = indented_str("reset:\n{}".format(reset_body), 4)
+
+        jp_body = indented_str("{} -> {}".format(self.src.node_id, self.trg.node_id), 4)
+
+        return "( jump \n{}\n{}\n  )".format(reset_str, jp_body)
 
 
-def disconnect(n1: Node, n2: Node):
-    n1.succ.discard(n2)
-    n2.pred.discard(n1)
+def get_node_jumps(graph: TableauGraph) -> Set[Jump]:
+    jp_s: Set[Jump] = set()
+    for node in graph.nodes:
+        jp_s.update(node.get_out_edges())
+
+    return jp_s
+
+
+def copy_jump(jp: Jump) -> Jump:
+    n_jp = Jump(jp.src, jp.trg)
+    n_jp.add_reset(*jp.reset)
+    return n_jp
 

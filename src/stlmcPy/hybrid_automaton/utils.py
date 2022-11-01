@@ -1,5 +1,5 @@
 from itertools import product
-from typing import FrozenSet
+from typing import FrozenSet, Type
 
 from ..constraints.aux.operations import get_vars
 from ..hybrid_automaton.hybrid_automaton import *
@@ -82,9 +82,9 @@ def _jp_exists(src: Mode, trg: Mode) -> bool:
 
 
 def _get_jp_s(src: Mode, trg: Mode) -> Set[Transition]:
-    if trg not in src.s_jumps:
+    if trg not in src.succ:
         raise Exception("jump does not exist")
-    return src.s_jumps[trg]
+    return src.succ[trg]
 
 
 def _find_composed_modes(composed_mode: Tuple[Mode, Mode],
@@ -148,15 +148,11 @@ def get_ha_vars(ha: HybridAutomaton) -> Set[Variable]:
 
 
 def get_jumps(ha: HybridAutomaton) -> Set[Transition]:
-    jps_set: Set[Transition] = set()
+    jp_s: Set[Transition] = set()
     for m in ha.modes:
-        for p_m in m.p_jumps:
-            jps_set.update(m.p_jumps[p_m])
+        jp_s = jp_s.union(m.get_out_edges())
 
-        for s_m in m.s_jumps:
-            jps_set.update(m.s_jumps[s_m])
-
-    return jps_set
+    return jp_s
 
 
 def print_ha_size(name: str, ha: HybridAutomaton):

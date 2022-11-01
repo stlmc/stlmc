@@ -53,7 +53,6 @@ def generate_smt_objects(file_name: str, config: Configuration):
 
 
 def generate_ha_objects(file_name: str, config: Configuration):
-    print("okay")
     raw_model, prop_dict, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
     (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
 

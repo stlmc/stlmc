@@ -14,12 +14,12 @@ Labels = Set[Label]
 
 
 class ContradictionChecker:
-    def __init__(self, tau_subst: VarSubstitution):
+    def __init__(self, clk_subst_dict: Dict[int, VarSubstitution], tau_subst: VarSubstitution):
         self._contradiction_cache: Dict[Label, bool] = dict()
         self._reduction_cache: Dict[Labels, Tuple[Set[Label], Set[Label]]] = dict()
         self._reduction_label_cache: Dict[Label, bool] = dict()
-        self._translate_cache: Dict[Formula, Formula] = dict()
 
+        self._clk_subst_dict = clk_subst_dict
         self._tau_subst = tau_subst
         self._z3_solver = z3.SolverFor("QF_LRA")
 
@@ -32,7 +32,7 @@ class ContradictionChecker:
         if label in self._contradiction_cache:
             return self._contradiction_cache[label]
         else:
-            self._contradiction_cache[label] = True if self._check_contradiction(label, depth, *assumptions) else False
+            self._contradiction_cache[label] = self._check_contradiction(label, depth, *assumptions)
             return self._contradiction_cache[label]
 
     def _check_contradiction(self, label: Label, depth: int, *assumptions) -> bool:
@@ -59,12 +59,9 @@ class ContradictionChecker:
         s = time.time()
         f_set, (tr_f_set, _) = set(), translate(label, depth)
         for f in tr_f_set:
-            if f in self._translate_cache:
-                f_set.add(self._translate_cache[f])
-            else:
-                r = self._tau_subst.substitute(f)
-                self._translate_cache[f] = r
-                f_set.add(r)
+            r = self._tau_subst.substitute(f)
+            r = self._clk_subst_dict[depth].substitute(r)
+            f_set.add(r)
         e = time.time()
         self.translate_time += e - s
         return f_set

@@ -44,10 +44,10 @@ def _expand(label: Label, depth: int, threshold: float) -> Set[Label]:
         lbs = _label_expand(p_f, c, depth, threshold)
 
         update_queue = update_waiting_list(p_f, lbs, (p_c, p_l))
-        update_queue = _remove_invalid_label(update_queue)
-        update_queue = _remove_unreachable(update_queue)
-
         waiting_list.extend(update_queue)
+
+    labels = _remove_invalid_label(labels)
+    labels = _remove_unreachable(labels)
 
     # print("# iteration {}".format(loop))
     return labels
@@ -78,8 +78,8 @@ def _(formula: GloballyFormula, ctx: Set[Formula], depth: int, threshold: float)
         if formula not in ctx:
             f, start, interval = formula.child, Partition(depth), formula.local_time
 
-            f1, f2 = GloballyUp(start, interval, f), GloballyUpIntersect(interval, f)
-            f3, f4 = GloballyUpDown(start, start, interval, f), GloballyUpIntersectDown(start, interval, f)
+            f1, f2 = GloballyUp(start, interval, f), GloballyUpIntersect(start, interval, f)
+            f3, f4 = GloballyUpDown(start, start, interval, f), GloballyUpIntersectDown(start, start, interval, f)
             t_pre = TimePre(start, interval)
             t_in = TimeIntersect(start, interval)
 
@@ -100,9 +100,9 @@ def _(formula: GloballyUp, ctx: Set[Formula], depth: int, threshold: float) -> S
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     f1 = GloballyUp(base, interval, f)
-    f2 = GloballyUpIntersect(interval, f)
+    f2 = GloballyUpIntersect(base, interval, f)
     f3 = GloballyUpDown(base, n_interval, interval, f)
-    f4 = GloballyUpIntersectDown(n_interval, interval, f)
+    f4 = GloballyUpIntersectDown(base, n_interval, interval, f)
     nxt = GloballyFormula(interval, g, f)
 
     label1 = Label(singleton(), singleton(f1, pre), singleton(), singleton(nxt))
@@ -122,34 +122,36 @@ def _(formula: GloballyUpDown, ctx: Set[Formula], depth: int, threshold: float) 
     its = TimeIntersect(base, interval)
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
-    f1 = GloballyUpIntersectDown(end, interval, f)
+    f1 = GloballyUpIntersectDown(base, end, interval, f)
     nxt = GloballyFormula(interval, g, f)
 
     label1 = Label(singleton(), singleton(f1, its), singleton(nxt), singleton())
     label2 = Label(singleton(), singleton(formula, pre), singleton(nxt), singleton())
-    label3 = Label(singleton(tls), singleton(), singleton(), singleton())
+    label3 = Label(singleton(tls), singleton(), singleton(nxt), singleton())
 
     return {label1, label2, label3}
 
 
 @_label_expand.register(GloballyUpIntersect)
 def _(formula: GloballyUpIntersect, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
-    f, end, interval = formula.child, Partition(depth), formula.interval
+    base, f, end, interval = formula.i, formula.child, Partition(depth + 1), formula.interval
 
+    its = TimeIntersect(base, interval)
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
-    f1 = GloballyUpIntersectDown(end, interval, f)
+    f1 = GloballyUpIntersectDown(base, end, interval, f)
     nxt = GloballyFormula(interval, g, f)
 
-    label1 = Label(singleton(), singleton(f1), singleton(), singleton(nxt))
-    label2 = Label(singleton(f), singleton(formula), singleton(), singleton(nxt))
+    label1 = Label(singleton(f), singleton(f1, its), singleton(), singleton(nxt))
+    label2 = Label(singleton(f), singleton(formula, its), singleton(), singleton(nxt))
 
     return {label1, label2}
 
 
 @_label_expand.register(GloballyUpIntersectDown)
 def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
-    f, end, interval = formula.child, formula.i, formula.interval
+    base, f, end, interval = formula.i, formula.child, formula.k, formula.interval
 
+    its = TimeIntersect(base, interval)
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     tps = TimePost(end, interval)
     # n_tps = TimeNotPost(end, interval)
@@ -158,7 +160,7 @@ def _(formula: GloballyUpIntersectDown, ctx: Set[Formula], depth: int, threshold
 
     label1 = Label(singleton(tps, f), singleton(), singleton(nxt), singleton())
     label2 = Label(singleton(tls, f), singleton(), singleton(nxt), singleton())
-    label3 = Label(singleton(f), singleton(formula), singleton(nxt), singleton())
+    label3 = Label(singleton(f), singleton(formula, its), singleton(nxt), singleton())
 
     return {label1, label2, label3}
 
@@ -175,8 +177,8 @@ def _(formula: FinallyFormula, ctx: Set[Formula], depth: int, threshold: float) 
 
             t_pre = TimePreFinally(cur, interval)
             t_in = TimeIntersectFinally(cur, interval)
-            f1, f2 = FinallyUp(cur, interval, f), FinallyUpIntersect(interval, f)
-            f3, f4 = FinallyUpDown(cur, cur, interval, f), FinallyUpIntersectDown(cur, interval, f)
+            f1, f2 = FinallyUp(cur, interval, f), FinallyUpIntersect(cur, interval, f)
+            f3, f4 = FinallyUpDown(cur, cur, interval, f), FinallyUpIntersectDown(cur, cur, interval, f)
 
             label1 = Label(singleton(f1, t_pre), singleton(), singleton(), singleton())
             label2 = Label(singleton(f2, f, t_in), singleton(), singleton(), singleton())
@@ -195,8 +197,8 @@ def _(formula: FinallyUp, ctx: Set[Formula], depth: int, threshold: float) -> Se
     t_in = TimeIntersectFinally(base, interval)
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
-    f1, f2 = FinallyUp(base, interval, f), FinallyUpIntersect(interval, f)
-    f3, f4 = FinallyUpDown(base, nxt_interval, interval, f), FinallyUpIntersectDown(nxt_interval, interval, f)
+    f1, f2 = FinallyUp(base, interval, f), FinallyUpIntersect(base, interval, f)
+    f3, f4 = FinallyUpDown(base, nxt_interval, interval, f), FinallyUpIntersectDown(base, nxt_interval, interval, f)
     nxt = FinallyFormula(interval, g, f)
 
     label1 = Label(singleton(), singleton(f1, t_pre), singleton(), singleton(nxt))
@@ -216,7 +218,7 @@ def _(formula: FinallyUpDown, ctx: Set[Formula], depth: int, threshold: float) -
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     nxt = FinallyFormula(interval, g, f)
 
-    f1 = FinallyUpIntersectDown(end, interval, f)
+    f1 = FinallyUpIntersectDown(base, end, interval, f)
     label1 = Label(singleton(), singleton(t_pre, formula), singleton(nxt), singleton())
     label2 = Label(singleton(), singleton(f, t_in, f1), singleton(nxt), singleton())
 
@@ -225,26 +227,30 @@ def _(formula: FinallyUpDown, ctx: Set[Formula], depth: int, threshold: float) -
 
 @_label_expand.register(FinallyUpIntersect)
 def _(formula: FinallyUpIntersect, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
-    cur, f, interval = Partition(depth), formula.child, formula.interval
+    base, cur, f, interval = formula.i, Partition(depth), formula.child, formula.interval
     nxt_interval = Partition(depth + 1)
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     nxt = FinallyFormula(interval, g, f)
+    t_in = TimeIntersectFinally(base, interval)
 
     f1 = FinallyUp(cur - interval, interval, f)
-    f2 = FinallyUpIntersectDown(nxt_interval, interval, f)
+    f2 = FinallyUpIntersectDown(base, nxt_interval, interval, f)
+    f3 = FinallyUpDown(cur - interval, nxt_interval, interval, f)
 
-    label1 = Label(singleton(), singleton(f, formula), singleton(), singleton(nxt))
+    label1 = Label(singleton(), singleton(f, formula, t_in), singleton(), singleton(nxt))
     label2 = Label(singleton(), singleton(f1, _nnf(f, threshold)), singleton(), singleton(nxt))
-    label3 = Label(singleton(), singleton(f2, f), singleton(), singleton(nxt))
+    label3 = Label(singleton(), singleton(f2, f, t_in), singleton(), singleton(nxt))
+    label4 = Label(singleton(), singleton(f3, _nnf(f, threshold)), singleton(), singleton(nxt))
 
-    return {label1, label2, label3}
+    return {label1, label2, label3, label4}
 
 
 @_label_expand.register(FinallyUpIntersectDown)
 def _(formula: FinallyUpIntersectDown, ctx: Set[Formula], depth: int, threshold: float) -> Set[Label]:
-    end, f, interval = formula.i, formula.child, formula.interval
+    base, end, f, interval = formula.i, formula.k, formula.child, formula.interval
     cur = Partition(depth)
     lst = TimePostFinally(end, interval)
+    t_in = TimeIntersectFinally(base, interval)
 
     g = Interval(True, RealVal("0.0"), RealVal("inf"), False)
     nxt = FinallyFormula(interval, g, f)
@@ -252,7 +258,7 @@ def _(formula: FinallyUpIntersectDown, ctx: Set[Formula], depth: int, threshold:
     f1 = FinallyUpDown(cur - interval, end, interval, f)
 
     label1 = Label(singleton(lst), singleton(), singleton(nxt), singleton())
-    label2 = Label(singleton(), singleton(formula, f), singleton(nxt), singleton())
+    label2 = Label(singleton(), singleton(formula, f, t_in), singleton(nxt), singleton())
     label3 = Label(singleton(), singleton(f1, _nnf(f, threshold)), singleton(nxt), singleton())
 
     return {label1, label2, label3}
@@ -312,26 +318,26 @@ def _apply_forbidden(waiting_queue: List[Tuple[Set[Formula], Label]],
     return n_queue
 
 
-def _remove_invalid_label(waiting_queue: List[Tuple[Set[Formula], Label]]) -> List[Tuple[Set[Formula], Label]]:
-    n_queue = list()
-    for p_c, p_l in waiting_queue:
-        f, a = p_l.forbidden, p_l.assertion
-        if not p_l.nxt.intersection(f) and a.issubset(p_l.nxt):
-            n_queue.append((p_c, p_l))
-    return n_queue
+def _remove_invalid_label(labels: Set[Label]) -> Set[Label]:
+    n_labels = set()
+    for lb in labels:
+        f, a = lb.forbidden, lb.assertion
+        if not lb.nxt.intersection(f) and a.issubset(lb.nxt):
+            n_labels.add(lb)
+    return n_labels
 
 
-def _remove_unreachable(waiting_queue: List[Tuple[Set[Formula], Label]]) -> List[Tuple[Set[Formula], Label]]:
-    n_queue = list()
-    for p_c, p_l in waiting_queue:
-        c, n = p_l.cur, p_l.nxt
+def _remove_unreachable(labels: Set[Label]) -> Set[Label]:
+    n_labels = set()
+    for lb in labels:
+        c, n = lb.cur, lb.nxt
         c = set(filter(lambda x: isinstance(x, TimeLast), c))
         # time last cannot have next states
         if len(c) > 0 and len(n) > 0:
             continue
 
-        n_queue.append((p_c, p_l))
-    return n_queue
+        n_labels.add(lb)
+    return n_labels
 
 
 def update_labels(formula: Formula, labels: Set[Label], label: Label) -> List[Tuple[Set[Formula], Label]]:

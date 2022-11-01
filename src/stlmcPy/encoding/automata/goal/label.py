@@ -2,7 +2,6 @@ from typing import Set
 
 from .interval import SymbolicInterval, Partition
 from ....constraints.constraints import *
-# Label = Tuple[FrozenSet[Formula], FrozenSet[Formula], FrozenSet[Formula]]
 from ....util.printer import indented_str
 
 
@@ -40,16 +39,16 @@ class Up(UnaryFormula):
 
 
 class UpIntersect(UnaryFormula):
-    def __init__(self, interval: Interval, formula: Formula, temporal: str):
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula, temporal: str):
         super().__init__(formula, "", "")
-        self.interval, self._temporal = interval, temporal
-        self._name = "(up{}_{} {})".format(temporal, hash(interval), hash(formula))
+        self.i, self.interval, self._temporal = i, interval, temporal
+        self._name = "(up{}^{}_{} {})".format(temporal, hash(i), hash(interval), hash(formula))
 
     def __hash__(self):
         return hash(self._name)
 
     def __repr__(self):
-        return "(up{}_{} {})".format(self._temporal, self.interval, self.child)
+        return "(up{}^{}_{} {})".format(self._temporal, self.i, self.interval, self.child)
 
 
 class UpDown(UnaryFormula):
@@ -68,19 +67,20 @@ class UpDown(UnaryFormula):
 
 
 class UpIntersectDown(UnaryFormula):
-    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula, temporal1: str, temporal2: str):
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula, temporal1: str, temporal2: str):
         super().__init__(formula, "", "")
-        self.i, self.interval = i, interval
+        self.i, self.k, self.interval = i, k, interval
         self._temporal1, self._temporal2 = temporal1, temporal2
-        self._name = "((up{}&down{})^{}_{} {})".format(temporal1, temporal2, hash(i),
-                                                       hash(interval), hash(formula))
+        self._name = "((up{}&down{})^{{{}, {}}}_{} {})".format(temporal1, temporal2, hash(i), hash(k),
+                                                               hash(interval), hash(formula))
 
     def __hash__(self):
         return hash(self._name)
 
     def __repr__(self):
-        return "((up{}&down{})^{}_{} {})".format(self._temporal1, self._temporal2,
-                                                 self.i, self.interval, self.child)
+        return "((up{}&down{})^{{{}, {}}}_{} {})".format(self._temporal1, self._temporal2,
+                                                         self.i, self.k, self.interval, self.child)
 
 
 class GloballyUp(Up):
@@ -89,8 +89,8 @@ class GloballyUp(Up):
 
 
 class GloballyUpIntersect(UpIntersect):
-    def __init__(self, interval: Interval, formula: Formula):
-        super().__init__(interval, formula, "[*]")
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
+        super().__init__(i, interval, formula, "[*]")
 
 
 class GloballyUpDown(UpDown):
@@ -100,8 +100,9 @@ class GloballyUpDown(UpDown):
 
 
 class GloballyUpIntersectDown(UpIntersectDown):
-    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
-        super().__init__(i, interval, formula, "[*]", "[]")
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula):
+        super().__init__(i, k, interval, formula, "[*]", "[]")
 
 
 class FinallyUp(Up):
@@ -110,8 +111,8 @@ class FinallyUp(Up):
 
 
 class FinallyUpIntersect(UpIntersect):
-    def __init__(self, interval: Interval, formula: Formula):
-        super().__init__(interval, formula, "<*>")
+    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
+        super().__init__(i, interval, formula, "<*>")
 
 
 class FinallyUpDown(UpDown):
@@ -121,8 +122,9 @@ class FinallyUpDown(UpDown):
 
 
 class FinallyUpIntersectDown(UpIntersectDown):
-    def __init__(self, i: SymbolicInterval, interval: Interval, formula: Formula):
-        super().__init__(i, interval, formula, "<*>", "<>")
+    def __init__(self, i: SymbolicInterval, k: SymbolicInterval,
+                 interval: Interval, formula: Formula):
+        super().__init__(i, k, interval, formula, "<*>", "<>")
 
 
 class TimeProposition(Proposition):

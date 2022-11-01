@@ -79,8 +79,8 @@ class ModelVisitor(modelVisitor):
         # print(self.proposition_dict)
         # print(self.constant_info)
         variable_decl = self.variable_decls.get_declaration()
-        print(module_declares)
-        print(init)
+        # print(module_declares)
+        # print(init)
         return (module_declares, init, self.next_str, variable_decl, self.range_info, self.constant_info,
                 self.proposition_dict, self.init_mode), self.proposition_dict, goals, self.goal_labels
 

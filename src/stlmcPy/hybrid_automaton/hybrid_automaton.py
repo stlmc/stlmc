@@ -2,10 +2,11 @@ from typing import Set, Dict, Tuple
 
 from ..constraints.constraints import *
 from ..exception.exception import NotSupportedError
+from ..graph.graph import *
 from ..util.printer import indented_str, p_string
 
 
-class HybridAutomaton:
+class HybridAutomaton(Graph['Mode', 'Transition']):
     def __init__(self):
         self.modes: Set[Mode] = set()
         self.init: Set[Formula] = set()
@@ -19,12 +20,9 @@ class HybridAutomaton:
 
     def remove_mode(self, mode: 'Mode'):
         self.modes.discard(mode)
-        jp_be_removed = set()
-        for m in mode.p_jumps:
-            jp_be_removed.update(mode.p_jumps[m])
-
-        for m in mode.s_jumps:
-            jp_be_removed.update(mode.s_jumps[m])
+        jp_be_removed: Set[Transition] = set()
+        for m in self.modes:
+            jp_be_removed = jp_be_removed.union(m.get_out_edges())
 
         for jp in jp_be_removed:
             remove_jump(jp)
@@ -65,11 +63,7 @@ class HybridAutomaton:
 
         jp_s = set()
         for mode in self.modes:
-            for m in mode.p_jumps:
-                jp_s.update(mode.p_jumps[m])
-
-            for m in mode.s_jumps:
-                jp_s.update(mode.s_jumps[m])
+            jp_s = jp_s.union(mode.get_out_edges())
 
         ha_str += indented_str("Transitions:\n", 2)
 
@@ -81,13 +75,9 @@ class HybridAutomaton:
         return ha_str
 
 
-class Mode:
+class Mode(Vertex['Mode', 'Transition']):
     def __init__(self, identifier: int):
-        self.succ: Set[Mode] = set()
-        self.pred: Set[Mode] = set()
-
-        self.p_jumps: Dict[Mode, Set[Transition]] = dict()
-        self.s_jumps: Dict[Mode, Set[Transition]] = dict()
+        Vertex.__init__(self)
 
         self.dynamics: Dict[Variable, Expr] = dict()
         self.invariant: Set[Formula] = set()
@@ -135,9 +125,9 @@ class Mode:
         return "( mode {}\n{}\n{}\n  )".format(self.id, dyn_str, inv_str)
 
 
-class Transition:
+class Transition(Edge[Mode]):
     def __init__(self, src: Mode, trg: Mode):
-        self.src, self.trg = src, trg
+        Edge.__init__(self, src, trg)
         self.guard: Set[Formula] = set()
         self.reset: Set[Tuple[Variable, Formula]] = set()
 
@@ -162,10 +152,8 @@ class Transition:
 
 
 def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
-    mode1.succ.add(mode2)
-    mode2.pred.add(mode1)
-
     jp = Transition(mode1, mode2)
+    connect(jp)
 
     if "guards" in consts:
         jp.add_guard(*consts["guards"])
@@ -173,32 +161,11 @@ def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
     if "resets" in consts:
         jp.add_reset(*consts["resets"])
 
-    if mode2 in mode1.s_jumps:
-        mode1.s_jumps[mode2].add(jp)
-    else:
-        mode1.s_jumps[mode2] = {jp}
-
-    if mode1 in mode2.p_jumps:
-        mode2.p_jumps[mode1].add(jp)
-    else:
-        mode2.p_jumps[mode1] = {jp}
-
     return jp
 
 
 def remove_jump(jump: Transition):
-    mode1, mode2 = jump.src, jump.trg
-
-    mode1.succ.remove(mode2)
-    mode2.pred.remove(mode1)
-
-    assert mode2 in mode1.s_jumps
-    assert mode1 in mode2.p_jumps
-
-    mode1.s_jumps[mode2].remove(jump)
-    mode2.p_jumps[mode1].remove(jump)
-
-    del jump
+    disconnect(jump)
 
 
 class BoundBox:
@@ -259,10 +226,10 @@ class BoundBox:
         is_in_upper_opened = key in self.upper_opened
 
         if not is_in_lower_closed and not is_in_lower_opened:
-            raise NotSupportedError("not in bound box")
+            raise NotSupportedError("does not have lower ({})".format(key))
 
         if not is_in_upper_closed and not is_in_upper_opened:
-            raise NotSupportedError("not in bound box")
+            raise NotSupportedError("does not have upper ({})".format(key))
 
         # should only be in one of these
         assert is_in_lower_opened != is_in_lower_closed

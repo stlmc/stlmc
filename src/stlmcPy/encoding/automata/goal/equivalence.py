@@ -55,8 +55,9 @@ class StutteringEquivalenceChecker(LabelEquivalenceChecker):
 
     def equivalent(self, label1: Label, label2: Label, **options) -> bool:
         # get non-time goals
-        c1 = self._apply_filter(label1.cur, "non-time").pop()
-        c2 = self._apply_filter(label2.cur, "non-time").pop()
+        # c1 = self._apply_filter(label1.cur, "non-time").pop()
+        # c2 = self._apply_filter(label2.cur, "non-time").pop()
+        c1, c2 = label1.cur.copy(), label2.cur.copy()
 
         c1_cg = self._apply_filter(c1, "up[]", "up[*]", "up<>", "up<*>")
         c2_cg = self._apply_filter(c2, "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
@@ -200,10 +201,6 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
         return partition_eq and interval_eq and f_eq
 
 
-def is_up_intersect(cur: UpIntersect, nxt: UpIntersect):
-    return isinstance(cur, UpIntersect) and isinstance(nxt, UpIntersect)
-
-
 @singledispatch
 def _calc_shifting(cur: Formula, nxt: Formula) -> int:
     raise Exception("cannot calculate shifting of {} and {}".format(cur, nxt))
@@ -212,6 +209,12 @@ def _calc_shifting(cur: Formula, nxt: Formula) -> int:
 @_calc_shifting.register(Up)
 def _(cur: Up, nxt: Up):
     assert isinstance(nxt, Up)
+    return nxt.i.index - cur.i.index
+
+
+@_calc_shifting.register(UpIntersect)
+def _(cur: UpIntersect, nxt: UpIntersect):
+    assert isinstance(nxt, UpIntersect)
     return nxt.i.index - cur.i.index
 
 
