@@ -172,7 +172,7 @@ class HAConverter:
 
 def _add_time_init(automaton: HybridAutomaton, max_depth: int):
     s = set()
-    time_vars: Set[Real] = _time_variables(max_depth)
+    time_vars: Set[Real] = time_variables(max_depth)
     time_vars.add(global_clk())
     zero = RealVal("0.0")
     for v in time_vars:
@@ -181,7 +181,7 @@ def _add_time_init(automaton: HybridAutomaton, max_depth: int):
 
 
 def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
-    time_vars: Set[Real] = _time_variables(max_depth)
+    time_vars: Set[Real] = time_variables(max_depth)
     time_dyns: Set[Tuple[Real, Expr]] = set()
 
     clk = global_clk()
@@ -193,17 +193,6 @@ def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
             time_dyns.add((v, zero))
 
     return time_dyns
-
-
-# def _time_resets(max_depth: int) -> Set[Tuple[Variable, Expr]]:
-#     time_vars: Set[Real] = _time_variables(max_depth)
-#     time_rsts: Set[Tuple[Variable, Expr]] = set()
-#
-#     for time_v in time_vars:
-#         time_rsts.add((time_v, time_v))
-#
-#     return time_rsts
-
 
 def _time_resets(max_depth: int) -> Dict[int, Set[Tuple[Real, Expr]]]:
     time_dict: Dict[int, Set[Tuple[Real, Expr]]] = dict()
@@ -236,67 +225,8 @@ def _time_resets_at(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
     return time_resets
 
 
-def _time_variables(max_depth: int) -> Set[Real]:
-    time_vars: Set[Real] = {global_clk()}
-    cur_depth = 1
-    while True:
-        if cur_depth > max_depth:
-            break
-        interval = symbolic_interval(cur_depth)
-        time_vars.update({inf(interval), sup(interval)})
-
-        cur_depth += 1
-
-    return time_vars
-
-
 def _add_to_guard_dict(guard_dict: Dict[Mode, Set[Formula]], mode: Mode, t_f: Formula):
     if mode in guard_dict:
         guard_dict[mode].add(t_f)
     else:
         guard_dict[mode] = {t_f}
-
-
-def _tau_index(tau: Real) -> int:
-    return int(tau.id.split("_")[1])
-
-
-def _shift_tau(tau: Real, shift: int):
-    t_index = _tau_index(tau)
-    assert t_index - shift >= 0
-    return Real("tau_{}".format(t_index - shift))
-
-
-def shift_reset(src: int, shift: int, max_depth: int) -> Set[Tuple[Real, Real]]:
-    resets: Set[Tuple[Real, Real]] = set()
-
-    interval = symbolic_interval(src)
-    _, e_tau = inf(interval), sup(interval)
-
-    glk = global_clk()
-
-    t_vs_all = _time_variables(max_depth)
-    t_vs = _time_variables(src)
-
-    # remove global clk
-    t_vs_all.discard(glk)
-    t_vs.discard(glk)
-
-    used = set()
-    for t_v in t_vs:
-        t_index = _tau_index(t_v)
-        if t_index - shift < 0:
-            continue
-
-        shifted_tau = _shift_tau(t_v, shift)
-        used.add(shifted_tau)
-
-        if variable_equal(t_v, e_tau):
-            resets.add((shifted_tau, glk))
-        else:
-            resets.add((shifted_tau, t_v))
-
-    l_vs = t_vs_all.difference(used)
-    resets = resets.union({(t_v, t_v) for t_v in l_vs})
-
-    return resets

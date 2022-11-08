@@ -70,7 +70,7 @@ def equal(interval1: SymbolicInterval, interval2: SymbolicInterval) -> bool:
 
 def type_equivalent(interval1: SymbolicInterval, interval2: SymbolicInterval) -> bool:
     if isinstance(interval1, Partition) and isinstance(interval2, Partition):
-        return interval1.index == interval2.index
+        return True
 
     if isinstance(interval1, Subtraction) and isinstance(interval2, Subtraction):
         return interval1.interval == interval2.interval

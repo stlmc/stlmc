@@ -46,11 +46,11 @@ class StlGoal(Goal):
         self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
 
         #
-        self._optimizer = ContradictionChecker(self.clk_subst_dict, self.tau_subst)
-        self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
-        self._stuttering_checker = StutteringEquivalenceChecker(self._formula)
-        self._shifting_checker = ShiftingEquivalenceChecker(self._formula)
-        self._graph_generator = GraphGenerator(self._formula, self._optimizer, self._shifting_checker, shift_mode=True)
+        # self._optimizer = ContradictionChecker(self.clk_subst_dict, self.tau_subst)
+        # self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
+        # self._stuttering_checker = StutteringEquivalenceChecker(self._formula)
+        # self._shifting_checker = ShiftingEquivalenceChecker(self._formula)
+        # self._graph_generator = GraphGenerator(self._formula, self._optimizer, self._shifting_checker, shift_mode=True)
         self._hybrid_converter = HAConverter(self.tau_subst)
 
         self._forward_subsumption = ForwardSubsumption()
@@ -59,121 +59,134 @@ class StlGoal(Goal):
                                                  self._backward_subsumption.get_relation())
 
     def encode(self):
-        self._graph_generator.clear()
+        _tableau = TableauGenerator(self._formula, threshold=self.threshold)
+        # self._graph_generator.clear()
         self._hybrid_converter.clear()
-        graph = self._graph_generator.graph
+        # graph = self._graph_generator.graph
         converter = self._hybrid_converter
-        lg = self._label_generator
-        st_checker = self._stuttering_checker
-        bound = self.bound
+        # lg = self._label_generator
+        # st_checker = self._stuttering_checker
+        max_bound = self.bound
 
         alg_s_t = time.time()
-        init_labels = lg.init()
-        init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(graph.get_max_depth())), init_labels))
 
-        # make initial nodes
-        for label in init_labels:
-            self._graph_generator.make_node(label)
-        self._graph_generator.finish_depth()
-
-        wait_queue: Set[Label] = init_labels
-        next_queue: Set[Label] = set()
-
-        total_label = len(init_labels)
-        total_nodes = len(graph.get_nodes_at(1))
-        depth, final_depth = 2, bound
+        bound = 1
         while True:
-            if depth > final_depth:
+            if bound > max_bound:
                 break
 
-            s = time.time()
-            # print("depth : {}".format(depth))
-            for label in wait_queue:
-                # check
-                # print("  label: {}".format(label))
-                if self._optimizer.check_contradiction(label, depth):
-                    continue
+            next(_tableau.expand())
+            bound += 1
+        # init_labels = lg.init()
+        # init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(graph.get_max_depth())), init_labels))
 
-                n = lg.expand(label, depth)
-                n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(graph.get_max_depth())), n))
-                # n = self._apply_reduction(n)
-                n = st_checker.stuttering(label, n)
+        # make initial nodes
+        # for label in init_labels:
+        #     self._graph_generator.make_node(label)
+        # self._graph_generator.finish_depth()
 
-                next_queue.update(n)
-                # next_queue = canonicalize(next_queue)
-                # print_extend(label, n)
+        # wait_queue: Set[Label] = init_labels
+        # next_queue: Set[Label] = set()
 
-                if final_depth >= depth:
-                    self._graph_generator.make_posts(label, n)
+        # total_label = len(init_labels)
+        # total_nodes = len(graph.get_nodes_at(1))
+        # depth, final_depth = 2, bound
+        # while True:
+        #     if depth > final_depth:
+        #         break
 
-            e = time.time()
-            wait_queue = next_queue.copy()
-            # wait_queue = self._apply_reduction(next_queue)
-            next_queue.clear()
+        # s = time.time()
+        # # print("depth : {}".format(depth))
+        # for label in wait_queue:
+        #     # check
+        #     # print("  label: {}".format(label))
+        #     if self._optimizer.check_contradiction(label, depth):
+        #         continue
+        #
+        #     n = lg.expand(label, depth)
+        #     n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(graph.get_max_depth())), n))
+        #     # n = self._apply_reduction(n)
+        #     n = st_checker.stuttering(label, n)
+        #
+        #     next_queue.update(n)
+        #     # next_queue = canonicalize(next_queue)
+        #     # print_extend(label, n)
+        #
+        #     if final_depth >= depth:
+        #         self._graph_generator.make_posts(label, n)
+        #
+        # e = time.time()
+        # wait_queue = next_queue.copy()
+        # # wait_queue = self._apply_reduction(next_queue)
+        # next_queue.clear()
 
-            #
-            if depth <= graph.get_max_depth():
-                cur_nodes = len(graph.get_nodes_at(depth))
-            else:
-                cur_nodes = 0
+        #
+        # if depth <= graph.get_max_depth():
+        #     cur_nodes = len(graph.get_nodes_at(depth))
+        # else:
+        #     cur_nodes = 0
 
-            num_labels = len(wait_queue)
-            total_label += num_labels
-            total_nodes += cur_nodes
+        # num_labels = len(wait_queue)
+        # total_label += num_labels
+        # total_nodes += cur_nodes
 
-            print("depth#{}, labels#{}, labelsAcc#{}, nodes#{}, nodesAcc#{}".format(depth,
-                                                                                    num_labels,
-                                                                                    total_label,
-                                                                                    cur_nodes,
-                                                                                    total_nodes))
-            logging = ["translate: {:.3f}".format(self._optimizer.translate_time),
-                       "contradiction: {:.3f}".format(self._optimizer.contradiction_time),
-                       "contradiction call# {}".format(self._optimizer.contradiction_call),
-                       "solver time: {:.3f}".format(self._optimizer.z3obj_time),
-                       "total: {:.3f}".format(e - s)]
+        # print("depth#{}, labels#{}, labelsAcc#{}, nodes#{}, nodesAcc#{}".format(depth,
+        #                                                                         num_labels,
+        #                                                                         total_label,
+        #                                                                         cur_nodes,
+        #                                                                         total_nodes))
+        # logging = ["translate: {:.3f}".format(self._optimizer.translate_time),
+        #            "contradiction: {:.3f}".format(self._optimizer.contradiction_time),
+        #            "contradiction call# {}".format(self._optimizer.contradiction_call),
+        #            "solver time: {:.3f}".format(self._optimizer.z3obj_time),
+        #            "total: {:.3f}".format(e - s)]
+        #
+        # print("{}".format("\n".join(map(lambda x: indented_str(x, 2), logging))))
+        # self._optimizer.time_clear()
+        # self._graph_generator.finish_depth()
+        # depth += 1
 
-            print("{}".format("\n".join(map(lambda x: indented_str(x, 2), logging))))
-            self._optimizer.time_clear()
-            self._graph_generator.finish_depth()
-            depth += 1
-
-        self._graph_generator.remove_contradiction()
-        self._graph_generator.make_shift_resets()
-        self._graph_generator.remove_redundancy()
+        # self._graph_generator.remove_contradiction()
+        # self._graph_generator.make_shift_resets()
+        # self._graph_generator.remove_redundancy()
         alg_e_t = time.time()
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
 
-        print("after remove unreachable")
-        s_t = time.time()
-        self._graph_generator.remove_unreachable()
-        e_t = time.time()
-        print("unreach remove : {:.3f}s".format(e_t - s_t))
-        print_graph_info(graph)
+        _tableau.add_shift_resets()
+        _tableau.remove_unreachable()
+        print_graph_info(_tableau.graph)
 
-        self._forward_subsumption.calc_relation(graph)
-        self._forward_subsumption.reduce(graph)
-        print()
-        print("forward subsumption")
-        print_graph_info(graph)
-
-        self._backward_subsumption.calc_relation(graph)
-        self._backward_subsumption.reduce(graph)
-        print()
-        print("backward subsumption")
-        print_graph_info(graph)
-
-        self._path_subsumption.reduce(graph)
-        print()
-        print("subsumption")
-        print_graph_info(graph)
-
-        ha = converter.convert(graph, self._graph_generator._resets)
+        # print("after remove unreachable")
+        # s_t = time.time()
+        # self._graph_generator.remove_unreachable()
+        # e_t = time.time()
+        # print("unreach remove : {:.3f}s".format(e_t - s_t))
+        # print_graph_info(graph)
+        #
+        # self._forward_subsumption.calc_relation(graph)
+        # self._forward_subsumption.reduce(graph)
+        # print()
+        # print("forward subsumption")
+        # print_graph_info(graph)
+        #
+        # self._backward_subsumption.calc_relation(graph)
+        # self._backward_subsumption.reduce(graph)
+        # print()
+        # print("backward subsumption")
+        # print_graph_info(graph)
+        #
+        # self._path_subsumption.reduce(graph)
+        # print()
+        # print("subsumption")
+        # print_graph_info(graph)
+        #
+        # ha = converter.convert(graph, self._graph_generator._resets)
         # import pickle
         # with open("{}.graph".format("stl"), "wb") as fw:
-        #     pickle.dump(graph, fw)
+        #     pickle.dump(_tableau.graph, fw)
         # with open("{}.automata".format("stl"), "wb") as fw:
         #     pickle.dump(ha, fw)
-        return ha
+        # return ha
 
 
 class GraphGenerator:
@@ -363,29 +376,6 @@ def is_empty_labels(label: Label):
     return len(label.cur) == 0
 
 
-def _find_reachable(graph: TableauGraph) -> Set[Node]:
-    # set finals as reachable nodes
-    reach, un_reach = set(filter(lambda n: n.is_final(), graph.nodes)), set()
-
-    # prepare rest of the nodes
-    waiting = graph.nodes.difference(reach)
-    while len(waiting) > 0:
-        for node in waiting:
-            n_succ = node.get_out_vertices()
-            # else at least one successor is reachable
-            if len(n_succ.intersection(reach)) > 0:
-                reach.add(node)
-
-            # all successors are unreachable
-            if n_succ.issubset(un_reach):
-                un_reach.add(node)
-
-        waiting.difference_update(reach)
-        waiting.difference_update(un_reach)
-
-    return reach
-
-
 def _is_final_label(label: Label):
     return len(label.nxt) == 0
 
@@ -403,8 +393,17 @@ def print_wait_queue(wait_queue: Set[Label]):
 
 def print_graph_info(graph: TableauGraph):
     print("graph size #{}".format(len(graph.nodes)))
-    for d in range(graph.get_max_depth()):
-        print("depth@{} --> graph node#{}".format(d + 1, len(graph.get_nodes_at(d + 1))))
+    node_depth: Dict[int, Set[Node]] = dict()
+    for node in graph.nodes:
+        if node.depth in node_depth:
+            node_depth[node.depth].add(node)
+        else:
+            node_depth[node.depth] = {node}
+
+    ks = list(sorted(node_depth.keys()))
+
+    for k in ks:
+        print("depth@{} --> graph node#{}".format(k, len(node_depth[k])))
         # for index, node in enumerate(graph.get_nodes_at(d + 1)):
         #     print(indented_str("node{} --> pred: {}, succ: {}".format(index, len(node.pred), len(node.succ)), 2))
 

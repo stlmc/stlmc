@@ -7,23 +7,7 @@ from ....constraints.aux.operations import inf, sup, reduce_not
 from ....constraints.constraints import *
 
 
-class LabelGenerator:
-    def __init__(self, formula: Formula, **args):
-        if "threshold" in args:
-            self._threshold = float(args["threshold"])
-        else:
-            raise Exception("threshold should be given")
-
-        self._formula = formula
-
-    def expand(self, label: Label, depth: int):
-        return _expand(label, depth, self._threshold)
-
-    def init(self):
-        return _init(self._formula, self._threshold)
-
-
-def _expand(label: Label, depth: int, threshold: float) -> Set[Label]:
+def expand(label: Label, depth: int, threshold: float) -> Set[Label]:
     c, n, f = label.cur, label.nxt, label.forbidden
     labels: Set[Label] = set()
 
@@ -53,9 +37,9 @@ def _expand(label: Label, depth: int, threshold: float) -> Set[Label]:
     return labels
 
 
-def _init(formula: Formula, threshold: float):
+def init(formula: Formula, threshold: float):
     s_label = Label(singleton(), singleton(formula), singleton(), singleton())
-    return _expand(s_label, 1, threshold)
+    return expand(s_label, 1, threshold)
 
 
 @singledispatch

@@ -27,3 +27,17 @@ def global_clk():
 
 def is_global_clk_in(formula: Formula) -> bool:
     return global_clk() in get_vars(formula)
+
+
+def time_variables(max_depth: int) -> Set[Real]:
+    time_vars: Set[Real] = {global_clk()}
+    cur_depth = 1
+    while True:
+        if cur_depth > max_depth:
+            break
+        interval = symbolic_interval(cur_depth)
+        time_vars.update({inf(interval), sup(interval)})
+
+        cur_depth += 1
+
+    return time_vars

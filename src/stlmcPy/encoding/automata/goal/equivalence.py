@@ -23,7 +23,7 @@ class LabelEquivalenceChecker:
         }
 
     @abc.abstractmethod
-    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
+    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
         pass
 
     def _apply_filter(self, formulas: Set[Formula], *names) -> List[Set[Formula]]:
@@ -46,18 +46,11 @@ class StutteringEquivalenceChecker(LabelEquivalenceChecker):
         LabelEquivalenceChecker.__init__(self, top_formula)
         self._filters["non-time"] = lambda x: not isinstance(x, TimeProposition)
 
-    def stuttering(self, label: Label, labels: Set[Label]) -> Set[Label]:
-        removed = set()
-        for lb in labels:
-            if self.equivalent(label, lb):
-                removed.add(lb)
-        return labels.difference(removed)
-
-    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
+    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
         # get non-time goals
         # c1 = self._apply_filter(label1.cur, "non-time").pop()
         # c2 = self._apply_filter(label2.cur, "non-time").pop()
-        c1, c2 = label1.cur.copy(), label2.cur.copy()
+        c1, c2 = label1.copy(), label2.copy()
 
         c1_cg = self._apply_filter(c1, "up[]", "up[*]", "up<>", "up<*>")
         c2_cg = self._apply_filter(c2, "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
@@ -113,18 +106,14 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
         LabelEquivalenceChecker.__init__(self, top_formula)
         self._shifting = 0
 
-    def equivalent(self, label1: Label, label2: Label, **options) -> bool:
-        assert "depth1" in options.keys() and "depth2" in options.keys()
-        depth1, depth2 = options["depth1"], options["depth2"]
+    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
+        assert "depth1" in options and "depth2" in options
 
-        if "is_full" in options.keys():
-            is_full = options["is_full"]
-        else:
-            is_full = False
+        depth1, depth2 = options["depth1"], options["depth2"]
 
         self._clear()
         # get current
-        c1, c2 = label1.cur.copy(), label2.cur.copy()
+        c1, c2 = label1.copy(), label2.copy()
 
         # categorize
         c1_cg = self._apply_filter(c1, "up[]", "up[*]", "up<>", "up<*>",
@@ -132,25 +121,20 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
         c2_cg = self._apply_filter(c2, "up[]", "up[*]", "up<>", "up<*>",
                                    "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
 
-        self._shifting = depth2 - depth1
-        if is_full:
-            shifting, is_first = depth2 - depth1, False
-        else:
-            shifting, is_first = 0, True
-
+        shifting, is_first = 0, True
         pair = set()
         for c1_fs, c2_fs in zip(c1_cg, c2_cg):
             for f1, f2 in product(c1_fs, c2_fs):
                 if self._shifting_pair(f1, f2):
                     pair.add((f1, f2))
                     prev_shifting = shifting
-                    shifting = _calc_shifting(f1, f2)
+                    shifting = self._calc_shifting(depth1, depth2)
                     if is_first:
                         # do not check the first
                         is_first = False
                     else:
-                        # conclude that the labels are not equivalent
                         if prev_shifting != shifting:
+                            # conclude that the labels are not equivalent
                             return False
 
         c1_cpy, c2_cpy = c1.copy(), c2.copy()
@@ -159,6 +143,7 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
             c2_cpy.remove(f2)
 
         self._ignore_top_formula(c1_cpy, c2_cpy)
+        self._shifting = shifting
         return c1_cpy == c2_cpy
 
     def get_shifting(self):
@@ -166,6 +151,10 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
 
     def _clear(self):
         self._shifting = 0
+
+    @classmethod
+    def _calc_shifting(cls, depth1: int, depth2: int):
+        return depth2 - depth1
 
     @singledispatchmethod
     def _shifting_pair(self, cur: Formula, nxt: Formula) -> bool:
@@ -200,32 +189,3 @@ class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
         interval_eq, f_eq = cur.interval == nxt.interval, hash(cur.child) == hash(nxt.child)
         return partition_eq and interval_eq and f_eq
 
-
-@singledispatch
-def _calc_shifting(cur: Formula, nxt: Formula) -> int:
-    raise Exception("cannot calculate shifting of {} and {}".format(cur, nxt))
-
-
-@_calc_shifting.register(Up)
-def _(cur: Up, nxt: Up):
-    assert isinstance(nxt, Up)
-    return nxt.i.index - cur.i.index
-
-
-@_calc_shifting.register(UpIntersect)
-def _(cur: UpIntersect, nxt: UpIntersect):
-    assert isinstance(nxt, UpIntersect)
-    return nxt.i.index - cur.i.index
-
-
-@_calc_shifting.register(UpDown)
-def _(cur: UpDown, nxt: UpDown):
-    assert isinstance(nxt, UpDown)
-    assert cur.k.index - cur.i.index == nxt.k.index - nxt.i.index
-    return nxt.i.index - cur.i.index
-
-
-@_calc_shifting.register(UpIntersectDown)
-def _(cur: UpIntersectDown, nxt: UpIntersectDown):
-    assert isinstance(nxt, UpIntersectDown)
-    return nxt.i.index - cur.i.index
