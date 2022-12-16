@@ -1,19 +1,15 @@
 import time
 
-from .automata_subsumption import HaForwardSubsumption
 from .aux import *
-from .clock import global_clk_subst
-from .equivalence import ShiftingEquivalenceChecker, StutteringEquivalenceChecker
+from .equivalence import StutteringEquivalenceChecker
 from .graph import *
 from .ha_converter import HAConverter
-from .optimizer import ContradictionChecker
+from .label import *
 from .subsumption import ForwardSubsumption, BackwardSubsumption, PathSubsumption
 from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
-from ....hybrid_automaton.utils import print_ha_size
 from ....objects.goal import Goal
-from .label import *
 
 
 class StlGoal(Goal):
@@ -132,12 +128,6 @@ class StlGoal(Goal):
 
                         jp = graph.make_jump(p_n, f_n, u_lb, u_t)
                         graph.add_jump(jp)
-
-                        if p_n == f_n:
-                            print(lb)
-                            print("----->")
-                            print(u_lb)
-                            print("============")
 
                         # still not finished but already exists, and it is not finished
                         if f_n not in finished:

@@ -37,6 +37,7 @@ def _expand(label: Label) -> Set[Label]:
 
         # check if refinement is needed
         lbs = _refine_globally_labels(label, lbs)
+        lbs = _refine_finally_labels(label, lbs)
 
         update_queue = update_waiting_list(p_f, lbs, (p_c, p_l))
         waiting_list.extend(update_queue)
@@ -336,6 +337,16 @@ def _refine_globally_labels(label: Label, labels: Set[Label]) -> Set[Label]:
     return lb_s
 
 
+def _refine_finally_labels(label: Label, labels: Set[Label]) -> Set[Label]:
+    lb_s = set()
+    for lb in labels:
+        if not _refine_finally_label(label, lb):
+            lb_s.add(lb)
+        else:
+            lb_s.add(Label(singleton(), singleton(), singleton(), singleton()))
+    return lb_s
+
+
 def _invalid_globally_label(cur_label: Label, nxt_label: Label) -> bool:
     # find globally temporal formulas in the current goals
     g_cur = set(filter(lambda x: isinstance(x, GloballyFormula), cur_label.cur))
@@ -415,6 +426,25 @@ def _invalid_finally_label(cur_label: Label, nxt_label: Label) -> bool:
     return False
 
 
+def _refine_finally_label(cur_label: Label, nxt_label: Label) -> bool:
+    # find finally temporal formulas in the current goals
+    g_cur = set(filter(lambda x: isinstance(x, FinallyFormula), cur_label.cur))
+
+    # find clock resets
+    nxt_clk_g = set(filter(lambda x: isinstance(x, ClkReset), nxt_label.cur))
+    nxt_clk_s = set(map(lambda x: x.clock, nxt_clk_g))
+
+    for g_f in g_cur:
+        assert isinstance(g_f, FinallyFormula)
+        # if a new goal has up and up intersect goals with a new clock
+        potential = _get_finally_ups(g_f, nxt_clk_s, *nxt_label.cur)
+
+        if len(potential) > 0:
+            return True
+
+    return False
+
+
 def _get_globally_ups(base: GloballyFormula, clk_s: Set[Real], *goals) -> Set[Formula]:
     s = set()
     for g in goals:
@@ -440,6 +470,39 @@ def _(formula: GloballyUp, base: GloballyFormula,
 
 @_get_globally_up.register(GloballyUpIntersect)
 def _(formula: GloballyUpIntersect, base: GloballyFormula,
+      clk_s: Set[Real]) -> Set[Formula]:
+    f, interval = formula.formula, formula.interval
+    if base.local_time == interval and base.child == f:
+        if formula.clock in clk_s:
+            return {formula}
+    return set()
+
+
+def _get_finally_ups(base: FinallyFormula, clk_s: Set[Real], *goals) -> Set[Formula]:
+    s = set()
+    for g in goals:
+        s.update(_get_finally_up(g, base, clk_s))
+    return s
+
+
+@singledispatch
+def _get_finally_up(formula: Formula, base: FinallyFormula,
+                    clk_s: Set[Real]) -> Set[Formula]:
+    return set()
+
+
+@_get_finally_up.register(FinallyUp)
+def _(formula: FinallyUp, base: FinallyFormula,
+      clk_s: Set[Real]) -> Set[Formula]:
+    f, interval = formula.formula, formula.interval
+    if base.local_time == interval and base.child == f:
+        if formula.clock in clk_s:
+            return {formula}
+    return set()
+
+
+@_get_finally_up.register(FinallyUpIntersect)
+def _(formula: FinallyUpIntersect, base: FinallyFormula,
       clk_s: Set[Real]) -> Set[Formula]:
     f, interval = formula.formula, formula.interval
     if base.local_time == interval and base.child == f:
