@@ -1,4 +1,4 @@
-from .aux import translate_formula
+from .aux import translate_formula, tau_max
 from .clock import *
 from .graph import *
 from .label import TimeProposition
@@ -9,224 +9,195 @@ from ....hybrid_automaton.hybrid_automaton import *
 
 class HAConverter:
     def __init__(self, tau_subst: VarSubstitution):
-        self._time_pre_guard: Dict[Mode, Set[Formula]] = dict()
-        self._time_post_guard: Dict[Mode, Set[Formula]] = dict()
         self._tau_subst: VarSubstitution = tau_subst
-
-        #
-        self._clk_subst_dict: Dict[int, VarSubstitution] = dict()
-        self._time_dyns: Set[Tuple[Real, Expr]] = set()
-        self._time_resets_dict: Dict[int, Set[Tuple[Variable, Expr]]] = dict()
-
-        #
         self._node2mode_dict: Dict[Node, Mode] = dict()
-        self._mode_depth_dict: Dict[Mode, int] = dict()
-        self._empty_final_mode = Mode(-1)
-        self._empty_initial_mode = Mode(-2)
 
     def clear(self):
-        self._time_pre_guard.clear()
-        self._time_post_guard.clear()
-        self._clk_subst_dict.clear()
-        self._time_dyns.clear()
-        self._time_resets_dict.clear()
         self._node2mode_dict.clear()
-        self._mode_depth_dict.clear()
-        self._empty_final_mode = Mode(-1)
-        self._empty_initial_mode = Mode(-2)
 
-    def convert(self, graph: TableauGraph, shift_jumps: Set[Jump]):
+    @classmethod
+    def _get_clocks(cls, graph: TableauGraph) -> Set[Real]:
+        clk_s = set()
+        for n in graph.get_nodes():
+            clk_s.update(get_clock_pool(*n.goals))
+        return clk_s
+
+    @classmethod
+    def _make_time_dynamics(cls, clock_vars: Set[Real]) -> Set[Tuple[Real, RealVal]]:
+        d_s, one = set(), RealVal("1.0")
+        # add global clock
+        d_s.add((global_clk(), one))
+
+        for clk in clock_vars:
+            d_s.add((clk, one))
+        return d_s
+
+    def convert(self, graph: TableauGraph):
         self.clear()
+
         automata = HybridAutomaton()
-        jumps = get_node_jumps(graph)
-        max_depth = graph.get_max_depth()
-        self._prepare(max_depth)
 
-        # add time initial conditions
-        _add_time_init(automata, max_depth)
+        # get all clock variables used in goals
+        # and make time dynamics (i.e., d{clk}/dt = 1)
+        clk_s = self._get_clocks(graph)
+        d_s = self._make_time_dynamics(clk_s)
 
-        # make mode
-        for index, node in enumerate(graph.nodes):
-            mode = self._make_mode(node, index + 1)
+        # get node information
+        g_d, i_d, r_d, t_d = self._get_node_info(graph)
+
+        for index, node in enumerate(graph.get_nodes()):
+            mode = self._make_mode(index + 1, node.is_initial(), node.is_final())
+
+            assert node in i_d
+            mode.add_invariant(*i_d[node])
+            mode.add_dynamic(*d_s)
+
             automata.add_mode(mode)
 
-        # make jp
+            self._node2mode_dict[node] = mode
+
+        # get jumps, and make guard, reset information dictionaries
+        jumps = get_node_jumps(graph)
+
+        # make transition
         for jp in jumps:
-            self._make_jp(jp, shift_jumps)
+            s, t = jp.get_src(), jp.get_trg()
 
-        # add time conditions
-        for node in graph.nodes:
-            self._add_time_condition_at(automata, node)
+            assert s in self._node2mode_dict
+            assert t in self._node2mode_dict
 
-        # _remove_equivalent_modes(automata, self._mode_depth_dict)
-        # print(automata)
+            s_m, t_m = self._node2mode_dict[s], self._node2mode_dict[t]
+
+            assert t in g_d and t in r_d and t in t_d
+
+            tr = Transition(s_m, t_m)
+            tr.add_guard(*g_d[t])
+            tr.add_reset(*r_d[t])
+
+            # if trg is in time bound
+            if t_d[t]:
+                # make time bound consts
+                b_c = global_clk() >= tau_max()
+                assert isinstance(b_c, Geq)
+
+                b_c = self._tau_subst.substitute(b_c)
+                tr.add_guard(b_c)
+
+            automata.add_transition(tr)
+
+        self._remove_equiv_transitions(automata)
         return automata
 
-    def _make_mode(self, node: Node, node_id: int) -> Mode:
-        tau_subst = self._tau_subst
-        clk_subst_dict, time_dyns = self._clk_subst_dict, self._time_dyns
+    def _get_node_info(self, graph: TableauGraph) -> Tuple[Dict[Node, Set[Formula]],
+                                                           Dict[Node, Set[Formula]],
+                                                           Dict[Node, Set[Tuple[Real, RealVal]]],
+                                                           Dict[Node, bool]]:
+        g_d, i_d, r_d, t_d = dict(), dict(), dict(), dict()
+        # make mode
+        for node in graph.get_nodes():
+            g, inv, r, tb = self._translate_goals(*node.goals)
 
+            assert node not in g_d
+            g_d[node] = g
+
+            assert node not in i_d
+            i_d[node] = inv
+
+            assert node not in r_d
+            r_d[node] = r
+
+            assert node not in t_d
+            t_d[node] = tb
+
+        return g_d, i_d, r_d, t_d
+
+    @classmethod
+    def _make_mode(cls, node_id: int, is_initial=False, is_final=False) -> Mode:
         mode = Mode(node_id)
-        mode.add_dynamic(*time_dyns)
 
-        if node.is_final():
+        if is_final:
             mode.set_as_final()
 
-        if node.is_initial():
+        if is_initial:
             mode.set_as_initial()
 
-        clk_subst = clk_subst_dict[node.depth]
-
-        for f in node.non_intermediate:
-            if isinstance(f, TimeProposition):
-                t_f = tau_subst.substitute(translate_formula(f, node.depth))
-                t_f = clk_subst.substitute(t_f)
-                # print("@{} :: {} --> {}".format(node.depth, f, t_f))
-
-                t_f, r = reduce(t_f)
-
-                if r:
-                    self._add_to_guard(mode, t_f)
-            else:
-                mode.add_invariant(translate_formula(f, node.depth))
-
-        self._node2mode_dict[node] = mode
-        self._mode_depth_dict[mode] = node.depth
         return mode
 
-    def _make_jp(self, jump: Jump, shift_jumps: Set[Jump]):
-        s_mode = self._node2mode_dict[jump.src]
-        t_mode = self._node2mode_dict[jump.trg]
+    def _translate_goals(self, *goals) -> Tuple[Set[Formula], Set[Formula],
+                                                Set[Tuple[Real, RealVal]], bool]:
+        tau_subst = self._tau_subst
 
-        jp = make_jump(s_mode, t_mode)
-        if jump in shift_jumps:
-            jp.add_reset(*jump.reset)
-        else:
-            jp.add_reset(*self._time_resets_dict[jump.src.depth])
+        is_time_bound = False
+        # get guards, invariants, and time resets from the goals
+        guard, inv, r_s = set(), set(), set()
+        for g in goals:
+            if isinstance(g, TimeProposition):
+                t_f = tau_subst.substitute(_translate_time_goal(g))
+                # time propositions go to pre-guard
+                guard.add(t_f)
+                # print("@{} :: {} --> {}".format(node.depth, f, t_f))
 
-    def _add_time_condition_at(self, automaton: HybridAutomaton, node: Node):
-        # move time guard to the next jump
-        empty_initial_mode, empty_final_mode = self._empty_initial_mode, self._empty_final_mode
-        mode = self._node2mode_dict[node]
-        is_empty_final_needed = False
-        is_empty_initial_needed = False
+                # t_f, r = reduce(t_f)
 
-        # check if there's something to propagate
-        if mode in self._time_pre_guard:
-            t_pre_fs = self._time_pre_guard[mode]
-            if mode.is_initial():
-                is_empty_initial_needed = True
-                mode.set_as_non_initial()
-                jp = make_jump(empty_initial_mode, mode)
-                jp.add_guard(*t_pre_fs)
+                # if r:
+                #     self._add_to_guard(mode, t_f)
+            elif isinstance(g, TimeBound):
+                is_time_bound = True
+            elif isinstance(g, ClkReset):
+                # clock resets go to pre-guard resets
+                r_s.add((g.clock, g.value))
+            elif isinstance(g, Proposition):
+                # other propositions go to invariant
+                inv.add(g)
             else:
-                p_jp_s = mode.get_in_edges()
-                for p_jp in p_jp_s:
-                    p_jp.add_guard(*t_pre_fs)
+                # ignore other cases
+                continue
+        return guard, inv, r_s, is_time_bound
 
-        # check if there's something to propagate
-        if mode in self._time_post_guard:
-            t_post_fs = self._time_post_guard[mode]
-            if mode.is_final():
-                is_empty_final_needed = True
-                mode.set_as_non_final()
-                jp = make_jump(mode, empty_final_mode)
-                jp.add_guard(*t_post_fs)
-                jp.add_reset(*self._time_resets_dict[node.depth])
+    @classmethod
+    def _remove_equiv_transitions(cls, automata: HybridAutomaton):
+        # get jumps
+        tr_s: Set[Transition] = set()
+        for m in automata.get_modes():
+            tr_s = tr_s.union(automata.get_next_edges(m))
+
+        # make equivalent transition dictionary
+        equiv = dict()
+        for tr in tr_s:
+            f_g, f_r = frozenset(tr.guard), frozenset(tr.reset)
+            h = (tr.get_src(), f_g, f_r, tr.get_trg())
+
+            if h in equiv:
+                equiv[h].add(tr)
             else:
-                s_jp_s = mode.get_out_edges()
-                for s_jp in s_jp_s:
-                    s_jp.add_guard(*t_post_fs)
+                equiv[h] = {tr}
 
-        if is_empty_final_needed:
-            automaton.add_mode(empty_final_mode)
+        for h in equiv:
+            # save one to be alive
+            equiv[h].pop()
 
-        if is_empty_initial_needed:
-            automaton.add_mode(empty_initial_mode)
-
-    def _prepare(self, max_depth: int):
-        self._clk_subst_dict = global_clk_subst(max_depth)
-        self._time_dyns = _time_dynamics(max_depth)
-        self._time_resets_dict = _time_resets(max_depth)
-        self._prepare_empty_mode(max_depth)
-
-    def _prepare_empty_mode(self, max_depth: int):
-        t_dyn = _time_dynamics(max_depth)
-
-        self._empty_initial_mode.add_dynamic(*t_dyn)
-        self._empty_initial_mode.set_as_initial()
-
-        self._empty_final_mode.add_dynamic(*t_dyn)
-        self._empty_final_mode.set_as_final()
-
-        self._mode_depth_dict[self._empty_initial_mode] = self._empty_initial_mode.id
-        self._mode_depth_dict[self._empty_final_mode] = self._empty_final_mode.id
-
-    def _add_to_guard(self, mode: Mode, t_f: Formula):
-        # if global clk contained move the post guard
-        if is_global_clk_in(t_f):
-            _add_to_guard_dict(self._time_post_guard, mode, t_f)
-        else:
-            _add_to_guard_dict(self._time_pre_guard, mode, t_f)
+            # remove all the others
+            for tr in equiv[h]:
+                automata.remove_transition(tr)
 
 
-def _add_time_init(automaton: HybridAutomaton, max_depth: int):
-    s = set()
-    time_vars: Set[Real] = time_variables(max_depth)
-    time_vars.add(global_clk())
-    zero = RealVal("0.0")
-    for v in time_vars:
-        s.add(v == zero)
-    automaton.add_init(*s)
+@singledispatch
+def _translate_time_goal(formula: Formula) -> Formula:
+    return formula
 
 
-def _time_dynamics(max_depth: int) -> Set[Tuple[Real, Expr]]:
-    time_vars: Set[Real] = time_variables(max_depth)
-    time_dyns: Set[Tuple[Real, Expr]] = set()
-
-    clk = global_clk()
-    one, zero = RealVal("1.0"), RealVal("0.0")
-    for v in time_vars:
-        if variable_equal(v, clk):
-            time_dyns.add((v, one))
-        else:
-            time_dyns.add((v, zero))
-
-    return time_dyns
-
-def _time_resets(max_depth: int) -> Dict[int, Set[Tuple[Real, Expr]]]:
-    time_dict: Dict[int, Set[Tuple[Real, Expr]]] = dict()
-    cur_depth = 1
-    while max_depth >= cur_depth:
-        time_dict[cur_depth] = _time_resets_at(cur_depth, max_depth)
-        cur_depth += 1
-
-    return time_dict
+@_translate_time_goal.register(TimeGloballyPre)
+def _(formula: TimeGloballyPre) -> Formula:
+    # ignore strict case
+    return formula.clock <= inf(formula.interval)
 
 
-def _time_resets_at(cur_depth: int, max_depth: int) -> Set[Tuple[Real, Expr]]:
-    time_resets: Set[Tuple[Real, Expr]] = set()
-    clk = global_clk()
-
-    depth = 1
-    while max_depth >= depth:
-        interval = symbolic_interval(depth)
-        s_v, e_v = inf(interval), sup(interval)
-
-        if depth == cur_depth:
-            time_resets.update({(s_v, s_v), (e_v, clk)})
-        elif depth == cur_depth + 1:
-            time_resets.add((e_v, e_v))
-        else:
-            time_resets.update({(s_v, s_v), (e_v, e_v)})
-
-        depth += 1
-
-    return time_resets
+@_translate_time_goal.register(TimeGloballyFinal)
+def _(formula: TimeGloballyFinal) -> Formula:
+    # ignore strict case
+    return formula.clock <= sup(formula.interval)
 
 
-def _add_to_guard_dict(guard_dict: Dict[Mode, Set[Formula]], mode: Mode, t_f: Formula):
-    if mode in guard_dict:
-        guard_dict[mode].add(t_f)
-    else:
-        guard_dict[mode] = {t_f}
+@_translate_time_goal.register(TimeBound)
+def _(formula: TimeBound) -> Formula:
+    return tau_max()

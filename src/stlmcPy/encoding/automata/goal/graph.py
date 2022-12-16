@@ -1,369 +1,242 @@
-from typing import FrozenSet, List, Optional
+from itertools import permutations
+from typing import FrozenSet
 
-from .aux import expand, init, split_label, symbolic_interval
-from .clock import global_clk, time_variables
-from .equivalence import ShiftingEquivalenceChecker, StutteringEquivalenceChecker
-from .label import Label
-from ....constraints.aux.operations import inf, sup, variable_equal
+from .clock import *
+from .label import *
 from ....constraints.constraints import Real, Formula
 from ....graph.graph import *
 from ....util.printer import indented_str
 
 
-class TableauGenerator:
-    def __init__(self, formula: Formula, **args):
-        if "threshold" in args:
-            self._threshold = float(args["threshold"])
-        else:
-            raise Exception("threshold should be given")
-
-        # label
-        self._formula: Formula = formula
-        self._depth: int = 0
-        self._next_nodes: Set[Node] = set()
-
-        # graph
-        self.graph: TableauGraph = TableauGraph()
-        self._shift_checker = ShiftingEquivalenceChecker(formula)
-        self._st_checker = StutteringEquivalenceChecker(formula)
-        # self.depths: Dict[int, Set[Node]] = dict()
-
-        self._node_hash: Dict[hash, Node] = dict()
-        # self._node_lb_dict: Dict[Tuple[FrozenSet[Formula], int], Node] = dict()
-        self._shift_resets: Dict[Jump, Tuple[int, int]] = dict()
-
-    def expand(self):
-        while True:
-            yield self._expand()
-
-    def _expand(self):
-        self._prepare()
-
-        prev_n = len(self.graph.nodes)
-        if self._depth == 1:
-            self._expand_init_nodes()
-        else:
-            self._expand_nodes()
-
-        cur_n = len(self.graph.nodes)
-        print("depth#{}, nodes#{}, nodesAcc#{}".format(self._depth, cur_n - prev_n, cur_n))
-
-    def _prepare(self):
-        self._depth += 1
-
-    def _reset(self):
-        self._depth = 0
-        self._labels = set()
-        self._shift_resets = dict()
-
-    def _expand_init_nodes(self):
-        nodes = list()
-        lb_s = init(self._formula, self._threshold)
-        for lb in lb_s:
-            # ignore top formula
-            lb.cur.discard(self._formula)
-            node = Node(lb, 1)
-            node.set_as_initial()
-            nodes.append(node)
-
-            if _is_final_label(lb):
-                node.set_as_final()
-
-        for node in nodes:
-            self._add_fresh_node(node)
-
-    def _expand_nodes(self):
-        # bfs expand
-        cur_node = self._next_nodes.copy()
-        self._next_nodes.clear()
-
-        for node in cur_node:
-            self._expand_node(node)
-
-    def _expand_node(self, node: 'Node'):
-        nodes = set(node.expand(self._formula, self._threshold))
-        # nodes = self._reduce_equivalent(*nodes)
-        self._stuttering(node, nodes)
-        self._reduce_shifting(node, nodes)
-
-        # make new nodes for the rests
-        for n in nodes:
-            self._add_fresh_node(n)
-
-            jp = Jump(node, n)
-            connect(jp)
-
-    @classmethod
-    def _reduce_equivalent(cls, *nodes) -> Set['Node']:
-        canonicalize: Dict[hash, Node] = dict()
-        for n in nodes:
-            assert isinstance(n, Node)
-            if n.get_hash() in canonicalize:
-                f_n = canonicalize[n.get_hash()]
-                cls._merge_node(n, f_n)
-            else:
-                canonicalize[n.get_hash()] = n
-
-        return {canonicalize[h] for h in canonicalize}
-
-    @classmethod
-    def _merge_node(cls, node1: 'Node', node2: 'Node'):
-        # merge node1 to node2
-        node2.labels.update(node1.labels)
-        in_edges, out_edges = node1.get_in_edges(), node1.get_out_edges()
-
-        for jp in in_edges:
-            new_jp = copy_jump(jp)
-            new_jp.trg = node2
-            connect(new_jp)
-            disconnect(jp)
-
-        for jp in out_edges:
-            new_jp = copy_jump(jp)
-            new_jp.src = node2
-            connect(new_jp)
-            disconnect(jp)
-
-    def _stuttering(self, node: 'Node', nodes: Set['Node']):
-        redundancies: Set[Node] = set()
-        for n in nodes:
-            if self._st_checker.equivalent(node.get_label(), n.get_label()):
-                redundancies.add(n)
-        nodes.difference_update(redundancies)
-
-    def _reduce_shifting(self, node: 'Node', nodes: Set['Node']):
-        redundancies: Set[Node] = set()
-        # find the matching case and remove redundancies
-        # and add reset edge
-        for n in nodes:
-            found, f_n, shifting = self._find_shift_node_by_lb(n.get_label())
-            if found:
-                # redundant
-                redundancies.add(n)
-
-                # make reset edge
-                jp = Jump(node, f_n)
-                connect(jp)
-
-                self._shift_resets[jp] = (n.depth, shifting)
-
-        nodes.difference_update(redundancies)
-
-    def _find_shift_node_by_lb(self, label: Set[Formula]) -> Tuple[bool, Optional['Node'], int]:
-        for node in self.graph.nodes:
-            if node.depth >= self._depth:
-                continue
-
-            if self._shift_checker.equivalent(node.get_label(), label, depth1=node.depth, depth2=self._depth):
-                return True, node, self._shift_checker.get_shifting()
-        return False, None, -1
-
-    def _add_fresh_node(self, node: 'Node'):
-        found, f_node = self._find_equiv_node(node)
-        if not found:
-            self.graph.nodes.add(node)
-            self._next_nodes.add(node)
-            self._node_hash[node.get_hash()] = node
-        else:
-            print(node)
-            print("to")
-            print(f_node)
-            print("-==-=====")
-            self._merge_node(node, f_node)
-
-    def _find_equiv_node(self, node: 'Node') -> Tuple[bool, Optional['Node']]:
-        node_hash = node.get_hash()
-        if node_hash in self._node_hash:
-            return True, self._node_hash[node_hash]
-        else:
-            return False, None
-
-    def add_shift_resets(self):
-        max_depth = self.graph.get_max_depth()
-        for jp in self._shift_resets:
-            depth, shifting = self._shift_resets[jp]
-            print("shifting {}".format(shifting))
-            jp.add_shift_reset(depth, shifting, max_depth)
-
-    def remove_unreachable(self):
-        reach = _find_reachable(self.graph)
-        un_reach = self.graph.nodes.difference(reach)
-
-        for node in un_reach:
-            self.graph.remove_node(node)
-
-
 class TableauGraph(Graph['Node', 'Jump']):
-    def __init__(self):
+    def __init__(self, formula: Formula):
         Graph.__init__(self)
-        self.nodes: Set[Node] = set()
+        self._formula = formula
+        self._dummy_node = Node(set())
+        self._labels: Dict[Node, Set[Label]] = dict()
+        self.add_node(self._dummy_node)
+
+    def first_node(self):
+        # the first dummy node is used to make initial edges
+        return self._dummy_node
+
+    def get_nodes(self):
+        return self.vertices
+
+    def get_labels(self, node: 'Node') -> Set[Label]:
+        assert node in self.get_nodes()
+        if node not in self._labels:
+            return set()
+        return self._labels[node].copy()
+
+    def add_node(self, node: 'Node'):
+        self.add_vertex(node)
+
+    @classmethod
+    def make_node(cls, label: Label, is_initial=False) -> Tuple['Node', Set[TypeHint]]:
+        clk_f_s = set(filter(lambda x: isinstance(x, ClkReset), label.transition_cur))
+        clk_v_s = set(map(lambda x: x.clock, clk_f_s))
+
+        gs, ty = _subst_goals(clk_v_s, *label.state_cur)
+
+        node = Node(gs, is_initial, len(label.nxt) <= 0)
+        return node, ty
+
+    @classmethod
+    def make_jump(cls, src: 'Node', trg: 'Node',
+                  label: Label, hint: Set[TypeHint] = None) -> 'Jump':
+        clk_f_s = set(filter(lambda x: isinstance(x, ClkReset), label.transition_cur))
+        clk_v_s = set(map(lambda x: x.clock, clk_f_s))
+
+        gs, jp_ty = _subst_goals(clk_v_s, *label.transition_cur)
+
+        if hint is None:
+            return Jump(src, trg, gs, jp_ty)
+        else:
+            return Jump(src, trg, gs, hint.union(jp_ty))
 
     def remove_node(self, node: 'Node'):
-        self.nodes.discard(node)
+        self.remove_vertex(node)
 
-        pred = node.get_in_edges()
-        succ = node.get_out_edges()
+    def add_jump(self, jump: 'Jump'):
+        self.add_edge(jump)
 
-        for e in pred:
-            disconnect(e)
+    def remove_jump(self, jump: 'Jump'):
+        self.remove_edge(jump)
 
-        for e in succ:
-            disconnect(e)
+    def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'],
+                                               Optional[ClockSubstitution]]:
+        # ignore top formula and clk resets
+        node_goals = self._ignore_top_formula(*node.goals)
 
-    def get_max_depth(self) -> int:
-        return max(map(lambda n: n.depth, self.nodes))
+        # split clock and others
+        node_clk_s = filter_clock_goals(*node_goals)
+        node_other = node_goals.difference(node_clk_s)
+
+        for n in self.get_nodes():
+            eq = [n.is_final() == node.is_final(),
+                  n.is_initial() == node.is_initial()]
+            # ignore top formula and clk resets
+            n_goals = self._ignore_top_formula(*n.goals)
+
+            # split clock and others
+            clk_s = filter_clock_goals(*n_goals)
+            other = n_goals.difference(clk_s)
+
+            clk_eq, clk_subst = self._clock_eq(clk_s, node_clk_s)
+
+            if clk_eq and other == node_other and eq[0]:
+                return True, n, clk_subst
+        return False, None, None
+
+    @classmethod
+    def _clock_eq(cls, goal1: Set[Formula],
+                  goal2: Set[Formula]) -> Tuple[bool, Optional[ClockSubstitution]]:
+        # clock equivalence detection
+        # 1) get clock pools of the goals
+        # 1.1) if the pools' size differ, the goals are not equivalent
+        p1, p2 = get_clock_pool(*goal1), get_clock_pool(*goal2)
+
+        if len(p1) != len(p2):
+            return False, None
+
+        # 2) (assume that the pools are equal) make mappings
+        # Dict[Real, Set[str]]
+        clk_ty_map1 = make_clk_type_mapping(*goal1)
+
+        # 3) check if the mappings are equal
+        # fix ordering of p1 and calculate all possible orderings of p2
+        p1_o, p2_o_pool = tuple(p1), set(permutations(p2))
+
+        for p2_o in p2_o_pool:
+            assert isinstance(p2_o, Tuple)
+
+            # possible clock mapping
+            possible = set(zip(p1_o, p2_o))
+            mapping = ClockSubstitution()
+            for c1, c2 in possible:
+                mapping.add(c2, c1)
+
+            goals = set(map(lambda x: mapping.substitute(x), goal2))
+            clk_ty_map2 = make_clk_type_mapping(*goals)
+
+            # if successfully find clock mapping
+            if clk_ty_map1 == clk_ty_map2:
+                return True, mapping
+
+        # otherwise
+        return False, None
+
+    def _ignore_top_formula(self, *goals) -> Set[Formula]:
+        return set(filter(lambda x: hash(x) != hash(self._formula), goals))
+
+    @classmethod
+    def update_label_clock(cls, label: Label, clk_subst: ClockSubstitution):
+        cur = [{clk_subst.substitute(f) for f in label.state_cur},
+               {clk_subst.substitute(f) for f in label.transition_cur}]
+
+        nxt = [{clk_subst.substitute(f) for f in label.state_nxt},
+               {clk_subst.substitute(f) for f in label.transition_nxt}]
+
+        return Label(cur[0], cur[1], nxt[0], nxt[1])
+
+    @classmethod
+    def update_type_hint_clocks(cls, clk_subst: ClockSubstitution, *ty_hints):
+        return set(map(lambda x: clk_subst.substitute(x), ty_hints))
+
+    def open_labels(self, node: 'Node', *labels):
+        if node in self._labels:
+            self._labels[node].update({lb for lb in labels})
+        else:
+            self._labels[node] = {lb for lb in labels}
 
     def __repr__(self):
-        return "\n".join([str(node) for node in self.nodes])
+        node_str = "node:\n{}".format("\n".join([str(node) for node in self.vertices]))
+        edges_str = "jump:\n{}".format("\n".join([str(jp) for jp in get_node_jumps(self)]))
+        return "\n".join([node_str, edges_str])
 
 
-class Node(Vertex['Node', 'Jump']):
-    def __init__(self, label: Label, depth: int):
-        Vertex.__init__(self)
+class Node:
+    def __init__(self, goals: Set[Formula], is_initial=False, is_final=False):
+        self.goals = goals.copy()
+        self._hash = hash((frozenset(goals), is_initial, is_final))
 
-        non_inter, inter = split_label(label)
-
-        self.non_intermediate: FrozenSet[Formula] = frozenset(non_inter)
-        self.intermediate: FrozenSet[Formula] = frozenset(inter)
-
-        self.labels: Set[Label] = {label}
-        # self._hash = hash((self.non_intermediate, self.intermediate, depth))
-
-        self._depth = depth
-        self._is_final = False
-        self._is_initial = False
-
-    def expand(self, top_formula: Formula, threshold: float) -> List['Node']:
-        new_nodes = list()
-        for lb in self.labels:
-            new_nodes.extend(self._expand(lb, top_formula, threshold))
-        return new_nodes
-
-    def _expand(self, label: Label, top_formula: Formula, threshold: float) -> List['Node']:
-        new_nodes = list()
-        lb_s = expand(label, self._depth, threshold)
-
-        for lb in lb_s:
-            # ignore top formula
-            lb.cur.discard(top_formula)
-            node = Node(lb, self._depth + 1)
-            new_nodes.append(node)
-
-            if _is_final_label(lb):
-                node.set_as_final()
-
-        return new_nodes
-
-    def get_label(self) -> Set[Formula]:
-        return set(self.non_intermediate.union(self.intermediate))
-
-    # def __hash__(self):
-    #     return self._hash
-
-    # def __eq__(self, other):
-    #     return hash(self) == hash(other)
+        self._is_initial = is_initial
+        self._is_final = is_final
 
     def __repr__(self):
-        ap_str_list = list()
-        for b in self.non_intermediate:
-            ap_str_list.append(indented_str(str(b), 6))
+        goal_str_list = list()
+        for g in self.goals:
+            goal_str_list.append(indented_str(str(g), 6))
 
-        non_str_list = list()
-        for b in self.intermediate:
-            non_str_list.append(indented_str(str(b), 6))
+        id_info = indented_str("id: {}".format(hash(self)), 4)
+        is_initial = indented_str("initial: {}".format(self._is_initial), 4)
+        is_final = indented_str("final: {}".format(self._is_final), 4)
+        goal_info = indented_str("goal:\n{}".format("\n".join(goal_str_list)), 4)
 
-        id_info = indented_str("id: {}".format(self.node_id), 4)
-        depth_info = indented_str("depth: {}".format(self._depth), 4)
-        ap_info = indented_str("ap:\n{}".format("\n".join(ap_str_list)), 4)
-        non_info = indented_str("non ap:\n{}".format("\n".join(non_str_list)), 4)
-
-        pred: Set[Node] = self.get_in_vertices()
-        succ: Set[Node] = self.get_out_vertices()
-
-        pred_body = "\n".join([indented_str(str(p.node_id), 6) for p in pred])
-        pred_info = indented_str("pred:\n{}".format(pred_body), 4)
-
-        succ_body = "\n".join([indented_str(str(s.node_id), 6) for s in succ])
-        succ_info = indented_str("succ:\n{}".format(succ_body), 4)
-
-        return "( Node\n{}\n)".format("\n".join([id_info, depth_info, ap_info, non_info, pred_info, succ_info]))
-
-    @property
-    def depth(self):
-        return self._depth
-
-    @property
-    def node_id(self):
-        return self.get_hash()
-
-    def get_hash(self):
-        return hash((self.non_intermediate, self.intermediate, self.depth))
-
-    def set_as_final(self):
-        self._is_final = True
+        return "( Node\n{}\n)".format("\n".join([id_info, is_initial, is_final, goal_info]))
 
     def is_final(self):
         return self._is_final
-
-    def set_as_initial(self):
-        self._is_initial = True
 
     def is_initial(self):
         return self._is_initial
 
 
 class Jump(Edge[Node]):
-    def __init__(self, src: Node, trg: Node):
-        Edge.__init__(self, src, trg)
-        self.reset: Set[Tuple[Real, Formula]] = set()
+    def __init__(self, src: Node, trg: Node, ap: Set[Formula], hint: Set[TypeHint]):
+        self._src, self._trg = src, trg
+        self._ap = frozenset(ap)
+        self._hint: FrozenSet[TypeHint] = frozenset(hint)
+        self._hash = hash((src, trg, self._ap, self._hint))
 
-    def add_reset(self, *resets):
-        for v, f in resets:
-            self.reset.add((v, f))
+    def get_ap(self):
+        return self._ap
 
-    def add_shift_reset(self, depth: int, shift: int, max_depth: int):
-        self.add_reset(*shift_reset(depth, shift, max_depth))
+    def get_type_hint(self):
+        return self._hint
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def get_src(self) -> Node:
+        return self._src
+
+    def get_trg(self) -> Node:
+        return self._trg
 
     def __repr__(self):
-        reset_body = "\n".join([indented_str("{} := {}".format(v, f), 6) for v, f in self.reset])
-        reset_str = indented_str("reset:\n{}".format(reset_body), 4)
+        jp_hint = indented_str("type hint: {}".format("none" if self._hint is None else self._hint), 4)
+        jp_ap = indented_str("ap:\n{}".format("\n".join([indented_str(str(f), 6) for f in self._ap])), 4)
+        jp_body = indented_str("{} -> {}".format(hash(self._src), hash(self._trg)), 4)
 
-        jp_body = indented_str("{} -> {}".format(self.src.node_id, self.trg.node_id), 4)
-
-        return "( jump \n{}\n{}\n  )".format(reset_str, jp_body)
+        return "( jump \n{}\n{}\n{}\n  )".format(jp_hint, jp_ap, jp_body)
 
 
 def get_node_jumps(graph: TableauGraph) -> Set[Jump]:
     jp_s: Set[Jump] = set()
-    for node in graph.nodes:
-        jp_s.update(node.get_out_edges())
+    for node in graph.get_nodes():
+        jp_s.update(graph.get_next_edges(node))
 
     return jp_s
-
-
-def copy_jump(jp: Jump) -> Jump:
-    n_jp = Jump(jp.src, jp.trg)
-    n_jp.add_reset(*jp.reset)
-    return n_jp
 
 
 def _is_final_label(label: Label):
     return len(label.nxt) == 0
 
 
-def _is_initial_node(node: Node):
-    return node.depth == 1
-
-
 def _find_reachable(graph: TableauGraph) -> Set[Node]:
     # set finals as reachable nodes
-    reach, un_reach = set(filter(lambda n: n.is_final(), graph.nodes)), set()
+    reach, un_reach = set(filter(lambda n: n.is_final(), graph.get_nodes())), set()
 
     # prepare rest of the nodes
-    waiting = graph.nodes.difference(reach)
+    waiting = graph.get_nodes().difference(reach)
     while len(waiting) > 0:
         for node in waiting:
-            n_succ = node.get_out_vertices()
+            n_succ = graph.get_next_vertices(node)
             # else at least one successor is reachable
             if len(n_succ.intersection(reach)) > 0:
                 reach.add(node)
@@ -378,46 +251,116 @@ def _find_reachable(graph: TableauGraph) -> Set[Node]:
     return reach
 
 
-def _tau_index(tau: Real) -> int:
-    return int(tau.id.split("_")[1])
+def _subst_goals(clocks: Set[Real], *goals) -> Tuple[Set[Formula], Set[TypeHint]]:
+    gs, rt = set(), set()
+    for g in goals:
+        f, t = _subst_type(g)
+        gs.add(f)
+
+        if t is not None:
+            # if time proposition is substitute with tb
+            # save the type hint
+            if t.get_clock() in clocks:
+                rt.add(t)
+
+    return gs, rt
 
 
-def _shift_tau(tau: Real, shift: int):
-    t_index = _tau_index(tau)
-    assert t_index - shift >= 0
-    return Real("tau_{}".format(t_index - shift))
+@singledispatch
+def _subst_type(formula: Formula) -> Tuple[Formula, Optional[TypeHint]]:
+    return formula, None
 
 
-def shift_reset(src: int, shift: int, max_depth: int) -> Set[Tuple[Real, Real]]:
-    resets: Set[Tuple[Real, Real]] = set()
+@_subst_type.register(TimeGloballyPre)
+def _(formula: TimeGloballyPre) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval = formula.clock, formula.interval
+    type_v = TypeVariable(clk.id)
+    return TimeGloballyPre(clk, type_v, interval), TypeHint(type_v, formula.ty)
 
-    interval = symbolic_interval(src)
-    _, e_tau = inf(interval), sup(interval)
 
-    glk = global_clk()
+@_subst_type.register(TimeGloballyFinal)
+def _(formula: TimeGloballyFinal) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval = formula.clock, formula.interval
+    type_v = TypeVariable(clk.id)
+    return TimeGloballyFinal(clk, type_v, interval), TypeHint(type_v, formula.ty)
 
-    t_vs_all = time_variables(max_depth)
-    t_vs = time_variables(src)
 
-    # remove global clk
-    t_vs_all.discard(glk)
-    t_vs.discard(glk)
+@_subst_type.register(TimeFinallyPre)
+def _(formula: TimeFinallyPre) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval = formula.clock, formula.interval
+    type_v = TypeVariable(clk.id)
+    return TimeFinallyPre(clk, type_v, interval), TypeHint(type_v, formula.ty)
 
-    used = set()
-    for t_v in t_vs:
-        t_index = _tau_index(t_v)
-        if t_index - shift < 0:
-            continue
 
-        shifted_tau = _shift_tau(t_v, shift)
-        used.add(shifted_tau)
+@_subst_type.register(TimeFinallyFinal)
+def _(formula: TimeFinallyFinal) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval = formula.clock, formula.interval
+    type_v = TypeVariable(clk.id)
+    return TimeFinallyFinal(clk, type_v, interval), TypeHint(type_v, formula.ty)
 
-        if variable_equal(t_v, e_tau):
-            resets.add((shifted_tau, glk))
-        else:
-            resets.add((shifted_tau, t_v))
 
-    l_vs = t_vs_all.difference(used)
-    resets = resets.union({(t_v, t_v) for t_v in l_vs})
+@_subst_type.register(TimeFinallyRestart)
+def _(formula: TimeFinallyRestart) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval = formula.clock, formula.interval
+    type_v = TypeVariable(clk.id)
+    return TimeFinallyRestart(clk, type_v, interval), TypeHint(type_v, formula.ty)
 
-    return resets
+
+@_subst_type.register(GloballyUp)
+def _(formula: GloballyUp) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval, f = formula.clock, formula.interval, formula.formula
+    type_v = TypeVariable(clk.id)
+    return GloballyUp(clk, type_v, interval, f), TypeHint(type_v, formula.type)
+
+
+@_subst_type.register(GloballyUpIntersect)
+def _(formula: GloballyUpIntersect) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval, f = formula.clock, formula.interval, formula.formula
+    type_v = TypeVariable(clk.id)
+    return GloballyUpIntersect(clk, type_v, interval, f), TypeHint(type_v, formula.type)
+
+
+@_subst_type.register(GloballyUpDown)
+def _(formula: GloballyUpDown) -> Tuple[Formula, Optional[TypeHint]]:
+    f, interval = formula.formula, formula.interval
+    clk1, clk2 = formula.clock[0], formula.clock[1]
+    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
+    return GloballyUpDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
+
+
+@_subst_type.register(GloballyUpIntersectDown)
+def _(formula: GloballyUpIntersectDown) -> Tuple[Formula, Optional[TypeHint]]:
+    f, interval = formula.formula, formula.interval
+    clk1, clk2 = formula.clock[0], formula.clock[1]
+    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
+    return GloballyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
+
+
+@_subst_type.register(FinallyUp)
+def _(formula: FinallyUp) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval, f = formula.clock, formula.interval, formula.formula
+    type_v = TypeVariable(clk.id)
+    return FinallyUp(clk, type_v, interval, f), TypeHint(type_v, formula.type)
+
+
+@_subst_type.register(FinallyUpIntersect)
+def _(formula: FinallyUpIntersect) -> Tuple[Formula, Optional[TypeHint]]:
+    clk, interval, f = formula.clock, formula.interval, formula.formula
+    type_v = TypeVariable(clk.id)
+    return FinallyUpIntersect(clk, type_v, interval, f), TypeHint(type_v, formula.type)
+
+
+@_subst_type.register(FinallyUpDown)
+def _(formula: FinallyUpDown) -> Tuple[Formula, Optional[TypeHint]]:
+    f, interval = formula.formula, formula.interval
+    clk1, clk2 = formula.clock[0], formula.clock[1]
+    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
+    return FinallyUpDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
+
+
+@_subst_type.register(FinallyUpIntersectDown)
+def _(formula: FinallyUpIntersectDown) -> Tuple[Formula, Optional[TypeHint]]:
+    f, interval = formula.formula, formula.interval
+    clk1, clk2 = formula.clock[0], formula.clock[1]
+    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
+    return FinallyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])

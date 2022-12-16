@@ -1,191 +1,74 @@
-import abc
-from functools import singledispatch, singledispatchmethod
-from itertools import product
-from typing import List
+from itertools import permutations
+from typing import Tuple
 
-from .interval import equal, type_equivalent
+from .clock import filter_clock_goals, get_clock_pool, make_clk_type_mapping, ClockSubstitution
 from .label import *
 
 
-class LabelEquivalenceChecker:
+class StutteringEquivalenceChecker:
     def __init__(self, top_formula: Formula):
-        self._top_formula = top_formula
-        self._filters = {
-            "up[]": lambda x: isinstance(x, GloballyUp),
-            "up[*]": lambda x: isinstance(x, GloballyUpIntersect),
-            "up<>": lambda x: isinstance(x, FinallyUp),
-            "up<*>": lambda x: isinstance(x, FinallyUpIntersect),
+        self._formula = top_formula
 
-            "up&down[]": lambda x: isinstance(x, GloballyUpDown),
-            "up[*]down[]": lambda x: isinstance(x, GloballyUpIntersectDown),
-            "up&down<>": lambda x: isinstance(x, FinallyUpDown),
-            "up<*>down<>": lambda x: isinstance(x, FinallyUpIntersectDown)
-        }
+    def equivalent(self, label1: Label, label2: Label) -> bool:
+        # ignore transitions
+        cond = [self._equivalent(label1.state_cur, label2.state_cur),
+                self._equivalent(label1.state_nxt, label2.state_nxt)]
+        return all(cond)
 
-    @abc.abstractmethod
-    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
-        pass
+    def _equivalent(self, goal1: Set[Formula], goal2: Set[Formula]) -> bool:
+        # ignore top formula
+        n_goals = [self._ignore_top_formula(*goal1),
+                   self._ignore_top_formula(*goal2)]
 
-    def _apply_filter(self, formulas: Set[Formula], *names) -> List[Set[Formula]]:
-        if len(names) <= 0:
-            return [formulas]
+        # split clock and others
+        n_clk_s = [filter_clock_goals(*n_goals[0]),
+                   filter_clock_goals(*n_goals[1])]
 
-        categories = list()
-        for name in names:
-            assert name in self._filters
-            categories.append(set(filter(self._filters[name], formulas)))
-        return categories
+        n_other = [n_goals[0].difference(n_clk_s[0]),
+                   n_goals[1].difference(n_clk_s[1])]
 
-    def _ignore_top_formula(self, *list_formulas):
-        for formulas in list_formulas:
-            formulas.discard(self._top_formula)
+        clk_eq = self._clock_eq(n_clk_s[0], n_clk_s[1])
 
-
-class StutteringEquivalenceChecker(LabelEquivalenceChecker):
-    def __init__(self, top_formula: Formula):
-        LabelEquivalenceChecker.__init__(self, top_formula)
-        self._filters["non-time"] = lambda x: not isinstance(x, TimeProposition)
-
-    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
-        # get non-time goals
-        # c1 = self._apply_filter(label1.cur, "non-time").pop()
-        # c2 = self._apply_filter(label2.cur, "non-time").pop()
-        c1, c2 = label1.copy(), label2.copy()
-
-        c1_cg = self._apply_filter(c1, "up[]", "up[*]", "up<>", "up<*>")
-        c2_cg = self._apply_filter(c2, "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
-
-        pair = set()
-        for c1_fs, c2_fs in zip(c1_cg, c2_cg):
-            for f1, f2 in product(c1_fs, c2_fs):
-                if self._stuttering_pair(f1, f2):
-                    pair.add((f1, f2))
-
-        # if no stuttering pair found
-        if len(pair) <= 0:
-            c1_cpy, c2_cpy = c1.copy(), c2.copy()
-            # ignore top formula when checking stuttering
-            self._ignore_top_formula(c1_cpy, c2_cpy)
-            return c1_cpy == c2_cpy
-
-        c1_cpy, c2_cpy = c1.copy(), c2.copy()
-        # ignore top formula when checking stuttering
-        self._ignore_top_formula(c1_cpy, c2_cpy)
-
-        for f1, f2 in pair:
-            c1_cpy.remove(f1)
-            c2_cpy.remove(f2)
-
-        return c1_cpy == c2_cpy
-
-    @singledispatchmethod
-    def _stuttering_pair(self, cur: Formula, nxt: Formula) -> bool:
+        if clk_eq and n_other[0] == n_other[1]:
+            return True
         return False
-
-    @_stuttering_pair.register(Up)
-    def _(self, cur: Up, nxt: Formula) -> bool:
-        if not isinstance(nxt, UpDown):
-            return False
-
-        partition_eq, interval_eq = equal(cur.i, nxt.i), cur.interval == nxt.interval
-        f_eq = hash(cur.child) == hash(nxt.child)
-        return partition_eq and interval_eq and f_eq
-
-    @_stuttering_pair.register(UpIntersect)
-    def _(self, cur: UpIntersect, nxt: Formula) -> bool:
-        if not isinstance(nxt, UpIntersectDown):
-            return False
-
-        interval_eq = cur.interval == nxt.interval
-        f_eq = hash(cur.child) == hash(nxt.child)
-        return interval_eq and f_eq
-
-
-class ShiftingEquivalenceChecker(LabelEquivalenceChecker):
-    def __init__(self, top_formula: Formula):
-        LabelEquivalenceChecker.__init__(self, top_formula)
-        self._shifting = 0
-
-    def equivalent(self, label1: Set[Formula], label2: Set[Formula], **options) -> bool:
-        assert "depth1" in options and "depth2" in options
-
-        depth1, depth2 = options["depth1"], options["depth2"]
-
-        self._clear()
-        # get current
-        c1, c2 = label1.copy(), label2.copy()
-
-        # categorize
-        c1_cg = self._apply_filter(c1, "up[]", "up[*]", "up<>", "up<*>",
-                                   "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
-        c2_cg = self._apply_filter(c2, "up[]", "up[*]", "up<>", "up<*>",
-                                   "up&down[]", "up[*]down[]", "up&down<>", "up<*>down<>")
-
-        shifting, is_first = 0, True
-        pair = set()
-        for c1_fs, c2_fs in zip(c1_cg, c2_cg):
-            for f1, f2 in product(c1_fs, c2_fs):
-                if self._shifting_pair(f1, f2):
-                    pair.add((f1, f2))
-                    prev_shifting = shifting
-                    shifting = self._calc_shifting(depth1, depth2)
-                    if is_first:
-                        # do not check the first
-                        is_first = False
-                    else:
-                        if prev_shifting != shifting:
-                            # conclude that the labels are not equivalent
-                            return False
-
-        c1_cpy, c2_cpy = c1.copy(), c2.copy()
-        for f1, f2 in pair:
-            c1_cpy.remove(f1)
-            c2_cpy.remove(f2)
-
-        self._ignore_top_formula(c1_cpy, c2_cpy)
-        self._shifting = shifting
-        return c1_cpy == c2_cpy
-
-    def get_shifting(self):
-        return self._shifting
-
-    def _clear(self):
-        self._shifting = 0
 
     @classmethod
-    def _calc_shifting(cls, depth1: int, depth2: int):
-        return depth2 - depth1
+    def _clock_eq(cls, goal1: Set[Formula], goal2: Set[Formula]) -> bool:
+        # clock equivalence detection
+        # 1) get clock pools of the goals
+        # 1.1) if the pools' size differ, the goals are not equivalent
+        p1, p2 = get_clock_pool(*goal1), get_clock_pool(*goal2)
 
-    @singledispatchmethod
-    def _shifting_pair(self, cur: Formula, nxt: Formula) -> bool:
+        if len(p1) != len(p2):
+            return False
+
+        # 2) (assume that the pools are equal) make mappings
+        # Dict[Real, Set[str]]
+        clk_ty_map1 = make_clk_type_mapping(*goal1)
+
+        # 3) check if the mappings are equal
+        # fix ordering of p1 and calculate all possible orderings of p2
+        p1_o, p2_o_pool = tuple(p1), set(permutations(p2))
+
+        for p2_o in p2_o_pool:
+            assert isinstance(p2_o, Tuple)
+
+            # possible clock mapping
+            possible = set(zip(p1_o, p2_o))
+            mapping = ClockSubstitution()
+            for c1, c2 in possible:
+                mapping.add(c2, c1)
+
+            goals = set(map(lambda x: mapping.substitute(x), goal2))
+            clk_ty_map2 = make_clk_type_mapping(*goals)
+
+            # find the same clock mapping
+            if clk_ty_map1 == clk_ty_map2:
+                return True
+
+        # otherwise
         return False
 
-    @_shifting_pair.register(Up)
-    def _(self, cur: Up, nxt: Up):
-        assert isinstance(nxt, Up)
-        partition_eq = type_equivalent(cur.i, nxt.i)
-        interval_eq, f_eq = cur.interval == nxt.interval, hash(cur.child) == hash(nxt.child)
-        return partition_eq and interval_eq and f_eq
-
-    @_shifting_pair.register(UpIntersect)
-    def _(self, cur: UpIntersect, nxt: UpIntersect):
-        assert isinstance(nxt, UpIntersect)
-        interval_eq = cur.interval == nxt.interval
-        f_eq = hash(cur.child) == hash(nxt.child)
-        return interval_eq and f_eq
-
-    @_shifting_pair.register(UpDown)
-    def _(self, cur: UpDown, nxt: UpDown):
-        assert isinstance(nxt, UpDown)
-        partition_eqs = all([type_equivalent(cur.i, nxt.i), type_equivalent(cur.k, nxt.k)])
-        shifting_eq = cur.k.index - cur.i.index == nxt.k.index - nxt.i.index
-        interval_eq, f_eq = cur.interval == nxt.interval, hash(cur.child) == hash(nxt.child)
-        return partition_eqs and shifting_eq and interval_eq and f_eq
-
-    @_shifting_pair.register(UpIntersectDown)
-    def _(self, cur: UpIntersectDown, nxt: UpIntersectDown):
-        assert isinstance(nxt, UpIntersectDown)
-        partition_eq = type_equivalent(cur.i, nxt.i)
-        interval_eq, f_eq = cur.interval == nxt.interval, hash(cur.child) == hash(nxt.child)
-        return partition_eq and interval_eq and f_eq
-
+    def _ignore_top_formula(self, *goals) -> Set[Formula]:
+        return set(filter(lambda x: hash(x) != hash(self._formula), goals))

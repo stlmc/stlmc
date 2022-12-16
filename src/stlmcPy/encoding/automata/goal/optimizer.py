@@ -4,7 +4,6 @@ from functools import singledispatch
 import z3
 from typing import Dict, Set, Tuple
 
-from .aux import translate
 from .label import Label
 from ....constraints.aux.operations import VarSubstitution
 from ....constraints.constraints import *

@@ -138,7 +138,7 @@ class STLmcModel(Model):
 
             trg_mode = mode_dict[trg_m_id]
 
-            transition = make_jump(src_mode, trg_mode)
+            transition = make_fresh_jump(src_mode, trg_mode)
             transition.add_guard(*jp_pre_cl)
 
             for r in jp_post_cont:

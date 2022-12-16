@@ -1,15 +1,17 @@
 import time
 
+from .automata_subsumption import HaForwardSubsumption
 from .aux import *
 from .clock import global_clk_subst
 from .equivalence import ShiftingEquivalenceChecker, StutteringEquivalenceChecker
 from .graph import *
-from .ha_converter import HAConverter, shift_reset
+from .ha_converter import HAConverter
 from .optimizer import ContradictionChecker
 from .subsumption import ForwardSubsumption, BackwardSubsumption, PathSubsumption
 from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
+from ....hybrid_automaton.utils import print_ha_size
 from ....objects.goal import Goal
 from .label import *
 
@@ -59,24 +61,103 @@ class StlGoal(Goal):
                                                  self._backward_subsumption.get_relation())
 
     def encode(self):
-        _tableau = TableauGenerator(self._formula, threshold=self.threshold)
-        # self._graph_generator.clear()
+        graph: TableauGraph = TableauGraph(self._formula)
+        st_checker = StutteringEquivalenceChecker(self._formula)
         self._hybrid_converter.clear()
-        # graph = self._graph_generator.graph
-        converter = self._hybrid_converter
-        # lg = self._label_generator
-        # st_checker = self._stuttering_checker
-        max_bound = self.bound
-
         alg_s_t = time.time()
 
-        bound = 1
-        while True:
-            if bound > max_bound:
-                break
+        # get dummy initial node
+        f_node = graph.first_node()
 
-            next(_tableau.expand())
-            bound += 1
+        # make initial labels
+        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton())
+        lb_s = expand(init_label)
+
+        # make initial nodes
+        initial_nodes = set()
+        for lb in lb_s:
+            # make a new node
+            node, t = graph.make_node(lb, is_initial=True)
+
+            # check if already exists
+            exist, f_n, clk_subst = graph.find_node(node)
+            if exist:
+                # update the label and type hint clocks
+                u_lb = graph.update_label_clock(lb, clk_subst)
+                u_t = graph.update_type_hint_clocks(clk_subst, *t)
+
+                jp = graph.make_jump(f_node, f_n, u_lb, u_t)
+                graph.add_jump(jp)
+
+                # still not finished but already exists
+                # open the label to the node
+                graph.open_labels(f_n, u_lb)
+            else:
+                # add a fresh node and open the label
+                graph.add_node(node)
+                graph.open_labels(node, lb)
+
+                jp = graph.make_jump(f_node, node, lb, t)
+                graph.add_jump(jp)
+                initial_nodes.add(node)
+
+        waiting_list = initial_nodes
+        finished = set()
+
+        loop = 0
+        while len(waiting_list) > 0:
+            print("#{} -> {}".format(loop, len(graph.get_nodes())))
+
+            # pick a node and its labels
+            p_n = waiting_list.pop()
+
+            labels = graph.get_labels(p_n)
+
+            # make nodes
+            for lb in labels:
+                # expand the label
+                lb_s = expand(lb)
+                for e_lb in lb_s:
+                    # remove stuttering
+                    if st_checker.equivalent(lb, e_lb):
+                        continue
+
+                    n, t = graph.make_node(e_lb)
+
+                    exist, f_n, clk_subst = graph.find_node(n)
+                    if exist:
+                        # update the label and type hint clocks
+                        u_lb = graph.update_label_clock(e_lb, clk_subst)
+                        u_t = graph.update_type_hint_clocks(clk_subst, *t)
+
+                        jp = graph.make_jump(p_n, f_n, u_lb, u_t)
+                        graph.add_jump(jp)
+
+                        if p_n == f_n:
+                            print(lb)
+                            print("----->")
+                            print(u_lb)
+                            print("============")
+
+                        # still not finished but already exists, and it is not finished
+                        if f_n not in finished:
+                            # open the label to the node
+                            graph.open_labels(f_n, u_lb)
+                    else:
+                        # add a fresh node and open the label
+                        graph.add_node(n)
+                        graph.open_labels(n, e_lb)
+
+                        jp = graph.make_jump(p_n, n, e_lb, t)
+                        graph.add_jump(jp)
+                        waiting_list.add(n)
+
+            finished.add(p_n)
+            loop += 1
+
+        # print(graph.first_node())
+        # print()
+        # print(graph)
         # init_labels = lg.init()
         # init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(graph.get_max_depth())), init_labels))
 
@@ -151,10 +232,10 @@ class StlGoal(Goal):
         # self._graph_generator.remove_redundancy()
         alg_e_t = time.time()
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
-
-        _tableau.add_shift_resets()
-        _tableau.remove_unreachable()
-        print_graph_info(_tableau.graph)
+        # print_graph_info(graph)
+        # _tableau.add_shift_resets()
+        # _tableau.remove_unreachable()
+        # print_graph_info(_tableau.graph)
 
         # print("after remove unreachable")
         # s_t = time.time()
@@ -180,208 +261,22 @@ class StlGoal(Goal):
         # print("subsumption")
         # print_graph_info(graph)
         #
-        # ha = converter.convert(graph, self._graph_generator._resets)
+        # ha = self._hybrid_converter.convert(graph)
+
+        # ha_f_sub = HaForwardSubsumption()
+        # ha_f_sub.calc_relation(ha)
+        # ha_f_sub.reduce(ha)
+
+        # print(graph)
+        print_graph_info(graph)
+        # print(graph)
+        # print_ha_size("ha", ha)
         # import pickle
         # with open("{}.graph".format("stl"), "wb") as fw:
-        #     pickle.dump(_tableau.graph, fw)
+        #     pickle.dump(graph, fw)
         # with open("{}.automata".format("stl"), "wb") as fw:
         #     pickle.dump(ha, fw)
         # return ha
-
-
-class GraphGenerator:
-    def __init__(self, top_formula: Formula, contradiction_checker: ContradictionChecker,
-                 shifting_checker: ShiftingEquivalenceChecker, shift_mode=False):
-        self.graph = TableauGraph()
-        self._resets: Dict[Jump, Tuple[int, int]] = dict()
-        self._shifting_checker = shifting_checker
-        self._formula = top_formula
-        self._contradiction_checker = contradiction_checker
-
-        # graph info
-        self._node_id_dict: Dict[Tuple[FrozenSet[Formula], int], Node] = dict()
-        self.shifting_mode = shift_mode
-
-        # current depth of the graph
-        # current generation depth should be _cur_max_graph_depth + 1
-        self._cur_max_graph_depth = 1
-
-    def clear(self):
-        self.graph = TableauGraph()
-        self._resets = dict()
-        self._node_id_dict = dict()
-        self._cur_max_graph_depth = 1
-
-    def finish_depth(self):
-        self._cur_max_graph_depth = self.graph.get_max_depth() + 1
-
-    def make_posts(self, parent_label: Label, post_labels: Set[Label]):
-        depth = self._get_graph_depth() + 1
-
-        post_nodes = set()
-        for post in post_labels:
-            # do not make node for empty label
-            assert not is_empty_labels(post)
-            post_nodes.add(self._shift_eq_node(post))
-
-        # if parent exists
-        is_p_found, p_depth = self._find_node_by_lb(parent_label, find_prev=True)
-        if is_p_found:
-            p_lb = self._cur_formulas(parent_label)
-            parent = self._node_id_dict[(p_lb, p_depth)]
-
-            for is_shift_node, node in post_nodes:
-                jp = Jump(parent, node)
-                connect(jp)
-
-                if is_shift_node:
-                    shift = self._shifting_checker.get_shifting()
-                    assert jp not in self._resets
-                    self._resets[jp] = (p_depth + 1, shift)
-        else:
-            raise Exception("labels should have a parent")
-
-    def make_node(self, label: Label):
-        lb = self._cur_formulas(label)
-        depth = self._get_graph_depth()
-
-        # do not make node for empty label
-        if is_empty_labels(label):
-            raise Exception("label cannot be empty")
-
-        # if node already exists
-        is_found, lb_depth = self._find_node_by_lb(label)
-        if is_found:
-            return self._node_id_dict[(lb, lb_depth)]
-
-        node = Node(hash((label, depth)), depth)
-        node.non_intermediate, node.intermediate = split_label(label)
-
-        self.graph.add_node(node)
-        self._node_id_dict[(lb, depth)] = node
-
-        if _is_final_label(label):
-            node.set_as_final()
-
-        if _is_initial_node(node):
-            node.set_as_initial()
-
-        return node
-
-    def remove_unreachable(self):
-        reach = _find_reachable(self.graph)
-
-        remove = set()
-        for d in range(self.graph.get_max_depth()):
-            nodes = self.graph.get_nodes_at(d + 1)
-            for node in nodes:
-                if node not in reach:
-                    remove.add(node)
-
-        for node in remove:
-            self.graph.remove_node(node)
-
-    def remove_redundancy(self):
-        jp_s = get_node_jumps(self.graph)
-        jp_dict: Dict[Tuple[Node, Node, FrozenSet[Tuple[Real, Formula]]], Set[Jump]] = dict()
-
-        for jp in jp_s:
-            k = jp.src, jp.trg, frozenset(jp.reset)
-            if k in jp_dict:
-                jp_dict[k].add(jp)
-            else:
-                jp_dict[k] = {jp}
-
-        # remove redundant jumps
-        for k in jp_dict:
-            # pop representative jump
-            jp_dict[k].pop()
-            for jp in jp_dict[k]:
-                self.graph.remove_jump(jp)
-
-    def remove_contradiction(self):
-        to_be_removed = set()
-        for node in self.graph.nodes:
-            lb = Label(singleton(*node.non_intermediate), singleton(),
-                       singleton(), singleton())
-            if self._contradiction_checker.check_contradiction(lb, node.depth):
-                to_be_removed.add(node)
-
-        for node in to_be_removed:
-            self.graph.remove_node(node)
-
-    def make_shift_resets(self):
-        max_depth = self.graph.get_max_depth()
-        for jp in self._resets:
-            depth, shift = self._resets[jp]
-            jp.add_reset(*shift_reset(depth, shift, max_depth))
-
-    def _find_node_by_lb(self, label: Label, find_prev=False) -> Tuple[bool, int]:
-        c_lb = self._cur_formulas(label)
-        depth = self._get_graph_depth(find_prev)
-
-        if self.shifting_mode:
-            for lb, d in self._node_id_dict:
-                if d > depth:
-                    continue
-                if lb == c_lb:
-                    return True, d
-        else:
-            if (c_lb, depth) in self._node_id_dict:
-                return True, depth
-        return False, -1
-
-    def _shift_eq_node(self, label: Label) -> Tuple[bool, Node]:
-        lb = self._cur_formulas(label)
-        depth = self._get_graph_depth()
-
-        if self.shifting_mode:
-            # get nodes less than current depth and find
-            prev_nodes = set(filter(lambda n: n.depth < depth, self.graph.nodes))
-
-            for node in prev_nodes:
-                # infer label
-                node_lb = Label(singleton(*node.non_intermediate.union(node.intermediate)),
-                                singleton(), singleton(), singleton())
-                # get depths
-                depth1, depth2 = node.depth, depth
-
-                # return if any found
-                if self._shifting_checker.equivalent(node_lb, label, is_full=True,
-                                                     depth1=depth1, depth2=depth2):
-                    self._node_id_dict[(lb, depth1)] = node
-                    return True, node
-
-                # return if any found
-                if self._shifting_checker.equivalent(node_lb, label, is_full=False,
-                                                     depth1=depth1, depth2=depth2,):
-                    self._node_id_dict[(lb, depth1)] = node
-                    return True, node
-
-        # make a new node
-        return False, self.make_node(label)
-
-    def _cur_formulas(self, label: Label):
-        return frozenset(label.cur.difference({self._formula}))
-
-    def _get_graph_depth(self, find_prev=False):
-        # get current generation depth
-        if find_prev:
-            return self._cur_max_graph_depth - 1
-        else:
-            return self._cur_max_graph_depth
-
-
-def is_empty_labels(label: Label):
-    return len(label.cur) == 0
-
-
-def _is_final_label(label: Label):
-    return len(label.nxt) == 0
-
-
-def _is_initial_node(node: Node):
-    return node.depth == 1
 
 
 def print_wait_queue(wait_queue: Set[Label]):
@@ -392,20 +287,7 @@ def print_wait_queue(wait_queue: Set[Label]):
 
 
 def print_graph_info(graph: TableauGraph):
-    print("graph size #{}".format(len(graph.nodes)))
-    node_depth: Dict[int, Set[Node]] = dict()
-    for node in graph.nodes:
-        if node.depth in node_depth:
-            node_depth[node.depth].add(node)
-        else:
-            node_depth[node.depth] = {node}
-
-    ks = list(sorted(node_depth.keys()))
-
-    for k in ks:
-        print("depth@{} --> graph node#{}".format(k, len(node_depth[k])))
-        # for index, node in enumerate(graph.get_nodes_at(d + 1)):
-        #     print(indented_str("node{} --> pred: {}, succ: {}".format(index, len(node.pred), len(node.succ)), 2))
+    print("v#{}, e#{}".format(len(graph.get_nodes()), len(get_node_jumps(graph))))
 
 
 def print_extend(label: Label, labels_set: Set[Label]):
@@ -423,17 +305,3 @@ def _print_labels_set(labels: Set[Label]):
         print(indented_str(str(label), 4))
         print(indented_str(")", 2))
     print("========")
-
-
-def _time_ordering(max_depth: int) -> List[Formula]:
-    # \tau_0 <= \tau_1 <= ... <= \tau_{i / 2} <= \tau_max
-    time_order: List[Formula] = list()
-
-    for depth in range(1, max_depth + 1):
-        iv = symbolic_interval(depth)
-        time_order.append(inf(iv) <= sup(iv))
-
-    last_iv = symbolic_interval(max_depth)
-    time_order.append(sup(last_iv) <= tau_max())
-
-    return time_order

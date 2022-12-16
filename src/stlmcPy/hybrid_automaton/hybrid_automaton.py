@@ -8,24 +8,27 @@ from ..util.printer import indented_str, p_string
 
 class HybridAutomaton(Graph['Mode', 'Transition']):
     def __init__(self):
-        self.modes: Set[Mode] = set()
+        Graph.__init__(self)
         self.init: Set[Formula] = set()
 
     def add_init(self, *inits):
         for init in inits:
             self.init.add(init)
 
+    def get_modes(self):
+        return self.vertices.copy()
+
     def add_mode(self, mode: 'Mode'):
-        self.modes.add(mode)
+        self.add_vertex(mode)
 
     def remove_mode(self, mode: 'Mode'):
-        self.modes.discard(mode)
-        jp_be_removed: Set[Transition] = set()
-        for m in self.modes:
-            jp_be_removed = jp_be_removed.union(m.get_out_edges())
+        self.remove_vertex(mode)
 
-        for jp in jp_be_removed:
-            remove_jump(jp)
+    def add_transition(self, transition: 'Transition'):
+        self.add_edge(transition)
+
+    def remove_transition(self, transition: 'Transition'):
+        self.remove_edge(transition)
 
     def get_bound_bound(self) -> 'BoundBox':
         bound_box = BoundBox()
@@ -42,7 +45,7 @@ class HybridAutomaton(Graph['Mode', 'Transition']):
 
     def __repr__(self):
         init_m, final_m, total_m = set(), set(), set()
-        for m in self.modes:
+        for m in self.vertices:
             total_m.add(str(m.id))
             if m.is_initial():
                 init_m.add(str(m.id))
@@ -58,12 +61,12 @@ class HybridAutomaton(Graph['Mode', 'Transition']):
         ha_str += indented_str("final modes:\n{}\n".format(final_str), 2)
         ha_str += indented_str("total modes:\n{}\n".format(total_str), 2)
         ha_str += indented_str("Modes:\n", 2)
-        ha_str += "\n".join([indented_str(str(m), 2) for m in self.modes])
+        ha_str += "\n".join([indented_str(str(m), 2) for m in self.vertices])
         ha_str += "\n"
 
         jp_s = set()
-        for mode in self.modes:
-            jp_s = jp_s.union(mode.get_out_edges())
+        for mode in self.vertices:
+            jp_s = jp_s.union(self.get_next_edges(mode))
 
         ha_str += indented_str("Transitions:\n", 2)
 
@@ -75,10 +78,8 @@ class HybridAutomaton(Graph['Mode', 'Transition']):
         return ha_str
 
 
-class Mode(Vertex['Mode', 'Transition']):
+class Mode:
     def __init__(self, identifier: int):
-        Vertex.__init__(self)
-
         self.dynamics: Dict[Variable, Expr] = dict()
         self.invariant: Set[Formula] = set()
         self.id = identifier
@@ -127,9 +128,15 @@ class Mode(Vertex['Mode', 'Transition']):
 
 class Transition(Edge[Mode]):
     def __init__(self, src: Mode, trg: Mode):
-        Edge.__init__(self, src, trg)
+        self._src, self._trg = src, trg
         self.guard: Set[Formula] = set()
         self.reset: Set[Tuple[Variable, Formula]] = set()
+
+    def get_src(self) -> Mode:
+        return self._src
+
+    def get_trg(self) -> Mode:
+        return self._trg
 
     def add_guard(self, *guards):
         for guard in guards:
@@ -146,14 +153,13 @@ class Transition(Edge[Mode]):
         reset_body = "\n".join([indented_str("{} := {}".format(v, f), 6) for v, f in self.reset])
         reset_str = indented_str("reset:\n{}".format(reset_body), 4)
 
-        jp_body = indented_str("{} -> {}".format(self.src.id, self.trg.id), 4)
+        jp_body = indented_str("{} -> {}".format(self._src.id, self._trg.id), 4)
 
         return "( jump \n{}\n{}\n{}\n  )".format(guard_str, reset_str, jp_body)
 
 
-def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
+def make_fresh_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
     jp = Transition(mode1, mode2)
-    connect(jp)
 
     if "guards" in consts:
         jp.add_guard(*consts["guards"])
@@ -162,10 +168,6 @@ def make_jump(mode1: Mode, mode2: Mode, **consts) -> Transition:
         jp.add_reset(*consts["resets"])
 
     return jp
-
-
-def remove_jump(jump: Transition):
-    disconnect(jump)
 
 
 class BoundBox:
