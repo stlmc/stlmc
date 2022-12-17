@@ -52,27 +52,7 @@ class Label:
         return "\n".join([s, st, tr, e])
 
 
-class OpenCloseType:
-    pass
-
-
-class Open(OpenCloseType):
-    def __hash__(self):
-        return hash("true")
-
-    def __repr__(self):
-        return "true"
-
-
-class Close(OpenCloseType):
-    def __hash__(self):
-        return hash("false")
-
-    def __repr__(self):
-        return "false"
-
-
-class TypeVariable(OpenCloseType):
+class TypeVariable:
     def __init__(self, name: str):
         self._clk_id = name
         self._name = "type@{}".format(name)
@@ -87,20 +67,35 @@ class TypeVariable(OpenCloseType):
         return self._name
 
 
-class TypeHint(Proposition):
-    def __init__(self, v: TypeVariable, val: OpenCloseType):
+class OCProposition(Proposition):
+    def __init__(self, v: TypeVariable, name: str):
         super().__init__()
-        self.var, self.value = v, val
-        self._hash = hash((v, val))
+        self.var = v
+        self._name = name
 
     def get_clock(self):
         return self.var.get_clock()
 
     def __hash__(self):
-        return self._hash
+        return hash(self._name)
 
     def __repr__(self):
-        return "hint: {} == {}".format(self.var, self.value)
+        return self._name
+
+
+class Open(OCProposition):
+    def __init__(self, v: TypeVariable):
+        super().__init__(v, "{} = open".format(v))
+
+
+class Close(OCProposition):
+    def __init__(self, v: TypeVariable):
+        super().__init__(v, "{} = close".format(v))
+
+
+class OpenClose(OCProposition):
+    def __init__(self, v: TypeVariable):
+        super().__init__(v, "{} = open || {} = close".format(v, v))
 
 
 class ClkAssn(Proposition):
@@ -122,7 +117,7 @@ class ClkReset(ClkAssn):
 
 
 class Up(Formula):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, formula: Formula, temporal: str):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula, temporal: str):
         super().__init__()
         self.interval, self.temporal = interval, temporal
         self.formula, self.clock, self.type = formula, clk, ty
@@ -136,7 +131,7 @@ class Up(Formula):
 
 
 class UpDown(Formula):
-    def __init__(self, clk1: Real, clk2: Real, ty1: OpenCloseType, ty2: OpenCloseType,
+    def __init__(self, clk1: Real, clk2: Real, ty1: TypeVariable, ty2: TypeVariable,
                  interval: Interval, formula: Formula, temporal1: str, temporal2: str):
         super().__init__()
         self.formula, self.interval = formula, interval
@@ -155,51 +150,51 @@ class UpDown(Formula):
 
 
 class GloballyUp(Up):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, formula: Formula):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula):
         super().__init__(clk, ty, interval, formula, "[]")
 
 
 class GloballyUpIntersect(Up):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, formula: Formula):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula):
         super().__init__(clk, ty, interval, formula, "[*]")
 
 
 class GloballyUpDown(UpDown):
-    def __init__(self, clk1: Real, clk2: Real, ty1: OpenCloseType, ty2: OpenCloseType,
+    def __init__(self, clk1: Real, clk2: Real, ty1: TypeVariable, ty2: TypeVariable,
                  interval: Interval, formula: Formula):
         super().__init__(clk1, clk2, ty1, ty2, interval, formula, "[]", "[]")
 
 
 class GloballyUpIntersectDown(UpDown):
-    def __init__(self, clk1: Real, clk2: Real, ty1: OpenCloseType, ty2: OpenCloseType,
+    def __init__(self, clk1: Real, clk2: Real, ty1: TypeVariable, ty2: TypeVariable,
                  interval: Interval, formula: Formula):
         super().__init__(clk1, clk2, ty1, ty2, interval, formula, "[*]", "[]")
 
 
 class FinallyUp(Up):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, formula: Formula):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula):
         super().__init__(clk, ty, interval, formula, "<>")
 
 
 class FinallyUpIntersect(Up):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, formula: Formula):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula):
         super().__init__(clk, ty, interval, formula, "<*>")
 
 
 class FinallyUpDown(UpDown):
-    def __init__(self, clk1: Real, clk2: Real, ty1: OpenCloseType, ty2: OpenCloseType,
+    def __init__(self, clk1: Real, clk2: Real, ty1: TypeVariable, ty2: TypeVariable,
                  interval: Interval, formula: Formula):
         super().__init__(clk1, clk2, ty1, ty2, interval, formula, "<>", "<>")
 
 
 class FinallyUpIntersectDown(UpDown):
-    def __init__(self, clk1: Real, clk2: Real, ty1: OpenCloseType, ty2: OpenCloseType,
+    def __init__(self, clk1: Real, clk2: Real, ty1: TypeVariable, ty2: TypeVariable,
                  interval: Interval, formula: Formula):
         super().__init__(clk1, clk2, ty1, ty2, interval, formula, "<*>", "<>")
 
 
 class TimeProposition(Proposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval, temporal: str, name: str):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, temporal: str, name: str):
         Proposition.__init__(self)
         self.clock, self.ty, self.interval = clk, ty, interval
         self.temporal, self.name_s = temporal, name
@@ -228,25 +223,25 @@ class TimeBound(Proposition):
 
 
 class TimeGloballyPre(TimeProposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "[]", "pre")
 
 
 class TimeGloballyFinal(TimeProposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "[]", "final")
 
 
 class TimeFinallyPre(TimeProposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "<>", "pre")
 
 
 class TimeFinallyFinal(TimeProposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "<>", "final")
 
 
 class TimeFinallyRestart(TimeProposition):
-    def __init__(self, clk: Real, ty: OpenCloseType, interval: Interval):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "<>", "restart")

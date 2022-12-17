@@ -26,11 +26,18 @@ def _clock_substitution(goal: Formula, clock_subst_dict: Dict[Real, Real]):
     return goal
 
 
-@_clock_substitution.register(TypeHint)
-def _(goal: TypeHint, clock_subst_dict: Dict[Real, Real]):
+@_clock_substitution.register(OCProposition)
+def _(goal: OCProposition, clock_subst_dict: Dict[Real, Real]):
     if goal.get_clock() in clock_subst_dict:
         clk = clock_subst_dict[goal.get_clock()]
-        return TypeHint(TypeVariable(clk.id), goal.value)
+        if isinstance(goal, Open):
+            return Open(TypeVariable(clk.id))
+        elif isinstance(goal, Close):
+            return Close(TypeVariable(clk.id))
+        elif isinstance(goal, OpenClose):
+            return OpenClose(TypeVariable(clk.id))
+        else:
+            raise Exception("wrong goal type")
     else:
         # nothing to substitute
         return goal

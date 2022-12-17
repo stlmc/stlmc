@@ -73,17 +73,17 @@ class StlGoal(Goal):
         initial_nodes = set()
         for lb in lb_s:
             # make a new node
-            node, t = graph.make_node(lb, is_initial=True)
+            node = graph.make_node(lb, is_initial=True)
 
             # check if already exists
             exist, f_n, clk_subst = graph.find_node(node)
             if exist:
                 # update the label and type hint clocks
                 u_lb = graph.update_label_clock(lb, clk_subst)
-                u_t = graph.update_type_hint_clocks(clk_subst, *t)
 
-                jp = graph.make_jump(f_node, f_n, u_lb, u_t)
-                graph.add_jump(jp)
+                jp_s = graph.make_jumps(f_node, f_n, u_lb)
+                for jp in jp_s:
+                    graph.add_jump(jp)
 
                 # still not finished but already exists
                 # open the label to the node
@@ -93,8 +93,9 @@ class StlGoal(Goal):
                 graph.add_node(node)
                 graph.open_labels(node, lb)
 
-                jp = graph.make_jump(f_node, node, lb, t)
-                graph.add_jump(jp)
+                jp_s = graph.make_jumps(f_node, node, lb)
+                for jp in jp_s:
+                    graph.add_jump(jp)
                 initial_nodes.add(node)
 
         waiting_list = initial_nodes
@@ -118,16 +119,16 @@ class StlGoal(Goal):
                     if st_checker.equivalent(lb, e_lb):
                         continue
 
-                    n, t = graph.make_node(e_lb)
+                    n = graph.make_node(e_lb)
 
                     exist, f_n, clk_subst = graph.find_node(n)
                     if exist:
                         # update the label and type hint clocks
                         u_lb = graph.update_label_clock(e_lb, clk_subst)
-                        u_t = graph.update_type_hint_clocks(clk_subst, *t)
 
-                        jp = graph.make_jump(p_n, f_n, u_lb, u_t)
-                        graph.add_jump(jp)
+                        jp_s = graph.make_jumps(p_n, f_n, u_lb)
+                        for jp in jp_s:
+                            graph.add_jump(jp)
 
                         # still not finished but already exists, and it is not finished
                         if f_n not in finished:
@@ -138,8 +139,9 @@ class StlGoal(Goal):
                         graph.add_node(n)
                         graph.open_labels(n, e_lb)
 
-                        jp = graph.make_jump(p_n, n, e_lb, t)
-                        graph.add_jump(jp)
+                        jp_s = graph.make_jumps(p_n, n, e_lb)
+                        for jp in jp_s:
+                            graph.add_jump(jp)
                         waiting_list.add(n)
 
             finished.add(p_n)

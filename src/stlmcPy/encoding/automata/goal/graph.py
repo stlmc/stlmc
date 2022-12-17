@@ -1,4 +1,4 @@
-from itertools import permutations
+from itertools import permutations, product
 from typing import FrozenSet
 
 from .clock import *
@@ -33,27 +33,24 @@ class TableauGraph(Graph['Node', 'Jump']):
         self.add_vertex(node)
 
     @classmethod
-    def make_node(cls, label: Label, is_initial=False) -> Tuple['Node', Set[TypeHint]]:
-        clk_f_s = set(filter(lambda x: isinstance(x, ClkReset), label.transition_cur))
-        clk_v_s = set(map(lambda x: x.clock, clk_f_s))
-
-        gs, ty = _subst_goals(clk_v_s, *label.state_cur)
-
-        node = Node(gs, is_initial, len(label.nxt) <= 0)
-        return node, ty
+    def make_node(cls, label: Label, is_initial=False) -> 'Node':
+        return Node(label.state_cur, is_initial, len(label.nxt) <= 0)
 
     @classmethod
-    def make_jump(cls, src: 'Node', trg: 'Node',
-                  label: Label, hint: Set[TypeHint] = None) -> 'Jump':
-        clk_f_s = set(filter(lambda x: isinstance(x, ClkReset), label.transition_cur))
-        clk_v_s = set(map(lambda x: x.clock, clk_f_s))
+    def make_jumps(cls, src: 'Node', trg: 'Node', label: Label) -> Set['Jump']:
+        oc_s = set(filter(lambda x: isinstance(x, OpenClose), label.transition_cur))
+        other = label.transition_cur.difference(oc_s)
 
-        gs, jp_ty = _subst_goals(clk_v_s, *label.transition_cur)
+        type_s = list()
+        for oc in oc_s:
+            assert isinstance(oc, OpenClose)
+            type_s.append([Open(oc.var), Close(oc.var)])
 
-        if hint is None:
-            return Jump(src, trg, gs, jp_ty)
-        else:
-            return Jump(src, trg, gs, hint.union(jp_ty))
+        jp_s = set()
+        for t in list(product(*type_s)):
+            jp_s.add(Jump(src, trg, other.union(t)))
+
+        return jp_s
 
     def remove_node(self, node: 'Node'):
         self.remove_vertex(node)
@@ -184,17 +181,13 @@ class Node:
 
 
 class Jump(Edge[Node]):
-    def __init__(self, src: Node, trg: Node, ap: Set[Formula], hint: Set[TypeHint]):
+    def __init__(self, src: Node, trg: Node, ap: Set[Formula]):
         self._src, self._trg = src, trg
         self._ap = frozenset(ap)
-        self._hint: FrozenSet[TypeHint] = frozenset(hint)
-        self._hash = hash((src, trg, self._ap, self._hint))
+        self._hash = hash((src, trg, self._ap))
 
     def get_ap(self):
         return self._ap
-
-    def get_type_hint(self):
-        return self._hint
 
     def __hash__(self):
         return self._hash
@@ -209,11 +202,10 @@ class Jump(Edge[Node]):
         return self._trg
 
     def __repr__(self):
-        jp_hint = indented_str("type hint: {}".format("none" if self._hint is None else self._hint), 4)
         jp_ap = indented_str("ap:\n{}".format("\n".join([indented_str(str(f), 6) for f in self._ap])), 4)
         jp_body = indented_str("{} -> {}".format(hash(self._src), hash(self._trg)), 4)
 
-        return "( jump \n{}\n{}\n{}\n  )".format(jp_hint, jp_ap, jp_body)
+        return "( jump \n{}\n{}\n  )".format(jp_ap, jp_body)
 
 
 def get_node_jumps(graph: TableauGraph) -> Set[Jump]:
@@ -249,118 +241,3 @@ def _find_reachable(graph: TableauGraph) -> Set[Node]:
         waiting.difference_update(un_reach)
 
     return reach
-
-
-def _subst_goals(clocks: Set[Real], *goals) -> Tuple[Set[Formula], Set[TypeHint]]:
-    gs, rt = set(), set()
-    for g in goals:
-        f, t = _subst_type(g)
-        gs.add(f)
-
-        if t is not None:
-            # if time proposition is substitute with tb
-            # save the type hint
-            if t.get_clock() in clocks:
-                rt.add(t)
-
-    return gs, rt
-
-
-@singledispatch
-def _subst_type(formula: Formula) -> Tuple[Formula, Optional[TypeHint]]:
-    return formula, None
-
-
-@_subst_type.register(TimeGloballyPre)
-def _(formula: TimeGloballyPre) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval = formula.clock, formula.interval
-    type_v = TypeVariable(clk.id)
-    return TimeGloballyPre(clk, type_v, interval), TypeHint(type_v, formula.ty)
-
-
-@_subst_type.register(TimeGloballyFinal)
-def _(formula: TimeGloballyFinal) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval = formula.clock, formula.interval
-    type_v = TypeVariable(clk.id)
-    return TimeGloballyFinal(clk, type_v, interval), TypeHint(type_v, formula.ty)
-
-
-@_subst_type.register(TimeFinallyPre)
-def _(formula: TimeFinallyPre) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval = formula.clock, formula.interval
-    type_v = TypeVariable(clk.id)
-    return TimeFinallyPre(clk, type_v, interval), TypeHint(type_v, formula.ty)
-
-
-@_subst_type.register(TimeFinallyFinal)
-def _(formula: TimeFinallyFinal) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval = formula.clock, formula.interval
-    type_v = TypeVariable(clk.id)
-    return TimeFinallyFinal(clk, type_v, interval), TypeHint(type_v, formula.ty)
-
-
-@_subst_type.register(TimeFinallyRestart)
-def _(formula: TimeFinallyRestart) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval = formula.clock, formula.interval
-    type_v = TypeVariable(clk.id)
-    return TimeFinallyRestart(clk, type_v, interval), TypeHint(type_v, formula.ty)
-
-
-@_subst_type.register(GloballyUp)
-def _(formula: GloballyUp) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval, f = formula.clock, formula.interval, formula.formula
-    type_v = TypeVariable(clk.id)
-    return GloballyUp(clk, type_v, interval, f), TypeHint(type_v, formula.type)
-
-
-@_subst_type.register(GloballyUpIntersect)
-def _(formula: GloballyUpIntersect) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval, f = formula.clock, formula.interval, formula.formula
-    type_v = TypeVariable(clk.id)
-    return GloballyUpIntersect(clk, type_v, interval, f), TypeHint(type_v, formula.type)
-
-
-@_subst_type.register(GloballyUpDown)
-def _(formula: GloballyUpDown) -> Tuple[Formula, Optional[TypeHint]]:
-    f, interval = formula.formula, formula.interval
-    clk1, clk2 = formula.clock[0], formula.clock[1]
-    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
-    return GloballyUpDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
-
-
-@_subst_type.register(GloballyUpIntersectDown)
-def _(formula: GloballyUpIntersectDown) -> Tuple[Formula, Optional[TypeHint]]:
-    f, interval = formula.formula, formula.interval
-    clk1, clk2 = formula.clock[0], formula.clock[1]
-    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
-    return GloballyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
-
-
-@_subst_type.register(FinallyUp)
-def _(formula: FinallyUp) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval, f = formula.clock, formula.interval, formula.formula
-    type_v = TypeVariable(clk.id)
-    return FinallyUp(clk, type_v, interval, f), TypeHint(type_v, formula.type)
-
-
-@_subst_type.register(FinallyUpIntersect)
-def _(formula: FinallyUpIntersect) -> Tuple[Formula, Optional[TypeHint]]:
-    clk, interval, f = formula.clock, formula.interval, formula.formula
-    type_v = TypeVariable(clk.id)
-    return FinallyUpIntersect(clk, type_v, interval, f), TypeHint(type_v, formula.type)
-
-
-@_subst_type.register(FinallyUpDown)
-def _(formula: FinallyUpDown) -> Tuple[Formula, Optional[TypeHint]]:
-    f, interval = formula.formula, formula.interval
-    clk1, clk2 = formula.clock[0], formula.clock[1]
-    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
-    return FinallyUpDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])
-
-
-@_subst_type.register(FinallyUpIntersectDown)
-def _(formula: FinallyUpIntersectDown) -> Tuple[Formula, Optional[TypeHint]]:
-    f, interval = formula.formula, formula.interval
-    clk1, clk2 = formula.clock[0], formula.clock[1]
-    ty1, ty2 = TypeVariable(clk1.id), TypeVariable(clk2.id)
-    return FinallyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f), TypeHint(ty2, formula.type[1])

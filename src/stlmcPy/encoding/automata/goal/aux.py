@@ -45,6 +45,7 @@ def _expand(label: Label) -> Set[Label]:
     labels = _remove_invalid_globally_label(label, labels)
     labels = _remove_invalid_finally_label(label, labels)
     labels = _remove_unreachable(labels)
+    labels = _remove_clock_violation(labels)
 
     return labels
 
@@ -71,15 +72,14 @@ def _(formula: GloballyFormula) -> Set[Label]:
         clk = clk_gen.up_clock(formula)
         r_clk = ClkReset(clk)
 
-        f1, f2 = GloballyUp(clk, Open(), interval, f), GloballyUpIntersect(clk, Open(), interval, f)
-        f3, f4 = GloballyUp(clk, Close(), interval, f), GloballyUpIntersect(clk, Close(), interval, f)
+        ty = TypeVariable(clk.id)
+        oc = OpenClose(ty)
+        f1, f2 = GloballyUp(clk, ty, interval, f), GloballyUpIntersect(clk, ty, interval, f)
 
-        lb1 = Label(singleton(f1), singleton(r_clk), singleton(), singleton())
-        lb2 = Label(singleton(f2), singleton(r_clk), singleton(), singleton())
-        lb3 = Label(singleton(f3), singleton(r_clk), singleton(), singleton())
-        lb4 = Label(singleton(f4), singleton(r_clk), singleton(), singleton())
+        lb1 = Label(singleton(f1), singleton(oc, r_clk), singleton(), singleton())
+        lb2 = Label(singleton(f2), singleton(oc, r_clk), singleton(), singleton())
 
-        return {lb1, lb2, lb3, lb4}
+        return {lb1, lb2}
 
 
 @_label_expand.register(GloballyUp)
@@ -94,18 +94,16 @@ def _(formula: GloballyUp) -> Set[Label]:
     f, interval = formula.formula, formula.interval
     clk1, ty1 = formula.clock, formula.type
     clk2 = clk_gen.down_clock(_infer_temporal_formula(formula), clk1)
+    ty2 = TypeVariable(clk2.id)
     r_clk = ClkReset(clk2)
 
-    f1 = GloballyUpDown(clk1, clk2, ty1, Open(), interval, f)
-    f2 = GloballyUpDown(clk1, clk2, ty1, Close(), interval, f)
-    f3 = GloballyUpIntersectDown(clk1, clk2, ty1, Open(), interval, f)
-    f4 = GloballyUpIntersectDown(clk1, clk2, ty1, Close(), interval, f)
+    f1 = GloballyUpDown(clk1, clk2, ty1, ty2, interval, f)
+    f2 = GloballyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f)
+    oc = OpenClose(ty2)
 
-    lb4 = Label(singleton(), singleton(), singleton(f1), singleton(t_pre, r_clk))
-    lb5 = Label(singleton(), singleton(), singleton(f2), singleton(t_pre, r_clk))
-    lb6 = Label(singleton(), singleton(), singleton(f3), singleton(t_pre, r_clk))
-    lb7 = Label(singleton(), singleton(), singleton(f4), singleton(t_pre, r_clk))
-    return {lb1, lb2, lb3, lb4, lb5, lb6, lb7}
+    lb4 = Label(singleton(), singleton(), singleton(f1), singleton(t_pre, oc, r_clk))
+    lb5 = Label(singleton(), singleton(), singleton(f2), singleton(t_pre, oc, r_clk))
+    return {lb1, lb2, lb3, lb4, lb5}
 
 
 @_label_expand.register(GloballyUpIntersect)
@@ -116,14 +114,14 @@ def _(formula: GloballyUpIntersect) -> Set[Label]:
 
     clk1, ty1 = formula.clock, formula.type
     clk2 = clk_gen.down_clock(_infer_temporal_formula(formula), clk1)
+    ty2 = TypeVariable(clk2.id)
     r_clk = ClkReset(clk2)
 
-    f1 = GloballyUpIntersectDown(clk1, clk2, ty1, Open(), interval, f)
-    f2 = GloballyUpIntersectDown(clk1, clk2, ty1, Close(), interval, f)
+    f1 = GloballyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f)
+    oc = OpenClose(ty2)
 
-    lb3 = Label(singleton(f), singleton(), singleton(f1), singleton(r_clk))
-    lb4 = Label(singleton(f), singleton(), singleton(f2), singleton(r_clk))
-    return {lb1, lb2, lb3, lb4}
+    lb3 = Label(singleton(f), singleton(), singleton(f1), singleton(oc, r_clk))
+    return {lb1, lb2, lb3}
 
 
 @_label_expand.register(GloballyUpDown)
@@ -155,17 +153,16 @@ def _(formula: FinallyFormula) -> Set[Label]:
     f, interval = formula.child, formula.local_time
 
     clk = clk_gen.up_clock(formula)
+    ty = TypeVariable(clk.id)
+    oc = OpenClose(ty)
     r_clk = ClkReset(clk)
 
-    f1, f2 = FinallyUp(clk, Open(), interval, f), FinallyUpIntersect(clk, Open(), interval, f)
-    f3, f4 = FinallyUp(clk, Close(), interval, f), FinallyUpIntersect(clk, Close(), interval, f)
+    f1, f2 = FinallyUp(clk, ty, interval, f), FinallyUpIntersect(clk, ty, interval, f)
 
-    lb1 = Label(singleton(f1), singleton(r_clk), singleton(), singleton())
-    lb2 = Label(singleton(f2), singleton(r_clk), singleton(), singleton())
-    lb3 = Label(singleton(f3), singleton(r_clk), singleton(), singleton())
-    lb4 = Label(singleton(f4), singleton(r_clk), singleton(), singleton())
+    lb1 = Label(singleton(f1), singleton(oc, r_clk), singleton(), singleton())
+    lb2 = Label(singleton(f2), singleton(oc, r_clk), singleton(), singleton())
 
-    return {lb1, lb2, lb3, lb4}
+    return {lb1, lb2}
 
 
 @_label_expand.register(FinallyUp)
@@ -179,18 +176,16 @@ def _(formula: FinallyUp) -> Set[Label]:
     f, interval = formula.formula, formula.interval
     clk1, ty1 = formula.clock, formula.type
     clk2 = clk_gen.down_clock(_infer_temporal_formula(formula), clk1)
+    ty2 = TypeVariable(clk2.id)
     r_clk = ClkReset(clk2)
+    oc = OpenClose(ty2)
 
-    f1 = FinallyUpDown(clk1, clk2, ty1, Open(), interval, f)
-    f2 = FinallyUpDown(clk1, clk2, ty1, Close(), interval, f)
-    f3 = FinallyUpIntersectDown(clk1, clk2, ty1, Open(), interval, f)
-    f4 = FinallyUpIntersectDown(clk1, clk2, ty1, Close(), interval, f)
+    f1 = FinallyUpDown(clk1, clk2, ty1, ty2, interval, f)
+    f2 = FinallyUpIntersectDown(clk1, clk2, ty1, ty2, interval, f)
 
-    lb3 = Label(singleton(), singleton(), singleton(f1), singleton(t_pre, r_clk))
-    lb4 = Label(singleton(), singleton(), singleton(f2), singleton(t_pre, r_clk))
-    lb5 = Label(singleton(), singleton(), singleton(f3), singleton(t_pre, r_clk))
-    lb6 = Label(singleton(), singleton(), singleton(f4), singleton(t_pre, r_clk))
-    return {lb1, lb2, lb3, lb4, lb5, lb6}
+    lb3 = Label(singleton(), singleton(), singleton(f1), singleton(t_pre, oc, r_clk))
+    lb4 = Label(singleton(), singleton(), singleton(f2), singleton(t_pre, oc, r_clk))
+    return {lb1, lb2, lb3, lb4}
 
 
 @_label_expand.register(FinallyUpIntersect)
@@ -207,30 +202,25 @@ def _(formula: FinallyUpIntersect) -> Set[Label]:
     rst = TimeFinallyRestart(clk, ty, interval)
 
     if interval.left_end:
-        interval_hint = Close()
+        oc1 = Close(ty)
     else:
-        interval_hint = Open()
+        oc1 = Open(ty)
 
-    ty_hint = TypeHint(TypeVariable(clk.id), interval_hint)
-
-    lb3 = Label(singleton(f), singleton(), singleton(nf), singleton(r_clk, rst, ty_hint))
+    lb3 = Label(singleton(f), singleton(), singleton(nf), singleton(r_clk, rst, oc1))
 
     # introduce a new clock
     clk2 = clk_gen.down_clock(_infer_temporal_formula(formula), clk)
-    # clk2 = next(clk_gen)
+    ty2 = TypeVariable(clk2.id)
+    oc2 = OpenClose(ty2)
     r_clk2 = ClkReset(clk2)
 
-    f1 = FinallyUpDown(clk, clk2, ty, Open(), interval, f)
-    f2 = FinallyUpDown(clk, clk2, ty, Close(), interval, f)
-    f3 = FinallyUpIntersectDown(clk, clk2, ty, Open(), interval, f)
-    f4 = FinallyUpIntersectDown(clk, clk2, ty, Close(), interval, f)
+    f1 = FinallyUpDown(clk, clk2, ty, ty2, interval, f)
+    f2 = FinallyUpIntersectDown(clk, clk2, ty, ty2, interval, f)
 
-    lb4 = Label(singleton(f), singleton(), singleton(f1), singleton(r_clk, r_clk2, rst, ty_hint))
-    lb5 = Label(singleton(f), singleton(), singleton(f2), singleton(r_clk, r_clk2, rst, ty_hint))
-    lb6 = Label(singleton(f), singleton(), singleton(f3), singleton(r_clk2))
-    lb7 = Label(singleton(f), singleton(), singleton(f4), singleton(r_clk2))
+    lb4 = Label(singleton(f), singleton(), singleton(f1), singleton(r_clk, r_clk2, rst, oc2))
+    lb5 = Label(singleton(f), singleton(), singleton(f2), singleton(r_clk2, oc2))
 
-    return {lb1, lb2, lb3, lb4, lb5, lb6, lb7}
+    return {lb1, lb2, lb3, lb4, lb5}
 
 
 @_label_expand.register(FinallyUpDown)
@@ -258,16 +248,14 @@ def _(formula: FinallyUpIntersectDown) -> Set[Label]:
     rst = TimeFinallyRestart(clk1, ty1, interval)
 
     if interval.left_end:
-        interval_hint = Close()
+        oc = Close(ty1)
     else:
-        interval_hint = Open()
-
-    ty_hint = TypeHint(TypeVariable(clk1.id), interval_hint)
+        oc = Open(ty1)
 
     final = TimeFinallyFinal(clk2, ty2, interval)
 
     lb1 = Label(singleton(f), singleton(), singleton(formula), singleton())
-    lb2 = Label(singleton(f), singleton(), singleton(nf), singleton(r_clk1, r_clk2, ty_hint, rst))
+    lb2 = Label(singleton(f), singleton(), singleton(nf), singleton(r_clk1, r_clk2, oc, rst))
     lb3 = Label(singleton(f), singleton(), singleton(), singleton(TimeBound()))
     lb4 = Label(singleton(f), singleton(), singleton(), singleton(final))
 
@@ -590,6 +578,94 @@ def _remove_unreachable(labels: Set[Label]) -> Set[Label]:
     return n_labels
 
 
+def _remove_clock_violation(labels: Set[Label]) -> Set[Label]:
+    return set(filter(lambda x: not _violate_clock_limit(x), labels))
+
+
+def _violate_clock_limit(label: Label) -> bool:
+    # globally and finally goal dicts
+    g_dict, f_dict = dict(), dict()
+    for goal in label.cur:
+        r, o = _clock_related(goal)
+        if r:
+            is_g, i, f, clk = o
+            k = (i, f)
+            if is_g:
+                if k in g_dict:
+                    g_dict[k].add(clk)
+                else:
+                    g_dict[k] = {clk}
+            else:
+                if k in g_dict:
+                    f_dict[k].add(clk)
+                else:
+                    f_dict[k] = {clk}
+
+    violation = [_check_clock_violation(g_dict),
+                 _check_clock_violation(f_dict)]
+
+    # check if any of these violate clock limit
+    return any(violation)
+
+
+def _check_clock_violation(d: Dict[Tuple[Interval, Formula], Set[Real]]):
+    for interval, f in d:
+        import math
+        inf_v, sup_v = float(inf(interval).value), float(sup(interval).value)
+        limit = math.ceil(sup_v/(sup_v - inf_v))
+
+        # violate upper limit
+        if len(d[(interval, f)]) > limit:
+            return True
+    return False
+
+
+@singledispatch
+def _clock_related(formula: Formula) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return False, None
+
+
+@_clock_related.register(GloballyUp)
+def _(formula: GloballyUp) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    # the first element of the tuple is set to true if the given formula is a globally-formula
+    return True, (True, formula.interval, formula.formula, formula.clock)
+
+
+@_clock_related.register(GloballyUpIntersect)
+def _(formula: GloballyUpIntersect) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (True, formula.interval, formula.formula, formula.clock)
+
+
+@_clock_related.register(GloballyUpDown)
+def _(formula: GloballyUpDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (True, formula.interval, formula.formula, formula.clock[0])
+
+
+@_clock_related.register(GloballyUpIntersectDown)
+def _(formula: GloballyUpIntersectDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (True, formula.interval, formula.formula, formula.clock[0])
+
+
+@_clock_related.register(FinallyUp)
+def _(formula: FinallyUp) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (False, formula.interval, formula.formula, formula.clock)
+
+
+@_clock_related.register(FinallyUpIntersect)
+def _(formula: FinallyUpIntersect) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (False, formula.interval, formula.formula, formula.clock)
+
+
+@_clock_related.register(FinallyUpDown)
+def _(formula: FinallyUpDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (False, formula.interval, formula.formula, formula.clock[0])
+
+
+@_clock_related.register(FinallyUpIntersectDown)
+def _(formula: FinallyUpIntersectDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
+    return True, (False, formula.interval, formula.formula, formula.clock[0])
+
+
 def update_labels(formula: Formula, labels: Set[Label], label: Label) -> List[Tuple[Set[Formula], Label]]:
     return [(lb.state_cur, Label(label.state_cur.union({formula}),
                                  label.transition_cur.union(lb.transition_cur),
@@ -599,58 +675,6 @@ def update_labels(formula: Formula, labels: Set[Label], label: Label) -> List[Tu
 
 def singleton(*formulas) -> Set[Formula]:
     return set(formulas)
-
-
-def canonicalize(*label):
-    labels: Set[Label] = set(label)
-    subsume: Dict[Label, Set[Label]] = dict()
-    pre_status: Dict[Label, Set[Label]] = dict()
-    while True:
-        _calc_label_subsume(labels, subsume)
-
-        cur_status = subsume
-        if cur_status == pre_status:
-            break
-
-        pre_status = subsume.copy()
-
-    # ignore self
-    for label in subsume:
-        subsume[label].discard(label)
-
-    removed = set()
-    for label in labels:
-        assert label in subsume
-        if len(subsume[label]) > 0:
-            removed.add(label)
-
-    return labels.difference(removed)
-
-
-def _calc_label_subsume(labels: Set[Label], subsume: Dict[Label, Set[Label]]):
-    def _add_to_dict(_k: Label, *_vs):
-        if _k not in subsume:
-            subsume[_k] = {_v for _v in _vs}
-        else:
-            for _v in _vs:
-                subsume[_k].add(_v)
-
-    for label in labels:
-        waiting = labels.copy()
-        while len(waiting) > 0:
-            n = waiting.pop()
-            if _label_subsume(n, label):
-                _add_to_dict(label, n)
-                if n in subsume:
-                    _add_to_dict(label, *subsume[n])
-                    waiting.difference_update(subsume[n])
-
-
-def _label_subsume(label1: Label, label2: Label) -> bool:
-    c1 = label1.cur.issubset(label2.cur)
-    c2 = label1.nxt.issubset(label2.nxt)
-    c3 = label1.forbidden.issubset(label2.forbidden)
-    return c1 and c2 and c3
 
 
 def tau_max():
