@@ -234,33 +234,27 @@ class StlGoal(Goal):
         # self._graph_generator.remove_unreachable()
         # e_t = time.time()
         # print("unreach remove : {:.3f}s".format(e_t - s_t))
-        # print_graph_info(graph)
-        #
-        # self._forward_subsumption.calc_relation(graph)
-        # self._forward_subsumption.reduce(graph)
-        # print()
-        # print("forward subsumption")
-        # print_graph_info(graph)
-        #
-        # self._backward_subsumption.calc_relation(graph)
-        # self._backward_subsumption.reduce(graph)
-        # print()
-        # print("backward subsumption")
-        # print_graph_info(graph)
-        #
-        # self._path_subsumption.reduce(graph)
-        # print()
-        # print("subsumption")
-        # print_graph_info(graph)
-        #
+        print_graph_info(graph)
+
+        self._forward_subsumption.calc_relation(graph)
+        self._forward_subsumption.reduce(graph)
+        print()
+        print("forward subsumption")
+        print_graph_info(graph)
+
+        self._backward_subsumption.calc_relation(graph)
+        self._backward_subsumption.reduce(graph)
+        print()
+        print("backward subsumption")
+        print_graph_info(graph)
+
+        self._path_subsumption.reduce(graph)
+        print()
+        print("subsumption")
+        print_graph_info(graph)
+
         # ha = self._hybrid_converter.convert(graph)
 
-        # ha_f_sub = HaForwardSubsumption()
-        # ha_f_sub.calc_relation(ha)
-        # ha_f_sub.reduce(ha)
-
-        # print(graph)
-        print_graph_info(graph)
         # print(graph)
         # print_ha_size("ha", ha)
         # import pickle
