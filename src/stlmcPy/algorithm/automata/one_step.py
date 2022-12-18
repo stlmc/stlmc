@@ -28,20 +28,14 @@ class OneStepAlgorithm(Algorithm):
         automata = composition(m_a, g_a)
 
         print_ha_size("stl", g_a)
+        print_ha_size("model", m_a)
+        print_ha_size("composed", automata)
         # fsc = FlowStarConverter(self._config)
         # fsc.convert(automata)
         # fsc.write("test")
         jlc = JuliaReachConverter(self._config)
         jlc.convert(automata)
         jlc.write("test")
-
-        print_ha_size("main", automata)
-
-        # with open("{}.automata".format("test"), "wb") as fw:
-        #     pickle.dump(automata, fw)
-        # print(automata)
-        # print(g_a)
-        # print(m_a)
 
         # r, m = p_runner.check_sat()
         # if r == SMTSolver.sat:

@@ -146,6 +146,8 @@ class STLmcModel(Model):
                 # assume left is a next variable
                 transition.add_reset((r.left, r.right))
 
+            ha.add_transition(transition)
+
     def _add_dynamics(self, module_index: int, mode: Mode):
         f_c = self.modules[module_index]["flow"]
 

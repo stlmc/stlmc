@@ -147,93 +147,9 @@ class StlGoal(Goal):
             finished.add(p_n)
             loop += 1
 
-        # print(graph.first_node())
-        # print()
-        # print(graph)
-        # init_labels = lg.init()
-        # init_labels = set(filter(lambda x: not self._optimizer.check_contradiction(x, 1, *_time_ordering(graph.get_max_depth())), init_labels))
-
-        # make initial nodes
-        # for label in init_labels:
-        #     self._graph_generator.make_node(label)
-        # self._graph_generator.finish_depth()
-
-        # wait_queue: Set[Label] = init_labels
-        # next_queue: Set[Label] = set()
-
-        # total_label = len(init_labels)
-        # total_nodes = len(graph.get_nodes_at(1))
-        # depth, final_depth = 2, bound
-        # while True:
-        #     if depth > final_depth:
-        #         break
-
-        # s = time.time()
-        # # print("depth : {}".format(depth))
-        # for label in wait_queue:
-        #     # check
-        #     # print("  label: {}".format(label))
-        #     if self._optimizer.check_contradiction(label, depth):
-        #         continue
-        #
-        #     n = lg.expand(label, depth)
-        #     n = set(filter(lambda x: not self._optimizer.check_contradiction(x, depth, *_time_ordering(graph.get_max_depth())), n))
-        #     # n = self._apply_reduction(n)
-        #     n = st_checker.stuttering(label, n)
-        #
-        #     next_queue.update(n)
-        #     # next_queue = canonicalize(next_queue)
-        #     # print_extend(label, n)
-        #
-        #     if final_depth >= depth:
-        #         self._graph_generator.make_posts(label, n)
-        #
-        # e = time.time()
-        # wait_queue = next_queue.copy()
-        # # wait_queue = self._apply_reduction(next_queue)
-        # next_queue.clear()
-
-        #
-        # if depth <= graph.get_max_depth():
-        #     cur_nodes = len(graph.get_nodes_at(depth))
-        # else:
-        #     cur_nodes = 0
-
-        # num_labels = len(wait_queue)
-        # total_label += num_labels
-        # total_nodes += cur_nodes
-
-        # print("depth#{}, labels#{}, labelsAcc#{}, nodes#{}, nodesAcc#{}".format(depth,
-        #                                                                         num_labels,
-        #                                                                         total_label,
-        #                                                                         cur_nodes,
-        #                                                                         total_nodes))
-        # logging = ["translate: {:.3f}".format(self._optimizer.translate_time),
-        #            "contradiction: {:.3f}".format(self._optimizer.contradiction_time),
-        #            "contradiction call# {}".format(self._optimizer.contradiction_call),
-        #            "solver time: {:.3f}".format(self._optimizer.z3obj_time),
-        #            "total: {:.3f}".format(e - s)]
-        #
-        # print("{}".format("\n".join(map(lambda x: indented_str(x, 2), logging))))
-        # self._optimizer.time_clear()
-        # self._graph_generator.finish_depth()
-        # depth += 1
-
-        # self._graph_generator.remove_contradiction()
-        # self._graph_generator.make_shift_resets()
-        # self._graph_generator.remove_redundancy()
         alg_e_t = time.time()
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
-        # print_graph_info(graph)
-        # _tableau.add_shift_resets()
-        # _tableau.remove_unreachable()
-        # print_graph_info(_tableau.graph)
 
-        # print("after remove unreachable")
-        # s_t = time.time()
-        # self._graph_generator.remove_unreachable()
-        # e_t = time.time()
-        # print("unreach remove : {:.3f}s".format(e_t - s_t))
         print_graph_info(graph)
 
         self._forward_subsumption.calc_relation(graph)
@@ -253,16 +169,16 @@ class StlGoal(Goal):
         print("subsumption")
         print_graph_info(graph)
 
-        # ha = self._hybrid_converter.convert(graph)
+        ha = self._hybrid_converter.convert(graph)
 
         # print(graph)
         # print_ha_size("ha", ha)
-        # import pickle
+        import pickle
         # with open("{}.graph".format("stl"), "wb") as fw:
         #     pickle.dump(graph, fw)
-        # with open("{}.automata".format("stl"), "wb") as fw:
-        #     pickle.dump(ha, fw)
-        # return ha
+        with open("{}.automata".format("stl"), "wb") as fw:
+            pickle.dump(ha, fw)
+        return ha
 
 
 def print_wait_queue(wait_queue: Set[Label]):
