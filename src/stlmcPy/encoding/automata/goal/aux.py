@@ -278,7 +278,7 @@ def _(formula: ReleaseFormula) -> Set[Label]:
     assert is_untimed(interval)
 
     lb1 = Label(singleton(lf), singleton(), singleton(), singleton())
-    lb2 = Label(singleton(rf), singleton(TimeBound()), singleton(), singleton())
+    lb2 = Label(singleton(rf), singleton(), singleton(), singleton(TimeBound()))
     lb3 = Label(singleton(rf), singleton(), singleton(formula), singleton())
     return {lb1, lb2, lb3}
 
@@ -570,8 +570,12 @@ def _remove_unreachable(labels: Set[Label]) -> Set[Label]:
     for lb in labels:
         c, n = lb.cur, lb.nxt
         c = set(filter(lambda x: isinstance(x, TimeBound), c))
-        # time last cannot have next states
+        # time bound cannot have next states
         if len(c) > 0 and len(n) > 0:
+            continue
+
+        # time bound cannot have state goals
+        if len(c) > 0 and len(lb.state_cur) > 0:
             continue
 
         n_labels.add(lb)

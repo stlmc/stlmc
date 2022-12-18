@@ -119,6 +119,15 @@ class ForwardSubsumption(Subsumption):
         return next_queue
 
     def _forward_relation(self, node1: Node, node2: Node, graph: TableauGraph):
+        # node1 is subsumed to node2
+        non_intermediate = [set(filter(lambda x: isinstance(x, Proposition), node1.goals)),
+                            set(filter(lambda x: isinstance(x, Proposition), node2.goals))]
+        c1 = non_intermediate[0].issuperset(non_intermediate[1])
+        c2 = not node1.is_initial() or node2.is_initial()
+
+        if not c1 or not c2:
+            return False
+
         jp1_s = graph.get_pred_edges(node1)
         while len(jp1_s) > 0:
             jp1 = jp1_s.pop()
@@ -139,14 +148,8 @@ class ForwardSubsumption(Subsumption):
     def _forward_pair_relation(self, jump1: Jump, node1: Node, jump2: Jump, node2: Node):
         assert jump1.get_trg() == node1 and jump2.get_trg() == node2
 
-        # node1 is subsumed to node2
-        non_intermediate = [set(filter(lambda x: isinstance(x, Proposition), node1.goals)),
-                            set(filter(lambda x: isinstance(x, Proposition), node2.goals))]
-        c1 = non_intermediate[0].issuperset(non_intermediate[1])
-        c2 = jump1.get_ap().issuperset(jump2.get_ap())
-        c3 = not node1.is_initial() or node2.is_initial()
-
-        if not c1 or not c2 or not c3:
+        c = jump1.get_ap().issuperset(jump2.get_ap())
+        if not c:
             return False
 
         n1_pred, n2_pred = jump1.get_src(), jump2.get_src()
@@ -264,6 +267,14 @@ class BackwardSubsumption(Subsumption):
         return prev_queue
 
     def _backward_relation(self, node1: Node, node2: Node, graph: TableauGraph):
+        # node1 is subsumed to node2
+        non_intermediate = [set(filter(lambda x: isinstance(x, Proposition), node1.goals)),
+                            set(filter(lambda x: isinstance(x, Proposition), node2.goals))]
+        c1 = non_intermediate[0].issuperset(non_intermediate[1])
+        c2 = not node1.is_final() or node2.is_final()
+        if not c1 or not c2:
+            return False
+
         jp1_s = graph.get_next_edges(node1)
         while len(jp1_s) > 0:
             jp1 = jp1_s.pop()
@@ -285,13 +296,8 @@ class BackwardSubsumption(Subsumption):
         assert jump1.get_src() == node1 and jump2.get_src() == node2
 
         # node1 is subsumed to node2
-        non_intermediate = [set(filter(lambda x: isinstance(x, Proposition), node1.goals)),
-                            set(filter(lambda x: isinstance(x, Proposition), node2.goals))]
-        c1 = non_intermediate[0].issuperset(non_intermediate[1])
-        c2 = jump1.get_ap().issuperset(jump2.get_ap())
-        c3 = not node1.is_final() or node2.is_final()
-
-        if not c1 or not c2 or not c3:
+        c = jump1.get_ap().issuperset(jump2.get_ap())
+        if not c:
             return False
 
         n1_succ, n2_succ = jump1.get_trg(), jump2.get_trg()

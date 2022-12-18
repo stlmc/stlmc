@@ -173,11 +173,11 @@ class StlGoal(Goal):
 
         # print(graph)
         # print_ha_size("ha", ha)
-        import pickle
+        # import pickle
         # with open("{}.graph".format("stl"), "wb") as fw:
         #     pickle.dump(graph, fw)
-        with open("{}.automata".format("stl"), "wb") as fw:
-            pickle.dump(ha, fw)
+        # with open("{}.automata".format("stl"), "wb") as fw:
+        #     pickle.dump(ha, fw)
         return ha
 
 
