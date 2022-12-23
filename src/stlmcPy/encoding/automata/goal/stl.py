@@ -66,7 +66,7 @@ class StlGoal(Goal):
         f_node = graph.first_node()
 
         # make initial labels
-        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton())
+        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(), 0)
         lb_s = expand(init_label)
 
         # make initial nodes
@@ -109,16 +109,11 @@ class StlGoal(Goal):
             p_n = waiting_list.pop()
 
             labels = graph.get_labels(p_n)
-
             # make nodes
             for lb in labels:
                 # expand the label
                 lb_s = expand(lb)
                 for e_lb in lb_s:
-                    # remove stuttering
-                    if st_checker.equivalent(lb, e_lb):
-                        continue
-
                     n = graph.make_node(e_lb)
 
                     exist, f_n, clk_subst = graph.find_node(n)

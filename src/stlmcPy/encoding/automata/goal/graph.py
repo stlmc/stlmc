@@ -135,7 +135,17 @@ class TableauGraph(Graph['Node', 'Jump']):
         nxt = [{clk_subst.substitute(f) for f in label.state_nxt},
                {clk_subst.substitute(f) for f in label.transition_nxt}]
 
-        return Label(cur[0], cur[1], nxt[0], nxt[1])
+        # calc max clock index
+        clk_s = get_clock_pool(*cur[0]).union(get_clock_pool(*cur[1]))
+        clk_s.update(get_clock_pool(*nxt[0]).union(get_clock_pool(*nxt[1])))
+
+        # if there is no clock
+        if len(clk_s) <= 0:
+            max_clock = 0
+        else:
+            max_clock = max({clock_index(clk) for clk in clk_s})
+
+        return Label(cur[0], cur[1], nxt[0], nxt[1], max_clock)
 
     @classmethod
     def update_type_hint_clocks(cls, clk_subst: ClockSubstitution, *ty_hints):

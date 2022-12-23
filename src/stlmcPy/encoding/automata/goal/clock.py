@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from .label import *
 from ....constraints.aux.operations import *
@@ -133,6 +133,14 @@ def global_clk_subst(max_depth: int) -> Dict[int, VarSubstitution]:
 
 def global_clk():
     return Real("g@clk")
+
+
+def fresh_clock(index: int) -> Real:
+    return Real("clk{}".format(index))
+
+
+def clock_index(clock: Real) -> int:
+    return int(clock.id[3:])
 
 
 class ClockGenerator:

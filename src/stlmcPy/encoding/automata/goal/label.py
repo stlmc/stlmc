@@ -6,10 +6,11 @@ from ....util.printer import indented_str
 
 class Label:
     def __init__(self, st_cur: Set[Formula], tr_cur: Set[Formula],
-                 st_nxt: Set[Formula], tr_nxt: Set[Formula]):
+                 st_nxt: Set[Formula], tr_nxt: Set[Formula], max_clock_index: int):
         # 0: state, 1: transition
         self._cur: List[Set[Formula]] = [st_cur, tr_cur]
         self._nxt: List[Set[Formula]] = [st_nxt, tr_nxt]
+        self._max_clock_index = max_clock_index
 
     @property
     def cur(self) -> Set[Formula]:
@@ -35,6 +36,10 @@ class Label:
     def transition_nxt(self) -> Set[Formula]:
         return self._nxt[1].copy()
 
+    @property
+    def max_clock_index(self) -> int:
+        return self._max_clock_index
+
     def __hash__(self):
         return hash((frozenset(self.cur), frozenset(self.nxt)))
 
@@ -48,8 +53,9 @@ class Label:
         st = indented_str("state\n{}".format("\n".join([s_c, s_n])), 2)
         r_c = indented_str("cur:\n{}".format("\n".join([indented_str(str(c), 6) for c in self._cur[1]])), 4)
         r_n = indented_str("nxt:\n{}".format("\n".join([indented_str(str(n), 6) for n in self._nxt[1]])), 4)
+        cc = indented_str("clock counter:\n{}".format(indented_str(str(self._max_clock_index), 6)), 4)
         tr = indented_str("transition\n{}".format("\n".join([r_c, r_n])), 2)
-        return "\n".join([s, st, tr, e])
+        return "\n".join([s, st, tr, cc, e])
 
 
 class TypeVariable:
