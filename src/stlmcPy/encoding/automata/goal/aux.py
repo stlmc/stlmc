@@ -30,7 +30,7 @@ def _expand(label: Label) -> Set[Label]:
     while len(waiting_list) > 0:
         p_c, p_l = waiting_list.pop()
         if len(p_c) <= 0:
-            if _valid_label_checking(p_l) and _valid_time_bound(p_l):
+            if _invariant_checking(p_l):
                 labels.add(p_l)
             continue
 
@@ -41,6 +41,18 @@ def _expand(label: Label) -> Set[Label]:
         waiting_list.extend(update_queue)
 
     return labels
+
+
+def _invariant_checking(label: Label) -> bool:
+    # label invariants
+    inv_s = [_valid_label_checking, _valid_time_bound,
+             _valid_clock]
+
+    for inv in inv_s:
+        if not inv(label):
+            return False
+
+    return True
 
 
 def _valid_label_checking(label: Label) -> bool:
@@ -120,7 +132,7 @@ def _is_finally_up_intersect_down(f: Formula, base: Formula) -> bool:
     return isinstance(f, FinallyUpIntersectDown) and hash(_infer_temporal_formula(f)) == hash(base)
 
 
-def _expand_label(formula: Formula, label: Label, p_label: Label) -> Set[Label]:
+def _expand_label(formula: Formula, label: Label, p_label: Label) -> Set[Tuple[FrozenSet[Formula], Label]]:
     rules = {
         "prop": [_expand_proposition],
         "boolean": [
@@ -171,9 +183,13 @@ def _expand_label(formula: Formula, label: Label, p_label: Label) -> Set[Label]:
         for rule in rules[category]:
             r = rule(formula, label, p_label)
             if r is not None:
-                labels.add(r)
+                labels.add((frozenset(r.state_cur), r))
 
-    return labels
+    # if there are no rules to be applied
+    if len(labels) <= 0:
+        return {(frozenset(), label)}
+    else:
+        return labels
 
 
 def _expand_proposition(formula: Proposition, label: Label,
@@ -256,8 +272,7 @@ def _expand_timed_globally_1(formula: GloballyFormula, label: Label,
     if is_untimed(formula.local_time):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label),
-                _non_redundant_goal(formula, p_label)]
+    pre_cond = [_non_redundant_goal(formula, p_label)]
     post_cond = []
 
     if not all(pre_cond):
@@ -282,16 +297,14 @@ def _expand_timed_globally_1(formula: GloballyFormula, label: Label,
 
 
 # []_I p --> up[*]_I p
-def _expand_timed_globally_2(formula: GloballyFormula, label: Label,
-                             p_label: Label) -> Optional[Label]:
+def _expand_timed_globally_2(formula: GloballyFormula, label: Label, p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyFormula):
         return None
 
     if is_untimed(formula.local_time):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label),
-                _non_redundant_goal(formula, p_label)]
+    pre_cond = [_non_redundant_goal(formula, p_label)]
     post_cond = []
 
     if not all(pre_cond):
@@ -339,8 +352,7 @@ def _expand_globally_up_1(formula: GloballyUp, label: Label,
 
 
 # up[]_I p --> up[*]_I p
-def _expand_globally_up_2(formula: GloballyUp, label: Label,
-                          p_label: Label) -> Optional[Label]:
+def _expand_globally_up_2(formula: GloballyUp, label: Label, p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyUp):
         return None
 
@@ -363,8 +375,7 @@ def _expand_globally_up_2(formula: GloballyUp, label: Label,
 
 
 # up[]_I p --> tb
-def _expand_globally_up_3(formula: GloballyUp, label: Label,
-                          p_label: Label) -> Optional[Label]:
+def _expand_globally_up_3(formula: GloballyUp, label: Label, p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyUp):
         return None
 
@@ -386,12 +397,11 @@ def _expand_globally_up_3(formula: GloballyUp, label: Label,
 
 
 # up[]_I p --> up[]down[]_I p
-def _expand_globally_up_4(formula: GloballyUp, label: Label,
-                          p_label: Label) -> Optional[Label]:
+def _expand_globally_up_4(formula: GloballyUp, label: Label, p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyUp):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -419,12 +429,11 @@ def _expand_globally_up_4(formula: GloballyUp, label: Label,
 
 
 # up[]_I p --> up[*]down[]_I p
-def _expand_globally_up_5(formula: GloballyUp, label: Label,
-                          p_label: Label) -> Optional[Label]:
+def _expand_globally_up_5(formula: GloballyUp, label: Label, p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyUp):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -501,7 +510,7 @@ def _expand_globally_up_intersect_3(formula: GloballyUpIntersect, label: Label,
     if not isinstance(formula, GloballyUpIntersect):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -723,8 +732,7 @@ def _expand_timed_finally_1(formula: FinallyFormula, label: Label,
     if is_untimed(formula.local_time):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label),
-                _non_redundant_goal(formula, p_label)]
+    pre_cond = [_non_redundant_goal(formula, p_label)]
     post_cond = []
 
     if not all(pre_cond):
@@ -758,8 +766,7 @@ def _expand_timed_finally_2(formula: FinallyFormula, label: Label,
     if is_untimed(formula.local_time):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label),
-                _non_redundant_goal(formula, p_label)]
+    pre_cond = [_non_redundant_goal(formula, p_label)]
     post_cond = []
 
     if not all(pre_cond):
@@ -841,7 +848,7 @@ def _expand_finally_up_3(formula: FinallyUp, label: Label,
     if not isinstance(formula, FinallyUp):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -876,7 +883,7 @@ def _expand_finally_up_4(formula: FinallyUp, label: Label,
     if not isinstance(formula, FinallyUp):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -989,7 +996,7 @@ def _expand_finally_up_intersect_4(formula: FinallyUpIntersect, label: Label,
     if not isinstance(formula, FinallyUpIntersect):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -1032,7 +1039,7 @@ def _expand_finally_up_intersect_5(formula: FinallyUpIntersect, label: Label,
     if not isinstance(formula, FinallyUpIntersect):
         return None
 
-    pre_cond = [_valid_clock(formula, p_label)]
+    pre_cond = []
     post_cond = []
 
     if not all(pre_cond):
@@ -1407,7 +1414,7 @@ def _expand_or_2(formula: Or, label: Label,
 
 
 # update here
-def update_waiting_list(formula: Formula, labels: Set[Label],
+def update_waiting_list(formula: Formula, labels: Set[Tuple[FrozenSet[Formula], Label]],
                         elem: Tuple[Set[Formula], Label]) -> List[Tuple[Set[Formula], Label]]:
     w_f, lb = elem
 
@@ -1416,12 +1423,13 @@ def update_waiting_list(formula: Formula, labels: Set[Label],
     return [(w_f.union(nc), u_lb) for nc, u_lb in lbs]
 
 
-def update_labels(formula: Formula, labels: Set[Label], label: Label) -> List[Tuple[Set[Formula], Label]]:
-    return [(lb.state_cur, Label(label.state_cur.union({formula}),
-                                 label.transition_cur.union(lb.transition_cur),
-                                 label.state_nxt.union(lb.state_nxt),
-                                 label.transition_nxt.union(lb.transition_nxt),
-                                 max(lb.max_clock_index, label.max_clock_index))) for lb in labels]
+def update_labels(formula: Formula, labels: Set[Tuple[FrozenSet[Formula], Label]],
+                  label: Label) -> List[Tuple[Set[Formula], Label]]:
+    return [(set(c), Label(label.state_cur.union({formula}),
+                           label.transition_cur.union(lb.transition_cur),
+                           label.state_nxt.union(lb.state_nxt),
+                           label.transition_nxt.union(lb.transition_nxt),
+                           max(lb.max_clock_index, label.max_clock_index))) for c, lb in labels]
 
 
 def _valid_time_bound(label: Label) -> bool:
@@ -1439,89 +1447,44 @@ def _valid_time_bound(label: Label) -> bool:
     return True
 
 
+@singledispatch
 def _non_redundant_goal(formula: Formula, p_label: Label) -> bool:
-    def _eq(x, f: Formula):
-        assert isinstance(f, GloballyFormula) or isinstance(f, FinallyFormula)
-        eq = [hash(x.interval) == hash(f.local_time),
-              hash(x.formula) == hash(f.child)]
-        return all(eq)
-
-    if isinstance(formula, GloballyFormula):
-        g_ups = set(filter(lambda x: isinstance(x, GloballyUp), p_label.cur))
-        g_ups_intersect = set(filter(lambda x: isinstance(x, GloballyUpIntersect), p_label.cur))
-
-        g_up_found = set(filter(lambda x: _eq(x, formula), g_ups))
-        if len(g_up_found) > 0:
-            return False
-
-        g_up_intersect_found = set(filter(lambda x: _eq(x, formula), g_ups_intersect))
-        if len(g_up_intersect_found) > 0:
-            return False
-    elif isinstance(formula, FinallyFormula):
-        f_ups = set(filter(lambda x: isinstance(x, FinallyUp), p_label.cur))
-        f_ups_intersect = set(filter(lambda x: isinstance(x, FinallyUpIntersect), p_label.cur))
-
-        f_up_found = set(filter(lambda x: _eq(x, formula), f_ups))
-        if len(f_up_found) > 0:
-            return False
-
-        f_up_intersect_found = set(filter(lambda x: _eq(x, formula), f_ups_intersect))
-        if len(f_up_intersect_found) > 0:
-            return False
-
     return True
 
 
-def _valid_clock(formula: Formula, label: Label) -> bool:
-    f = _infer_temporal_formula(formula)
-    is_g, is_f = False, False
-    if isinstance(f, GloballyFormula):
-        is_g = True
+@_non_redundant_goal.register(GloballyFormula)
+def _(formula: GloballyFormula, p_label: Label) -> bool:
+    return formula not in p_label.cur
 
-    if isinstance(f, FinallyFormula):
-        is_f = True
 
-    assert is_g or is_f
+@_non_redundant_goal.register(FinallyFormula)
+def _(formula: FinallyFormula, p_label: Label) -> bool:
+    return formula not in p_label.cur
 
-    # if there is no globally formula in P (c.f., the label is P/N)
-    if f not in label.cur:
-        return True
 
-    interval = f.local_time
-    clk_limit = _clock_upper_limit(interval)
-
-    g_clk, f_clk = set(), set()
+def _valid_clock(label: Label) -> bool:
+    g_d, f_d = dict(), dict()
     for g in label.cur:
-        if isinstance(formula, GloballyFormula):
-            if isinstance(g, GloballyUp) or isinstance(g, GloballyUpIntersect):
-                eq = [hash(g.interval) == hash(interval),
-                      hash(g.formula) == hash(f.child)]
-                if all(eq):
-                    g_clk.add(g.clock)
-            elif isinstance(g, GloballyUpDown) or isinstance(g, GloballyUpIntersectDown):
-                eq = [hash(g.interval) == hash(interval),
-                      hash(g.formula) == hash(f.child)]
-                if all(eq):
-                    g_clk.update(g.clock)
+        _globally_clock_set(g, g_d)
+        _finally_clock_set(g, f_d)
 
-        if isinstance(formula, FinallyFormula):
-            if isinstance(g, FinallyUp) or isinstance(g, FinallyUpIntersect):
-                eq = [hash(g.interval) == hash(interval),
-                      hash(g.formula) == hash(f.child)]
-                if all(eq):
-                    f_clk.add(g.clock)
-            elif isinstance(g, FinallyUpDown) or isinstance(g, FinallyUpIntersectDown):
-                eq = [hash(g.interval) == hash(interval),
-                      hash(g.formula) == hash(f.child)]
-                if all(eq):
-                    f_clk.update(g.clock)
+    for k in g_d:
+        interval, formula = k
+        clk_limit = _clock_upper_limit(interval)
 
-    if is_g:
-        return len(g_clk) < clk_limit
+        # if the clock set exceed the limit
+        if len(g_d[k]) > clk_limit:
+            return False
 
-    if is_f:
-        return len(f_clk) < clk_limit
+    for k in f_d:
+        interval, formula = k
+        clk_limit = _clock_upper_limit(interval)
 
+        if len(f_d[k]) > clk_limit:
+            return False
+
+    # otherwise the label is valid
+    return True
 
 def _clock_upper_limit(interval: Interval) -> int:
     import math
@@ -1530,49 +1493,85 @@ def _clock_upper_limit(interval: Interval) -> int:
 
 
 @singledispatch
-def _clock_related(formula: Formula) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return False, None
+def _globally_clock_set(formula: Formula, g_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    return
 
 
-@_clock_related.register(GloballyUp)
-def _(formula: GloballyUp) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    # the first element of the tuple is set to true if the given formula is a globally-formula
-    return True, (True, formula.interval, formula.formula, formula.clock)
+@_globally_clock_set.register(GloballyUp)
+def _(formula: GloballyUp, g_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in g_dict:
+        g_dict[k].add(formula.clock)
+    else:
+        g_dict[k] = {formula.clock}
 
 
-@_clock_related.register(GloballyUpIntersect)
-def _(formula: GloballyUpIntersect) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (True, formula.interval, formula.formula, formula.clock)
+@_globally_clock_set.register(GloballyUpIntersect)
+def _(formula: GloballyUpIntersect, g_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in g_dict:
+        g_dict[k].add(formula.clock)
+    else:
+        g_dict[k] = {formula.clock}
 
 
-@_clock_related.register(GloballyUpDown)
-def _(formula: GloballyUpDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (True, formula.interval, formula.formula, formula.clock[0])
+@_globally_clock_set.register(GloballyUpDown)
+def _(formula: GloballyUpDown, g_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in g_dict:
+        g_dict[k].add(formula.clock[0])
+    else:
+        g_dict[k] = {formula.clock[0]}
 
 
-@_clock_related.register(GloballyUpIntersectDown)
-def _(formula: GloballyUpIntersectDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (True, formula.interval, formula.formula, formula.clock[0])
+@_globally_clock_set.register(GloballyUpIntersectDown)
+def _(formula: GloballyUpIntersectDown, g_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in g_dict:
+        g_dict[k].add(formula.clock[0])
+    else:
+        g_dict[k] = {formula.clock[0]}
 
 
-@_clock_related.register(FinallyUp)
-def _(formula: FinallyUp) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (False, formula.interval, formula.formula, formula.clock)
+@singledispatch
+def _finally_clock_set(formula: Formula, f_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    return
 
 
-@_clock_related.register(FinallyUpIntersect)
-def _(formula: FinallyUpIntersect) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (False, formula.interval, formula.formula, formula.clock)
+@_finally_clock_set.register(FinallyUp)
+def _(formula: FinallyUp, f_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in f_dict:
+        f_dict[k].add(formula.clock)
+    else:
+        f_dict[k] = {formula.clock}
 
 
-@_clock_related.register(FinallyUpDown)
-def _(formula: FinallyUpDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (False, formula.interval, formula.formula, formula.clock[0])
+@_finally_clock_set.register(FinallyUpIntersect)
+def _(formula: FinallyUpIntersect, f_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in f_dict:
+        f_dict[k].add(formula.clock)
+    else:
+        f_dict[k] = {formula.clock}
 
 
-@_clock_related.register(FinallyUpIntersectDown)
-def _(formula: FinallyUpIntersectDown) -> Tuple[bool, Optional[Tuple[bool, Interval, Formula, Real]]]:
-    return True, (False, formula.interval, formula.formula, formula.clock[0])
+@_finally_clock_set.register(FinallyUpDown)
+def _(formula: FinallyUpDown, f_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in f_dict:
+        f_dict[k].add(formula.clock[0])
+    else:
+        f_dict[k] = {formula.clock[0]}
+
+
+@_finally_clock_set.register(FinallyUpIntersectDown)
+def _(formula: FinallyUpIntersectDown, f_dict: Dict[Tuple[Interval, Formula], Set[Real]]):
+    k = (formula.interval, formula.formula)
+    if k in f_dict:
+        f_dict[k].add(formula.clock[0])
+    else:
+        f_dict[k] = {formula.clock[0]}
 
 
 def singleton(*formulas) -> Set[Formula]:
