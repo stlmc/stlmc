@@ -1,11 +1,10 @@
 import time
 
 from .aux import *
-from .equivalence import StutteringEquivalenceChecker
+from .equivalence import PPEquivalence
 from .graph import *
 from .ha_converter import HAConverter
 from .label import *
-from .subsumption import ForwardSubsumption, BackwardSubsumption, PathSubsumption
 from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
@@ -42,23 +41,11 @@ class StlGoal(Goal):
 
         # get an eps-strengthening reduced formula
         self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
-
-        #
-        # self._optimizer = ContradictionChecker(self.clk_subst_dict, self.tau_subst)
-        # self._label_generator = LabelGenerator(self._formula, threshold=self.threshold)
-        # self._stuttering_checker = StutteringEquivalenceChecker(self._formula)
-        # self._shifting_checker = ShiftingEquivalenceChecker(self._formula)
-        # self._graph_generator = GraphGenerator(self._formula, self._optimizer, self._shifting_checker, shift_mode=True)
         self._hybrid_converter = HAConverter(self.tau_subst)
 
-        self._forward_subsumption = ForwardSubsumption()
-        self._backward_subsumption = BackwardSubsumption()
-        self._path_subsumption = PathSubsumption(self._forward_subsumption.get_relation(),
-                                                 self._backward_subsumption.get_relation())
 
     def encode(self):
         graph: TableauGraph = TableauGraph(self._formula)
-        st_checker = StutteringEquivalenceChecker(self._formula)
         self._hybrid_converter.clear()
         alg_s_t = time.time()
 
@@ -66,11 +53,11 @@ class StlGoal(Goal):
         f_node = graph.first_node()
 
         # make initial labels
-        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(), 0)
+        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(), set(), set(), 0)
         lb_s = expand(init_label)
 
         # make initial nodes
-        initial_nodes = set()
+        initial_nodes = list()
         for lb in lb_s:
             # make a new node
             node = graph.make_node(lb, is_initial=True)
@@ -96,72 +83,67 @@ class StlGoal(Goal):
                 jp_s = graph.make_jumps(f_node, node, lb)
                 for jp in jp_s:
                     graph.add_jump(jp)
-                initial_nodes.add(node)
+                initial_nodes.append(node)
 
-        waiting_list = initial_nodes
-        finished = set()
+        waiting_list = [initial_nodes]
 
-        loop = 0
+        depth = 1
         while len(waiting_list) > 0:
-            print("#{} -> {}".format(loop, len(graph.get_nodes())))
+            queue = waiting_list.pop(0)
+            print("#{} -> {}".format(depth, len(queue)))
 
-            # pick a node and its labels
-            p_n = waiting_list.pop()
+            new_queue = list()
+            while len(queue) > 0:
 
-            labels = graph.get_labels(p_n)
-            # make nodes
-            for lb in labels:
-                # expand the label
-                lb_s = expand(lb)
-                for e_lb in lb_s:
-                    n = graph.make_node(e_lb)
+                # pick a node and its labels
+                p_n = queue.pop(0)
+                labels = graph.get_labels(p_n)
 
-                    exist, f_n, clk_subst = graph.find_node(n)
-                    if exist:
-                        # update the label and type hint clocks
-                        u_lb = graph.update_label_clock(e_lb, clk_subst)
+                # make nodes
+                for lb in labels:
+                    # expand the label
+                    lb_s = expand(lb)
+                    for e_lb in lb_s:
+                        n = graph.make_node(e_lb)
 
-                        jp_s = graph.make_jumps(p_n, f_n, u_lb)
-                        for jp in jp_s:
-                            graph.add_jump(jp)
+                        exist, f_n, clk_subst = graph.find_node(n)
+                        if exist:
+                            # update the label and type hint clocks
+                            u_lb = graph.update_label_clock(e_lb, clk_subst)
 
-                        # still not finished but already exists, and it is not finished
-                        if f_n not in finished:
-                            # open the label to the node
-                            graph.open_labels(f_n, u_lb)
-                    else:
-                        # add a fresh node and open the label
-                        graph.add_node(n)
-                        graph.open_labels(n, e_lb)
+                            jp_s = graph.make_jumps(p_n, f_n, u_lb)
+                            for jp in jp_s:
+                                graph.add_jump(jp)
 
-                        jp_s = graph.make_jumps(p_n, n, e_lb)
-                        for jp in jp_s:
-                            graph.add_jump(jp)
-                        waiting_list.add(n)
+                        else:
+                            # add a fresh node and open the label
+                            graph.add_node(n)
+                            graph.open_labels(n, e_lb)
 
-            finished.add(p_n)
-            loop += 1
+                            jp_s = graph.make_jumps(p_n, n, e_lb)
+                            for jp in jp_s:
+                                graph.add_jump(jp)
+                            new_queue.append(n)
+
+            # if new states are generated, add it to the queue
+            if len(new_queue) > 0:
+                waiting_list.append(new_queue)
+            depth += 1
 
         alg_e_t = time.time()
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
 
         print_graph_info(graph)
+        graph.remove_unreachable()
 
-        self._forward_subsumption.calc_relation(graph)
-        self._forward_subsumption.reduce(graph)
-        print()
-        print("forward subsumption")
+        print("after remove unreachable states")
         print_graph_info(graph)
 
-        self._backward_subsumption.calc_relation(graph)
-        self._backward_subsumption.reduce(graph)
-        print()
-        print("backward subsumption")
-        print_graph_info(graph)
+        post_eq = PPEquivalence()
+        post_eq.calc_initial_equivalence(graph)
+        post_eq.refine(graph)
 
-        self._path_subsumption.reduce(graph)
-        print()
-        print("subsumption")
+        print("after pp equivalence")
         print_graph_info(graph)
 
         ha = self._hybrid_converter.convert(graph)

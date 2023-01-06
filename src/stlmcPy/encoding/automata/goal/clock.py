@@ -11,6 +11,9 @@ class ClockSubstitution:
     def add(self, src: Real, dst: Real):
         self._clock_subst_dict[src] = dst
 
+    def is_in(self, clk: Real):
+        return clk in self._clock_subst_dict
+
     def substitute(self, formula: Formula):
         return _clock_substitution(formula, self._clock_subst_dict)
 
@@ -190,8 +193,13 @@ def _(goal: TimeProposition) -> Set[Formula]:
     return {goal}
 
 
-@_filter_clock_goals.register(ClkReset)
-def _(goal: ClkReset) -> Set[Formula]:
+@_filter_clock_goals.register(ClkAssn)
+def _(goal: ClkAssn) -> Set[Formula]:
+    return {goal}
+
+
+@_filter_clock_goals.register(OCProposition)
+def _(goal: OCProposition) -> Set[Formula]:
     return {goal}
 
 
@@ -227,55 +235,106 @@ def _(goal: ClkReset) -> Set[Real]:
     return {goal.clock}
 
 
-def make_clk_type_mapping(*goals) -> Dict[Real, Set[str]]:
-    mapping = dict()
-    for goal in goals:
-        _make_clk_type_mapping(goal, mapping)
-    return mapping
+class ClockMatchingInfo:
+    def __init__(self):
+        self._matching_info: Dict[Tuple[str, hash, hash], List[Real]] = dict()
+
+    def add(self, goal: Formula):
+        info = _matching_info(goal)
+
+        # do nothing
+        if info is None:
+            return
+
+        assert info not in self._matching_info
+        self._matching_info[info] = _get_matching_clocks(goal)
+
+    def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
+        assert isinstance(other, ClockMatchingInfo)
+
+        # information must be equal
+        if set(self._matching_info.keys()) != set(other._matching_info.keys()):
+            return None
+
+        clk_subst = ClockSubstitution()
+        for k in other._matching_info:
+            o_k = zip(self._matching_info[k], other._matching_info[k])
+            # other's clock is renamed to self's clock
+            for c1, c2 in o_k:
+                # if already exists, clocks cannot be matched
+                if clk_subst.is_in(c2):
+                    return None
+
+                clk_subst.add(c2, c1)
+
+        return clk_subst
 
 
 @singledispatch
-def _make_clk_type_mapping(goal: Formula, mapping: Dict[Real, Set[str]]):
-    return
+def _matching_info(goal: Formula) -> Optional[Tuple[str, hash, hash]]:
+    return None
 
 
-@_make_clk_type_mapping.register(Up)
-def _(goal: Up, mapping: Dict[Real, Set[str]]):
-    name = "{}_{}_{}_{}".format(goal.temporal, goal.type,
-                                hash(goal.interval), hash(goal.formula))
-    if goal.clock in mapping:
-        mapping[goal.clock].add(name)
-    else:
-        mapping[goal.clock] = {name}
+@_matching_info.register(Up)
+def _(goal: Up) -> Optional[Tuple[str, hash, hash]]:
+    return goal.temporal, hash(goal.interval), hash(goal.formula)
 
 
-@_make_clk_type_mapping.register(UpDown)
-def _(goal: UpDown, mapping: Dict[Real, Set[str]]):
-    names = ["{}_{}_{}_{}_{}_F".format(goal.temporal1, goal.temporal2, goal.type[0],
-                                       hash(goal.interval), hash(goal.formula)),
-             "{}_{}_{}_{}_{}_B".format(goal.temporal1, goal.temporal2, goal.type[1],
-                                       hash(goal.interval), hash(goal.formula))]
-
-    for index, _ in enumerate(names):
-        if goal.clock[index] in mapping:
-            mapping[goal.clock[index]].add(names[index])
-        else:
-            mapping[goal.clock[index]] = {names[index]}
+@_matching_info.register(UpDown)
+def _(goal: UpDown) -> Optional[Tuple[str, hash, hash]]:
+    return "{}{}".format(goal.temporal1, goal.temporal2), hash(goal.interval), hash(goal.formula)
 
 
-@_make_clk_type_mapping.register(TimeProposition)
-def _(goal: TimeProposition, mapping: Dict[Real, Set[str]]):
-    name = "T_{}_{}_{}".format(goal.temporal, goal.ty, hash(goal.interval))
-    if goal.clock in mapping:
-        mapping[goal.clock].add(name)
-    else:
-        mapping[goal.clock] = {name}
+@_matching_info.register(TimeProposition)
+def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
+    return "T{}_{}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
 
 
-@_make_clk_type_mapping.register(ClkReset)
-def _(goal: ClkReset, mapping: Dict[Real, Set[str]]):
-    name = "clk_assn"
-    if goal.clock in mapping:
-        mapping[goal.clock].add(name)
-    else:
-        mapping[goal.clock] = {name}
+@_matching_info.register(ClkAssn)
+def _(goal: ClkAssn) -> Optional[Tuple[str, hash, hash]]:
+    return "assn", hash(goal.value), 0
+
+
+@_matching_info.register(Open)
+def _(goal: Open) -> Optional[Tuple[str, hash, hash]]:
+    return "open", 0, 0
+
+
+@_matching_info.register(Close)
+def _(goal: Close) -> Optional[Tuple[str, hash, hash]]:
+    return "close", 0, 0
+
+
+@_matching_info.register(OpenClose)
+def _(goal: OpenClose) -> Optional[Tuple[str, hash, hash]]:
+    return "oc", 0, 0
+
+
+@singledispatch
+def _get_matching_clocks(goal: Formula) -> List[Real]:
+    return list()
+
+
+@_get_matching_clocks.register(Up)
+def _(goal: Up) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(UpDown)
+def _(goal: UpDown) -> List[Real]:
+    return goal.clock.copy()
+
+
+@_get_matching_clocks.register(TimeProposition)
+def _(goal: TimeProposition) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(ClkAssn)
+def _(goal: ClkAssn) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(OCProposition)
+def _(goal: OCProposition) -> List[Real]:
+    return [goal.get_clock()]

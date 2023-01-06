@@ -188,7 +188,7 @@ def _(formula: TimeGloballyPre) -> Formula:
 @_translate_time_goal.register(TimeGloballyFinal)
 def _(formula: TimeGloballyFinal) -> Formula:
     # ignore strict case
-    return formula.clock <= sup(formula.interval)
+    return formula.clock >= sup(formula.interval)
 
 
 @_translate_time_goal.register(TimeFinallyPre)
