@@ -1,3 +1,4 @@
+from itertools import product, permutations
 from typing import Optional, Tuple
 
 from .label import *
@@ -10,9 +11,6 @@ class ClockSubstitution:
 
     def add(self, src: Real, dst: Real):
         self._clock_subst_dict[src] = dst
-
-    def is_in(self, clk: Real):
-        return clk in self._clock_subst_dict
 
     def substitute(self, formula: Formula):
         return _clock_substitution(formula, self._clock_subst_dict)
@@ -237,37 +235,105 @@ def _(goal: ClkReset) -> Set[Real]:
 
 class ClockMatchingInfo:
     def __init__(self):
-        self._matching_info: Dict[Tuple[str, hash, hash], List[Real]] = dict()
+        self._matching_info_cur: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+        self._matching_info_nxt: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
 
-    def add(self, goal: Formula):
+    def add_cur(self, goal: Formula):
+        self._add(goal, self._matching_info_cur)
+
+    def add_nxt(self, goal: Formula):
+        self._add(goal, self._matching_info_nxt)
+
+    @classmethod
+    def _add(cls, goal: Formula, d: Dict[Tuple[str, hash, hash], List[List[Real]]]):
         info = _matching_info(goal)
 
-        # do nothing
         if info is None:
             return
 
-        assert info not in self._matching_info
-        self._matching_info[info] = _get_matching_clocks(goal)
+        if info in d:
+            d[info].append(_get_matching_clocks(goal))
+        else:
+            d[info] = [_get_matching_clocks(goal)]
 
     def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
         assert isinstance(other, ClockMatchingInfo)
 
+        k_c = set(self._matching_info_cur.keys())
         # information must be equal
-        if set(self._matching_info.keys()) != set(other._matching_info.keys()):
+        if k_c != set(other._matching_info_cur.keys()):
+            return None
+
+        subst = _match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict())
+        if subst is None:
+            return None
+
+        k_n = set(self._matching_info_nxt.keys())
+        if k_n != set(other._matching_info_nxt.keys()):
+            return None
+
+        subst = _match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst)
+        if subst is None:
             return None
 
         clk_subst = ClockSubstitution()
-        for k in other._matching_info:
-            o_k = zip(self._matching_info[k], other._matching_info[k])
-            # other's clock is renamed to self's clock
-            for c1, c2 in o_k:
-                # if already exists, clocks cannot be matched
-                if clk_subst.is_in(c2):
-                    return None
-
-                clk_subst.add(c2, c1)
+        for k in subst:
+            clk_subst.add(k, subst[k])
 
         return clk_subst
+
+    def __repr__(self):
+        cur = "\n".join(["{} ---> {}".format(k, self._matching_info_cur[k]) for k in self._matching_info_cur])
+        nxt = "\n".join(["{} ---> {}".format(k, self._matching_info_nxt[k]) for k in self._matching_info_nxt])
+        return "clock matching\ncur:\n{}\nnxt:\n{}\n".format(cur, nxt)
+
+
+def _match(positions: List[Tuple[str, hash, hash]],
+           match1: Dict[Tuple[str, hash, hash], List[List[Real]]],
+           match2: Dict[Tuple[str, hash, hash], List[List[Real]]],
+           subst: Dict[Real, Real]) -> Optional[Dict[Real, Real]]:
+    if len(positions) <= 0:
+        return subst
+
+    pos = positions.pop(0)
+    p_clk1, p_clk2 = match1[pos], match2[pos]
+
+    if len(p_clk1) != len(p_clk2):
+        return None
+
+    p_clk2_order = list(map(lambda x: list(x), permutations(p_clk2)))
+
+    for clk2_set in p_clk2_order:
+        n_subst = _match_test(subst, p_clk1, clk2_set)
+        if n_subst is None:
+            continue
+
+        m = _match(positions, match1, match2, n_subst)
+        if m is not None:
+            return m
+    return None
+
+
+def _match_test(subst: Dict[Real, Real],
+                c1_set: List[List[Real]], c2_set: List[List[Real]]) -> Optional[Dict[Real, Real]]:
+    new_subst = subst.copy()
+    for clk1_s, clk2_s in list(zip(c1_set, c2_set)):
+        new_subst = _match_clk(new_subst, clk1_s, clk2_s)
+        if new_subst is None:
+            return None
+    return new_subst
+
+
+def _match_clk(subst: Dict[Real, Real],
+               c1_set: List[Real], c2_set: List[Real]) -> Optional[Dict[Real, Real]]:
+    new_subst = subst.copy()
+    for c1, c2 in set(zip(c1_set, c2_set)):
+        # conflict
+        if c1 in subst:
+            if not variable_equal(subst[c1], c2):
+                return None
+        new_subst[c1] = c2
+    return new_subst
 
 
 @singledispatch
@@ -287,7 +353,7 @@ def _(goal: UpDown) -> Optional[Tuple[str, hash, hash]]:
 
 @_matching_info.register(TimeProposition)
 def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
-    return "T{}_{}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
+    return "T_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
 
 
 @_matching_info.register(ClkAssn)

@@ -43,7 +43,6 @@ class StlGoal(Goal):
         self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
         self._hybrid_converter = HAConverter(self.tau_subst)
 
-
     def encode(self):
         graph: TableauGraph = TableauGraph(self._formula)
         self._hybrid_converter.clear()
@@ -86,7 +85,7 @@ class StlGoal(Goal):
                 initial_nodes.append(node)
 
         waiting_list = [initial_nodes]
-
+        two, four = set(), set()
         depth = 1
         while len(waiting_list) > 0:
             queue = waiting_list.pop(0)
@@ -134,16 +133,20 @@ class StlGoal(Goal):
         print("running time: {:.3f}s".format(alg_e_t - alg_s_t))
 
         print_graph_info(graph)
-        graph.remove_unreachable()
 
-        print("after remove unreachable states")
+        u_t_s = time.time()
+        graph.remove_unreachable()
+        u_t_e = time.time()
+        print("after remove unreachable states ({:.3f}s)".format(u_t_e - u_t_s))
         print_graph_info(graph)
 
+        p_t_s = time.time()
         post_eq = PPEquivalence()
         post_eq.calc_initial_equivalence(graph)
         post_eq.refine(graph)
+        p_t_e = time.time()
 
-        print("after pp equivalence")
+        print("after pp equivalence ({:.3f}s)".format(p_t_e - p_t_s))
         print_graph_info(graph)
 
         ha = self._hybrid_converter.convert(graph)

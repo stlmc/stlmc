@@ -36,11 +36,12 @@ class TableauGraph(Graph['Node', 'Jump']):
 
     @classmethod
     def _make_matching_info(cls, node: 'Node') -> ClockMatchingInfo:
-        goals = node.cur_goals.union(node.nxt_goals)
-
         matching_info = ClockMatchingInfo()
-        for g in goals:
-            matching_info.add(g)
+        for g in node.cur_goals:
+            matching_info.add_cur(g)
+
+        for g in node.nxt_goals:
+            matching_info.add_nxt(g)
 
         return matching_info
 
@@ -75,6 +76,57 @@ class TableauGraph(Graph['Node', 'Jump']):
 
     def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'],
                                                Optional[ClockSubstitution]]:
+        matching_info = self._make_matching_info(node)
+        node_goals = [node.cur_goals, node.nxt_goals]
+
+        # split clock and others
+        node_clk_s = (filter_clock_goals(*node_goals[0]),
+                      filter_clock_goals(*node_goals[1]))
+        node_other = [node_goals[0].difference(node_clk_s[0]),
+                      node_goals[1].difference(node_clk_s[1])]
+
+        for n in self.get_nodes():
+            if n == self.first_node():
+                continue
+
+            assert n in self._matching_info
+            n_match = self._matching_info[n]
+
+            n_goals = [n.cur_goals, n.nxt_goals]
+
+            # split clock and others
+            clk_s = (filter_clock_goals(*n_goals[0]),
+                     filter_clock_goals(*n_goals[1]))
+            other = [n_goals[0].difference(clk_s[0]),
+                     n_goals[1].difference(clk_s[1])]
+
+            clk_subst = n_match.match(matching_info)
+            if clk_subst is None:
+                continue
+            else:
+                eq = [n.is_final() == node.is_final(),
+                      other[0] == node_other[0],
+                      other[1] == node_other[1]]
+                if all(eq) and self._clock_eq(clk_subst, clk_s, node_clk_s):
+                    return True, n, clk_subst
+
+        return False, None, None
+
+    @classmethod
+    def _clock_eq(cls, clk_subst: ClockSubstitution,
+                  clk_goal1: Tuple[Set[Formula], Set[Formula]],
+                  clk_goal2: Tuple[Set[Formula], Set[Formula]]) -> bool:
+        c_goal1, n_goal1 = clk_goal1[0], clk_goal1[1]
+        c_goal2, n_goal2 = clk_goal2[0], clk_goal2[1]
+
+        goal1_hash = [hash(frozenset(c_goal1)), hash(frozenset(n_goal1))]
+        goal2_hash = [hash(frozenset(map(lambda x: clk_subst.substitute(x), c_goal2))),
+                      hash(frozenset(map(lambda x: clk_subst.substitute(x), n_goal2)))]
+
+        return goal1_hash[0] == goal2_hash[0] and goal1_hash[1] == goal2_hash[1]
+
+    def find_node_naive(self, node: 'Node') -> Tuple[bool, Optional['Node'],
+                                                     Optional[ClockSubstitution]]:
         # ignore top formula and clk resets
         # node_goals = [self._ignore_top_formula(*node.cur_goals),
         #               self._ignore_top_formula(*node.nxt_goals)]
@@ -101,14 +153,15 @@ class TableauGraph(Graph['Node', 'Jump']):
             other = [n_goals[0].difference(clk_s[0]),
                      n_goals[1].difference(clk_s[1])]
 
-            clk_eq, clk_subst = self._clock_eq(clk_s, node_clk_s)
+            clk_eq, clk_subst = self._clock_eq_naive(clk_s, node_clk_s)
 
             if clk_eq and other[0] == node_other[0] and other[1] == node_other[1] and eq[0]:
                 return True, n, clk_subst
         return False, None, None
 
-    def _clock_eq(self, goals1: Tuple[Set[Formula], Set[Formula]],
-                  goals2: Tuple[Set[Formula], Set[Formula]]) -> Tuple[bool, Optional[ClockSubstitution]]:
+    @classmethod
+    def _clock_eq_naive(cls, goals1: Tuple[Set[Formula], Set[Formula]],
+                        goals2: Tuple[Set[Formula], Set[Formula]]) -> Tuple[bool, Optional[ClockSubstitution]]:
         goal1_union = goals1[0].union(goals1[1])
         goal2_union = goals2[0].union(goals2[1])
 
