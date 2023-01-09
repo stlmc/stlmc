@@ -85,7 +85,7 @@ class StlGoal(Goal):
                 initial_nodes.append(node)
 
         waiting_list = [initial_nodes]
-        two, four = set(), set()
+
         depth = 1
         while len(waiting_list) > 0:
             queue = waiting_list.pop(0)
@@ -142,8 +142,7 @@ class StlGoal(Goal):
 
         p_t_s = time.time()
         post_eq = PPEquivalence()
-        post_eq.calc_initial_equivalence(graph)
-        post_eq.refine(graph)
+        post_eq.reduce(graph)
         p_t_e = time.time()
 
         print("after pp equivalence ({:.3f}s)".format(p_t_e - p_t_s))
