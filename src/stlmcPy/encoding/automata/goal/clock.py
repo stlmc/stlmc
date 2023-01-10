@@ -1,4 +1,4 @@
-from itertools import product, permutations
+from itertools import permutations
 from typing import Optional, Tuple
 
 from .label import *
@@ -96,14 +96,16 @@ def _(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
 
     if isinstance(goal, TimeGloballyPre):
         return TimeGloballyPre(clk, ty, goal.interval)
-    elif isinstance(goal, TimeGloballyFinal):
-        return TimeGloballyFinal(clk, ty, goal.interval)
+    elif isinstance(goal, TimeGloballyUpFinal):
+        return TimeGloballyUpFinal(clk, ty, goal.interval)
+    elif isinstance(goal, TimeGloballyIn):
+        return TimeGloballyIn(clk, ty, goal.interval)
     elif isinstance(goal, TimeFinallyPre):
         return TimeFinallyPre(clk, ty, goal.interval)
-    elif isinstance(goal, TimeFinallyFinal):
-        return TimeFinallyFinal(clk, ty, goal.interval)
-    elif isinstance(goal, TimeFinallyRestart):
-        return TimeFinallyRestart(clk, ty, goal.interval)
+    elif isinstance(goal, TimeFinallyUpFinal):
+        return TimeFinallyUpFinal(clk, ty, goal.interval)
+    elif isinstance(goal, TimeFinallyIn):
+        return TimeFinallyIn(clk, ty, goal.interval)
     else:
         raise Exception("wrong goal type")
 
@@ -130,10 +132,6 @@ def global_clk_subst(max_depth: int) -> Dict[int, VarSubstitution]:
         cur_depth += 1
 
     return clk_dict
-
-
-def global_clk():
-    return Real("g@clk")
 
 
 def fresh_clock(index: int) -> Real:

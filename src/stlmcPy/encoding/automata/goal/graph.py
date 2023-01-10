@@ -1,7 +1,9 @@
 from itertools import permutations, product
+from typing import FrozenSet
 
 from .clock import *
 from .label import *
+from .optimizer import ContradictionChecker
 from ....constraints.constraints import Real, Formula
 from ....graph.graph import *
 from ....util.printer import indented_str
@@ -325,5 +327,26 @@ def get_node_jumps(graph: TableauGraph) -> Set[Jump]:
     return jp_s
 
 
-def _is_final_label(label: Label):
-    return len(label.nxt) == 0
+class JumpContradictionChecker:
+    def __init__(self):
+        self._checker = ContradictionChecker()
+
+    def remove_contradictions(self, *jp_s) -> Set[Jump]:
+        jumps = set()
+        for jp in jp_s:
+            if self.is_contradiction(jp):
+                continue
+            jumps.add(jp)
+        return jumps
+
+    def is_contradiction(self, jp: Jump) -> bool:
+        return self._checker.is_contradiction(*self._translate(jp.get_ap()))
+
+    @classmethod
+    def _translate(cls, f_set: FrozenSet[Formula]) -> Set[Formula]:
+        r = set()
+        for f in f_set:
+            tf = translate_time_goal(f)
+            if tf is not None:
+                r.add(tf)
+        return r

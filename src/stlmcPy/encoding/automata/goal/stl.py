@@ -45,6 +45,7 @@ class StlGoal(Goal):
 
     def encode(self):
         graph: TableauGraph = TableauGraph(self._formula)
+        jp_checker = JumpContradictionChecker()
         self._hybrid_converter.clear()
         alg_s_t = time.time()
 
@@ -68,21 +69,27 @@ class StlGoal(Goal):
                 u_lb = graph.update_label_clock(lb, clk_subst)
 
                 jp_s = graph.make_jumps(f_node, f_n, u_lb)
+                jp_s = jp_checker.remove_contradictions(*jp_s)
                 for jp in jp_s:
                     graph.add_jump(jp)
 
-                # still not finished but already exists
                 # open the label to the node
                 graph.open_labels(f_n, u_lb)
             else:
-                # add a fresh node and open the label
-                graph.add_node(node)
-                graph.open_labels(node, lb)
-
+                # make node and remove contradicted jumps
                 jp_s = graph.make_jumps(f_node, node, lb)
-                for jp in jp_s:
-                    graph.add_jump(jp)
-                initial_nodes.append(node)
+                jp_s = jp_checker.remove_contradictions(*jp_s)
+
+                # add the state to the queue when it is reachable
+                if len(jp_s) > 0:
+                    # add a fresh node and open the label
+                    graph.add_node(node)
+                    graph.open_labels(node, lb)
+
+                    for jp in jp_s:
+                        graph.add_jump(jp)
+
+                    initial_nodes.append(node)
 
         waiting_list = [initial_nodes]
 
@@ -111,18 +118,25 @@ class StlGoal(Goal):
                             u_lb = graph.update_label_clock(e_lb, clk_subst)
 
                             jp_s = graph.make_jumps(p_n, f_n, u_lb)
+                            jp_s = jp_checker.remove_contradictions(*jp_s)
                             for jp in jp_s:
                                 graph.add_jump(jp)
 
                         else:
-                            # add a fresh node and open the label
-                            graph.add_node(n)
-                            graph.open_labels(n, e_lb)
-
+                            # make node and remove contradicted jumps
                             jp_s = graph.make_jumps(p_n, n, e_lb)
-                            for jp in jp_s:
-                                graph.add_jump(jp)
-                            new_queue.append(n)
+                            jp_s = jp_checker.remove_contradictions(*jp_s)
+
+                            # add the state to the queue when it is reachable
+                            if len(jp_s) > 0:
+                                # add a fresh node and open the label
+                                graph.add_node(n)
+                                graph.open_labels(n, e_lb)
+
+                                for jp in jp_s:
+                                    graph.add_jump(jp)
+
+                                new_queue.append(n)
 
             # if new states are generated, add it to the queue
             if len(new_queue) > 0:

@@ -1,6 +1,6 @@
-from typing import Set, List
+from typing import Optional
 
-from ....constraints.constraints import *
+from ....constraints.aux.operations import *
 from ....util.printer import indented_str
 
 
@@ -233,14 +233,42 @@ class TimeBound(Proposition):
         return hash("tb_f")
 
 
+class TimeFinal(Proposition):
+    def __init__(self, interval: Interval, temporal: str):
+        super().__init__()
+        self.interval = interval
+        self._name = "T_{{{},{}, final}}".format(temporal, hash(interval))
+
+    def __repr__(self):
+        return self._name
+
+    def __hash__(self):
+        return hash(self._name)
+
+
+class TimeGloballyUpIntersectFinal(TimeFinal):
+    def __init__(self, interval: Interval):
+        TimeFinal.__init__(self, interval, "[*]")
+
+
+class TimeFinallyUpIntersectFinal(TimeFinal):
+    def __init__(self, interval: Interval):
+        TimeFinal.__init__(self, interval, "<*>")
+
+
+class TimeGloballyUpFinal(TimeProposition):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
+        TimeProposition.__init__(self, clk, ty, interval, "[]", "final")
+
+
 class TimeGloballyPre(TimeProposition):
     def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "[]", "pre")
 
 
-class TimeGloballyFinal(TimeProposition):
+class TimeGloballyIn(TimeProposition):
     def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
-        TimeProposition.__init__(self, clk, ty, interval, "[]", "final")
+        TimeProposition.__init__(self, clk, ty, interval, "[]", "in")
 
 
 class TimeFinallyPre(TimeProposition):
@@ -248,11 +276,79 @@ class TimeFinallyPre(TimeProposition):
         TimeProposition.__init__(self, clk, ty, interval, "<>", "pre")
 
 
-class TimeFinallyFinal(TimeProposition):
+class TimeFinallyIn(TimeProposition):
+    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
+        TimeProposition.__init__(self, clk, ty, interval, "<>", "in")
+
+
+class TimeFinallyUpFinal(TimeProposition):
     def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
         TimeProposition.__init__(self, clk, ty, interval, "<>", "final")
 
 
-class TimeFinallyRestart(TimeProposition):
-    def __init__(self, clk: Real, ty: TypeVariable, interval: Interval):
-        TimeProposition.__init__(self, clk, ty, interval, "<>", "restart")
+@singledispatch
+def translate_time_goal(formula: Formula) -> Optional[Formula]:
+    return None
+
+
+@translate_time_goal.register(TimeGloballyPre)
+def _(formula: TimeGloballyPre) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock <= inf(formula.interval)
+
+
+@translate_time_goal.register(TimeGloballyIn)
+def _(formula: TimeGloballyIn) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock >= inf(formula.interval)
+
+
+@translate_time_goal.register(TimeGloballyUpIntersectFinal)
+def _(formula: TimeGloballyUpIntersectFinal) -> Optional[Formula]:
+    # ignore strict case
+    return RealVal("0.0") >= sup(formula.interval)
+
+
+@translate_time_goal.register(TimeGloballyUpFinal)
+def _(formula: TimeGloballyUpFinal) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock >= sup(formula.interval)
+
+
+@translate_time_goal.register(TimeFinallyPre)
+def _(formula: TimeFinallyPre) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock <= sup(formula.interval)
+
+
+@translate_time_goal.register(TimeFinallyIn)
+def _(formula: TimeFinallyIn) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock >= inf(formula.interval)
+
+
+@translate_time_goal.register(TimeFinallyUpIntersectFinal)
+def _(formula: TimeFinallyUpIntersectFinal) -> Optional[Formula]:
+    # ignore strict case
+    return RealVal("0.0") >= inf(formula.interval)
+
+
+@translate_time_goal.register(TimeFinallyUpFinal)
+def _(formula: TimeFinallyUpFinal) -> Optional[Formula]:
+    # ignore strict case
+    return formula.clock >= inf(formula.interval)
+
+
+@translate_time_goal.register(TimeBound)
+def _(formula: TimeBound) -> Optional[Formula]:
+    tb = global_clk() >= tau_max()
+    assert isinstance(tb, Formula)
+    return tb
+
+
+def tau_max():
+    return Real("tau_max")
+
+
+def global_clk():
+    return Real("g@clk")

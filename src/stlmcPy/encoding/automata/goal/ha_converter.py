@@ -1,9 +1,6 @@
-from .aux import translate_formula, tau_max
-from .clock import *
 from .graph import *
 from .label import TimeProposition
-from .optimizer import reduce
-from ....constraints.aux.operations import VarSubstitution, inf, sup, variable_equal
+from ....constraints.aux.operations import VarSubstitution
 from ....hybrid_automaton.hybrid_automaton import *
 
 
@@ -19,7 +16,7 @@ class HAConverter:
     def _get_clocks(cls, graph: TableauGraph) -> Set[Real]:
         clk_s = set()
         for n in graph.get_nodes():
-            clk_s.update(get_clock_pool(*n.goals))
+            clk_s.update(get_clock_pool(*n.cur_goals))
         return clk_s
 
     @classmethod
@@ -47,7 +44,7 @@ class HAConverter:
 
             # assert node in i_d
             # get non intermediate goals (i.e., invariants)
-            inv, r = self._translate_goals(*node.goals)
+            inv, r = self._translate_goals(*self._non_intermediate(node.cur_goals))
 
             # assert no reset exist
             assert len(r) <= 0
@@ -115,7 +112,7 @@ class HAConverter:
         guard_s, r_s = set(), set()
         for g in goals:
             if isinstance(g, TimeProposition) or isinstance(g, TimeBound):
-                t_f = tau_subst.substitute(_translate_time_goal(g))
+                t_f = tau_subst.substitute(translate_time_goal(g))
                 # time propositions go to pre-guard
                 guard_s.add(t_f)
                 # print("@{} :: {} --> {}".format(node.depth, f, t_f))
@@ -134,6 +131,10 @@ class HAConverter:
                 # ignore other cases
                 continue
         return guard_s, r_s
+
+    @classmethod
+    def _non_intermediate(cls, goals: Set[Formula]) -> Set[Formula]:
+        return set(filter(lambda x: isinstance(x, Proposition), goals))
 
     @classmethod
     def _contain_open(cls, *goals) -> bool:
@@ -172,45 +173,3 @@ class HAConverter:
             # remove all the others
             for tr in equiv[h]:
                 automata.remove_transition(tr)
-
-
-@singledispatch
-def _translate_time_goal(formula: Formula) -> Formula:
-    return formula
-
-
-@_translate_time_goal.register(TimeGloballyPre)
-def _(formula: TimeGloballyPre) -> Formula:
-    # ignore strict case
-    return formula.clock <= inf(formula.interval)
-
-
-@_translate_time_goal.register(TimeGloballyFinal)
-def _(formula: TimeGloballyFinal) -> Formula:
-    # ignore strict case
-    return formula.clock >= sup(formula.interval)
-
-
-@_translate_time_goal.register(TimeFinallyPre)
-def _(formula: TimeFinallyPre) -> Formula:
-    # ignore strict case
-    return formula.clock <= sup(formula.interval)
-
-
-@_translate_time_goal.register(TimeFinallyRestart)
-def _(formula: TimeFinallyRestart) -> Formula:
-    # ignore strict case
-    return formula.clock >= inf(formula.interval)
-
-
-@_translate_time_goal.register(TimeFinallyFinal)
-def _(formula: TimeFinallyFinal) -> Formula:
-    # ignore strict case
-    return formula.clock >= inf(formula.interval)
-
-
-@_translate_time_goal.register(TimeBound)
-def _(formula: TimeBound) -> Formula:
-    tb = global_clk() >= tau_max()
-    assert isinstance(tb, Formula)
-    return tb
