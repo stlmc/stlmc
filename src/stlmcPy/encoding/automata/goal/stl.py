@@ -53,7 +53,8 @@ class StlGoal(Goal):
         f_node = graph.first_node()
 
         # make initial labels
-        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(), set(), set(), 0)
+        init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(),
+                           set(), set(), set(), set(), 0)
         lb_s = expand(init_label)
 
         # make initial nodes
@@ -68,28 +69,25 @@ class StlGoal(Goal):
                 # update the label and type hint clocks
                 u_lb = graph.update_label_clock(lb, clk_subst)
 
-                jp_s = graph.make_jumps(f_node, f_n, u_lb)
-                jp_s = jp_checker.remove_contradictions(*jp_s)
-                for jp in jp_s:
-                    graph.add_jump(jp)
+                jp = graph.make_jump(f_node, f_n, u_lb)
+                if jp_checker.is_contradiction(jp):
+                    continue
 
-                # open the label to the node
-                graph.open_labels(f_n, u_lb)
+                graph.add_jump(jp)
+
             else:
-                # make node and remove contradicted jumps
-                jp_s = graph.make_jumps(f_node, node, lb)
-                jp_s = jp_checker.remove_contradictions(*jp_s)
+                # make node and check its contradiction
+                jp = graph.make_jump(f_node, node, lb)
+                if jp_checker.is_contradiction(jp):
+                    continue
 
                 # add the state to the queue when it is reachable
-                if len(jp_s) > 0:
-                    # add a fresh node and open the label
-                    graph.add_node(node)
-                    graph.open_labels(node, lb)
+                # add a fresh node and open the label
+                graph.add_node(node)
+                graph.open_labels(node, lb)
+                graph.add_jump(jp)
 
-                    for jp in jp_s:
-                        graph.add_jump(jp)
-
-                    initial_nodes.append(node)
+                initial_nodes.append(node)
 
         waiting_list = [initial_nodes]
 
@@ -117,26 +115,25 @@ class StlGoal(Goal):
                             # update the label and type hint clocks
                             u_lb = graph.update_label_clock(e_lb, clk_subst)
 
-                            jp_s = graph.make_jumps(p_n, f_n, u_lb)
-                            jp_s = jp_checker.remove_contradictions(*jp_s)
-                            for jp in jp_s:
-                                graph.add_jump(jp)
+                            jp = graph.make_jump(p_n, f_n, u_lb)
+                            if jp_checker.is_contradiction(jp):
+                                continue
+
+                            graph.add_jump(jp)
 
                         else:
-                            # make node and remove contradicted jumps
-                            jp_s = graph.make_jumps(p_n, n, e_lb)
-                            jp_s = jp_checker.remove_contradictions(*jp_s)
+                            # make node and check its contradiction
+                            jp = graph.make_jump(p_n, n, e_lb)
+                            if jp_checker.is_contradiction(jp):
+                                continue
 
+                            # add a fresh node and open the label
                             # add the state to the queue when it is reachable
-                            if len(jp_s) > 0:
-                                # add a fresh node and open the label
-                                graph.add_node(n)
-                                graph.open_labels(n, e_lb)
+                            graph.add_node(n)
+                            graph.open_labels(n, e_lb)
+                            graph.add_jump(jp)
 
-                                for jp in jp_s:
-                                    graph.add_jump(jp)
-
-                                new_queue.append(n)
+                            new_queue.append(n)
 
             # if new states are generated, add it to the queue
             if len(new_queue) > 0:
@@ -161,6 +158,12 @@ class StlGoal(Goal):
 
         print("after pp equivalence ({:.3f}s)".format(p_t_e - p_t_s))
         print_graph_info(graph)
+
+        s_t_s = time.time()
+        graph.remove_self_loop()
+        e_t_s = time.time()
+        print("after removing self loop ({:.3f}s)".format(e_t_s - s_t_s))
+        print(print_graph_info(graph))
 
         ha = self._hybrid_converter.convert(graph)
 

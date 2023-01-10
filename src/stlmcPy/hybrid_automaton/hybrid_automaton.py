@@ -30,7 +30,7 @@ class HybridAutomaton(Graph['Mode', 'Transition']):
     def remove_transition(self, transition: 'Transition'):
         self.remove_edge(transition)
 
-    def get_bound_bound(self) -> 'BoundBox':
+    def get_bound_box(self) -> 'BoundBox':
         bound_box = BoundBox()
         queue = self.init.copy()
         while len(queue) > 0:
@@ -191,6 +191,31 @@ class BoundBox:
 
         self.upper_closed: Dict[Real, RealVal] = dict()
         self.upper_opened: Dict[Real, RealVal] = dict()
+
+    def __repr__(self):
+        v_s = set()
+        v_s.update(self.lower_closed.keys())
+        v_s.update(self.lower_opened.keys())
+        v_s.update(self.upper_closed.keys())
+        v_s.update(self.upper_opened.keys())
+
+        bb_str = list()
+        for v in v_s:
+            v_str = "{}=".format(v)
+            if v in self.lower_closed:
+                v_str += "[{}".format(self.lower_closed[v])
+
+            if v in self.lower_opened:
+                v_str += "({}".format(self.lower_opened[v])
+
+            if v in self.upper_closed:
+                v_str += ",{}]".format(self.upper_closed[v])
+
+            if v in self.upper_opened:
+                v_str += ",{})".format(self.upper_opened[v])
+            bb_str.append(v_str)
+
+        return "\n".join(bb_str)
 
     def __getitem__(self, item):
         assert isinstance(item, Real)

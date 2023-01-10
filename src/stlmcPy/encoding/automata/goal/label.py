@@ -8,11 +8,12 @@ class Label:
     def __init__(self, st_cur: Set[Formula], tr_cur: Set[Formula],
                  st_nxt: Set[Formula], tr_nxt: Set[Formula],
                  assertion: Set[Formula], forbidden: Set[Formula],
-                 max_clock_index: int):
+                 inv_assertion: Set[Formula], inv_forbidden: Set[Formula], max_clock_index: int):
         # 0: state, 1: transition
         self._cur: List[Set[Formula]] = [st_cur, tr_cur]
         self._nxt: List[Set[Formula]] = [st_nxt, tr_nxt]
         self.assertion, self.forbidden = assertion, forbidden
+        self.inv_assertion, self.inv_forbidden = inv_assertion, inv_forbidden
         self._max_clock_index = max_clock_index
 
     @property
@@ -43,13 +44,9 @@ class Label:
     def max_clock_index(self) -> int:
         return self._max_clock_index
 
-    def __hash__(self):
-        return hash((frozenset(self.cur), frozenset(self.nxt)))
-
-    def __eq__(self, other):
-        return self.__hash__() == hash(other)
-
     def __repr__(self):
+        inv_as = "\n".join([indented_str(str(f), 6) for f in self.inv_assertion])
+        inv_af = "\n".join([indented_str(str(f), 6) for f in self.inv_forbidden])
         s, e = "Label (", ")"
         s_c = indented_str("cur:\n{}".format("\n".join([indented_str(str(c), 6) for c in self._cur[0]])), 4)
         s_n = indented_str("nxt:\n{}".format("\n".join([indented_str(str(n), 6) for n in self._nxt[0]])), 4)
@@ -58,9 +55,11 @@ class Label:
         r_n = indented_str("nxt:\n{}".format("\n".join([indented_str(str(n), 6) for n in self._nxt[1]])), 4)
         s_a = indented_str("assertion:\n{}".format("\n".join([indented_str(str(a), 6) for a in self.assertion])), 4)
         s_f = indented_str("forbidden:\n{}".format("\n".join([indented_str(str(a), 6) for a in self.forbidden])), 4)
+        inv_a = indented_str("invariant assertion:\n{}".format(inv_as), 4)
+        inv_f = indented_str("invariant forbidden:\n{}".format(inv_af), 4)
         cc = indented_str("clock counter:\n{}".format(indented_str(str(self._max_clock_index), 6)), 4)
         tr = indented_str("transition\n{}".format("\n".join([r_c, r_n])), 2)
-        return "\n".join([s, st, tr, s_a, s_f, cc, e])
+        return "\n".join([s, st, tr, s_a, s_f, inv_a, inv_f, cc, e])
 
 
 class TypeVariable:
@@ -73,6 +72,9 @@ class TypeVariable:
 
     def __hash__(self):
         return hash(self._name)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __repr__(self):
         return self._name
@@ -89,6 +91,9 @@ class OCProposition(Proposition):
 
     def __hash__(self):
         return hash(self._name)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __repr__(self):
         return self._name
@@ -118,6 +123,9 @@ class ClkAssn(Proposition):
     def __hash__(self):
         return hash(self._name)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def __repr__(self):
         return self._name
 
@@ -137,6 +145,9 @@ class Up(Formula):
     def __hash__(self):
         return hash(self._name)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def __repr__(self):
         return "(up{}^{{{},{}}}_{} {})".format(self.temporal, self.clock, self.type, self.interval, self.formula)
 
@@ -155,6 +166,9 @@ class UpDown(Formula):
 
     def __hash__(self):
         return hash(self._name)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __repr__(self):
         return "({} {})_{} {}".format(self._up, self._down, self.interval, self.formula)
@@ -232,6 +246,9 @@ class TimeBound(Proposition):
     def __hash__(self):
         return hash("tb_f")
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
 
 class TimeFinal(Proposition):
     def __init__(self, interval: Interval, temporal: str):
@@ -244,6 +261,9 @@ class TimeFinal(Proposition):
 
     def __hash__(self):
         return hash(self._name)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
 
 class TimeGloballyUpIntersectFinal(TimeFinal):

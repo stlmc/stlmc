@@ -39,7 +39,7 @@ def _make_model(ha: HybridAutomaton):
     jp_s = get_jumps(ha)
 
     var_str_list, map_str_list = _decl_var(v_set)
-    mode_str_list = [_make_loc(mode) for mode in ha.modes]
+    mode_str_list = [_make_loc(mode) for mode in ha.get_modes()]
     trans_str_list = [_make_jp(jp) for jp in jp_s]
 
     # make component
@@ -73,7 +73,7 @@ def _make_conf(ha: HybridAutomaton, config: Configuration):
     v_set = get_ha_vars(ha)
 
     init_state, final_state = list(), list()
-    for mode in ha.modes:
+    for mode in ha.get_modes():
         if mode.is_initial():
             init_state.append("loc({}_system) == mode_id_{}".format(ha_id, mode.id))
 
@@ -137,8 +137,8 @@ def _make_inv(mode: Mode):
 
 
 def _make_jp(jp: Transition):
-    src = "source=\"{}\"".format(jp.src.id)
-    trg = "target=\"{}\"".format(jp.trg.id)
+    src = "source=\"{}\"".format(jp.get_src().id)
+    trg = "target=\"{}\"".format(jp.get_trg().id)
     g, r = _make_guard(jp), _make_reset(jp)
     other = "<labelposition x=\"200\" y=\"200\" width=\"20\" height=\"10\"/>"
 

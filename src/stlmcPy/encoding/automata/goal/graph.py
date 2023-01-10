@@ -1,4 +1,3 @@
-from itertools import permutations, product
 from typing import FrozenSet
 
 from .clock import *
@@ -13,9 +12,10 @@ class TableauGraph(Graph['Node', 'Jump']):
     def __init__(self, formula: Formula):
         Graph.__init__(self)
         self._formula = formula
-        self._dummy_node = Node(set(), set())
+        self._dummy_node = Node(set(), set(), set())
         self._labels: Dict[Node, Set[Label]] = dict()
         self._matching_info: Dict[Node, ClockMatchingInfo] = dict()
+        self._node_indexing: Dict[FrozenSet[Proposition], List[Node]] = dict()
         self.add_node(self._dummy_node)
 
     def first_node(self):
@@ -33,8 +33,16 @@ class TableauGraph(Graph['Node', 'Jump']):
 
     def add_node(self, node: 'Node'):
         assert node not in self._matching_info
-        self._matching_info[node] = self._make_matching_info(node)
+        assert node not in self._node_indexing
+
         self.add_vertex(node)
+        self._matching_info[node] = self._make_matching_info(node)
+
+        indexing = self._make_indexing_info(node)
+        if indexing in self._node_indexing:
+            self._node_indexing[indexing].append(node)
+        else:
+            self._node_indexing[indexing] = [node]
 
     @classmethod
     def _make_matching_info(cls, node: 'Node') -> ClockMatchingInfo:
@@ -48,24 +56,26 @@ class TableauGraph(Graph['Node', 'Jump']):
         return matching_info
 
     @classmethod
-    def make_node(cls, label: Label, is_initial=False) -> 'Node':
-        return Node(label.state_cur, label.nxt, is_initial, len(label.nxt) <= 0)
+    def _make_indexing_info(cls, node: 'Node') -> FrozenSet[Proposition]:
+        indexing = set()
+        for f in node.cur_goals:
+            # time props
+            open_close = isinstance(f, OCProposition)
+            label_time_prop = isinstance(f, TimeProposition)
+            clk_time_assn = isinstance(f, ClkAssn)
+            if isinstance(f, Proposition):
+                if not (open_close or label_time_prop or clk_time_assn):
+                    indexing.add(f)
+        return frozenset(indexing)
 
     @classmethod
-    def make_jumps(cls, src: 'Node', trg: 'Node', label: Label) -> Set['Jump']:
-        oc_s = set(filter(lambda x: isinstance(x, OpenClose), label.transition_cur))
-        other = label.transition_cur.difference(oc_s)
+    def make_node(cls, label: Label, is_initial=False) -> 'Node':
+        return Node(label.state_cur, label.nxt, label.inv_assertion.difference(label.inv_forbidden),
+                    is_initial, len(label.nxt) <= 0)
 
-        type_s = list()
-        for oc in oc_s:
-            assert isinstance(oc, OpenClose)
-            type_s.append([Open(oc.var), Close(oc.var)])
-
-        jp_s = set()
-        for t in list(product(*type_s)):
-            jp_s.add(Jump(src, trg, other.union(t)))
-
-        return jp_s
+    @classmethod
+    def make_jump(cls, src: 'Node', trg: 'Node', label: Label) -> 'Jump':
+        return Jump(src, trg, label.transition_cur)
 
     def remove_node(self, node: 'Node'):
         self.remove_vertex(node)
@@ -79,6 +89,7 @@ class TableauGraph(Graph['Node', 'Jump']):
     def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'],
                                                Optional[ClockSubstitution]]:
         matching_info = self._make_matching_info(node)
+        indexing_info = self._make_indexing_info(node)
         node_goals = [node.cur_goals, node.nxt_goals]
 
         # split clock and others
@@ -87,7 +98,14 @@ class TableauGraph(Graph['Node', 'Jump']):
         node_other = [node_goals[0].difference(node_clk_s[0]),
                       node_goals[1].difference(node_clk_s[1])]
 
-        for n in self.get_nodes():
+        # if there is no indexing info, there is no matching node exists
+        if indexing_info not in self._node_indexing:
+            print("working")
+            return False, None, None
+
+        nodes = self._node_indexing[indexing_info]
+
+        for n in nodes:
             if n == self.first_node():
                 continue
 
@@ -215,6 +233,8 @@ class TableauGraph(Graph['Node', 'Jump']):
 
         assertion = {clk_subst.substitute(a) for a in label.assertion}
         forbidden = {clk_subst.substitute(f) for f in label.forbidden}
+        inv_assertion = {clk_subst.substitute(inv) for inv in label.inv_assertion}
+        inv_forbidden = {clk_subst.substitute(inv) for inv in label.inv_forbidden}
 
         # calc max clock index
         clk_s = get_clock_pool(*cur[0]).union(get_clock_pool(*cur[1]))
@@ -227,7 +247,7 @@ class TableauGraph(Graph['Node', 'Jump']):
             max_clock = max({clock_index(clk) for clk in clk_s})
 
         return Label(cur[0], cur[1], nxt[0], nxt[1],
-                     assertion, forbidden, max_clock)
+                     assertion, forbidden, inv_assertion, inv_forbidden, max_clock)
 
     @classmethod
     def update_type_hint_clocks(cls, clk_subst: ClockSubstitution, *ty_hints):
@@ -254,6 +274,12 @@ class TableauGraph(Graph['Node', 'Jump']):
         for s in unreachable:
             self.remove_node(s)
 
+    def remove_self_loop(self):
+        jp_s = get_node_jumps(self)
+        for jp in jp_s:
+            if jp.get_src() == jp.get_trg():
+                self.remove_edge(jp)
+
     def __repr__(self):
         node_str = "node:\n{}".format("\n".join([str(node) for node in self.vertices]))
         edges_str = "jump:\n{}".format("\n".join([str(jp) for jp in get_node_jumps(self)]))
@@ -261,9 +287,10 @@ class TableauGraph(Graph['Node', 'Jump']):
 
 
 class Node:
-    def __init__(self, cur_goals: Set[Formula], nxt_goals: Set[Formula], is_initial=False, is_final=False):
+    def __init__(self, cur_goals: Set[Formula], nxt_goals: Set[Formula], invariant: Set[Formula],
+                 is_initial=False, is_final=False):
         self.cur_goals, self.nxt_goals = cur_goals.copy(), nxt_goals.copy()
-        self._hash = hash((frozenset(self.cur_goals), frozenset(self.nxt_goals), is_initial, is_final))
+        self.invariant = invariant.copy()
 
         self._is_initial = is_initial
         self._is_final = is_final
@@ -276,13 +303,18 @@ class Node:
         for g in self.nxt_goals:
             goal_str[1].append(indented_str(str(g), 6))
 
+        inv_str = list()
+        for f in self.invariant:
+            inv_str.append(indented_str(str(f), 6))
+
         id_info = indented_str("id: {}".format(hash(self)), 4)
         is_initial = indented_str("initial: {}".format(self._is_initial), 4)
         is_final = indented_str("final: {}".format(self._is_final), 4)
+        inv = indented_str("inv: {}".format("\n".join(inv_str)), 4)
         c_goal_info = indented_str("cur goal:\n{}".format("\n".join(goal_str[0])), 4)
         n_goal_info = indented_str("nxt goal:\n{}".format("\n".join(goal_str[1])), 4)
 
-        return "( Node\n{}\n)".format("\n".join([id_info, is_initial, is_final, c_goal_info, n_goal_info]))
+        return "( Node\n{}\n)".format("\n".join([id_info, is_initial, is_final, inv, c_goal_info, n_goal_info]))
 
     def is_final(self):
         return self._is_final
@@ -330,14 +362,6 @@ def get_node_jumps(graph: TableauGraph) -> Set[Jump]:
 class JumpContradictionChecker:
     def __init__(self):
         self._checker = ContradictionChecker()
-
-    def remove_contradictions(self, *jp_s) -> Set[Jump]:
-        jumps = set()
-        for jp in jp_s:
-            if self.is_contradiction(jp):
-                continue
-            jumps.add(jp)
-        return jumps
 
     def is_contradiction(self, jp: Jump) -> bool:
         return self._checker.is_contradiction(*self._translate(jp.get_ap()))

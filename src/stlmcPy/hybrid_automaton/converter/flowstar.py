@@ -17,7 +17,7 @@ class FlowStarConverter(Converter):
         preprocessing(ha)
 
         modes_str_list = list()
-        for mode in ha.modes:
+        for mode in ha.get_modes():
             mode_str = "mode_{}{{\n".format(mode.id)
             mode_str += "nonpoly ode\n{"
             # mode_str += "poly ode 1\n{"
@@ -40,7 +40,8 @@ class FlowStarConverter(Converter):
         trans_str_list = list()
         jumps = get_jumps(ha)
         for transition in jumps:
-            t_str = "mode_{} -> mode_{}\n".format(transition.src.id, transition.trg.id)
+            assert isinstance(transition, Transition)
+            t_str = "mode_{} -> mode_{}\n".format(transition.get_src().id, transition.get_trg().id)
             t_str += "guard {\n"
             for guard in transition.guard:
                 _str = "{}\n".format(obj2fs(guard))
@@ -63,9 +64,9 @@ class FlowStarConverter(Converter):
 
         var_set = get_ha_vars(ha)
 
-        bound_box = ha.get_bound_bound()
-        initial_modes = set(filter(lambda x: x.is_initial(), ha.modes))
-        final_modes = set(filter(lambda x: x.is_final(), ha.modes))
+        bound_box = ha.get_bound_box()
+        initial_modes = set(filter(lambda x: x.is_initial(), ha.get_modes()))
+        final_modes = set(filter(lambda x: x.is_final(), ha.get_modes()))
 
         init_cond_str = ""
         for variable in var_set:
@@ -87,7 +88,7 @@ class FlowStarConverter(Converter):
         for final_mode in final_modes:
             terminal_modes_str.append("mode_{}".format(final_mode.id))
 
-        for m in ha.modes:
+        for m in ha.get_modes():
             real_name = "mode_{}".format(m.id)
             if real_name in terminal_modes_str:
                 unsafe_str += "{}{{}}\n".format(real_name)
@@ -145,12 +146,12 @@ def preprocessing(ha: HybridAutomaton):
     # add initial conditions for special variables: ff = 1
     ha.add_init(ff == one)
 
-    for mode in ha.modes:
+    for mode in ha.get_modes():
         mode.add_dynamic((ff, zero))
         mode.add_invariant(ff > zero)
 
     initials = set()
-    for mode in ha.modes:
+    for mode in ha.get_modes():
         if mode.is_initial():
             initials.add(mode)
             mode.set_as_non_initial()

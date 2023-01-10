@@ -15,20 +15,20 @@ class JuliaReachConverter:
 
     def convert(self, ha: HybridAutomaton):
         preprocessing(ha)
-        bound_box = ha.get_bound_bound()
+        bound_box = ha.get_bound_box()
         sys_var, v_decl = _prepare_var(ha)
         jp_s = get_jumps(ha)
 
         m_d = list()
         mode_id: Dict[Mode, int] = dict()
-        for idx, mode in enumerate(ha.modes):
+        for idx, mode in enumerate(ha.get_modes()):
             m_d.append(_mode_decl(mode, sys_var))
             mode_id[mode] = idx + 1
 
         ha_decl = _make_automaton(ha, jp_s, mode_id)
 
         m_s, t_m_s = list(), list()
-        for mode in ha.modes:
+        for mode in ha.get_modes():
             m_s.append(_make_mode(mode, sys_var))
             t_m_s.append(_mode_var(mode))
         m_decl = "\n".join(m_s)
@@ -102,7 +102,7 @@ def _analysis(alg, clustering, time_bound: float):
 
 def _make_init(ha: HybridAutomaton, sys_var: Dict[Variable, int], mode_id: Dict[Mode, int], bound_box: BoundBox):
     initials = set()
-    for mode in ha.modes:
+    for mode in ha.get_modes():
         if mode.is_initial():
             initials.add(mode)
 
@@ -134,7 +134,7 @@ def _make_init(ha: HybridAutomaton, sys_var: Dict[Variable, int], mode_id: Dict[
 
 def _unsafe_check(ha: HybridAutomaton, mode_id: Dict[Mode, int]):
     final_m_s = set()
-    for mode in ha.modes:
+    for mode in ha.get_modes():
         if mode.is_final():
             final_m_s.add(mode)
 
@@ -178,11 +178,13 @@ def _mode_decl(mode: Mode, sys_var: Dict[Variable, int]):
 
 
 def _make_automaton(ha: HybridAutomaton, jp_s, mode_id: Dict[Mode, int]):
-    decl = "automaton = GraphAutomaton({})".format(len(ha.modes))
+    decl = "automaton = GraphAutomaton({})".format(len(ha.get_modes()))
 
     jp_decl = list()
     for idx, jp in enumerate(jp_s):
-        jp_decl.append("add_transition!(automaton,{},{},{})".format(mode_id[jp.src], mode_id[jp.trg], idx + 1))
+        assert isinstance(jp, Transition)
+        jp_decl.append("add_transition!(automaton,{},{},{})".format(mode_id[jp.get_src()],
+                                                                    mode_id[jp.get_trg()], idx + 1))
     return "\n".join([decl, "\n".join(jp_decl)])
 
 

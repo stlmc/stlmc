@@ -19,15 +19,22 @@ class HAConverter:
             clk_s.update(get_clock_pool(*n.cur_goals))
         return clk_s
 
-    @classmethod
-    def _make_time_dynamics(cls, clock_vars: Set[Real]) -> Set[Tuple[Real, RealVal]]:
+    def _make_time_dynamics(self, clock_vars: Set[Real]) -> Set[Tuple[Real, RealVal]]:
         d_s, one = set(), RealVal("1.0")
         # add global clock
-        d_s.add((global_clk(), one))
+        d_s.add((self._global_clk(), one))
 
         for clk in clock_vars:
             d_s.add((clk, one))
         return d_s
+
+    def _make_initial_bounds(self, clock_vars: Set[Real]) -> Set[Formula]:
+        f_s = set()
+        zero = RealVal("0.0")
+        for clk in clock_vars:
+            f_s.add(clk == zero)
+        f_s.add(self._global_clk() == zero)
+        return f_s
 
     def convert(self, graph: TableauGraph):
         self.clear()
@@ -38,6 +45,10 @@ class HAConverter:
         # and make time dynamics (i.e., d{clk}/dt = 1)
         clk_s = self._get_clocks(graph)
         d_s = self._make_time_dynamics(clk_s)
+
+        # add initial bounds and conditions
+        b_s = self._make_initial_bounds(clk_s)
+        automata.add_init(*b_s)
 
         for index, node in enumerate(graph.get_nodes()):
             mode = self._make_mode(index + 1, node.is_initial(), node.is_final())
@@ -69,26 +80,22 @@ class HAConverter:
             s_m, t_m = self._node2mode_dict[s], self._node2mode_dict[t]
             j_inv, j_r = self._translate_goals(*jp.get_ap())
 
-            # add to invariant if it is a self loop
-            if s == t:
-                assert s_m == t_m
-                # no reset exist for self loop
-                assert len(j_r) <= 0
-                s_m.add_invariant(*j_inv)
-            else:
-                # if the jump has an open interval condition
-                # do not add this as a jump
-                if self._contain_open(*j_inv):
-                    continue
+            # there should be no self loop in the tableau
+            assert s != t
 
-                # ignore close conditions
-                j_inv = self._ignore_close(*j_inv)
+            # if the jump has an open interval condition
+            # do not add this as a jump
+            if self._contain_open(*j_inv):
+                continue
 
-                tr = Transition(s_m, t_m)
-                tr.add_guard(*j_inv)
-                tr.add_reset(*j_r)
+            # ignore close conditions
+            j_inv = self._ignore_close(*j_inv)
 
-                automata.add_transition(tr)
+            tr = Transition(s_m, t_m)
+            tr.add_guard(*j_inv)
+            tr.add_reset(*j_r)
+
+            automata.add_transition(tr)
 
         # self._remove_equiv_transitions(automata)
         return automata
@@ -124,6 +131,9 @@ class HAConverter:
             elif isinstance(g, ClkAssn):
                 # clock resets go to pre-guard resets
                 r_s.add((g.clock, g.value))
+            elif isinstance(g, OCProposition):
+                # ignore open close propositions
+                continue
             elif isinstance(g, Proposition):
                 # other propositions go to invariant
                 guard_s.add(g)
@@ -131,6 +141,10 @@ class HAConverter:
                 # ignore other cases
                 continue
         return guard_s, r_s
+
+    @classmethod
+    def _global_clk(cls):
+        return Real("gClk")
 
     @classmethod
     def _non_intermediate(cls, goals: Set[Formula]) -> Set[Formula]:

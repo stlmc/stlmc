@@ -1,4 +1,4 @@
-from typing import FrozenSet
+from itertools import product
 
 from .graph import *
 from .label import *
