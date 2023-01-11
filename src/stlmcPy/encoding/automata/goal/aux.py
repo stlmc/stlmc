@@ -22,10 +22,10 @@ def _expand(label: Label) -> List[Label]:
         return list()
 
     empty_label = Label(singleton(), label.transition_nxt, singleton(), singleton(),
-                        set(), set(), set(), set(), label.max_clock_index)
+                        set(), set(), set(), set(), set(), set(), label.max_clock_index)
     # formula queue, label, forbidden, assertion
     waiting_list = [(label.state_nxt.copy(), empty_label)]
-    a, f = label.assertion, label.forbidden
+    a, f = label.nxt_assertion, label.nxt_forbidden
 
     while len(waiting_list) > 0:
         p_c, p_l = waiting_list.pop(0)
@@ -55,7 +55,9 @@ def _invariant_checking(label: Label) -> bool:
 
 
 def _valid_label_checking(label: Label, assertion: Set[Formula], forbidden: Set[Formula]) -> bool:
-    return assertion.issubset(label.cur) and len(label.cur.intersection(forbidden)) <= 0
+    cur_checking = label.cur_assertion.issubset(label.cur) and len(label.cur.intersection(label.cur_forbidden)) <= 0
+    nxt_checking = assertion.issubset(label.cur) and len(label.cur.intersection(forbidden)) <= 0
+    return cur_checking and nxt_checking
 
 
 def _expand_label(formula: Formula, label: Label, p_label: Label) -> List[Tuple[FrozenSet[Formula], Label]]:
@@ -135,7 +137,7 @@ def _expand_proposition(formula: Proposition, label: Label,
 
     lb = Label(singleton(), singleton(),
                singleton(), singleton(),
-               set(), set(), set(), set(), label.max_clock_index)
+               set(), set(), set(), set(), set(), set(), label.max_clock_index)
 
     for post in post_cond:
         if not post(lb):
@@ -154,7 +156,7 @@ def _expand_untimed_globally_1(formula: GloballyFormula, label: Label,
         return None
 
     lb = Label(singleton(formula.child), singleton(), singleton(formula), singleton(),
-               set(), set(), set(), set(), label.max_clock_index)
+               set(), set(), set(), set(), set(), set(), label.max_clock_index)
 
     return lb
 
@@ -169,7 +171,7 @@ def _expand_untimed_globally_2(formula: GloballyFormula, label: Label,
         return None
 
     lb = Label(singleton(formula.child), singleton(), singleton(), singleton(TimeBound()),
-               set(), set(), set(), set(), label.max_clock_index)
+               set(), set(), set(), set(), set(), set(), label.max_clock_index)
 
     return lb
 
@@ -198,7 +200,7 @@ def _expand_timed_globally(formula: GloballyFormula, label: Label,
     f = GloballyUp(clk, ty, formula.local_time, formula.child)
 
     lb = Label(singleton(f), singleton(oc, r_clk), singleton(), singleton(),
-               set(), set(), set(), set(), clk_index)
+               set(), set(), set(), set(), set(), set(), clk_index)
 
     for post in post_cond:
         if not post(lb):
@@ -215,8 +217,10 @@ def _expand_globally_up_1(formula: GloballyUp, label: Label,
 
     t_pre = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula), singleton(t_pre),
+               set(), {formula.formula},
                {_infer_temporal_formula(formula)}, set(),
-               {t_pre}, set(), label.max_clock_index)
+               {t_pre}, set(),
+               label.max_clock_index)
 
     return lb
 
@@ -230,7 +234,10 @@ def _expand_globally_up_2(formula: GloballyUp, label: Label,
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     f = GloballyUpIntersect(formula.clock, formula.type, formula.interval, formula.formula)
     lb = Label(singleton(f, formula.formula), singleton(), singleton(), singleton(),
-               set(), set(), {inv}, set(), label.max_clock_index)
+               {formula.formula}, set(),
+               set(), set(),
+               {inv}, set(),
+               label.max_clock_index)
 
     return lb
 
@@ -243,7 +250,9 @@ def _expand_globally_up_3(formula: GloballyUp, label: Label,
 
     t_pre = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(t_pre, TimeBound()),
-               set(), set(), {t_pre}, set(), label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               {t_pre}, set(), label.max_clock_index)
 
     return lb
 
@@ -266,7 +275,10 @@ def _expand_globally_up_4(formula: GloballyUp, label: Label,
 
     f = GloballyUpDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f), singleton(t_pre, oc, r_clk),
-               set(), {_infer_temporal_formula(formula)}, {t_pre}, set(), clk_index)
+               set(), {formula.formula},
+               set(), {_infer_temporal_formula(formula)},
+               {t_pre}, set(),
+               clk_index)
 
     return lb
 
@@ -279,7 +291,9 @@ def _expand_globally_up_intersect_1(formula: GloballyUpIntersect, label: Label,
 
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
-               {_infer_temporal_formula(formula)}, set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               {_infer_temporal_formula(formula), formula.formula}, set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -292,7 +306,9 @@ def _expand_globally_up_intersect_2(formula: GloballyUpIntersect, label: Label,
 
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(TimeBound()),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -306,7 +322,9 @@ def _expand_globally_up_intersect_3(formula: GloballyUpIntersect, label: Label,
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     t_final = TimeGloballyUpIntersectFinal(formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(t_final),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -328,7 +346,9 @@ def _expand_globally_up_intersect_4(formula: GloballyUpIntersect, label: Label,
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     f = GloballyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f, formula.formula), singleton(oc, r_clk),
-               set(), {_infer_temporal_formula(formula)}, set(), {inv}, clk_index)
+               set(), set(),
+               {formula.formula}, {_infer_temporal_formula(formula)},
+               set(), {inv}, clk_index)
 
     return lb
 
@@ -341,7 +361,9 @@ def _expand_globally_up_down_1(formula: GloballyUpDown, label: Label,
 
     t_pre = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula), singleton(t_pre),
-               set(), set(), {t_pre}, set(), label.max_clock_index)
+               set(), {formula.formula},
+               set(), set(),
+               {t_pre}, set(), label.max_clock_index)
 
     return lb
 
@@ -356,7 +378,9 @@ def _expand_globally_up_down_2(formula: GloballyUpDown, label: Label,
     f = GloballyUpIntersectDown(formula.clock[0], formula.clock[1], formula.type[0], formula.type[1],
                                 formula.interval, formula.formula)
     lb = Label(singleton(formula.formula, f), singleton(), singleton(), singleton(),
-               set(), set(), {inv}, set(), label.max_clock_index)
+               {formula.formula}, set(),
+               set(), set(),
+               {inv}, set(), label.max_clock_index)
 
     return lb
 
@@ -369,7 +393,9 @@ def _expand_globally_up_down_3(formula: GloballyUpDown, label: Label,
 
     t_pre = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(t_pre, TimeBound()),
-               set(), set(), {t_pre}, set(), label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               {t_pre}, set(), label.max_clock_index)
 
     return lb
 
@@ -382,7 +408,9 @@ def _expand_globally_up_intersect_down_1(formula: GloballyUpIntersectDown, label
 
     inv = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               {formula.formula}, set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -396,7 +424,10 @@ def _expand_globally_up_intersect_down_2(formula: GloballyUpIntersectDown, label
     inv = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     t_final = TimeGloballyUpFinal(formula.clock[1], formula.type[1], formula.interval)
     lb = Label(singleton(formula.formula), singleton(), singleton(), singleton(t_final),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               set(), {inv},
+               label.max_clock_index)
 
     return lb
 
@@ -409,7 +440,10 @@ def _expand_globally_up_intersect_down_3(formula: GloballyUpIntersectDown, label
 
     inv = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(formula.formula), singleton(), singleton(), singleton(TimeBound()),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               set(), {inv},
+               label.max_clock_index)
 
     return lb
 
@@ -424,7 +458,7 @@ def _expand_untimed_finally_1(formula: FinallyFormula, label: Label,
         return None
 
     lb = Label(singleton(formula.child), singleton(), singleton(), singleton(),
-               set(), set(), set(), set(), label.max_clock_index)
+               set(), set(), set(), set(), set(), set(), label.max_clock_index)
 
     return lb
 
@@ -439,7 +473,7 @@ def _expand_untimed_finally_2(formula: FinallyFormula, label: Label,
         return None
 
     lb = Label(singleton(), singleton(), singleton(formula), singleton(),
-               set(), set(), set(), set(), label.max_clock_index)
+               set(), set(), set(), set(), set(), set(), label.max_clock_index)
 
     return lb
 
@@ -469,7 +503,7 @@ def _expand_timed_finally(formula: FinallyFormula, label: Label,
     f = FinallyUp(clk, ty, formula.local_time, formula.child)
 
     lb = Label(singleton(f), singleton(oc, r_clk), singleton(), singleton(),
-               set(), set(), set(), set(), clk_index)
+               set(), set(), set(), set(), set(), set(), clk_index)
 
     for post in post_cond:
         if not post(lb):
@@ -486,6 +520,7 @@ def _expand_finally_up_1(formula: FinallyUp, label: Label,
 
     t_pre = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula), singleton(t_pre),
+               set(), {formula.formula},
                {_infer_temporal_formula(formula)}, set(),
                {t_pre}, set(), label.max_clock_index)
 
@@ -501,7 +536,9 @@ def _expand_finally_up_2(formula: FinallyUp, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     f = FinallyUpIntersect(formula.clock, formula.type, formula.interval, formula.formula)
     lb = Label(singleton(f, formula.formula), singleton(), singleton(), singleton(),
-               set(), set(), {inv}, set(), label.max_clock_index)
+               {formula.formula}, set(),
+               set(), set(),
+               {inv}, set(), label.max_clock_index)
 
     return lb
 
@@ -525,6 +562,7 @@ def _expand_finally_up_3(formula: FinallyUp, label: Label,
     f = FinallyUpDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
 
     lb = Label(singleton(), singleton(), singleton(f), singleton(t_pre, oc, r_clk),
+               set(), {formula.formula},
                set(), {_infer_temporal_formula(formula)},
                {t_pre}, set(), clk_index)
 
@@ -539,7 +577,9 @@ def _expand_finally_up_intersect_1(formula: FinallyUpIntersect, label: Label,
 
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
-               {_infer_temporal_formula(formula)}, set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               {_infer_temporal_formula(formula), formula.formula}, set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -561,6 +601,7 @@ def _expand_finally_up_intersect_2(formula: FinallyUpIntersect, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     t_restart = TimeFinallyIn(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(f), singleton(t_restart, r_clk, oc),
+               set(), set(),
                {_infer_temporal_formula(formula)}, {formula.formula},
                set(), {inv}, label.max_clock_index)
 
@@ -576,7 +617,7 @@ def _expand_finally_up_intersect_3(formula: FinallyUpIntersect, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     t_final = TimeFinallyUpIntersectFinal(formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(t_final),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(), set(), set(), set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -600,7 +641,9 @@ def _expand_finally_up_intersect_4(formula: FinallyUpIntersect, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     f = FinallyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f, formula.formula), singleton(r_clk, oc),
-               set(), {_infer_temporal_formula(formula)}, set(), {inv}, clk_index)
+               set(), set(),
+               {formula.formula}, {_infer_temporal_formula(formula)},
+               set(), {inv}, clk_index)
 
     return lb
 
@@ -634,6 +677,7 @@ def _expand_finally_up_intersect_5(formula: FinallyUpIntersect, label: Label,
 
     lb = Label(singleton(), singleton(),
                singleton(f), singleton(r_clk, r_clk2, oc, oc2, t_restart),
+               set(), set(),
                set(), {_infer_temporal_formula(formula), formula.formula},
                set(), {inv}, clk_index)
 
@@ -649,7 +693,9 @@ def _expand_finally_up_down_1(formula: FinallyUpDown, label: Label,
     t_pre = TimeFinallyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(),
                singleton(formula), singleton(t_pre),
-               set(), set(), {t_pre}, set(), label.max_clock_index)
+               set(), {formula.formula},
+               set(), set(),
+               {t_pre}, set(), label.max_clock_index)
 
     return lb
 
@@ -667,7 +713,9 @@ def _expand_finally_up_down_2(formula: FinallyUpDown, label: Label,
 
     lb = Label(singleton(f, formula.formula), singleton(),
                singleton(), singleton(),
-               set(), set(), {inv}, set(), label.max_clock_index)
+               {formula.formula}, set(),
+               set(), set(),
+               {inv}, set(), label.max_clock_index)
 
     return lb
 
@@ -681,7 +729,9 @@ def _expand_finally_up_intersect_down_1(formula: FinallyUpIntersectDown, label: 
     inv = TimeFinallyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(),
                singleton(formula, formula.formula), singleton(),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               {formula.formula}, set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -708,7 +758,9 @@ def _expand_finally_up_intersect_down_2(formula: FinallyUpIntersectDown, label: 
     t_restart = TimeFinallyIn(clk1, ty1, interval)
     lb = Label(singleton(), singleton(),
                singleton(f), singleton(r_clk1, r_clk2, oc, t_restart),
-               set(), {formula.formula}, set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), {formula.formula},
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -722,7 +774,9 @@ def _expand_finally_up_intersect_down_3(formula: FinallyUpIntersectDown, label: 
     inv = TimeFinallyPre(formula.clock[0], formula.type[0], formula.interval)
     final = TimeFinallyUpFinal(formula.clock[1], formula.type[1], formula.interval)
     lb = Label(singleton(), singleton(), singleton(), singleton(final),
-               set(), set(), set(), {inv}, label.max_clock_index)
+               set(), set(),
+               set(), set(),
+               set(), {inv}, label.max_clock_index)
 
     return lb
 
@@ -736,6 +790,7 @@ def _expand_until_formula_1(formula: UntilFormula, label: Label,
 
     lb = Label(singleton(formula.left), singleton(),
                singleton(formula), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -750,6 +805,7 @@ def _expand_until_formula_2(formula: UntilFormula, label: Label,
 
     lb = Label(singleton(formula.left, formula.right), singleton(),
                singleton(), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -764,6 +820,7 @@ def _expand_release_formula_1(formula: ReleaseFormula, label: Label,
 
     lb = Label(singleton(formula.left), singleton(),
                singleton(), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -778,6 +835,7 @@ def _expand_release_formula_2(formula: ReleaseFormula, label: Label,
 
     lb = Label(singleton(formula.right), singleton(),
                singleton(), singleton(TimeBound()),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -792,6 +850,7 @@ def _expand_release_formula_3(formula: ReleaseFormula, label: Label,
 
     lb = Label(singleton(formula.right), singleton(),
                singleton(formula), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -806,6 +865,7 @@ def _expand_and(formula: And, label: Label,
     lf, rf = formula.children[0], formula.children[1]
     lb = Label(singleton(lf, rf), singleton(),
                singleton(), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -819,6 +879,7 @@ def _expand_or_1(formula: Or, label: Label,
     assert len(formula.children) == 2
     lb = Label(singleton(formula.children[0]), singleton(),
                singleton(), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -832,6 +893,7 @@ def _expand_or_2(formula: Or, label: Label,
     assert len(formula.children) == 2
     lb = Label(singleton(formula.children[1]), singleton(),
                singleton(), singleton(),
+               set(), set(),
                set(), set(), set(), set(), label.max_clock_index)
 
     return lb
@@ -859,8 +921,10 @@ def update_labels(formula: Formula, labels: List[Tuple[FrozenSet[Formula], Label
                                    label.transition_cur.union(lb.transition_cur),
                                    label.state_nxt.union(lb.state_nxt),
                                    label.transition_nxt.union(lb.transition_nxt),
-                                   label.assertion.union(lb.assertion),
-                                   label.forbidden.union(lb.forbidden),
+                                   label.cur_assertion.union(lb.cur_assertion),
+                                   label.cur_forbidden.union(lb.cur_forbidden),
+                                   label.nxt_assertion.union(lb.nxt_assertion),
+                                   label.nxt_forbidden.union(lb.nxt_forbidden),
                                    label.inv_assertion.union(lb.inv_assertion),
                                    label.inv_forbidden.union(lb.inv_forbidden),
                                    max(lb.max_clock_index, label.max_clock_index))))

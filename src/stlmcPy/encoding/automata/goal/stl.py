@@ -54,7 +54,7 @@ class StlGoal(Goal):
 
         # make initial labels
         init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(),
-                           set(), set(), set(), set(), 0)
+                           set(), set(), set(), set(), set(), set(), 0)
         lb_s = expand(init_label)
 
         # make initial nodes

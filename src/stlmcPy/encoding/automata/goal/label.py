@@ -7,12 +7,14 @@ from ....util.printer import indented_str
 class Label:
     def __init__(self, st_cur: Set[Formula], tr_cur: Set[Formula],
                  st_nxt: Set[Formula], tr_nxt: Set[Formula],
-                 assertion: Set[Formula], forbidden: Set[Formula],
+                 cur_assertion: Set[Formula], cur_forbidden: Set[Formula],
+                 nxt_assertion: Set[Formula], nxt_forbidden: Set[Formula],
                  inv_assertion: Set[Formula], inv_forbidden: Set[Formula], max_clock_index: int):
         # 0: state, 1: transition
         self._cur: List[Set[Formula]] = [st_cur, tr_cur]
         self._nxt: List[Set[Formula]] = [st_nxt, tr_nxt]
-        self.assertion, self.forbidden = assertion, forbidden
+        self.cur_assertion, self.cur_forbidden = cur_assertion, cur_forbidden
+        self.nxt_assertion, self.nxt_forbidden = nxt_assertion, nxt_forbidden
         self.inv_assertion, self.inv_forbidden = inv_assertion, inv_forbidden
         self._max_clock_index = max_clock_index
 
@@ -45,6 +47,10 @@ class Label:
         return self._max_clock_index
 
     def __repr__(self):
+        c_as = "\n".join([indented_str(str(a), 6) for a in self.cur_assertion])
+        c_fs = "\n".join([indented_str(str(a), 6) for a in self.cur_forbidden])
+        n_as = "\n".join([indented_str(str(a), 6) for a in self.nxt_assertion])
+        n_fs = "\n".join([indented_str(str(a), 6) for a in self.nxt_forbidden])
         inv_as = "\n".join([indented_str(str(f), 6) for f in self.inv_assertion])
         inv_af = "\n".join([indented_str(str(f), 6) for f in self.inv_forbidden])
         s, e = "Label (", ")"
@@ -53,13 +59,15 @@ class Label:
         st = indented_str("state\n{}".format("\n".join([s_c, s_n])), 2)
         r_c = indented_str("cur:\n{}".format("\n".join([indented_str(str(c), 6) for c in self._cur[1]])), 4)
         r_n = indented_str("nxt:\n{}".format("\n".join([indented_str(str(n), 6) for n in self._nxt[1]])), 4)
-        s_a = indented_str("assertion:\n{}".format("\n".join([indented_str(str(a), 6) for a in self.assertion])), 4)
-        s_f = indented_str("forbidden:\n{}".format("\n".join([indented_str(str(a), 6) for a in self.forbidden])), 4)
+        cs_a = indented_str("cur assertion:\n{}".format(c_as), 4)
+        cs_f = indented_str("cur forbidden:\n{}".format(c_fs), 4)
+        ns_a = indented_str("nxt assertion:\n{}".format(n_as), 4)
+        ns_f = indented_str("nxt forbidden:\n{}".format(n_fs), 4)
         inv_a = indented_str("invariant assertion:\n{}".format(inv_as), 4)
         inv_f = indented_str("invariant forbidden:\n{}".format(inv_af), 4)
         cc = indented_str("clock counter:\n{}".format(indented_str(str(self._max_clock_index), 6)), 4)
         tr = indented_str("transition\n{}".format("\n".join([r_c, r_n])), 2)
-        return "\n".join([s, st, tr, s_a, s_f, inv_a, inv_f, cc, e])
+        return "\n".join([s, st, tr, cs_a, cs_f, ns_a, ns_f, inv_a, inv_f, cc, e])
 
 
 class TypeVariable:

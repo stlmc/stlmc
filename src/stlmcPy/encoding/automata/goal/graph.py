@@ -100,7 +100,6 @@ class TableauGraph(Graph['Node', 'Jump']):
 
         # if there is no indexing info, there is no matching node exists
         if indexing_info not in self._node_indexing:
-            print("working")
             return False, None, None
 
         nodes = self._node_indexing[indexing_info]
@@ -231,8 +230,10 @@ class TableauGraph(Graph['Node', 'Jump']):
         nxt = [{clk_subst.substitute(f) for f in label.state_nxt},
                {clk_subst.substitute(f) for f in label.transition_nxt}]
 
-        assertion = {clk_subst.substitute(a) for a in label.assertion}
-        forbidden = {clk_subst.substitute(f) for f in label.forbidden}
+        cur_assertion = {clk_subst.substitute(a) for a in label.cur_assertion}
+        cur_forbidden = {clk_subst.substitute(f) for f in label.cur_forbidden}
+        nxt_assertion = {clk_subst.substitute(a) for a in label.nxt_assertion}
+        nxt_forbidden = {clk_subst.substitute(f) for f in label.nxt_forbidden}
         inv_assertion = {clk_subst.substitute(inv) for inv in label.inv_assertion}
         inv_forbidden = {clk_subst.substitute(inv) for inv in label.inv_forbidden}
 
@@ -247,7 +248,8 @@ class TableauGraph(Graph['Node', 'Jump']):
             max_clock = max({clock_index(clk) for clk in clk_s})
 
         return Label(cur[0], cur[1], nxt[0], nxt[1],
-                     assertion, forbidden, inv_assertion, inv_forbidden, max_clock)
+                     cur_assertion, cur_forbidden, nxt_assertion, nxt_forbidden,
+                     inv_assertion, inv_forbidden, max_clock)
 
     @classmethod
     def update_type_hint_clocks(cls, clk_subst: ClockSubstitution, *ty_hints):
@@ -310,7 +312,7 @@ class Node:
         id_info = indented_str("id: {}".format(hash(self)), 4)
         is_initial = indented_str("initial: {}".format(self._is_initial), 4)
         is_final = indented_str("final: {}".format(self._is_final), 4)
-        inv = indented_str("inv: {}".format("\n".join(inv_str)), 4)
+        inv = indented_str("inv:\n{}".format("\n".join(inv_str)), 4)
         c_goal_info = indented_str("cur goal:\n{}".format("\n".join(goal_str[0])), 4)
         n_goal_info = indented_str("nxt goal:\n{}".format("\n".join(goal_str[1])), 4)
 
