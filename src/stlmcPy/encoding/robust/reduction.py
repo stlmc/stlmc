@@ -40,54 +40,35 @@ def _(f: GloballyFormula):
 
 @remove_binary.register(UntilFormula)
 def _(f: UntilFormula):
-    universeInterval = Interval(True, RealVal("0.0"), RealVal('inf'), False)
-    if f.local_time == universeInterval:
-        return f
+    l, r = remove_binary(f.left), remove_binary(f.right)
 
-    left_interval = f.local_time.left_end
-    left_time = f.local_time.left
-    right_interval = f.local_time.right_end
-    right_time = f.local_time.right
+    u = Interval(True, RealVal("0.0"), RealVal('inf'), False)
+    if f.local_time == u:
+        return UntilFormula(u, u, l, r)
 
-    right = remove_binary(f.right)
-    left = remove_binary(f.left)
+    i0 = f.local_time
+    i1 = Interval(True, i0.left, i0.right, True)
+    i2 = Interval(True, RealVal("0.0"), i0.left, True)
 
-    right_formula = FinallyFormula(Interval(left_interval, left_time, right_time, right_interval), f.global_time, right)
+    f1 = FinallyFormula(i1, u, r)
+    f2 = GloballyFormula(i2, u, UntilFormula(u, u, l, r))
 
-    if left_interval:
-        left_formula_1 = GloballyFormula(Interval(False, RealVal("0"), left_time, False), f.global_time, left)
-        subFormula = Or([right, And([left, UntilFormula(universeInterval, f.global_time, left, right)])])
-        left_formula_2 = GloballyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return And([And([left_formula_1, left_formula_2]), right_formula])
-    else:
-        subFormula = And([left, UntilFormula(universeInterval, f.global_time, left, right)])
-        final_left = GloballyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return And([final_left, right_formula])
+    return And([f1, f2])
 
 
 @remove_binary.register(ReleaseFormula)
 def _(f: ReleaseFormula):
-    universeInterval = Interval(True, RealVal("0.0"), RealVal('inf'), False)
-    if f.local_time == universeInterval:
-        return f
+    l, r = remove_binary(f.left), remove_binary(f.right)
 
-    left_interval = f.local_time.left_end
-    left_time = f.local_time.left
-    right_interval = f.local_time.right_end
-    right_time = f.local_time.right
+    u = Interval(True, RealVal("0.0"), RealVal('inf'), False)
+    if f.local_time == u:
+        return ReleaseFormula(u, u, l, r)
 
-    right = remove_binary(f.right)
-    left = remove_binary(f.left)
+    i0 = f.local_time
+    i1 = Interval(True, i0.left, i0.right, True)
+    i2 = Interval(True, RealVal("0.0"), i0.left, True)
 
-    right_formula = GloballyFormula(Interval(left_interval, left_time, right_time, right_interval), f.global_time,
-                                    right)
+    f1 = GloballyFormula(i1, u, r)
+    f2 = FinallyFormula(i2, u, ReleaseFormula(u, u, l, r))
 
-    if left_interval:
-        left_formula_1 = FinallyFormula(Interval(False, RealVal("0"), left_time, False), f.global_time, left)
-        subFormula = And([right, Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])])
-        left_formula_2 = FinallyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return Or([And([left_formula_1, left_formula_2]), right_formula])
-    else:
-        subFormula = Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])
-        final_left = FinallyFormula(Interval(False, RealVal("0"), left_time, True), f.global_time, subFormula)
-        return Or([final_left, right_formula])
+    return And([f1, f2])

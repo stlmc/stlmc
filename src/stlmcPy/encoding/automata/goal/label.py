@@ -123,7 +123,7 @@ class OpenClose(OCProposition):
 
 
 class ClkAssn(Proposition):
-    def __init__(self, clock: Real, value: RealVal):
+    def __init__(self, clock: Real, value: Union[RealVal, Real]):
         super().__init__()
         self.clock, self.value = clock, value
         self._name = "{} := {}".format(clock, value)

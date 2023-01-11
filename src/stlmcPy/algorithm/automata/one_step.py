@@ -3,6 +3,7 @@ import pickle
 from ..algorithm import Algorithm
 from ...hybrid_automaton.converter.flowstar import FlowStarConverter
 from ...hybrid_automaton.converter.juliareach import JuliaReachConverter
+from ...hybrid_automaton.converter.spaceex import SpaceExConverter
 from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
@@ -30,12 +31,21 @@ class OneStepAlgorithm(Algorithm):
         print_ha_size("stl", g_a)
         print_ha_size("model", m_a)
         print_ha_size("composed", automata)
+
+        # flowstar
         # fsc = FlowStarConverter(self._config)
         # fsc.convert(automata)
         # fsc.write("test")
-        jlc = JuliaReachConverter(self._config)
-        jlc.convert(automata)
-        jlc.write("test")
+
+        # juliareach
+        # jlc = JuliaReachConverter(self._config)
+        # jlc.convert(automata)
+        # jlc.write("test")
+
+        # spaceex
+        # sec = SpaceExConverter(self._config)
+        # sec.convert(automata)
+        # sec.write("test")
 
         # r, m = p_runner.check_sat()
         # if r == SMTSolver.sat:

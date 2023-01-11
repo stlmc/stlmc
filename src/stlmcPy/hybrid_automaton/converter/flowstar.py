@@ -63,6 +63,7 @@ class FlowStarConverter(Converter):
         trans_str = "jumps {{\n {} \n }}\n".format("\n".join(trans_str_list))
 
         var_set = get_ha_vars(ha)
+        print(var_set)
 
         bound_box = ha.get_bound_box()
         initial_modes = set(filter(lambda x: x.is_initial(), ha.get_modes()))
@@ -141,7 +142,7 @@ class FlowStarConverter(Converter):
 def preprocessing(ha: HybridAutomaton):
     ff = Real("ff")
     zero, one = RealVal("0"), RealVal("1")
-    tau_zero = Real("tau_0")
+    first_clk = Real("clk1")
 
     # add initial conditions for special variables: ff = 1
     ha.add_init(ff == one)
@@ -158,12 +159,13 @@ def preprocessing(ha: HybridAutomaton):
 
     initial_mode = Mode(0)
     initial_mode.set_as_initial()
-    initial_mode.add_invariant(tau_zero <= zero)
+    initial_mode.add_invariant(first_clk <= zero)
     ha.add_mode(initial_mode)
 
     for mode in initials:
-        jp = make_jump(initial_mode, mode)
-        jp.add_guard(tau_zero >= zero)
+        tr = Transition(initial_mode, mode)
+        tr.add_guard(first_clk >= zero)
+        ha.add_transition(tr)
 
     remove_equal_jumps(ha)
 

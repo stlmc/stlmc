@@ -31,7 +31,8 @@ def _expand(label: Label) -> List[Label]:
         p_c, p_l = waiting_list.pop(0)
         if len(p_c) <= 0:
             if _invariant_checking(p_l) and _valid_label_checking(p_l, a, f):
-                labels.append(p_l)
+                if _check_assertion_forbidden(p_l):
+                    labels.append(p_l)
             continue
 
         p_f = p_c.pop()
@@ -178,7 +179,7 @@ def _expand_untimed_globally_2(formula: GloballyFormula, label: Label,
 
 # []_I p --> up[]_I p
 def _expand_timed_globally(formula: GloballyFormula, label: Label,
-                             p_label: Label) -> Optional[Label]:
+                           p_label: Label) -> Optional[Label]:
     if not isinstance(formula, GloballyFormula):
         return None
 
@@ -234,7 +235,7 @@ def _expand_globally_up_2(formula: GloballyUp, label: Label,
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     f = GloballyUpIntersect(formula.clock, formula.type, formula.interval, formula.formula)
     lb = Label(singleton(f, formula.formula), singleton(), singleton(), singleton(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), set(),
                {inv}, set(),
                label.max_clock_index)
@@ -292,7 +293,7 @@ def _expand_globally_up_intersect_1(formula: GloballyUpIntersect, label: Label,
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
                set(), set(),
-               {_infer_temporal_formula(formula), formula.formula}, set(),
+               {_infer_temporal_formula(formula)}, set(),
                set(), {inv}, label.max_clock_index)
 
     return lb
@@ -347,7 +348,7 @@ def _expand_globally_up_intersect_4(formula: GloballyUpIntersect, label: Label,
     f = GloballyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f, formula.formula), singleton(oc, r_clk),
                set(), set(),
-               {formula.formula}, {_infer_temporal_formula(formula)},
+               set(), {_infer_temporal_formula(formula)},
                set(), {inv}, clk_index)
 
     return lb
@@ -378,7 +379,7 @@ def _expand_globally_up_down_2(formula: GloballyUpDown, label: Label,
     f = GloballyUpIntersectDown(formula.clock[0], formula.clock[1], formula.type[0], formula.type[1],
                                 formula.interval, formula.formula)
     lb = Label(singleton(formula.formula, f), singleton(), singleton(), singleton(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), set(),
                {inv}, set(), label.max_clock_index)
 
@@ -409,7 +410,7 @@ def _expand_globally_up_intersect_down_1(formula: GloballyUpIntersectDown, label
     inv = TimeGloballyPre(formula.clock[0], formula.type[0], formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
                set(), set(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), {inv}, label.max_clock_index)
 
     return lb
@@ -480,7 +481,7 @@ def _expand_untimed_finally_2(formula: FinallyFormula, label: Label,
 
 # <>_I p --> up<>_I p
 def _expand_timed_finally(formula: FinallyFormula, label: Label,
-                            p_label: Label) -> Optional[Label]:
+                          p_label: Label) -> Optional[Label]:
     if not isinstance(formula, FinallyFormula):
         return None
 
@@ -536,7 +537,7 @@ def _expand_finally_up_2(formula: FinallyUp, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     f = FinallyUpIntersect(formula.clock, formula.type, formula.interval, formula.formula)
     lb = Label(singleton(f, formula.formula), singleton(), singleton(), singleton(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), set(),
                {inv}, set(), label.max_clock_index)
 
@@ -578,7 +579,7 @@ def _expand_finally_up_intersect_1(formula: FinallyUpIntersect, label: Label,
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     lb = Label(singleton(), singleton(), singleton(formula, formula.formula), singleton(),
                set(), set(),
-               {_infer_temporal_formula(formula), formula.formula}, set(),
+               {_infer_temporal_formula(formula)}, set(),
                set(), {inv}, label.max_clock_index)
 
     return lb
@@ -642,7 +643,7 @@ def _expand_finally_up_intersect_4(formula: FinallyUpIntersect, label: Label,
     f = FinallyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f, formula.formula), singleton(r_clk, oc),
                set(), set(),
-               {formula.formula}, {_infer_temporal_formula(formula)},
+               set(), {_infer_temporal_formula(formula)},
                set(), {inv}, clk_index)
 
     return lb
@@ -713,7 +714,7 @@ def _expand_finally_up_down_2(formula: FinallyUpDown, label: Label,
 
     lb = Label(singleton(f, formula.formula), singleton(),
                singleton(), singleton(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), set(),
                {inv}, set(), label.max_clock_index)
 
@@ -730,7 +731,7 @@ def _expand_finally_up_intersect_down_1(formula: FinallyUpIntersectDown, label: 
     lb = Label(singleton(), singleton(),
                singleton(formula, formula.formula), singleton(),
                set(), set(),
-               {formula.formula}, set(),
+               set(), set(),
                set(), {inv}, label.max_clock_index)
 
     return lb
@@ -912,23 +913,37 @@ def update_waiting_list(formula: Formula, labels: List[Tuple[FrozenSet[Formula],
 def update_labels(formula: Formula, labels: List[Tuple[FrozenSet[Formula], Label]],
                   label: Label) -> List[Tuple[Set[Formula], Label]]:
     lb_s = list()
+    if not _check_assertion_forbidden(label):
+        return list()
+
     for c, lb in labels:
         # check next goals consistency for efficient label generation
         if _check_next_inconsistency(label, lb):
             continue
 
-        lb_s.append((set(c), Label(label.state_cur.union({formula}),
-                                   label.transition_cur.union(lb.transition_cur),
-                                   label.state_nxt.union(lb.state_nxt),
-                                   label.transition_nxt.union(lb.transition_nxt),
-                                   label.cur_assertion.union(lb.cur_assertion),
-                                   label.cur_forbidden.union(lb.cur_forbidden),
-                                   label.nxt_assertion.union(lb.nxt_assertion),
-                                   label.nxt_forbidden.union(lb.nxt_forbidden),
-                                   label.inv_assertion.union(lb.inv_assertion),
-                                   label.inv_forbidden.union(lb.inv_forbidden),
-                                   max(lb.max_clock_index, label.max_clock_index))))
+        new_lb = Label(label.state_cur.union({formula}),
+                       label.transition_cur.union(lb.transition_cur),
+                       label.state_nxt.union(lb.state_nxt),
+                       label.transition_nxt.union(lb.transition_nxt),
+                       label.cur_assertion.union(lb.cur_assertion),
+                       label.cur_forbidden.union(lb.cur_forbidden),
+                       label.nxt_assertion.union(lb.nxt_assertion),
+                       label.nxt_forbidden.union(lb.nxt_forbidden),
+                       label.inv_assertion.union(lb.inv_assertion),
+                       label.inv_forbidden.union(lb.inv_forbidden),
+                       max(lb.max_clock_index, label.max_clock_index))
+
+        if _check_assertion_forbidden(new_lb):
+            lb_s.append((set(c), new_lb))
+
     return lb_s
+
+
+# true if the label is consistent
+def _check_assertion_forbidden(label: Label) -> bool:
+    a = label.cur_assertion.issubset(label.cur)
+    f = len(label.cur.intersection(label.cur_forbidden)) <= 0
+    return a and f
 
 
 # true if the next goals of the two labels are inconsistent

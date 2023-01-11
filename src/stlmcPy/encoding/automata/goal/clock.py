@@ -15,6 +15,12 @@ class ClockSubstitution:
     def substitute(self, formula: Formula):
         return _clock_substitution(formula, self._clock_subst_dict)
 
+    def clock_assn(self) -> Set[ClkAssn]:
+        clk_assn = set()
+        for clk in self._clock_subst_dict:
+            clk_assn.add(ClkAssn(clk, self._clock_subst_dict[clk]))
+        return clk_assn
+
     def __repr__(self):
         strings = ["ClockSubstitution"]
         for src in self._clock_subst_dict:
@@ -113,12 +119,14 @@ def _(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
 @_clock_substitution.register(ClkAssn)
 def _(goal: ClkAssn, clock_subst_dict: Dict[Real, Real]):
     is_clk = goal.clock in clock_subst_dict
+    is_rv = goal.value in clock_subst_dict
 
     clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
+    v = clock_subst_dict[goal.value] if is_rv else goal.value
     if isinstance(goal, ClkReset):
         return ClkReset(clk)
     elif isinstance(goal, ClkAssn):
-        return ClkAssn(clk, goal.value)
+        return ClkAssn(clk, v)
     else:
         raise Exception("wrong goal type")
 

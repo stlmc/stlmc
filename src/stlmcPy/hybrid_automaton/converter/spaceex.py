@@ -39,13 +39,14 @@ def _make_model(ha: HybridAutomaton):
     jp_s = get_jumps(ha)
 
     var_str_list, map_str_list = _decl_var(v_set)
-    mode_str_list = [_make_loc(mode) for mode in ha.get_modes()]
-    trans_str_list = [_make_jp(jp) for jp in jp_s]
+    mode_str_list = "\n".join([_make_loc(mode) for mode in ha.get_modes()])
+    trans_str_list = "\n".join([_make_jp(jp) for jp in jp_s])
 
     # make component
     ha_id = id(ha)
     ha_comp_header = "<component id=\"{}\">".format(ha_id)
     ha_comp_footer = "</component>"
+    print(var_str_list)
     ha_comp = "\n".join([ha_comp_header, var_str_list, mode_str_list, trans_str_list, ha_comp_footer])
 
     # make system
@@ -105,13 +106,13 @@ def _make_conf(ha: HybridAutomaton, config: Configuration):
 
 def _decl_var(v_set: Set[Variable]):
     var_str_list = list()
-    def name_f(x): "name=\"{}\"".format(x.id)
-    def type_f(x): "type=\"{}\"".format(x.type)
+    def name_f(x): return "name=\"{}\"".format(x.id)
+    def type_f(x): return "type=\"{}\"".format(x.type)
     other = "local=\"false\" d1=\"1\" d2=\"1\" dynamics=\"any\""
 
     v_str = ["<param {} {} {} />".format(name_f(v), type_f(v), other) for v in v_set]
     m_str = ["<map key=\"{}\">{}</map>".format(v.id, v.id) for v in v_set]
-    return v_str, m_str
+    return "\n".join(v_str), "\n".join(m_str)
 
 
 def _make_loc(mode: Mode):
@@ -127,7 +128,7 @@ def _make_loc(mode: Mode):
 
 
 def _make_flow(mode: Mode):
-    flows = ["{}\' == {}".format(v, obj2se(e)) for v, e in mode.dynamics]
+    flows = ["{}\' == {}".format(v, obj2se(mode.dynamics[v])) for v in mode.dynamics]
     return "<flow>{}</flow>".format("&amp;\n".join(flows))
 
 

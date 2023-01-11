@@ -7,6 +7,7 @@ from ....hybrid_automaton.hybrid_automaton import *
 class HAConverter:
     def __init__(self, tau_subst: VarSubstitution):
         self._tau_subst: VarSubstitution = tau_subst
+        self._tau_subst.add(Real("g@clk"), self._global_clk())
         self._node2mode_dict: Dict[Node, Mode] = dict()
 
     def clear(self):
