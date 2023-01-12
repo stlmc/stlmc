@@ -1,3 +1,4 @@
+import os
 import pickle
 
 from ..algorithm import Algorithm
@@ -18,10 +19,11 @@ class OneStepAlgorithm(Algorithm):
     def run(self, model: Model, goal: Goal, solver: SMTSolver):
         solver.reset()
 
-        # p_runner = self._runner
-
         common_section = self._config.get_section("common")
-        bound = int(common_section.get_value("bound"))
+        solver_ty = common_section.get_value("solver")
+        file_name = common_section.get_value("file")
+        file_name = os.path.basename(file_name)
+        name, ext = os.path.splitext(file_name)
 
         m_a, g_a = model.encode(), goal.encode()
         # print(g_a)
@@ -32,20 +34,20 @@ class OneStepAlgorithm(Algorithm):
         print_ha_size("model", m_a)
         print_ha_size("composed", automata)
 
-        # flowstar
-        # fsc = FlowStarConverter(self._config)
-        # fsc.convert(automata)
-        # fsc.write("test")
+        if solver_ty == "flowstar":
+            # flowstar
+            converter = FlowStarConverter(self._config)
+        elif solver_ty == "juliareach":
+            # juliareach
+            converter = JuliaReachConverter(self._config)
+        elif solver_ty == "spaceex":
+            # spaceex
+            converter = SpaceExConverter(self._config)
+        else:
+            raise Exception("{} is not a valid reachable solver".format(solver_ty))
 
-        # juliareach
-        # jlc = JuliaReachConverter(self._config)
-        # jlc.convert(automata)
-        # jlc.write("test")
-
-        # spaceex
-        # sec = SpaceExConverter(self._config)
-        # sec.convert(automata)
-        # sec.write("test")
+        converter.convert(automata)
+        converter.write(name)
 
         # r, m = p_runner.check_sat()
         # if r == SMTSolver.sat:

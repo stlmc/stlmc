@@ -140,7 +140,7 @@ class BaseCmdParser(CmdParser):
 
         # update solver specific section
         underlying_solver = common_section.get_value("solver")
-        valid_solver = ["yices", "z3", "dreal", "auto"]
+        valid_solver = ["yices", "z3", "dreal", "flowstar", "spaceex", "julireach", "auto"]
         if underlying_solver not in valid_solver:
             raise ValueError("\"{}\" is not a valid SMT solver".format(underlying_solver))
 
@@ -215,6 +215,7 @@ class BaseRunner(Runner):
                         f_labels = list()
 
             file_name = cmd_parser.file
+            common_section.set_value("file", file_name)
 
             model, PD, goals, goal_labels = ObjectFactory(config).generate_objects(file_name)
 

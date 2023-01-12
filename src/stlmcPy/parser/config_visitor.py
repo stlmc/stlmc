@@ -23,38 +23,56 @@ class ConfigVisitor(configVisitor):
         self.section_argument_dict["common"] = {
             "threshold", "bound", "time-bound",
             "solver", "goal", "time-horizon", "encoding",
+            "file",
         }
         self.section_argument_dict["z3"] = {"logic"}
         self.section_argument_dict["yices"] = {"logic"}
         self.section_argument_dict["dreal"] = {"ode-order", "ode-step", "executable-path"}
+        self.section_argument_dict["flowstar"] = set()
+        self.section_argument_dict["spaceex"] = set()
+        self.section_argument_dict["juliareach"] = set()
 
         self.type_check_dict["common"] = {
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
-            ("encoding", frozenset({"smt", "automata"})),
-            ("solver", frozenset({"z3", "yices", "dreal"})), ("goal", "string"), ("time-horizon", "float")
+            ("encoding", frozenset({"smt", "automata"})), ("file", "str"),
+            ("solver", frozenset({"z3", "yices", "dreal", "flowstar", "spaceex", "juliareach"})),
+            ("goal", "string"), ("time-horizon", "float")
         }
         self.type_check_dict["z3"] = {("logic", frozenset({"qf_nra", "qf_lra"}))}
         self.type_check_dict["yices"] = {("logic", frozenset(["qf_nra", "qf_lra"]))}
         self.type_check_dict["dreal"] = {("ode-order", "float"), ("ode-step", "float"), ("executable-path", "path")}
+        self.type_check_dict["flowstar"] = set()
+        self.type_check_dict["spaceex"] = set()
+        self.type_check_dict["juliareach"] = set()
 
         self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose"}
         self.section_boolean_argument_dict["z3"] = set()
         self.section_boolean_argument_dict["yices"] = set()
         self.section_boolean_argument_dict["dreal"] = set()
+        self.section_boolean_argument_dict["flowstar"] = set()
+        self.section_boolean_argument_dict["spaceex"] = set()
+        self.section_boolean_argument_dict["juliareach"] = set()
 
-        self.section_names: List[str] = ["common", "z3", "yices", "dreal"]
+        self.section_names: List[str] = ["common", "z3", "yices", "dreal",
+                                         "flowstar", "spaceex", "juliareach"]
 
         self.section_mandatory_dict = dict()
         self.section_mandatory_dict["common"] = {"bound", "time-bound"}
         self.section_mandatory_dict["z3"] = set()
         self.section_mandatory_dict["yices"] = set()
         self.section_mandatory_dict["dreal"] = {"ode-step", "ode-order", "executable-path"}
+        self.section_mandatory_dict["flowstar"] = set()
+        self.section_mandatory_dict["spaceex"] = set()
+        self.section_mandatory_dict["juliareach"] = set()
 
         self.section_selectable_dict: Dict[str, List[Set[str]]] = dict()
         self.section_selectable_dict["common"] = list()
         self.section_selectable_dict["z3"] = list()
         self.section_selectable_dict["yices"] = list()
         self.section_selectable_dict["dreal"] = list()
+        self.section_selectable_dict["flowstar"] = list()
+        self.section_selectable_dict["spaceex"] = list()
+        self.section_selectable_dict["juliareach"] = list()
 
     def get_missing_arguments(self, config: Configuration) -> Dict[str, Set[str]]:
         missing_dict = dict()

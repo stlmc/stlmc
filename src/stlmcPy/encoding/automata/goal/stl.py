@@ -96,6 +96,10 @@ class StlGoal(Goal):
             queue = waiting_list.pop(0)
             print("#{} -> {}".format(depth, len(queue)))
 
+            # set upper bound of searching
+            if depth >= self.bound:
+                break
+
             new_queue = list()
             while len(queue) > 0:
 
