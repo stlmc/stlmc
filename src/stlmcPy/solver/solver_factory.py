@@ -33,8 +33,6 @@ class SolverFactory:
             return HylaaSolverReduction()
         elif self.solver_type == 'hylaa-unsat-core':
             return HylaaSolverUnsatCore()
-        elif self.solver_type == 'spaceex':
-            return SpaceExSolverUnsatCore()
         elif self.solver_type == 'c2e2':
             return C2E2SolverUnsatCore()
         elif self.solver_type == 'ssmt':

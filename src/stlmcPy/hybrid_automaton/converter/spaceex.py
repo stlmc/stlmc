@@ -28,6 +28,7 @@ class SpaceExConverter(Converter):
         f = open("{}_se.cfg".format(file_name), "w")
         f.write(self._config_string)
         f.close()
+        print("write hybrid automaton to {}_se.xml and {}_se.cfg".format(file_name, file_name))
 
     def _reset(self):
         self._model_string = ""
@@ -46,7 +47,7 @@ def _make_model(ha: HybridAutomaton):
     ha_id = id(ha)
     ha_comp_header = "<component id=\"{}\">".format(ha_id)
     ha_comp_footer = "</component>"
-    print(var_str_list)
+
     ha_comp = "\n".join([ha_comp_header, var_str_list, mode_str_list, trans_str_list, ha_comp_footer])
 
     # make system
