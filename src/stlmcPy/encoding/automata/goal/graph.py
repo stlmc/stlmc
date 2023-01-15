@@ -181,10 +181,6 @@ class TableauGraph(Graph['Node', 'Jump']):
         else:
             max_clock = max({clock_index(clk) for clk in clk_s})
 
-        # add clock substitution information
-        # c1 := c2, ...
-        cur[1].update(clk_subst.clock_assn())
-
         return Label(cur[0], cur[1], nxt[0], nxt[1],
                      cur_assertion, cur_forbidden, nxt_assertion, nxt_forbidden,
                      inv_assertion, inv_forbidden, max_clock)
