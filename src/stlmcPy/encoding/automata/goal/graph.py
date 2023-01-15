@@ -144,88 +144,22 @@ class TableauGraph(Graph['Node', 'Jump']):
 
         return goal1_hash[0] == goal2_hash[0] and goal1_hash[1] == goal2_hash[1]
 
-    def find_node_naive(self, node: 'Node') -> Tuple[bool, Optional['Node'],
-                                                     Optional[ClockSubstitution]]:
-        # ignore top formula and clk resets
-        # node_goals = [self._ignore_top_formula(*node.cur_goals),
-        #               self._ignore_top_formula(*node.nxt_goals)]
-
-        node_goals = [node.cur_goals, node.nxt_goals]
-
-        # split clock and others
-        node_clk_s = (filter_clock_goals(*node_goals[0]),
-                      filter_clock_goals(*node_goals[1]))
-        node_other = [node_goals[0].difference(node_clk_s[0]),
-                      node_goals[1].difference(node_clk_s[1])]
-
-        for n in self.get_nodes():
-            eq = [n.is_final() == node.is_final(),
-                  n.is_initial() == node.is_initial()]
-            # ignore top formula and clk resets
-            # n_goals = [self._ignore_top_formula(*n.cur_goals),
-            #            self._ignore_top_formula(*n.nxt_goals)]
-            n_goals = [n.cur_goals, n.nxt_goals]
-
-            # split clock and others
-            clk_s = (filter_clock_goals(*n_goals[0]),
-                     filter_clock_goals(*n_goals[1]))
-            other = [n_goals[0].difference(clk_s[0]),
-                     n_goals[1].difference(clk_s[1])]
-
-            clk_eq, clk_subst = self._clock_eq_naive(clk_s, node_clk_s)
-
-            if clk_eq and other[0] == node_other[0] and other[1] == node_other[1] and eq[0]:
-                return True, n, clk_subst
-        return False, None, None
-
-    @classmethod
-    def _clock_eq_naive(cls, goals1: Tuple[Set[Formula], Set[Formula]],
-                        goals2: Tuple[Set[Formula], Set[Formula]]) -> Tuple[bool, Optional[ClockSubstitution]]:
-        goal1_union = goals1[0].union(goals1[1])
-        goal2_union = goals2[0].union(goals2[1])
-
-        # calc hash for goal1 for efficiency
-        goal1_hash = hash(frozenset(goal1_union))
-
-        # clock equivalence detection
-        # 1) get clock pools of the goals
-        # 1.1) if the pools' size differ, the goals are not equivalent
-        p1 = get_clock_pool(*goal1_union)
-        p2 = get_clock_pool(*goal2_union)
-
-        if len(p1) != len(p2):
-            return False, None
-
-        # 2) (assume that the pool lengths are equal) check if the mappings are equal
-        # fix ordering of p1 and calculate all possible orderings of p2 to build
-        # clock substitution
-        p1_o, p2_o_pool = tuple(p1), set(permutations(p2))
-
-        for p2_o in p2_o_pool:
-            assert isinstance(p2_o, Tuple)
-
-            # possible clock mapping
-            possible = set(zip(p1_o, p2_o))
-            mapping = ClockSubstitution()
-            for c1, c2 in possible:
-                mapping.add(c2, c1)
-
-            goal2_n = frozenset(map(lambda x: mapping.substitute(x), goal2_union))
-
-            # if successfully find clock mapping
-            if goal1_hash == hash(goal2_n):
-                return True, mapping
-
-        # otherwise
-        return False, None
-
-    def _ignore_top_formula(self, *goals) -> Set[Formula]:
-        return set(filter(lambda x: hash(x) != hash(self._formula), goals))
-
     @classmethod
     def update_label_clock(cls, label: Label, clk_subst: ClockSubstitution):
-        cur = [{clk_subst.substitute(f) for f in label.state_cur},
-               {clk_subst.substitute(f) for f in label.transition_cur}]
+        # make transition conditions
+        t_c, clk_reset = set(), clk_subst.clock_assn()
+        for f in label.transition_cur:
+            # case1) apply clock renaming to reset conditions
+            if isinstance(f, ClkAssn):
+                # assert that there are no variables on the RHS of the resets
+                assert not isinstance(f.value, Variable)
+                t_c.add(clk_subst.substitute(f))
+            else:
+                # case2) add substitution resets for the other conditions
+                t_c.add(f)
+                t_c.update(clk_reset)
+
+        cur = [{clk_subst.substitute(f) for f in label.state_cur}, t_c]
 
         nxt = [{clk_subst.substitute(f) for f in label.state_nxt},
                {clk_subst.substitute(f) for f in label.transition_nxt}]

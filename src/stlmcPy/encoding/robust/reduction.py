@@ -71,4 +71,4 @@ def _(f: ReleaseFormula):
     f1 = GloballyFormula(i1, u, r)
     f2 = FinallyFormula(i2, u, ReleaseFormula(u, u, l, r))
 
-    return And([f1, f2])
+    return Or([f1, f2])
