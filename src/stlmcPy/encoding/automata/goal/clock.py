@@ -12,8 +12,11 @@ class ClockSubstitution:
     def add(self, src: Real, dst: Real):
         self._clock_subst_dict[src] = dst
 
-    def substitute(self, formula: Formula):
-        return _clock_substitution(formula, self._clock_subst_dict)
+    def substitute(self, formula: Formula, is_write=True, is_read=True):
+        return _clock_substitution(formula, self._clock_subst_dict, is_write=is_write, is_read=is_read)
+
+    def vars(self) -> Set[Real]:
+        return set(self._clock_subst_dict.keys())
 
     def clock_assn(self) -> Set[ClkAssn]:
         clk_assn = set()
@@ -29,29 +32,25 @@ class ClockSubstitution:
 
 
 @singledispatch
-def _clock_substitution(goal: Formula, clock_subst_dict: Dict[Real, Real]):
+def _clock_substitution(goal: Formula, clock_subst_dict: Dict[Real, Real],
+                        is_write: bool, is_read: bool):
     return goal
 
 
 @_clock_substitution.register(OCProposition)
-def _(goal: OCProposition, clock_subst_dict: Dict[Real, Real]):
-    if goal.get_clock() in clock_subst_dict:
-        clk = clock_subst_dict[goal.get_clock()]
-        if isinstance(goal, Open):
-            return Open(TypeVariable(clk.id))
-        elif isinstance(goal, Close):
-            return Close(TypeVariable(clk.id))
-        elif isinstance(goal, OpenClose):
-            return OpenClose(TypeVariable(clk.id))
-        else:
-            raise Exception("wrong goal type")
-    else:
-        # nothing to substitute
-        return goal
+def _(goal: OCProposition, clock_subst_dict: Dict[Real, Real],
+      is_write: bool, is_read: bool):
+    f = goal
+    if is_write:
+        f = _substitute_oc_prop_as_write(f, clock_subst_dict)
+
+    if is_read:
+        f = _substitute_oc_prop_as_read(f, clock_subst_dict)
+    return f
 
 
 @_clock_substitution.register(Up)
-def _(goal: Up, clock_subst_dict: Dict[Real, Real]):
+def _(goal: Up, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: bool):
     is_clk = goal.clock in clock_subst_dict
     is_ty = isinstance(goal.type, TypeVariable)
 
@@ -71,7 +70,7 @@ def _(goal: Up, clock_subst_dict: Dict[Real, Real]):
 
 
 @_clock_substitution.register(UpDown)
-def _(goal: UpDown, clock_subst_dict: Dict[Real, Real]):
+def _(goal: UpDown, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: bool):
     is_clk = [goal.clock[0] in clock_subst_dict, goal.clock[1] in clock_subst_dict]
     is_ty = [isinstance(goal.type[0], TypeVariable), isinstance(goal.type[1], TypeVariable)]
 
@@ -93,7 +92,81 @@ def _(goal: UpDown, clock_subst_dict: Dict[Real, Real]):
 
 
 @_clock_substitution.register(TimeProposition)
-def _(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
+def _(goal: TimeProposition, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: bool):
+    f = goal
+    if is_write:
+        f = _substitute_time_prop_as_write(f, clock_subst_dict)
+
+    if is_read:
+        f = _substitute_time_prop_as_read(f, clock_subst_dict)
+
+    return f
+
+
+@_clock_substitution.register(ClkAssn)
+def _(goal: ClkAssn, clock_subst_dict: Dict[Real, Real],
+      is_write: bool, is_read: bool):
+    f = goal
+    if is_write:
+        f = _substitute_clk_assn_as_write(f, clock_subst_dict)
+
+    if is_read:
+        f = _substitute_clk_assn_as_read(f, clock_subst_dict)
+    return f
+
+
+def _substitute_oc_prop_as_write(goal: OCProposition,
+                                 clock_subst_dict: Dict[Real, Real]):
+    # The variable of the OCProposition is writable
+    if goal.get_clock() in clock_subst_dict:
+        clk = clock_subst_dict[goal.get_clock()]
+        if isinstance(goal, Open):
+            return Open(TypeVariable(clk.id))
+        elif isinstance(goal, Close):
+            return Close(TypeVariable(clk.id))
+        elif isinstance(goal, OpenClose):
+            return OpenClose(TypeVariable(clk.id))
+        else:
+            raise Exception("wrong goal type")
+    else:
+        # nothing to substitute
+        return goal
+
+
+def _substitute_oc_prop_as_read(goal: OCProposition,
+                                clock_subst_dict: Dict[Real, Real]):
+    return goal
+
+
+def _substitute_clk_assn_as_write(goal: ClkAssn, clock_subst_dict: Dict[Real, Real]):
+    is_clk = goal.clock in clock_subst_dict
+
+    clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
+    if isinstance(goal, ClkReset):
+        return ClkReset(clk)
+    elif isinstance(goal, ClkAssn):
+        return ClkAssn(clk, goal.value)
+    else:
+        raise Exception("wrong goal type")
+
+
+def _substitute_clk_assn_as_read(goal: ClkAssn, clock_subst_dict: Dict[Real, Real]):
+    is_rv = goal.value in clock_subst_dict
+
+    v = clock_subst_dict[goal.value] if is_rv else goal.value
+    if isinstance(goal, ClkReset):
+        return goal
+    elif isinstance(goal, ClkAssn):
+        return ClkAssn(goal.clock, v)
+    else:
+        raise Exception("wrong goal type")
+
+
+def _substitute_time_prop_as_write(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
+    return goal
+
+
+def _substitute_time_prop_as_read(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
     is_clk = goal.clock in clock_subst_dict
     is_ty = isinstance(goal.ty, TypeVariable)
 
@@ -112,21 +185,6 @@ def _(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
         return TimeFinallyUpFinal(clk, ty, goal.interval)
     elif isinstance(goal, TimeFinallyIn):
         return TimeFinallyIn(clk, ty, goal.interval)
-    else:
-        raise Exception("wrong goal type")
-
-
-@_clock_substitution.register(ClkAssn)
-def _(goal: ClkAssn, clock_subst_dict: Dict[Real, Real]):
-    is_clk = goal.clock in clock_subst_dict
-    is_rv = goal.value in clock_subst_dict
-
-    clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
-    v = clock_subst_dict[goal.value] if is_rv else goal.value
-    if isinstance(goal, ClkReset):
-        return ClkReset(clk)
-    elif isinstance(goal, ClkAssn):
-        return ClkAssn(clk, v)
     else:
         raise Exception("wrong goal type")
 
@@ -234,9 +292,17 @@ def _(goal: TimeProposition) -> Set[Real]:
     return {goal.clock}
 
 
-@_get_clocks.register(ClkReset)
+@_get_clocks.register(ClkAssn)
 def _(goal: ClkReset) -> Set[Real]:
-    return {goal.clock}
+    if isinstance(goal.value, Real):
+        return {goal.clock, goal.value}
+    else:
+        return {goal.clock}
+
+
+@_get_clocks.register(OCProposition)
+def _(goal: OCProposition) -> Set[Real]:
+    return {goal.get_clock()}
 
 
 class ClockMatchingInfo:

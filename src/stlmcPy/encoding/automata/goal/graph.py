@@ -13,7 +13,7 @@ class TableauGraph(Graph['Node', 'Jump']):
         Graph.__init__(self)
         self._formula = formula
         self._dummy_node = Node(set(), set(), set())
-        self._labels: Dict[Node, Set[Label]] = dict()
+        self._label: Dict[Node, Label] = dict()
         self._matching_info: Dict[Node, ClockMatchingInfo] = dict()
         self._node_indexing: Dict[FrozenSet[Proposition], List[Node]] = dict()
         self.add_node(self._dummy_node)
@@ -25,11 +25,9 @@ class TableauGraph(Graph['Node', 'Jump']):
     def get_nodes(self):
         return self.vertices
 
-    def get_labels(self, node: 'Node') -> Set[Label]:
-        assert node in self.get_nodes()
-        if node not in self._labels:
-            return set()
-        return self._labels[node].copy()
+    def get_label(self, node: 'Node') -> Label:
+        assert node in self._label
+        return self._label[node]
 
     def add_node(self, node: 'Node'):
         assert node not in self._matching_info
@@ -74,8 +72,8 @@ class TableauGraph(Graph['Node', 'Jump']):
                     is_initial, len(label.nxt) <= 0)
 
     @classmethod
-    def make_jump(cls, src: 'Node', trg: 'Node', label: Label) -> 'Jump':
-        return Jump(src, trg, label.transition_cur)
+    def make_jump(cls, src: 'Node', trg: 'Node', conditions: Set[Formula]) -> 'Jump':
+        return Jump(src, trg, conditions)
 
     def remove_node(self, node: 'Node'):
         self.remove_vertex(node)
@@ -88,19 +86,17 @@ class TableauGraph(Graph['Node', 'Jump']):
 
     def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'],
                                                Optional[ClockSubstitution]]:
-        matching_info = self._make_matching_info(node)
         indexing_info = self._make_indexing_info(node)
-        node_goals = [node.cur_goals, node.nxt_goals]
-
-        # split clock and others
-        node_clk_s = (filter_clock_goals(*node_goals[0]),
-                      filter_clock_goals(*node_goals[1]))
-        node_other = [node_goals[0].difference(node_clk_s[0]),
-                      node_goals[1].difference(node_clk_s[1])]
 
         # if there is no indexing info, there is no matching node exists
         if indexing_info not in self._node_indexing:
             return False, None, None
+
+        matching_info = self._make_matching_info(node)
+
+        # split clock and others
+        c_node_clk, c_node_other = self._split_goals(node.cur_goals)
+        n_node_clk, n_node_other = self._split_goals(node.nxt_goals)
 
         nodes = self._node_indexing[indexing_info]
 
@@ -111,89 +107,89 @@ class TableauGraph(Graph['Node', 'Jump']):
             assert n in self._matching_info
             n_match = self._matching_info[n]
 
-            n_goals = [n.cur_goals, n.nxt_goals]
-
             # split clock and others
-            clk_s = (filter_clock_goals(*n_goals[0]),
-                     filter_clock_goals(*n_goals[1]))
-            other = [n_goals[0].difference(clk_s[0]),
-                     n_goals[1].difference(clk_s[1])]
+            c_clk_s, c_other = self._split_goals(n.cur_goals)
+            n_clk_s, n_other = self._split_goals(n.nxt_goals)
 
             clk_subst = n_match.match(matching_info)
             if clk_subst is None:
                 continue
-            else:
-                eq = [n.is_final() == node.is_final(),
-                      other[0] == node_other[0],
-                      other[1] == node_other[1]]
-                if all(eq) and self._clock_eq(clk_subst, clk_s, node_clk_s):
-                    return True, n, clk_subst
+
+            # both goals should be
+            # i) final or not be final at the same time
+            is_final = n.is_final() == node.is_final()
+
+            # ii) non-time goals are the same for the current and next
+            c_non_time_eq = c_node_other == c_other
+            n_non_time_eq = n_node_other == n_other
+            non_time_eq = c_non_time_eq and n_non_time_eq
+
+            # iii) time goals should be equivalent with respect to the clock renaming
+            c_time_eq = self._clock_eq(clk_subst, c_clk_s, c_node_clk)
+            n_time_eq = self._clock_eq(clk_subst, n_clk_s, n_node_clk)
+            time_eq = c_time_eq and n_time_eq
+
+            # iv) invariant should be equivalent with respect to the clock renaming
+            inv_eq = self._clock_eq(clk_subst, n.invariant, node.invariant)
+            if is_final and non_time_eq and time_eq and inv_eq:
+                # mapped_clk = clk_subst.vars()
+                # cur_clk_s = self.get_state_clocks(n)
+
+                # make an identity mapping for the rest of the variables
+                # missed_clk = cur_clk_s.difference(mapped_clk)
+                # for clk in missed_clk:
+                #     clk_subst.add(clk, clk)
+                return True, n, clk_subst
 
         return False, None, None
+    @classmethod
+    def identity_clk_subst(cls, clk_s: Set[Real]) -> ClockSubstitution:
+        identity = ClockSubstitution()
+        for clk in clk_s:
+            identity.add(clk, clk)
+        return identity
+
+    @classmethod
+    def get_state_clocks(cls, node: 'Node') -> Set[Real]:
+        c_clk = get_clock_pool(*node.cur_goals)
+        # n_clk = get_clock_pool(*node.nxt_goals)
+        inv_clk = get_clock_pool(*node.invariant)
+        return c_clk.union(inv_clk)
+
+    @classmethod
+    def jump_write_clocks(cls, jp_c: Set[Formula]) -> Set[Real]:
+        write_clk = set()
+        for f in jp_c:
+            if isinstance(f, ClkAssn):
+                write_clk.add(f.clock)
+        return write_clk
+
+    @classmethod
+    def jump_read_clocks(cls, jp_c: Set[Formula]) -> Set[Real]:
+        read_clk = set()
+        for f in jp_c:
+            if isinstance(f, TimeProposition):
+                read_clk.add(f.clock)
+        return read_clk
+
+    @classmethod
+    def _split_goals(cls, goals: Set[Formula]) -> Tuple[Set[Formula], Set[Formula]]:
+        # split time and non-time goals
+        clk_goals = filter_clock_goals(*goals)
+        other_goals = goals.difference(clk_goals)
+
+        return clk_goals, other_goals
 
     @classmethod
     def _clock_eq(cls, clk_subst: ClockSubstitution,
-                  clk_goal1: Tuple[Set[Formula], Set[Formula]],
-                  clk_goal2: Tuple[Set[Formula], Set[Formula]]) -> bool:
-        c_goal1, n_goal1 = clk_goal1[0], clk_goal1[1]
-        c_goal2, n_goal2 = clk_goal2[0], clk_goal2[1]
+                  goals1: Set[Formula], goals2: Set[Formula]) -> bool:
+        goal1_hash = hash(frozenset(goals1))
+        goal2_hash = hash(frozenset(map(lambda x: clk_subst.substitute(x), goals2)))
+        return goal1_hash == goal2_hash
 
-        goal1_hash = [hash(frozenset(c_goal1)), hash(frozenset(n_goal1))]
-        goal2_hash = [hash(frozenset(map(lambda x: clk_subst.substitute(x), c_goal2))),
-                      hash(frozenset(map(lambda x: clk_subst.substitute(x), n_goal2)))]
-
-        return goal1_hash[0] == goal2_hash[0] and goal1_hash[1] == goal2_hash[1]
-
-    @classmethod
-    def update_label_clock(cls, label: Label, clk_subst: ClockSubstitution):
-        # make transition conditions
-        t_c, clk_reset = set(), clk_subst.clock_assn()
-        for f in label.transition_cur:
-            # case1) apply clock renaming to reset conditions
-            if isinstance(f, ClkAssn):
-                # assert that there are no variables on the RHS of the resets
-                assert not isinstance(f.value, Variable)
-                t_c.add(clk_subst.substitute(f))
-            else:
-                # case2) add substitution resets for the other conditions
-                t_c.add(f)
-                t_c.update(clk_reset)
-
-        cur = [{clk_subst.substitute(f) for f in label.state_cur}, t_c]
-
-        nxt = [{clk_subst.substitute(f) for f in label.state_nxt},
-               {clk_subst.substitute(f) for f in label.transition_nxt}]
-
-        cur_assertion = {clk_subst.substitute(a) for a in label.cur_assertion}
-        cur_forbidden = {clk_subst.substitute(f) for f in label.cur_forbidden}
-        nxt_assertion = {clk_subst.substitute(a) for a in label.nxt_assertion}
-        nxt_forbidden = {clk_subst.substitute(f) for f in label.nxt_forbidden}
-        inv_assertion = {clk_subst.substitute(inv) for inv in label.inv_assertion}
-        inv_forbidden = {clk_subst.substitute(inv) for inv in label.inv_forbidden}
-
-        # calc max clock index
-        clk_s = get_clock_pool(*cur[0]).union(get_clock_pool(*cur[1]))
-        clk_s.update(get_clock_pool(*nxt[0]).union(get_clock_pool(*nxt[1])))
-
-        # if there is no clock
-        if len(clk_s) <= 0:
-            max_clock = 0
-        else:
-            max_clock = max({clock_index(clk) for clk in clk_s})
-
-        return Label(cur[0], cur[1], nxt[0], nxt[1],
-                     cur_assertion, cur_forbidden, nxt_assertion, nxt_forbidden,
-                     inv_assertion, inv_forbidden, max_clock)
-
-    @classmethod
-    def update_type_hint_clocks(cls, clk_subst: ClockSubstitution, *ty_hints):
-        return set(map(lambda x: clk_subst.substitute(x), ty_hints))
-
-    def open_labels(self, node: 'Node', *labels):
-        if node in self._labels:
-            self._labels[node].update({lb for lb in labels})
-        else:
-            self._labels[node] = {lb for lb in labels}
+    def open_label(self, node: 'Node', label: Label):
+        assert node not in self._label
+        self._label[node] = label
 
     def remove_unreachable(self):
         f_ns = set(filter(lambda x: x.is_final(), self.get_nodes()))

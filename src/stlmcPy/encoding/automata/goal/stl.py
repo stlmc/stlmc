@@ -55,43 +55,11 @@ class StlGoal(Goal):
         # make initial labels
         init_label = Label(singleton(), singleton(), singleton(self._formula), singleton(),
                            set(), set(), set(), set(), set(), set(), 0)
-        lb_s = expand(init_label)
+        graph.open_label(f_node, init_label)
 
-        # make initial nodes
-        initial_nodes = list()
-        for lb in lb_s:
-            # make a new node
-            node = graph.make_node(lb, is_initial=True)
+        waiting_list = [[graph.first_node()]]
 
-            # check if already exists
-            exist, f_n, clk_subst = graph.find_node(node)
-            if exist:
-                # update the label and type hint clocks
-                u_lb = graph.update_label_clock(lb, clk_subst)
-
-                jp = graph.make_jump(f_node, f_n, u_lb)
-                if jp_checker.is_contradiction(jp):
-                    continue
-
-                graph.add_jump(jp)
-
-            else:
-                # make node and check its contradiction
-                jp = graph.make_jump(f_node, node, lb)
-                if jp_checker.is_contradiction(jp):
-                    continue
-
-                # add the state to the queue when it is reachable
-                # add a fresh node and open the label
-                graph.add_node(node)
-                graph.open_labels(node, lb)
-                graph.add_jump(jp)
-
-                initial_nodes.append(node)
-
-        waiting_list = [initial_nodes]
-
-        depth = 1
+        depth = 0
         while len(waiting_list) > 0:
             queue = waiting_list.pop(0)
             print("#{} -> {}".format(depth, len(queue)))
@@ -102,42 +70,62 @@ class StlGoal(Goal):
 
             new_queue = list()
             while len(queue) > 0:
-
                 # pick a node and its labels
                 p_n = queue.pop(0)
-                labels = graph.get_labels(p_n)
+                label = graph.get_label(p_n)
 
-                # make nodes
-                for lb in labels:
-                    # expand the label
-                    lb_s = expand(lb)
-                    for e_lb in lb_s:
-                        n = graph.make_node(e_lb)
+                # expand the label
+                lb_s = expand(label)
+                for lb in lb_s:
+                    is_initial = p_n == graph.first_node()
+                    n = graph.make_node(lb, is_initial=is_initial)
 
-                        exist, f_n, clk_subst = graph.find_node(n)
-                        if exist:
-                            # update the label and type hint clocks
-                            u_lb = graph.update_label_clock(e_lb, clk_subst)
+                    exist, f_n, clk_subst = graph.find_node(n)
+                    if exist:
+                        # update clock variables at write positions and update clock renaming as resets
+                        jp_c = {clk_subst.substitute(f, is_write=True) for f in lb.transition_cur}
+                        jp_c.update(clk_subst.clock_assn())
 
-                            jp = graph.make_jump(p_n, f_n, u_lb)
-                            if jp_checker.is_contradiction(jp):
-                                continue
+                        # get used clocks and the clocks to be used
+                        covered = graph.jump_write_clocks(jp_c)
+                        should_be_covered = graph.jump_read_clocks(jp_c)
+                        should_be_covered.update(graph.get_state_clocks(f_n))
+                        missed = should_be_covered.difference(covered)
 
-                            graph.add_jump(jp)
+                        # make reset conditions for the uncovered clocks
+                        identity = graph.identity_clk_subst(missed)
+                        jp_c.update(identity.clock_assn())
 
-                        else:
-                            # make node and check its contradiction
-                            jp = graph.make_jump(p_n, n, e_lb)
-                            if jp_checker.is_contradiction(jp):
-                                continue
+                        jp = graph.make_jump(p_n, f_n, jp_c)
+                        if jp_checker.is_contradiction(jp):
+                            continue
 
-                            # add a fresh node and open the label
-                            # add the state to the queue when it is reachable
-                            graph.add_node(n)
-                            graph.open_labels(n, e_lb)
-                            graph.add_jump(jp)
+                        graph.add_jump(jp)
 
-                            new_queue.append(n)
+                    else:
+                        # get used clocks and the clocks to be used
+                        covered = graph.jump_write_clocks(lb.transition_cur)
+                        should_be_covered = graph.jump_read_clocks(lb.transition_cur)
+                        should_be_covered.update(graph.get_state_clocks(n))
+                        missed = should_be_covered.difference(covered)
+
+                        # make identity reset conditions for the uncovered clocks
+                        identity = graph.identity_clk_subst(missed)
+                        jp_c = lb.transition_cur
+                        jp_c.update(identity.clock_assn())
+
+                        # make node and check its contradiction
+                        jp = graph.make_jump(p_n, n, jp_c)
+                        if jp_checker.is_contradiction(jp):
+                            continue
+
+                        # add a fresh node and open the label
+                        # add the state to the queue when it is reachable
+                        graph.add_node(n)
+                        graph.open_label(n, lb)
+                        graph.add_jump(jp)
+
+                        new_queue.append(n)
 
             # if new states are generated, add it to the queue
             if len(new_queue) > 0:
