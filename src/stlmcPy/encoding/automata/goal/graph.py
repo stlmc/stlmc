@@ -43,9 +43,10 @@ class TableauGraph(Graph['Node', 'Jump']):
             self._node_indexing[indexing] = [node]
 
     @classmethod
-    def _make_matching_info(cls, node: 'Node') -> ClockMatchingInfo:
+    def _make_matching_info(cls, node: 'Node') -> 'ClockMatchingInfo':
         matching_info = ClockMatchingInfo()
-        for g in node.cur_goals:
+        cur = node.invariant.union(node.cur_goals)
+        for g in cur:
             matching_info.add_cur(g)
 
         for g in node.nxt_goals:
@@ -306,3 +307,129 @@ class JumpContradictionChecker:
             if tf is not None:
                 r.add(tf)
         return r
+
+
+class ClockMatchingInfo:
+    def __init__(self):
+        self._matching_info_cur: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+        self._matching_info_nxt: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+
+    def add_cur(self, goal: Formula):
+        self._add(goal, self._matching_info_cur)
+
+    def add_nxt(self, goal: Formula):
+        self._add(goal, self._matching_info_nxt)
+
+    @classmethod
+    def _add(cls, goal: Formula, d: Dict[Tuple[str, hash, hash], List[List[Real]]]):
+        info = _matching_info(goal)
+
+        if info is None:
+            return
+
+        if info in d:
+            d[info].append(_get_matching_clocks(goal))
+        else:
+            d[info] = [_get_matching_clocks(goal)]
+
+    def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
+        assert isinstance(other, ClockMatchingInfo)
+
+        k_c = set(self._matching_info_cur.keys())
+        # information must be equal
+        if k_c != set(other._matching_info_cur.keys()):
+            return None
+
+        subst = clock_match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict(), list())
+        if subst is None:
+            return None
+
+        k_n = set(self._matching_info_nxt.keys())
+        if k_n != set(other._matching_info_nxt.keys()):
+            return None
+
+        subst = clock_match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst, list())
+        if subst is None:
+            return None
+
+        clk_subst = ClockSubstitution()
+        for k in subst:
+            clk_subst.add(k, subst[k])
+
+        return clk_subst
+
+    def __repr__(self):
+        cur = "\n".join(["{} ---> {}".format(k, self._matching_info_cur[k]) for k in self._matching_info_cur])
+        nxt = "\n".join(["{} ---> {}".format(k, self._matching_info_nxt[k]) for k in self._matching_info_nxt])
+        return "clock matching\ncur:\n{}\nnxt:\n{}\n".format(cur, nxt)
+
+
+@singledispatch
+def _matching_info(goal: Formula) -> Optional[Tuple[str, hash, hash]]:
+    return None
+
+
+@_matching_info.register(Up)
+def _(goal: Up) -> Optional[Tuple[str, hash, hash]]:
+    return goal.temporal, hash(goal.interval), hash(goal.formula)
+
+
+@_matching_info.register(UpDown)
+def _(goal: UpDown) -> Optional[Tuple[str, hash, hash]]:
+    return "{}{}".format(goal.temporal1, goal.temporal2), hash(goal.interval), hash(goal.formula)
+
+
+@_matching_info.register(TimeProposition)
+def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
+    return "T_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
+
+
+@_matching_info.register(ClkAssn)
+def _(goal: ClkAssn) -> Optional[Tuple[str, hash, hash]]:
+    return "assn", hash(goal.value), 0
+
+
+@_matching_info.register(Open)
+def _(goal: Open) -> Optional[Tuple[str, hash, hash]]:
+    return "open", 0, 0
+
+
+@_matching_info.register(Close)
+def _(goal: Close) -> Optional[Tuple[str, hash, hash]]:
+    return "close", 0, 0
+
+
+@_matching_info.register(OpenClose)
+def _(goal: OpenClose) -> Optional[Tuple[str, hash, hash]]:
+    return "oc", 0, 0
+
+
+@singledispatch
+def _get_matching_clocks(goal: Formula) -> List[Real]:
+    return list()
+
+
+@_get_matching_clocks.register(Up)
+def _(goal: Up) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(UpDown)
+def _(goal: UpDown) -> List[Real]:
+    return goal.clock.copy()
+
+
+@_get_matching_clocks.register(TimeProposition)
+def _(goal: TimeProposition) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(ClkAssn)
+def _(goal: ClkAssn) -> List[Real]:
+    return [goal.clock]
+
+
+@_get_matching_clocks.register(OCProposition)
+def _(goal: OCProposition) -> List[Real]:
+    return [goal.get_clock()]
+

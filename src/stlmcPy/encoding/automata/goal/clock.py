@@ -24,6 +24,9 @@ class ClockSubstitution:
             clk_assn.add(ClkAssn(clk, self._clock_subst_dict[clk]))
         return clk_assn
 
+    def dict(self) -> Dict[Real, Real]:
+        return self._clock_subst_dict.copy()
+
     def __repr__(self):
         strings = ["ClockSubstitution"]
         for src in self._clock_subst_dict:
@@ -305,65 +308,10 @@ def _(goal: OCProposition) -> Set[Real]:
     return {goal.get_clock()}
 
 
-class ClockMatchingInfo:
-    def __init__(self):
-        self._matching_info_cur: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
-        self._matching_info_nxt: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
-
-    def add_cur(self, goal: Formula):
-        self._add(goal, self._matching_info_cur)
-
-    def add_nxt(self, goal: Formula):
-        self._add(goal, self._matching_info_nxt)
-
-    @classmethod
-    def _add(cls, goal: Formula, d: Dict[Tuple[str, hash, hash], List[List[Real]]]):
-        info = _matching_info(goal)
-
-        if info is None:
-            return
-
-        if info in d:
-            d[info].append(_get_matching_clocks(goal))
-        else:
-            d[info] = [_get_matching_clocks(goal)]
-
-    def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
-        assert isinstance(other, ClockMatchingInfo)
-
-        k_c = set(self._matching_info_cur.keys())
-        # information must be equal
-        if k_c != set(other._matching_info_cur.keys()):
-            return None
-
-        subst = _match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict())
-        if subst is None:
-            return None
-
-        k_n = set(self._matching_info_nxt.keys())
-        if k_n != set(other._matching_info_nxt.keys()):
-            return None
-
-        subst = _match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst)
-        if subst is None:
-            return None
-
-        clk_subst = ClockSubstitution()
-        for k in subst:
-            clk_subst.add(k, subst[k])
-
-        return clk_subst
-
-    def __repr__(self):
-        cur = "\n".join(["{} ---> {}".format(k, self._matching_info_cur[k]) for k in self._matching_info_cur])
-        nxt = "\n".join(["{} ---> {}".format(k, self._matching_info_nxt[k]) for k in self._matching_info_nxt])
-        return "clock matching\ncur:\n{}\nnxt:\n{}\n".format(cur, nxt)
-
-
-def _match(positions: List[Tuple[str, hash, hash]],
-           match1: Dict[Tuple[str, hash, hash], List[List[Real]]],
-           match2: Dict[Tuple[str, hash, hash], List[List[Real]]],
-           subst: Dict[Real, Real]) -> Optional[Dict[Real, Real]]:
+def clock_match(positions: List[Tuple[str, hash, hash]],
+                match1: Dict[Tuple[str, hash, hash], List[List[Real]]],
+                match2: Dict[Tuple[str, hash, hash], List[List[Real]]],
+                subst: Dict[Real, Real], forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
     if len(positions) <= 0:
         return subst
 
@@ -376,30 +324,35 @@ def _match(positions: List[Tuple[str, hash, hash]],
     p_clk2_order = list(map(lambda x: list(x), permutations(p_clk2)))
 
     for clk2_set in p_clk2_order:
-        n_subst = _match_test(subst, p_clk1, clk2_set)
+        n_subst = _match_test(subst, p_clk1, clk2_set, forbidden)
         if n_subst is None:
             continue
 
-        m = _match(positions, match1, match2, n_subst)
+        m = clock_match(positions, match1, match2, n_subst, forbidden)
         if m is not None:
             return m
     return None
 
 
 def _match_test(subst: Dict[Real, Real],
-                c1_set: List[List[Real]], c2_set: List[List[Real]]) -> Optional[Dict[Real, Real]]:
+                c1_set: List[List[Real]], c2_set: List[List[Real]],
+                forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
     new_subst = subst.copy()
     for clk1_s, clk2_s in list(zip(c1_set, c2_set)):
-        new_subst = _match_clk(new_subst, clk1_s, clk2_s)
+        new_subst = _match_clk(new_subst, clk1_s, clk2_s, forbidden)
         if new_subst is None:
             return None
     return new_subst
 
 
 def _match_clk(subst: Dict[Real, Real],
-               c1_set: List[Real], c2_set: List[Real]) -> Optional[Dict[Real, Real]]:
+               c1_set: List[Real], c2_set: List[Real],
+               forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
     new_subst = subst.copy()
     for c1, c2 in set(zip(c1_set, c2_set)):
+        # if _forbidden_mapping(subst, forbidden):
+        #     return None
+
         # conflict
         if c1 in subst:
             if not variable_equal(subst[c1], c2):
@@ -407,72 +360,20 @@ def _match_clk(subst: Dict[Real, Real],
         new_subst[c1] = c2
     return new_subst
 
+def _forbidden_mapping(subst: Dict[Real, Real],
+                       forbidden: List[Dict[Real, Real]]) -> bool:
+    # check whether there exists a substitution in forbidden
+    # that subst is superset of it
+    k = set(subst.keys())
+    for f_matching in forbidden:
+        if k.issuperset(set(f_matching.keys())):
+            is_subset = True
+            for c in f_matching:
+                if not variable_equal(f_matching[c], subst[c]):
+                    is_subset = False
+                    break
 
-@singledispatch
-def _matching_info(goal: Formula) -> Optional[Tuple[str, hash, hash]]:
-    return None
+            if is_subset:
+                return True
 
-
-@_matching_info.register(Up)
-def _(goal: Up) -> Optional[Tuple[str, hash, hash]]:
-    return goal.temporal, hash(goal.interval), hash(goal.formula)
-
-
-@_matching_info.register(UpDown)
-def _(goal: UpDown) -> Optional[Tuple[str, hash, hash]]:
-    return "{}{}".format(goal.temporal1, goal.temporal2), hash(goal.interval), hash(goal.formula)
-
-
-@_matching_info.register(TimeProposition)
-def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
-    return "T_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
-
-
-@_matching_info.register(ClkAssn)
-def _(goal: ClkAssn) -> Optional[Tuple[str, hash, hash]]:
-    return "assn", hash(goal.value), 0
-
-
-@_matching_info.register(Open)
-def _(goal: Open) -> Optional[Tuple[str, hash, hash]]:
-    return "open", 0, 0
-
-
-@_matching_info.register(Close)
-def _(goal: Close) -> Optional[Tuple[str, hash, hash]]:
-    return "close", 0, 0
-
-
-@_matching_info.register(OpenClose)
-def _(goal: OpenClose) -> Optional[Tuple[str, hash, hash]]:
-    return "oc", 0, 0
-
-
-@singledispatch
-def _get_matching_clocks(goal: Formula) -> List[Real]:
-    return list()
-
-
-@_get_matching_clocks.register(Up)
-def _(goal: Up) -> List[Real]:
-    return [goal.clock]
-
-
-@_get_matching_clocks.register(UpDown)
-def _(goal: UpDown) -> List[Real]:
-    return goal.clock.copy()
-
-
-@_get_matching_clocks.register(TimeProposition)
-def _(goal: TimeProposition) -> List[Real]:
-    return [goal.clock]
-
-
-@_get_matching_clocks.register(ClkAssn)
-def _(goal: ClkAssn) -> List[Real]:
-    return [goal.clock]
-
-
-@_get_matching_clocks.register(OCProposition)
-def _(goal: OCProposition) -> List[Real]:
-    return [goal.get_clock()]
+    return False

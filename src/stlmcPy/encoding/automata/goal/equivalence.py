@@ -1,5 +1,3 @@
-from itertools import product
-
 from .graph import *
 from .label import *
 
@@ -7,9 +5,8 @@ from .label import *
 # pre and postfix equivalence
 class PPEquivalence:
     def __init__(self):
-        self._ap_dict: Dict[Node, Set[Proposition]] = dict()
-        self._clock_subst: Dict[Tuple[Node, Node], Optional[ClockSubstitution]] = dict()
-        self._clock_matching: Dict[Node, ClockMatchingInfo] = dict()
+        self._jump_clock_matching: Dict[Jump, ClockMatchingInfo] = dict()
+        self._node_indexing: Dict[FrozenSet[Proposition], List[Node]] = dict()
 
     def reduce(self, graph: TableauGraph):
         self._clear()
@@ -17,389 +14,422 @@ class PPEquivalence:
         nodes = graph.get_nodes().copy()
         nodes.discard(graph.first_node())
 
-        # make clock matching and ap dictionary information
+        # make node indexing
         for node in nodes:
-            assert node not in self._ap_dict
-            assert node not in self._clock_matching
-            self._ap_dict[node] = set(filter(lambda x: isinstance(x, Proposition), node.cur_goals))
-            self._clock_matching[node] = self._make_clock_matching(node)
-
-        # make initial pre and post equivalence partition
-        partition = self._calc_initial_equivalence(nodes)
+            indexing = self._make_indexing_info(node)
+            if indexing in self._node_indexing:
+                self._node_indexing[indexing].append(node)
+            else:
+                self._node_indexing[indexing] = [node]
 
         iter = 0
         while True:
             iter += 1
             print("reduction iteration #{}".format(iter))
-            old_partition = partition.copy()
-            old_v = len(graph.get_nodes())
+            old_v = graph.get_nodes().copy()
+            old_e = get_node_jumps(graph)
+
+            # calculate clock matching information of all jumps
+            self._calc_jump_clock_matching_info(graph)
 
             # calculate pre- and post-partition and merge them
-            pre_partition = self._refine_partition(old_partition, graph)
-            post_partition = self._refine_partition(old_partition, graph, is_post=True)
-            partition = self._merge_partition(pre_partition, post_partition)
-            self._partition_assertion(partition, graph)
+            pre_equiv_rel = self._make_equiv_class(graph)
 
             # reduce graph using the partition
-            partition = self._reduce_graph(graph, partition)
-            v = len(graph.get_nodes())
+            self._reduce_pre_graph(graph, pre_equiv_rel)
 
-            if old_v == v:
+            # calculate clock matching information of all jumps
+            self._calc_jump_clock_matching_info(graph, is_post=True)
+
+            # calculate pre- and post-partition and merge them
+            post_equiv_rel = self._make_equiv_class(graph, is_post=True)
+
+            # reduce graph using the partition
+            self._reduce_post_graph(graph, post_equiv_rel)
+
+            print("v: {}, e: {}".format(len(graph.get_nodes()), len(get_node_jumps(graph))))
+            # break
+            if old_v == graph.get_nodes() and old_e == get_node_jumps(graph):
                 break
 
-    def _calc_initial_equivalence(self, nodes: Set[Node]) -> Set[FrozenSet[Node]]:
-        equiv: Dict[Node, Set[Node]] = dict()
+    @classmethod
+    def _make_indexing_info(cls, node: 'Node') -> FrozenSet[Proposition]:
+        indexing = set()
+        for f in node.cur_goals:
+            # time props
+            open_close = isinstance(f, OCProposition)
+            label_time_prop = isinstance(f, TimeProposition)
+            clk_time_assn = isinstance(f, ClkAssn)
+            if isinstance(f, Proposition):
+                if not (open_close or label_time_prop or clk_time_assn):
+                    indexing.add(f)
+        return frozenset(indexing)
+
+    def _make_equiv_class(self, graph: TableauGraph,
+                          is_post=False) -> List[Dict[Node, Set[Tuple[Node, ClockSubstitution]]]]:
+        # gather the nodes that have the same pre- or post-states
+        equiv_dict = self._make_initial_equiv_class(graph, is_post)
+
+        # make coarse equiv class regarding the label's propositions
+        coarse_equiv_class = set()
+        for num, eq_nodes in enumerate(equiv_dict):
+            n_eq = self._make_coarse_equiv_class(equiv_dict[eq_nodes])
+            coarse_equiv_class.update(n_eq)
+
+        equiv_d_l = list()
+        # check bisimulation relation to refine equivalent classes
+        for c_eq_c in coarse_equiv_class:
+            e_d = self._get_equiv_class(c_eq_c, graph, is_post)
+            tot = 0
+            # assert that no states are missing
+            for r_s in e_d:
+                tot += 1 + len(e_d[r_s])
+            assert tot == len(c_eq_c)
+            equiv_d_l.append(e_d)
+
+        return equiv_d_l
+    @classmethod
+    def _make_initial_equiv_class(cls, graph: TableauGraph, is_post=False) -> Dict[FrozenSet[Node], Set[Node]]:
+        # get the nodes that have the same predecessors
+        equiv_dict: Dict[FrozenSet[Node], Set[Node]] = dict()
+        for node in graph.get_nodes():
+            if node == graph.first_node():
+                continue
+
+            if is_post:
+                equiv_class = frozenset(graph.get_next_vertices(node))
+            else:
+                equiv_class = frozenset(graph.get_pred_vertices(node))
+
+            if equiv_class in equiv_dict:
+                equiv_dict[equiv_class].add(node)
+            else:
+                equiv_dict[equiv_class] = {node}
+        return equiv_dict
+
+    def _make_coarse_equiv_class(self, nodes: Set[Node]) -> Set[FrozenSet[Node]]:
+        equiv_dict: Dict[Tuple[FrozenSet[Proposition], bool, bool], Set[Node]] = dict()
+
         for node in nodes:
-            # nodes that are already calculated
-            covered = set(equiv.keys())
-            for n in equiv:
-                covered.update(equiv[n])
+            nm = self._make_indexing_info(node)
+            assert nm in self._node_indexing
 
-            to_be_checked = nodes.difference(covered)
+            k = nm, node.is_initial(), node.is_final()
+            if k in equiv_dict:
+                equiv_dict[k].add(node)
+            else:
+                equiv_dict[k] = {node}
 
-            for n in to_be_checked:
-                if self._label_eq(node, n):
-                    if node in equiv:
-                        equiv[node].add(n)
-                    else:
-                        equiv[node] = {n}
+        equiv = set()
+        for k in equiv_dict:
+            equiv.add(frozenset(equiv_dict[k]))
+        return equiv
 
-        equiv_rel = set()
-        for node in equiv:
-            equiv_c = equiv[node]
-            equiv_c.add(node)
+    def _get_equiv_class(self, nodes: FrozenSet[Node],
+                         graph: TableauGraph, is_post=False) -> Dict[Node, Set[Tuple[Node, ClockSubstitution]]]:
+        if len(nodes) <= 0:
+            return dict()
 
-            equiv_rel.add(frozenset(equiv_c))
+        waiting_list = list(nodes)
 
-        return equiv_rel
+        p_n = waiting_list.pop(0)
+        equiv_d: Dict[Node, Set[Tuple[Node, ClockSubstitution]]] = {p_n: set()}
 
-    def _refine_partition(self, partition: Set[FrozenSet[Node]],
-                          graph: TableauGraph, is_post=False) -> Set[FrozenSet[Node]]:
-        equiv_rel = partition.copy()
-        while True:
-            old_rel = equiv_rel.copy()
-            for splitter in old_rel:
-                eq_rel = set()
-                for nodes in equiv_rel:
-                    r_s = self._refine(set(nodes), splitter, graph, is_post)
-                    for rf in r_s:
-                        eq_rel.add(rf)
-
-                equiv_rel = eq_rel
-
-            if old_rel == equiv_rel:
-                break
-
-        return equiv_rel
-
-    @classmethod
-    def _merge_partition(cls, equiv_rel1: Set[FrozenSet[Node]],
-                         equiv_rel2: Set[FrozenSet[Node]]) -> Set[FrozenSet[Node]]:
-        equiv_graph = EquivGraph()
-
-        # make equiv graph
-        id_gen = _fresh_group_id()
-        id_dict: Dict[FrozenSet[Node], int] = dict()
-        n_dict: Dict[int, FrozenSet[Node]] = dict()
-
-        # make nodes
-        for eq in equiv_rel1.union(equiv_rel2):
-            g_id = next(id_gen)
-            n_dict[g_id], id_dict[eq] = eq, g_id
-            equiv_graph.add_eq_node(g_id)
-
-        # add edges
-        possible = set(product(equiv_rel1, equiv_rel2))
-        for eq1, eq2 in possible:
-            if len(eq1.intersection(eq2)) > 0:
-                s_id, t_id = id_dict[eq1], id_dict[eq2]
-                equiv_graph.add_eq_edge(s_id, t_id)
-
-        # calculate connected components
-        eg_ccs = equiv_graph.connected_component()
-
-        merged_equiv_rel = set()
-        for cc in eg_ccs:
-            equiv_class = set()
-            for eq_node in cc:
-                equiv_class.update(n_dict[eq_node.id])
-            merged_equiv_rel.add(frozenset(equiv_class))
-
-        return merged_equiv_rel
-
-    @classmethod
-    def _partition_assertion(cls, partition: Set[FrozenSet[Node]], graph: TableauGraph):
-        nodes = graph.get_nodes().copy()
-        nodes.discard(graph.first_node())
-
-        univ = set()
-        for eq_class in partition:
-            univ.update(eq_class)
-
-        assert nodes == univ
-
-    @classmethod
-    def _reduce_graph(cls, graph: TableauGraph,
-                      equiv_rel: Set[FrozenSet]) -> Set[FrozenSet[Node]]:
-        new_equiv_rel = set()
-        # refine graph
-        for n_set in equiv_rel:
-            # pick a node
-            e_set = list(sorted(n_set, key=lambda x: len(graph.get_pred_edges(x))))
-            r_n = e_set.pop(0)
-
-            # add it to the new equivalent class
-            new_equiv_rel.add(frozenset({r_n}))
-
-            # remove vertex and copy its jumps
-            for n in e_set:
-                jp_p_s = graph.get_pred_edges(n)
-                jp_n_s = graph.get_next_edges(n)
-
-                for jp in jp_p_s:
-                    new_jp = Jump(jp.get_src(), r_n, jp.get_ap())
-                    graph.add_jump(new_jp)
-
-                for jp in jp_n_s:
-                    new_jp = Jump(r_n, jp.get_trg(), jp.get_ap())
-                    graph.add_jump(new_jp)
-
-                graph.remove_node(n)
-        return new_equiv_rel
-
-    def _refine(self, nodes: Set[Node], splitter: FrozenSet[Node],
-                graph: TableauGraph, is_post=False) -> Set[FrozenSet[Node]]:
-
-        tot_len = len(nodes)
-        waiting = nodes.copy()
-        # pick an initial node
-        p_n = waiting.pop()
-
-        # group id dictionary
-        groups: Dict[Node, Set[Node]] = dict()
-        groups[p_n] = {p_n}
-
-        while True:
-            covered = set(groups.keys())
-            for n in groups:
-                covered.update(groups[n])
-
-            waiting = nodes.difference(covered)
-            if len(waiting) <= 0:
-                break
-            node = waiting.pop()
-            need_refine = True
-            for n in groups:
+        while len(waiting_list) > 0:
+            n = waiting_list.pop(0)
+            found_equiv = False
+            for node in equiv_d:
+                reason = set()
                 if is_post:
-                    no_need_to_refine = self._post_checking(node, n, splitter, graph)
+                    clk_subst = self._post_checking(node, n, graph, reason)
                 else:
-                    no_need_to_refine = self._pre_checking(node, n, splitter, graph)
+                    clk_subst = self._pre_checking(node, n, graph)
 
-                # no need to refine
-                if no_need_to_refine:
-                    groups[n].add(node)
-                    need_refine = False
+                if clk_subst is not None:
+                    if node in equiv_d:
+                        equiv_d[node].add((n, clk_subst))
+                    else:
+                        equiv_d[node] = {(n, clk_subst)}
+                    found_equiv = True
                     break
 
-            if need_refine:
-                assert node not in groups
-                groups[node] = {node}
+            if not found_equiv:
+                assert n not in equiv_d
+                equiv_d[n] = set()
 
-        r_tot_len = 0
-        for g_id in groups:
-            r_tot_len += len(groups[g_id])
-            if nodes == groups[g_id]:
-                assert len(groups) == 1
-
-        assert tot_len == r_tot_len
-        # return refined sets
-        return {frozenset(groups[g_id]) for g_id in groups}
-
-    # bisimulation post equivalence checking
-    # return true when the nodes are bisimilar (i.e., no need to refine)
-    # otherwise return false
-    def _post_checking(self, node1: Node, node2: Node,
-                       splitter: FrozenSet[Node], graph: TableauGraph) -> bool:
-        # get post edges
-        node1_jp_post = graph.get_next_edges(node1)
-        node2_jp_post = graph.get_next_edges(node2)
-
-        # filter the post nodes jump to the nodes in the splitter
-        node1_jp_post = set(filter(lambda x: x.get_trg() in splitter, node1_jp_post))
-        node2_jp_post = set(filter(lambda x: x.get_trg() in splitter, node2_jp_post))
-
-        # simple refinement condition
-        s_c = [len(node1_jp_post) == 0 and len(node2_jp_post) > 0,
-               len(node1_jp_post) > 0 and len(node2_jp_post) == 0]
-
-        if len(node1_jp_post) == 0 and len(node2_jp_post) == 0:
-            return True
-
-        if any(s_c):
-            return False
-
-        # need to consider jump conditions (with clock variable renaming)
-        clk_subst = self._get_clock_subst(node1, node2)
-
-        checked_jp1 = set()
-        for jp1 in node1_jp_post:
-            for jp2 in node2_jp_post:
-                if len(jp1.get_ap()) != len(jp2.get_ap()):
-                    continue
-
-                if clk_subst is None:
-                    jp2_ap = jp2.get_ap()
-                else:
-                    jp2_ap = frozenset(map(lambda x: clk_subst.substitute(x),
-                                           jp2.get_ap()))
-
-                # found equivalent jp2
-                if jp1.get_ap() == jp2_ap:
-                    checked_jp1.add(jp1)
-                    break
-
-        # should be refined
-        if checked_jp1 != node1_jp_post:
-            return False
-
-        checked_jp2 = set()
-        for jp2 in node2_jp_post:
-            for jp1 in node1_jp_post:
-                if len(jp2.get_ap()) != len(jp1.get_ap()):
-                    continue
-
-                if clk_subst is None:
-                    jp2_ap = jp2.get_ap()
-                else:
-                    jp2_ap = frozenset(map(lambda x: clk_subst.substitute(x),
-                                           jp2.get_ap()))
-
-                # found equivalent jp2
-                if jp1.get_ap() == jp2_ap:
-                    checked_jp2.add(jp2)
-                    break
-
-        # should be refined
-        if checked_jp2 != node2_jp_post:
-            return False
-
-        return True
+        return equiv_d
 
     # bisimulation pre equivalence checking
-    # return true when the nodes are bisimilar (i.e., no need to refine)
-    # otherwise return false
-    def _pre_checking(self, node1: Node, node2: Node,
-                      splitter: FrozenSet[Node], graph: TableauGraph) -> bool:
+    # return clock substitution when the nodes are bisimilar
+    # otherwise return none
+    def _pre_checking(self, node1: Node, node2: Node, graph: TableauGraph) -> Optional[ClockSubstitution]:
+        pred_s = graph.get_pred_vertices(node1)
+        assert pred_s == graph.get_pred_vertices(node2)
+
         # get pre edges
         node1_jp_pre = graph.get_pred_edges(node1)
         node2_jp_pre = graph.get_pred_edges(node2)
 
-        # filter the pred nodes jump to the nodes in the splitter
-        node1_jp_pre = set(filter(lambda x: x.get_src() in splitter, node1_jp_pre))
-        node2_jp_pre = set(filter(lambda x: x.get_src() in splitter, node2_jp_pre))
+        c1_clk = get_clock_pool(*node1.cur_goals)
+        c2_clk = get_clock_pool(*node2.cur_goals)
 
-        # simple refinement condition
-        s_c = [len(node1_jp_pre) == 0 and len(node2_jp_pre) > 0,
-               len(node1_jp_pre) > 0 and len(node2_jp_pre) == 0]
+        # when the number of clocks are different,
+        # the nodes are not bisimilar
+        if len(c1_clk) != len(c2_clk):
+            return None
 
-        if len(node1_jp_pre) == 0 and len(node2_jp_pre) == 0:
-            return True
+        # the non-timed goals (i.e., state propositions) must be the same
+        non_clk_g1 = node1.cur_goals.difference(filter_clock_goals(*node1.cur_goals))
+        non_clk_g2 = node2.cur_goals.difference(filter_clock_goals(*node2.cur_goals))
 
-        if any(s_c):
-            return False
+        if non_clk_g1 != non_clk_g2:
+            return None
 
-        checked_jp1 = set()
-        for jp1 in node1_jp_pre:
-            for jp2 in node2_jp_pre:
-                if len(jp1.get_ap()) != len(jp2.get_ap()):
-                    continue
+        clk_subst, forbidden = None, set()
 
-                # need to consider jump conditions (with clock variable renaming)
-                clk_subst = self._get_clock_subst(jp1.get_src(), jp2.get_src())
-                if clk_subst is None:
-                    jp2_ap = jp2.get_ap()
-                else:
-                    jp2_ap = frozenset(map(lambda x: clk_subst.substitute(x),
-                                           jp2.get_ap()))
+        for node in pred_s:
+            n_jp = graph.get_next_edges(node)
+            n1_jp = n_jp.intersection(node1_jp_pre)
+            n2_jp = n_jp.intersection(node2_jp_pre)
 
-                # found equivalent jp2
-                if jp1.get_ap() == jp2_ap:
-                    checked_jp1.add(jp1)
-                    break
+            clk_subst, forbidden = self._find_pre_clk_subst(n1_jp, n2_jp, clk_subst, forbidden, graph, True)
 
-        # should be refined
-        if checked_jp1 != node1_jp_pre:
-            return False
+            # the two nodes cannot be the same
+            if clk_subst is None:
+                return None
 
-        checked_jp2 = set()
+
+            clk_subst, forbidden = self._find_pre_clk_subst(n2_jp, n1_jp, clk_subst, forbidden, graph, False)
+
+            if clk_subst is None:
+                return None
+
+        return clk_subst
+
+    def _find_pre_clk_subst(self, node1_jp_pre: Set[Jump], node2_jp_pre: Set[Jump],
+                        clk_subst: Optional[ClockSubstitution],
+                        forbidden: Set[ClockSubstitution],
+                        graph: TableauGraph, right2left: bool) -> Tuple[Optional[ClockSubstitution], Set[ClockSubstitution]]:
+        # if right2left is true, rewrite jumps in node2_jp_pre using clk_subst
+        # and see if they can be same as the jumps in the node1_jp_pre
+        fb = forbidden.copy()
+        if len(node1_jp_pre) <= 0:
+            return clk_subst, fb
+
+        n1_jp_pre = node1_jp_pre.copy()
+        n2_jp_pre = node2_jp_pre.copy()
+        jp1 = n1_jp_pre.pop()
         for jp2 in node2_jp_pre:
-            for jp1 in node1_jp_pre:
-                if len(jp2.get_ap()) != len(jp1.get_ap()):
-                    continue
+            if len(jp1.get_ap()) != len(jp2.get_ap()):
+                continue
 
-                # need to consider jump conditions (with clock variable renaming)
-                clk_subst = self._get_clock_subst(jp1.get_src(), jp2.get_src())
-                if clk_subst is None:
-                    jp2_ap = jp2.get_ap()
-                else:
-                    jp2_ap = frozenset(map(lambda x: clk_subst.substitute(x),
-                                           jp2.get_ap()))
+            # try to get a clock renaming if none is given
+            if clk_subst is None:
+                n_clk_subst = self._get_jump_clock_subst(jp1, jp2, fb)
+            else:
+                n_clk_subst = clk_subst
 
-                # found equivalent jp2
-                if jp2_ap == jp1.get_ap():
-                    checked_jp2.add(jp2)
-                    break
+            # if still cannot find a substitution
+            # the two jumps cannot be the same
+            if n_clk_subst is None:
+                continue
 
-        # should be refined
-        if checked_jp2 != node2_jp_pre:
-            return False
+            if right2left:
+                jp1_ap = jp1.get_ap()
+                jp2_ap = {n_clk_subst.substitute(ap, is_write=True, is_read=False) for ap in jp2.get_ap()}
+            else:
+                jp1_ap = {n_clk_subst.substitute(ap, is_write=True, is_read=False) for ap in jp1.get_ap()}
+                jp2_ap = jp2.get_ap()
 
-        return True
+            # found equivalent jp2
+            if jp1_ap == jp2_ap:
+                f_clk, f_s = self._find_pre_clk_subst(n1_jp_pre, n2_jp_pre, n_clk_subst, fb, graph, right2left)
+                return f_clk, f_s
 
-    def _label_eq(self, node1: Node, node2: Node) -> bool:
-        ty_eq = [node1.is_initial() == node2.is_initial(),
-                 node1.is_final() == node2.is_final()]
+            fb.add(n_clk_subst)
 
-        if not all(ty_eq):
-            return False
+        return None, fb
 
-        assert node1 in self._ap_dict and node2 in self._ap_dict
-        ap1, ap2 = self._ap_dict[node1], self._ap_dict[node2]
 
-        if len(ap1) != len(ap2):
-            return False
+    # bisimulation ppst equivalence checking
+    # return clock substitution when the nodes are bisimilar
+    # otherwise return none
+    def _post_checking(self, node1: Node, node2: Node, graph: TableauGraph, reason: Set[Tuple[FrozenSet[Jump],
+    FrozenSet[Jump], str]]) -> Optional[ClockSubstitution]:
+        next_s = graph.get_next_vertices(node1)
+        assert next_s == graph.get_next_vertices(node2)
 
-        return ap1 == ap2
+        # get pre edges
+        node1_jp_post = graph.get_next_edges(node1)
+        node2_jp_post = graph.get_next_edges(node2)
+
+        c1_clk = get_clock_pool(*node1.cur_goals)
+        c2_clk = get_clock_pool(*node2.cur_goals)
+
+        # when the number of clocks are different,
+        # the nodes are not bisimilar
+        if len(c1_clk) != len(c2_clk):
+            return None
+
+        # the non-timed goals (i.e., state propositions) must be the same
+        non_clk_g1 = node1.cur_goals.difference(filter_clock_goals(*node1.cur_goals))
+        non_clk_g2 = node2.cur_goals.difference(filter_clock_goals(*node2.cur_goals))
+
+        if non_clk_g1 != non_clk_g2:
+            return None
+
+        clk_subst, forbidden = None, set()
+
+        for node in next_s:
+            n_jp = graph.get_pred_edges(node)
+            n1_jp = n_jp.intersection(node1_jp_post)
+            n2_jp = n_jp.intersection(node2_jp_post)
+
+            clk_subst, forbidden = self._find_post_clk_subst(n1_jp, n2_jp, clk_subst, forbidden, graph, True)
+
+            # the two nodes cannot be the same
+            if clk_subst is None:
+                reason.add((frozenset(n1_jp), frozenset(n2_jp), "failed ->"))
+                return None
+
+            clk_subst, forbidden = self._find_post_clk_subst(n2_jp, n1_jp, clk_subst, forbidden, graph, False)
+
+            if clk_subst is None:
+                reason.add((frozenset(n2_jp), frozenset(n1_jp), "failed <-"))
+                return None
+
+        inv = {clk_subst.substitute(f, is_write=False, is_read=True) for f in node2.invariant}
+        if inv != node1.invariant:
+            return None
+
+        return clk_subst
+
+    def _find_post_clk_subst(self, node1_jp_post: Set[Jump], node2_jp_post: Set[Jump],
+                             clk_subst: Optional[ClockSubstitution],
+                             forbidden: Set[ClockSubstitution],
+                             graph: TableauGraph, right2left: bool) -> Tuple[Optional[ClockSubstitution], Set[ClockSubstitution]]:
+        fb = forbidden.copy()
+        if len(node1_jp_post) <= 0:
+            return clk_subst, fb
+
+        n1_jp_post = node1_jp_post.copy()
+        n2_jp_post = node2_jp_post.copy()
+        jp1 = n1_jp_post.pop()
+        for jp2 in node2_jp_post:
+            if len(jp1.get_ap()) != len(jp2.get_ap()):
+                continue
+
+            # try to get a clock renaming if none is given
+            if clk_subst is None:
+                n_clk_subst = self._get_jump_clock_subst(jp1, jp2, fb)
+            else:
+                n_clk_subst = clk_subst
+
+            # if still cannot find a substitution
+            # the two jumps cannot be the same
+            if n_clk_subst is None:
+                continue
+
+            if right2left:
+                jp1_ap = set(jp1.get_ap())
+                jp2_ap = {n_clk_subst.substitute(ap, is_write=False, is_read=True) for ap in jp2.get_ap()}
+            else:
+                jp1_ap = {n_clk_subst.substitute(ap, is_write=False, is_read=True) for ap in jp1.get_ap()}
+                jp2_ap = set(jp2.get_ap())
+
+            # found equivalent jp2
+            if jp1_ap == jp2_ap:
+                f_clk, f_s = self._find_post_clk_subst(n1_jp_post, n2_jp_post, n_clk_subst, fb, graph, right2left)
+                return f_clk, f_s
+
+            fb.add(n_clk_subst)
+            return self._find_post_clk_subst(node1_jp_post, node2_jp_post, None, fb, graph, right2left)
+
+        return None, fb
+
+    def _calc_jump_clock_matching_info(self, graph: TableauGraph, is_post=False):
+        # clear previous jumps' clock matching
+        self._jump_clock_matching.clear()
+
+        jp_s = get_node_jumps(graph)
+        for jp in jp_s:
+            assert jp not in self._jump_clock_matching
+            clk_m = ClockMatchingInfo()
+            c_s = set(jp.get_ap())
+
+            # need to consider invariants
+            if is_post:
+                clk_m.add(*c_s.union(jp.get_src().invariant))
+            else:
+                clk_m.add(*c_s.union(jp.get_trg().invariant))
+
+            self._jump_clock_matching[jp] = clk_m
+
+    def _get_jump_clock_subst(self, jump1: Jump, jump2: Jump,
+                              forbidden: Set[ClockSubstitution]) -> Optional[ClockSubstitution]:
+        assert jump1 in self._jump_clock_matching and jump2 in self._jump_clock_matching
+
+        fb_list = list()
+        for clk_subst in forbidden:
+            fb_list.append(clk_subst.dict())
+
+        # get clock substitution
+        jp1_m, jp2_m = self._jump_clock_matching[jump1], self._jump_clock_matching[jump2]
+        return jp1_m.match(jp2_m, fb_list)
 
     def _clear(self):
-        self._ap_dict.clear()
-        self._clock_subst.clear()
-        self._clock_matching.clear()
+        self._jump_clock_matching.clear()
+        self._node_indexing.clear()
 
-    def _make_clock_matching(self, node: 'Node') -> ClockMatchingInfo:
-        assert node in self._ap_dict
+    @classmethod
+    def _reduce_pre_graph(cls, graph: TableauGraph,
+                          equiv_rel: List[Dict[Node, Set[Tuple[Node, ClockSubstitution]]]]):
+        # refine graph
+        for r_d in equiv_rel:
+            for node in r_d:
+                # remove vertex and copy its jumps
+                for n, clk_subst in r_d[node]:
+                    jp_p_s = graph.get_pred_edges(n)
+                    jp_n_s = graph.get_next_edges(n)
 
-        matching_info = ClockMatchingInfo()
+                    # remove pred jumps
+                    for jp in jp_p_s:
+                        graph.remove_jump(jp)
 
-        for g in node.cur_goals:
-            matching_info.add_cur(g)
+                    # rewrite clocks at read positions
+                    for jp in jp_n_s:
+                        r_jp_ap = {clk_subst.substitute(f, is_write=False,
+                                                        is_read=True) for f in jp.get_ap()}
+                        new_jp = Jump(node, jp.get_trg(), r_jp_ap)
+                        graph.add_jump(new_jp)
 
-        for g in node.nxt_goals:
-            matching_info.add_nxt(g)
+                    # remove equivalent node
+                    graph.remove_node(n)
 
-        return matching_info
+    @classmethod
+    def _reduce_post_graph(cls, graph: TableauGraph,
+                           equiv_rel: List[Dict[Node, Set[Tuple[Node, ClockSubstitution]]]]):
+        # refine graph
+        for r_d in equiv_rel:
+            for node in r_d:
+                # remove vertex and copy its jumps
+                for n, clk_subst in r_d[node]:
+                    jp_p_s = graph.get_pred_edges(n)
+                    jp_n_s = graph.get_next_edges(n)
 
-    def _get_clock_subst(self, node1: Node, node2: Node) -> Optional[ClockSubstitution]:
-        assert node1 in self._clock_matching and node2 in self._clock_matching
-        # get clock substitution to rename node2 to node1
-        k = node1, node2
-        # get clock substitution
-        n1_m, n2_m = self._clock_matching[node1], self._clock_matching[node2]
-        if k in self._clock_subst:
-            return self._clock_subst[k]
-        else:
-            self._clock_subst[k] = n1_m.match(n2_m)
-            return self._clock_subst[k]
+                    # rewrite clocks at write positions
+                    for jp in jp_p_s:
+                        r_jp_ap = {clk_subst.substitute(f, is_write=True,
+                                                        is_read=False) for f in jp.get_ap()}
+                        new_jp = Jump(jp.get_src(), node, r_jp_ap)
+                        graph.add_jump(new_jp)
+
+                    # remove next jumps
+                    for jp in jp_n_s:
+                        graph.remove_jump(jp)
+
+                    # remove equivalent node
+                    graph.remove_node(n)
 
 
 def _fresh_group_id():
@@ -409,74 +439,102 @@ def _fresh_group_id():
         counter += 1
 
 
-class EquivGraph(Graph['EquivNode', 'EquivEdge']):
+class ClockMatchingInfo:
     def __init__(self):
-        super().__init__()
+        self._matching_info: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+        self._other: Set[Formula] = set()
 
-    def add_eq_node(self, node_id: int):
-        self.add_vertex(EquivNode(node_id))
+    def add(self, *goals):
+        for f in goals:
+            assert isinstance(f, Formula)
+            self._add(f)
 
-    def add_eq_edge(self, src: int, trg: int):
-        src_n, trg_n = EquivNode(src), EquivNode(trg)
-        assert src_n in self.vertices and trg_n in self.vertices
+    def _add(self, goal: Formula):
+        info = _matching_info(goal)
 
-        jp1, jp2 = EquivEdge(src_n, trg_n), EquivEdge(trg_n, src_n)
-        self.add_edge(jp1)
-        self.add_edge(jp2)
+        if info is None:
+            self._other.add(goal)
+            return
 
-    def connected_component(self):
-        seen = set()
-        connected_component = list()
-        for node in self.vertices:
-            connected = _dfs(node, seen, self)
-            if len(connected) > 0:
-                connected_component.append(connected)
+        if info in self._matching_info:
+            self._matching_info[info].append([_get_matching_clock(goal)])
+        else:
+            self._matching_info[info] = [[_get_matching_clock(goal)]]
 
-        return connected_component
+    def match(self, other: 'ClockMatchingInfo',
+              forbidden: List[Dict[Real, Real]]) -> Optional[ClockSubstitution]:
+        assert isinstance(other, ClockMatchingInfo)
 
+        if len(self._other) != len(other._other):
+            return None
 
-class EquivNode:
-    def __init__(self, equiv_class: int):
-        self.id = equiv_class
+        if self._other != other._other:
+            return None
 
-    def __hash__(self):
-        return hash(self.id)
+        k_c = set(self._matching_info.keys())
+        # information must be equal
+        if k_c != set(other._matching_info.keys()):
+            return None
 
-    def __eq__(self, other):
-        return self.__hash__() == hash(other)
+        subst = clock_match(list(k_c), other._matching_info, self._matching_info, dict(), forbidden)
+        if subst is None:
+            return None
 
-    def __repr__(self):
-        return str(self.id)
+        clk_subst = ClockSubstitution()
+        for k in subst:
+            clk_subst.add(k, subst[k])
 
-
-class EquivEdge(Edge[EquivNode]):
-    def __init__(self, src: EquivNode, trg: EquivNode):
-        self._src, self._trg = src, trg
-
-    def __hash__(self):
-        return hash((self._src, self._trg))
-
-    def __eq__(self, other):
-        return self.__hash__() == hash(other)
+        return clk_subst
 
     def __repr__(self):
-        return "{} --> {}".format(self._src, self._trg)
-
-    def get_src(self) -> EquivNode:
-        return self._src
-
-    def get_trg(self) -> EquivNode:
-        return self._trg
+        m = "\n".join(["{} ---> {}".format(k, self._matching_info[k]) for k in self._matching_info])
+        return "clock matching\n{}\n".format(m)
 
 
-def _dfs(node: EquivNode, seen: Set[EquivNode], graph: EquivGraph) -> Set[EquivNode]:
-    if node in seen:
-        return set()
+@singledispatch
+def _matching_info(goal: Formula) -> Optional[Tuple[str, hash, hash]]:
+    return None
 
-    connected = {node}
-    seen.add(node)
-    next_nodes = graph.get_next_vertices(node)
-    for n in next_nodes:
-        connected.update(_dfs(n, seen, graph))
 
-    return connected
+@_matching_info.register(TimeProposition)
+def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
+    return "Time_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
+
+
+@_matching_info.register(ClkAssn)
+def _(goal: ClkAssn) -> Optional[Tuple[str, hash, hash]]:
+    return "assn", hash(goal.value), 0
+
+@_matching_info.register(Close)
+def _(goal: Close) -> Optional[Tuple[str, hash, hash]]:
+    return "close", 0, 0
+
+
+@_matching_info.register(Open)
+def _(goal: Open) -> Optional[Tuple[str, hash, hash]]:
+    return "open", 0, 0
+
+
+@_matching_info.register(OpenClose)
+def _(goal: OpenClose) -> Optional[Tuple[str, hash, hash]]:
+    return "openClose", 0, 0
+
+
+@singledispatch
+def _get_matching_clock(goal: Formula) -> Optional[Real]:
+    return None
+
+
+@_get_matching_clock.register(ClkAssn)
+def _(goal: ClkAssn) -> Optional[Real]:
+    return goal.clock
+
+
+@_get_matching_clock.register(OCProposition)
+def _(goal: OCProposition) -> Optional[Real]:
+    return goal.get_clock()
+
+
+@_get_matching_clock.register(TimeProposition)
+def _(goal: TimeProposition) -> Optional[Real]:
+    return goal.clock

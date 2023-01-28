@@ -83,18 +83,18 @@ class StlGoal(Goal):
                     exist, f_n, clk_subst = graph.find_node(n)
                     if exist:
                         # update clock variables at write positions and update clock renaming as resets
-                        jp_c = {clk_subst.substitute(f, is_write=True) for f in lb.transition_cur}
-                        jp_c.update(clk_subst.clock_assn())
+                        jp_c = {clk_subst.substitute(f, is_write=True, is_read=False) for f in lb.transition_cur}
+                        # jp_c.update(clk_subst.clock_assn())
 
-                        # get used clocks and the clocks to be used
-                        covered = graph.jump_write_clocks(jp_c)
-                        should_be_covered = graph.jump_read_clocks(jp_c)
-                        should_be_covered.update(graph.get_state_clocks(f_n))
-                        missed = should_be_covered.difference(covered)
-
-                        # make reset conditions for the uncovered clocks
-                        identity = graph.identity_clk_subst(missed)
-                        jp_c.update(identity.clock_assn())
+                        # # get used clocks and the clocks to be used
+                        # covered = graph.jump_write_clocks(jp_c)
+                        # should_be_covered = graph.jump_read_clocks(jp_c)
+                        # should_be_covered.intersection_update(graph.get_state_clocks(f_n))
+                        # missed = should_be_covered.difference(covered)
+                        #
+                        # # make reset conditions for the uncovered clocks
+                        # identity = graph.identity_clk_subst(missed)
+                        # jp_c.update(identity.clock_assn())
 
                         jp = graph.make_jump(p_n, f_n, jp_c)
                         if jp_checker.is_contradiction(jp):
@@ -103,19 +103,19 @@ class StlGoal(Goal):
                         graph.add_jump(jp)
 
                     else:
-                        # get used clocks and the clocks to be used
-                        covered = graph.jump_write_clocks(lb.transition_cur)
-                        should_be_covered = graph.jump_read_clocks(lb.transition_cur)
-                        should_be_covered.update(graph.get_state_clocks(n))
-                        missed = should_be_covered.difference(covered)
-
-                        # make identity reset conditions for the uncovered clocks
-                        identity = graph.identity_clk_subst(missed)
-                        jp_c = lb.transition_cur
-                        jp_c.update(identity.clock_assn())
+                        # # get used clocks and the clocks to be used
+                        # covered = graph.jump_write_clocks(lb.transition_cur)
+                        # should_be_covered = graph.jump_read_clocks(lb.transition_cur)
+                        # should_be_covered.intersection_update(graph.get_state_clocks(n))
+                        # missed = should_be_covered.difference(covered)
+                        #
+                        # # make identity reset conditions for the uncovered clocks
+                        # identity = graph.identity_clk_subst(missed)
+                        # jp_c = lb.transition_cur
+                        # jp_c.update(identity.clock_assn())
 
                         # make node and check its contradiction
-                        jp = graph.make_jump(p_n, n, jp_c)
+                        jp = graph.make_jump(p_n, n, lb.transition_cur)
                         if jp_checker.is_contradiction(jp):
                             continue
 
