@@ -340,7 +340,7 @@ class ClockMatchingInfo:
         if k_c != set(other._matching_info_cur.keys()):
             return None
 
-        subst = clock_match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict(), list())
+        subst = clock_match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict())
         if subst is None:
             return None
 
@@ -348,7 +348,7 @@ class ClockMatchingInfo:
         if k_n != set(other._matching_info_nxt.keys()):
             return None
 
-        subst = clock_match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst, list())
+        subst = clock_match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst)
         if subst is None:
             return None
 

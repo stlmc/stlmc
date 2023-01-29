@@ -1,5 +1,5 @@
 from itertools import permutations
-from typing import Optional, Tuple
+from typing import Tuple
 
 from .label import *
 from ....constraints.aux.operations import *
@@ -311,7 +311,7 @@ def _(goal: OCProposition) -> Set[Real]:
 def clock_match(positions: List[Tuple[str, hash, hash]],
                 match1: Dict[Tuple[str, hash, hash], List[List[Real]]],
                 match2: Dict[Tuple[str, hash, hash], List[List[Real]]],
-                subst: Dict[Real, Real], forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
+                subst: Dict[Real, Real]) -> Optional[Dict[Real, Real]]:
     if len(positions) <= 0:
         return subst
 
@@ -324,56 +324,33 @@ def clock_match(positions: List[Tuple[str, hash, hash]],
     p_clk2_order = list(map(lambda x: list(x), permutations(p_clk2)))
 
     for clk2_set in p_clk2_order:
-        n_subst = _match_test(subst, p_clk1, clk2_set, forbidden)
+        n_subst = _match_test(subst, p_clk1, clk2_set)
         if n_subst is None:
             continue
 
-        m = clock_match(positions, match1, match2, n_subst, forbidden)
+        m = clock_match(positions, match1, match2, n_subst)
         if m is not None:
             return m
     return None
 
 
 def _match_test(subst: Dict[Real, Real],
-                c1_set: List[List[Real]], c2_set: List[List[Real]],
-                forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
+                c1_set: List[List[Real]], c2_set: List[List[Real]]) -> Optional[Dict[Real, Real]]:
     new_subst = subst.copy()
     for clk1_s, clk2_s in list(zip(c1_set, c2_set)):
-        new_subst = _match_clk(new_subst, clk1_s, clk2_s, forbidden)
+        new_subst = _match_clk(new_subst, clk1_s, clk2_s)
         if new_subst is None:
             return None
     return new_subst
 
 
 def _match_clk(subst: Dict[Real, Real],
-               c1_set: List[Real], c2_set: List[Real],
-               forbidden: List[Dict[Real, Real]]) -> Optional[Dict[Real, Real]]:
+               c1_set: List[Real], c2_set: List[Real]) -> Optional[Dict[Real, Real]]:
     new_subst = subst.copy()
     for c1, c2 in set(zip(c1_set, c2_set)):
-        # if _forbidden_mapping(subst, forbidden):
-        #     return None
-
         # conflict
         if c1 in subst:
             if not variable_equal(subst[c1], c2):
                 return None
         new_subst[c1] = c2
     return new_subst
-
-def _forbidden_mapping(subst: Dict[Real, Real],
-                       forbidden: List[Dict[Real, Real]]) -> bool:
-    # check whether there exists a substitution in forbidden
-    # that subst is superset of it
-    k = set(subst.keys())
-    for f_matching in forbidden:
-        if k.issuperset(set(f_matching.keys())):
-            is_subset = True
-            for c in f_matching:
-                if not variable_equal(f_matching[c], subst[c]):
-                    is_subset = False
-                    break
-
-            if is_subset:
-                return True
-
-    return False
