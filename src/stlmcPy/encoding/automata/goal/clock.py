@@ -55,10 +55,9 @@ def _(goal: OCProposition, clock_subst_dict: Dict[Real, Real],
 @_clock_substitution.register(Up)
 def _(goal: Up, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: bool):
     is_clk = goal.clock in clock_subst_dict
-    is_ty = isinstance(goal.type, TypeVariable)
 
     clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
-    ty = TypeVariable(clk.id) if is_ty else goal.type
+    ty = TypeVariable(clk.id)
 
     if isinstance(goal, GloballyUp):
         return GloballyUp(clk, ty, goal.interval, goal.formula)
@@ -75,12 +74,11 @@ def _(goal: Up, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: boo
 @_clock_substitution.register(UpDown)
 def _(goal: UpDown, clock_subst_dict: Dict[Real, Real], is_write: bool, is_read: bool):
     is_clk = [goal.clock[0] in clock_subst_dict, goal.clock[1] in clock_subst_dict]
-    is_ty = [isinstance(goal.type[0], TypeVariable), isinstance(goal.type[1], TypeVariable)]
 
     clk = [clock_subst_dict[goal.clock[0]] if is_clk[0] else goal.clock[0],
            clock_subst_dict[goal.clock[1]] if is_clk[1] else goal.clock[1]]
-    ty = [TypeVariable(clk[0].id) if is_ty[0] else goal.type[0],
-          TypeVariable(clk[1].id) if is_ty[1] else goal.type[1]]
+    ty = [TypeVariable(clk[0].id),
+          TypeVariable(clk[1].id)]
 
     if isinstance(goal, GloballyUpDown):
         return GloballyUpDown(clk[0], clk[1], ty[0], ty[1], goal.interval, goal.formula)
@@ -120,6 +118,11 @@ def _(goal: ClkAssn, clock_subst_dict: Dict[Real, Real],
 
 def _substitute_oc_prop_as_write(goal: OCProposition,
                                  clock_subst_dict: Dict[Real, Real]):
+    return goal
+
+
+def _substitute_oc_prop_as_read(goal: OCProposition,
+                                clock_subst_dict: Dict[Real, Real]):
     # The variable of the OCProposition is writable
     if goal.get_clock() in clock_subst_dict:
         clk = clock_subst_dict[goal.get_clock()]
@@ -136,18 +139,11 @@ def _substitute_oc_prop_as_write(goal: OCProposition,
         return goal
 
 
-def _substitute_oc_prop_as_read(goal: OCProposition,
-                                clock_subst_dict: Dict[Real, Real]):
-    return goal
-
-
 def _substitute_clk_assn_as_write(goal: ClkAssn, clock_subst_dict: Dict[Real, Real]):
     is_clk = goal.clock in clock_subst_dict
 
     clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
-    if isinstance(goal, ClkReset):
-        return ClkReset(clk)
-    elif isinstance(goal, ClkAssn):
+    if isinstance(goal, ClkAssn):
         return ClkAssn(clk, goal.value)
     else:
         raise Exception("wrong goal type")
@@ -157,9 +153,7 @@ def _substitute_clk_assn_as_read(goal: ClkAssn, clock_subst_dict: Dict[Real, Rea
     is_rv = goal.value in clock_subst_dict
 
     v = clock_subst_dict[goal.value] if is_rv else goal.value
-    if isinstance(goal, ClkReset):
-        return goal
-    elif isinstance(goal, ClkAssn):
+    if isinstance(goal, ClkAssn):
         return ClkAssn(goal.clock, v)
     else:
         raise Exception("wrong goal type")
@@ -171,10 +165,9 @@ def _substitute_time_prop_as_write(goal: TimeProposition, clock_subst_dict: Dict
 
 def _substitute_time_prop_as_read(goal: TimeProposition, clock_subst_dict: Dict[Real, Real]):
     is_clk = goal.clock in clock_subst_dict
-    is_ty = isinstance(goal.ty, TypeVariable)
 
     clk = clock_subst_dict[goal.clock] if is_clk else goal.clock
-    ty = TypeVariable(clk.id) if is_ty else goal.ty
+    ty = TypeVariable(clk.id)
 
     if isinstance(goal, TimeGloballyPre):
         return TimeGloballyPre(clk, ty, goal.interval)
@@ -296,7 +289,7 @@ def _(goal: TimeProposition) -> Set[Real]:
 
 
 @_get_clocks.register(ClkAssn)
-def _(goal: ClkReset) -> Set[Real]:
+def _(goal: ClkAssn) -> Set[Real]:
     if isinstance(goal.value, Real):
         return {goal.clock, goal.value}
     else:

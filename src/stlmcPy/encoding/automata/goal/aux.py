@@ -194,7 +194,7 @@ def _expand_timed_globally(formula: GloballyFormula, label: Label,
 
     clk_index = label.max_clock_index + 1
     clk = fresh_clock(clk_index)
-    r_clk = ClkReset(clk)
+    r_clk = ClkAssn(clk, RealVal("0.0"))
 
     ty = TypeVariable(clk.id)
     oc = OpenClose(ty)
@@ -272,7 +272,7 @@ def _expand_globally_up_4(formula: GloballyUp, label: Label,
     clk_s = [formula.clock, fresh_clock(clk_index)]
     ty_s = [formula.type, TypeVariable(clk_s[1].id)]
 
-    r_clk, oc = ClkReset(clk_s[1]), OpenClose(ty_s[1])
+    r_clk, oc = ClkAssn(clk_s[1], RealVal("0.0")), OpenClose(ty_s[1])
 
     f = GloballyUpDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
     lb = Label(singleton(), singleton(), singleton(f), singleton(t_pre, oc, r_clk),
@@ -342,7 +342,7 @@ def _expand_globally_up_intersect_4(formula: GloballyUpIntersect, label: Label,
     clk_s = [formula.clock, fresh_clock(clk_index)]
     ty_s = [formula.type, TypeVariable(clk_s[1].id)]
 
-    r_clk, oc = ClkReset(clk_s[1]), OpenClose(ty_s[1])
+    r_clk, oc = ClkAssn(clk_s[1], RealVal("0.0")), OpenClose(ty_s[1])
 
     inv = TimeGloballyPre(formula.clock, formula.type, formula.interval)
     f = GloballyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
@@ -496,7 +496,7 @@ def _expand_timed_finally(formula: FinallyFormula, label: Label,
 
     clk_index = label.max_clock_index + 1
     clk = fresh_clock(clk_index)
-    r_clk = ClkReset(clk)
+    r_clk = ClkAssn(clk, RealVal("0.0"))
 
     ty = TypeVariable(clk.id)
     oc = OpenClose(ty)
@@ -556,7 +556,7 @@ def _expand_finally_up_3(formula: FinallyUp, label: Label,
     clk_s = [formula.clock, fresh_clock(clk_index)]
     ty_s = [formula.type, TypeVariable(clk_s[1].id)]
 
-    r_clk = ClkReset(clk_s[1])
+    r_clk = ClkAssn(clk_s[1], RealVal("0.0"))
     oc = OpenClose(ty_s[1])
 
     t_pre = TimeFinallyPre(formula.clock, formula.type, formula.interval)
@@ -637,7 +637,7 @@ def _expand_finally_up_intersect_4(formula: FinallyUpIntersect, label: Label,
     ty_s = [formula.type, TypeVariable(clk_s[1].id)]
 
     oc = OpenClose(ty_s[1])
-    r_clk = ClkReset(clk_s[1])
+    r_clk = ClkAssn(clk_s[1], RealVal("0.0"))
 
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     f = FinallyUpIntersectDown(clk_s[0], clk_s[1], ty_s[0], ty_s[1], formula.interval, formula.formula)
@@ -670,7 +670,7 @@ def _expand_finally_up_intersect_5(formula: FinallyUpIntersect, label: Label,
         oc = Open(formula.type)
 
     oc2 = OpenClose(ty_s[1])
-    r_clk2 = ClkReset(clk_s[1])
+    r_clk2 = ClkAssn(clk_s[1], RealVal("0.0"))
 
     inv = TimeFinallyPre(formula.clock, formula.type, formula.interval)
     t_restart = TimeFinallyIn(clk_s[0], ty_s[0], formula.interval)
@@ -748,7 +748,7 @@ def _expand_finally_up_intersect_down_2(formula: FinallyUpIntersectDown, label: 
     f = FinallyUpDown(clk1, clk2, ty1, ty2, interval, formula.formula)
 
     r_clk1 = ClkAssn(clk1, inf(interval))
-    r_clk2 = ClkReset(clk2)
+    r_clk2 = ClkAssn(clk2, RealVal("0.0"))
 
     if interval.left_end:
         oc = Close(ty1)

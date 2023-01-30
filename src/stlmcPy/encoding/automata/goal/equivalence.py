@@ -443,7 +443,10 @@ def _get_matching_clock(goal: Formula, is_post: bool) -> Optional[Real]:
 @_get_matching_clock.register(ClkAssn)
 def _(goal: ClkAssn, is_post: bool) -> Optional[Real]:
     if is_post:
-        return None
+        if isinstance(goal.value, Real):
+            return goal.value
+        else:
+            return None
     else:
         return goal.clock
 
@@ -451,14 +454,14 @@ def _(goal: ClkAssn, is_post: bool) -> Optional[Real]:
 @_get_matching_clock.register(OCProposition)
 def _(goal: OCProposition, is_post: bool) -> Optional[Real]:
     if is_post:
-        return None
-    else:
         return goal.get_clock()
+    else:
+        return None
 
 
 @_get_matching_clock.register(TimeProposition)
 def _(goal: TimeProposition, is_post: bool) -> Optional[Real]:
     if is_post:
-        return None
-    else:
         return goal.clock
+    else:
+        return None

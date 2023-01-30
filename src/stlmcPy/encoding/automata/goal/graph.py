@@ -143,6 +143,7 @@ class TableauGraph(Graph['Node', 'Jump']):
                 return True, n, clk_subst
 
         return False, None, None
+
     @classmethod
     def identity_clk_subst(cls, clk_s: Set[Real]) -> ClockSubstitution:
         identity = ClockSubstitution()

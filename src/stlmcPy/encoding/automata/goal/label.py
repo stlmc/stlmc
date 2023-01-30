@@ -138,11 +138,6 @@ class ClkAssn(Proposition):
         return self._name
 
 
-class ClkReset(ClkAssn):
-    def __init__(self, clock: Real):
-        super().__init__(clock, RealVal("0.0"))
-
-
 class Up(Formula):
     def __init__(self, clk: Real, ty: TypeVariable, interval: Interval, formula: Formula, temporal: str):
         super().__init__()
