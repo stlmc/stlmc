@@ -115,7 +115,6 @@ condition   :
               LPAREN condition RPAREN  # parenthesisCond
             | TRUE     # constantCond
             | FALSE    # constantCond
-            | VALUE    # constantCond
             | VARIABLE # constantCond
             | op=NOT condition  # unaryCond
             | condition op=(EQUAL | NEQ) condition    # compCond
