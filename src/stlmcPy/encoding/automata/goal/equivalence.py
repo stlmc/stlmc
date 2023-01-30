@@ -419,6 +419,7 @@ def _(goal: ClkAssn, node: Optional[Node], is_post: bool) -> Optional[Tuple[str,
     else:
         return "assn", hash(goal.value), hash(node)
 
+
 @_matching_info.register(Close)
 def _(goal: Close, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
     return "close", 0, hash(node)
@@ -449,9 +450,15 @@ def _(goal: ClkAssn, is_post: bool) -> Optional[Real]:
 
 @_get_matching_clock.register(OCProposition)
 def _(goal: OCProposition, is_post: bool) -> Optional[Real]:
-    return goal.get_clock()
+    if is_post:
+        return None
+    else:
+        return goal.get_clock()
 
 
 @_get_matching_clock.register(TimeProposition)
 def _(goal: TimeProposition, is_post: bool) -> Optional[Real]:
-    return goal.clock
+    if is_post:
+        return None
+    else:
+        return goal.clock
