@@ -51,7 +51,7 @@ def _(f: UntilFormula):
     i2 = Interval(True, RealVal("0.0"), i0.left, True)
 
     f1 = FinallyFormula(i1, u, r)
-    f2 = GloballyFormula(i2, u, UntilFormula(u, u, l, r))
+    f2 = ReleaseFormula(u, u, l, r) if str(i0.left) == "0.0" else GloballyFormula(i2, u, UntilFormula(u, u, l, r))
 
     return And([f1, f2])
 
@@ -69,6 +69,6 @@ def _(f: ReleaseFormula):
     i2 = Interval(True, RealVal("0.0"), i0.left, True)
 
     f1 = GloballyFormula(i1, u, r)
-    f2 = FinallyFormula(i2, u, ReleaseFormula(u, u, l, r))
+    f2 = ReleaseFormula(u, u, l, r) if str(i0.left) == "0.0" else FinallyFormula(i2, u, ReleaseFormula(u, u, l, r))
 
     return Or([f1, f2])

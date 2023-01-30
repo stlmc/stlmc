@@ -2,9 +2,11 @@ import os
 import pickle
 
 from ..algorithm import Algorithm
+from ...encoding.automata.goal.ha_converter import HaBoundProcessor
 from ...hybrid_automaton.converter.flowstar import FlowStarConverter
 from ...hybrid_automaton.converter.juliareach import JuliaReachConverter
 from ...hybrid_automaton.converter.spaceex import SpaceExConverter
+from ...hybrid_automaton.converter.stlmc import StlmcConverter
 from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
@@ -15,6 +17,7 @@ from ...solver.abstract_solver import SMTSolver
 class OneStepAlgorithm(Algorithm):
     def __init__(self, config: Configuration):
         self._config = config
+        self._ha_bound_proc = HaBoundProcessor(self._config)
 
     def run(self, model: Model, goal: Goal, solver: SMTSolver):
         solver.reset()
@@ -29,6 +32,7 @@ class OneStepAlgorithm(Algorithm):
         # print(g_a)
         # print(m_a)
         automata = composition(m_a, g_a)
+        self._ha_bound_proc.add_bounds(automata)
 
         print_ha_size("stl", g_a)
         print_ha_size("model", m_a)
@@ -43,6 +47,8 @@ class OneStepAlgorithm(Algorithm):
         elif solver_ty == "spaceex":
             # spaceex
             converter = SpaceExConverter(self._config)
+        elif solver_ty == "stlmc":
+            converter = StlmcConverter(self._config)
         else:
             raise Exception("{} is not a valid reachable solver".format(solver_ty))
 

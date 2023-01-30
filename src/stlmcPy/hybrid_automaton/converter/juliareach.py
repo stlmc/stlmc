@@ -63,9 +63,15 @@ class JuliaReachConverter:
                                   "\n".join(model), init, prob, analysis, final])
 
     def write(self, file_name: str):
-        f = open("{}.jl".format(file_name), "w")
+        common_section = self.config.get_section("common")
+        g_n, b = common_section.get_value("goal"), common_section.get_value("bound")
+
+        jl_n = "{}_{}_b{}_jl.jl".format(file_name, g_n, b)
+        f = open(jl_n, "w")
         f.write(self._string)
         f.close()
+
+        print("write hybrid automaton to {}".format(jl_n))
 
 
 def preprocessing(ha: HybridAutomaton):

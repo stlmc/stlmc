@@ -2,6 +2,8 @@ from .graph import *
 from .label import TimeProposition
 from ....constraints.aux.operations import VarSubstitution
 from ....hybrid_automaton.hybrid_automaton import *
+from ....hybrid_automaton.utils import get_jumps
+from ....objects.configuration import Configuration
 
 
 class HAConverter:
@@ -135,6 +137,8 @@ class HAConverter:
             elif isinstance(g, OCProposition):
                 # ignore open close propositions
                 continue
+            elif isinstance(g, TimeFinal):
+                continue
             elif isinstance(g, Proposition):
                 # other propositions go to invariant
                 guard_s.add(g)
@@ -188,3 +192,65 @@ class HAConverter:
             # remove all the others
             for tr in equiv[h]:
                 automata.remove_transition(tr)
+
+
+class HaBoundProcessor:
+    def __init__(self, config: Configuration):
+        common_section = config.get_section("common")
+        self._tb = float(common_section.get_value("time-bound"))
+        self._bound = int(common_section.get_value("bound"))
+
+    def _make_tb_invariant(self) -> Formula:
+        tb = RealVal(str(self._tb))
+        g_clk = self._global_clk()
+        return g_clk <= tb
+
+    def _make_jp_bound_conditions(self) -> Optional[Tuple[Formula, Tuple[Real, Expr], Tuple[Real, Expr], Formula]]:
+        one, zero, b_val = RealVal("1.0"), RealVal("0.0"), RealVal(str(self._bound))
+        jb_c = self._jump_bound_counter()
+
+        # jump-bound condition
+        if self._bound < 0:
+            return None
+        else:
+            jb_f = jb_c <= b_val
+            jb_r = (jb_c, jb_c + one)
+            jb_d = (jb_c, zero)
+            jb_i = jb_c == zero
+
+            return jb_f, jb_r, jb_d, jb_i
+
+    def add_bounds(self, ha: HybridAutomaton):
+        # make time bound invariant
+        tb_inv = self._make_tb_invariant()
+        jb_c = self._make_jp_bound_conditions()
+
+        # if jump bound conditions exists
+        if jb_c is not None:
+            _, _, _, jb_i = jb_c
+            ha.add_init(jb_i)
+
+        # add time bound invariant and jump bound condition
+        for m in ha.get_modes():
+            m.add_invariant(tb_inv)
+
+            # if jump bound condition exists
+            if jb_c is not None:
+                _, _, jb_d, _ = jb_c
+                m.add_dynamic(jb_d)
+
+        # add jump bound to the resets and guards
+        for jp in get_jumps(ha):
+            # add jump bound condition if any exists
+            if jb_c is not None:
+                jb_f, jb_r, _, _ = jb_c
+                jp.add_guard(jb_f)
+                jp.add_reset(jb_r)
+
+    @classmethod
+    def _jump_bound_counter(cls):
+        return Real("jbc")
+
+    @classmethod
+    def _global_clk(cls):
+        return Real("gClk")

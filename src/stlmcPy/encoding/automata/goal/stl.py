@@ -65,8 +65,8 @@ class StlGoal(Goal):
             print("#{} -> {}".format(depth, len(queue)))
 
             # set upper bound of searching
-            if depth >= self.bound:
-                break
+            # if depth >= self.bound:
+            #     break
 
             new_queue = list()
             while len(queue) > 0:

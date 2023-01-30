@@ -130,10 +130,14 @@ class FlowStarConverter(Converter):
             unsafe_str)
 
     def write(self, file_name: str):
-        f = open("{}_fs.model".format(file_name), "w")
+        common_section = self.config.get_section("common")
+        g_n, b = common_section.get_value("goal"), common_section.get_value("bound")
+
+        fs_n = "{}_{}_b{}_fs.model".format(file_name, g_n, b)
+        f = open(fs_n, "w")
         f.write(self._string)
         f.close()
-        print("write hybrid automaton to {}_fs.model".format(file_name))
+        print("write hybrid automaton to {}".format(fs_n))
 
     def _reset(self):
         self._string = ""

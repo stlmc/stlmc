@@ -21,14 +21,20 @@ class SpaceExConverter(Converter):
         self._config_string = _make_conf(ha, self.config)
 
     def write(self, file_name: str):
-        f = open("{}_se.xml".format(file_name), "w")
+        common_section = self.config.get_section("common")
+        g_n, b = common_section.get_value("goal"), common_section.get_value("bound")
+
+        m_n = "{}_{}_b{}_se.xml".format(file_name, g_n, b)
+        c_n = "{}_{}_b{}_se.cfg".format(file_name, g_n, b)
+
+        f = open(m_n, "w")
         f.write(self._model_string)
         f.close()
 
-        f = open("{}_se.cfg".format(file_name), "w")
+        f = open(c_n, "w")
         f.write(self._config_string)
         f.close()
-        print("write hybrid automaton to {}_se.xml and {}_se.cfg".format(file_name, file_name))
+        print("write hybrid automaton to {} and {}".format(m_n, c_n))
 
     def _reset(self):
         self._model_string = ""
@@ -53,7 +59,7 @@ def _make_model(ha: HybridAutomaton):
     # make system
     sys_comp_header = "<component id=\"system\">"
     sys_comp_footer = "</component>"
-    bind_header = "<bind component=\"{}\" as=\"{}_system\" x=\"300\" y=\"200\">".format(ha_id, ha_id)
+    bind_header = "<bind component=\"{}\" as=\"subsystem\" x=\"300\" y=\"200\">".format(ha_id, ha_id)
     bind_footer = "</bind>"
     sys_comp = "\n".join([sys_comp_header, var_str_list, bind_header, map_str_list, bind_footer, sys_comp_footer])
 
@@ -69,18 +75,17 @@ def _make_model(ha: HybridAutomaton):
 
 def _make_conf(ha: HybridAutomaton, config: Configuration):
     common_section = config.get_section("common")
-    time_bound = common_section.get_value("time-bound")
+    time_horizon = common_section.get_value("time-horizon")
 
-    ha_id = id(ha)
     v_set = get_ha_vars(ha)
 
     init_state, final_state = list(), list()
     for mode in ha.get_modes():
         if mode.is_initial():
-            init_state.append("loc({}_system) == mode_id_{}".format(ha_id, mode.id))
+            init_state.append("loc(subsystem) == mode_id_{}".format(mode.id))
 
         if mode.is_final():
-            final_state.append("loc({}_system) == mode_id_{}".format(ha_id, mode.id))
+            final_state.append("loc(subsystem) == mode_id_{}".format(mode.id))
 
     init_const = [obj2se(c, is_initial=True) for c in ha.init]
 
@@ -96,7 +101,7 @@ def _make_conf(ha: HybridAutomaton, config: Configuration):
     conf_dict["set-aggregation"] = "chull"
     conf_dict["flowpipe-tolerance"] = "1"
     conf_dict["flowpipe-tolerance-rel"] = "0"
-    conf_dict["time-horizon"] = "{}".format(time_bound)
+    conf_dict["time-horizon"] = "{}".format(time_horizon)
     conf_dict["iter-max"] = "-1"
     conf_dict["output-variables"] = "\"{}, {}\"".format(random_var, random_var)
     conf_dict["output-format"] = "\"INTV\""
