@@ -19,7 +19,7 @@ class FlowStarConverter(Converter):
         modes_str_list = list()
         for mode in ha.get_modes():
             mode_str = "mode_{}{{\n".format(mode.id)
-            mode_str += "nonpoly ode\n{"
+            mode_str += "poly ode 1\n{" if mode.is_initial() else "nonpoly ode\n{"
             # mode_str += "poly ode 1\n{"
             # mode_str += "poly ode 3\n{"
 
@@ -101,14 +101,15 @@ class FlowStarConverter(Converter):
 
         common_section = self.config.get_section("common")
         tb = common_section.get_value("time-bound")
+        time_horizon = common_section.get_value("time-horizon")
 
         # config
         net_dict = dict()
         net_dict["adaptive steps"] = "{min 0.001, max 0.5}"
-        net_dict["time"] = tb
+        net_dict["time"] = time_horizon
         net_dict["remainder estimation"] = "1e-8"
         net_dict["identity precondition"] = ""
-        net_dict["gnuplot octagon"] = "{},{} fixed orders 4".format(picked, picked)
+        net_dict["gnuplot octagon"] = "{},{} fixed orders 8".format(picked, picked)
         net_dict["cutoff"] = "1e-13"
         net_dict["precision"] = "53"
         net_dict["no output"] = ""
@@ -146,10 +147,10 @@ class FlowStarConverter(Converter):
 def preprocessing(ha: HybridAutomaton):
     ff = Real("ff")
     zero, one = RealVal("0.0"), RealVal("1.0")
-    first_clk = Real("clk1")
+    g_clk = Real("gClk")
 
     # add initial conditions for special variables: ff = 1
-    ha.add_init(ff == one, first_clk == zero)
+    ha.add_init(ff == one, g_clk == zero)
 
     for mode in ha.get_modes():
         mode.add_dynamic((ff, zero))
@@ -163,12 +164,19 @@ def preprocessing(ha: HybridAutomaton):
 
     initial_mode = Mode(0)
     initial_mode.set_as_initial()
-    initial_mode.add_invariant(first_clk <= zero)
+    initial_mode.add_invariant(g_clk <= zero)
+
+    v_s = get_ha_vars(ha)
+    v_s.discard(g_clk)
+    for v in v_s:
+        initial_mode.add_dynamic((v, zero))
+
+    initial_mode.add_dynamic((g_clk, one))
     ha.add_mode(initial_mode)
 
     for mode in initials:
         tr = Transition(initial_mode, mode)
-        tr.add_guard(first_clk >= zero)
+        tr.add_guard(g_clk >= zero)
         ha.add_transition(tr)
 
     remove_equal_jumps(ha)
