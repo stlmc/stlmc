@@ -15,7 +15,7 @@ class TableauGraph(Graph['Node', 'Jump']):
         self._dummy_node = Node(set(), set(), set())
         self._label: Dict[Node, Label] = dict()
         self._matching_info: Dict[Node, ClockMatchingInfo] = dict()
-        self._node_indexing: Dict[FrozenSet[Proposition], List[Node]] = dict()
+        self._node_indexing: Dict[Tuple[hash, hash, hash], List[Node]] = dict()
         self.add_node(self._dummy_node)
 
     def first_node(self):
@@ -44,27 +44,42 @@ class TableauGraph(Graph['Node', 'Jump']):
 
     @classmethod
     def _make_matching_info(cls, node: 'Node') -> 'ClockMatchingInfo':
-        matching_info = ClockMatchingInfo()
-        cur = node.invariant.union(node.cur_goals)
-        for g in cur:
-            matching_info.add_cur(g)
+        inv = get_clock_pool(*node.invariant)
+        cur, nxt = get_clock_pool(*node.cur_goals), get_clock_pool(*node.nxt_goals)
+        node_clk_s = inv.union(cur).union(nxt)
+
+        matching_info = ClockMatchingInfo(node_clk_s)
+
+        for f in node.invariant:
+            matching_info.add(f, "inv")
+
+        for g in node.cur_goals:
+            matching_info.add(g, "cur")
 
         for g in node.nxt_goals:
-            matching_info.add_nxt(g)
+            matching_info.add(g, "nxt")
 
         return matching_info
 
+    def _make_indexing_info(self, node: 'Node') -> Tuple[hash, hash, hash]:
+        inv_idx = self._indexing_info(node.invariant)
+        cur_idx = self._indexing_info(node.cur_goals)
+        nxt_idx = self._indexing_info(node.nxt_goals)
+
+        return hash(inv_idx), hash(cur_idx), hash(nxt_idx)
+
     @classmethod
-    def _make_indexing_info(cls, node: 'Node') -> FrozenSet[Proposition]:
+    def _indexing_info(cls, f_s: Set[Formula]) -> FrozenSet[Formula]:
         indexing = set()
-        for f in node.cur_goals:
+        for f in f_s:
             # time props
             open_close = isinstance(f, OCProposition)
             label_time_prop = isinstance(f, TimeProposition)
             clk_time_assn = isinstance(f, ClkAssn)
-            if isinstance(f, Proposition):
-                if not (open_close or label_time_prop or clk_time_assn):
-                    indexing.add(f)
+            up = isinstance(f, Up)
+            updown = isinstance(f, UpDown)
+            if not (open_close or label_time_prop or clk_time_assn or up or updown):
+                indexing.add(f)
         return frozenset(indexing)
 
     @classmethod
@@ -85,8 +100,7 @@ class TableauGraph(Graph['Node', 'Jump']):
     def remove_jump(self, jump: 'Jump'):
         self.remove_edge(jump)
 
-    def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'],
-                                               Optional[ClockSubstitution]]:
+    def find_node(self, node: 'Node') -> Tuple[bool, Optional['Node'], Optional[ClockSubstitution]]:
         indexing_info = self._make_indexing_info(node)
 
         # if there is no indexing info, there is no matching node exists
@@ -94,52 +108,21 @@ class TableauGraph(Graph['Node', 'Jump']):
             return False, None, None
 
         matching_info = self._make_matching_info(node)
-
-        # split clock and others
-        c_node_clk, c_node_other = self._split_goals(node.cur_goals)
-        n_node_clk, n_node_other = self._split_goals(node.nxt_goals)
-
         nodes = self._node_indexing[indexing_info]
 
         for n in nodes:
             if n == self.first_node():
                 continue
 
+            # both goals should be final or not final
+            if n.is_final() != node.is_final():
+                continue
+
             assert n in self._matching_info
             n_match = self._matching_info[n]
 
-            # split clock and others
-            c_clk_s, c_other = self._split_goals(n.cur_goals)
-            n_clk_s, n_other = self._split_goals(n.nxt_goals)
-
             clk_subst = n_match.match(matching_info)
-            if clk_subst is None:
-                continue
-
-            # both goals should be
-            # i) final or not be final at the same time
-            is_final = n.is_final() == node.is_final()
-
-            # ii) non-time goals are the same for the current and next
-            c_non_time_eq = c_node_other == c_other
-            n_non_time_eq = n_node_other == n_other
-            non_time_eq = c_non_time_eq and n_non_time_eq
-
-            # iii) time goals should be equivalent with respect to the clock renaming
-            c_time_eq = self._clock_eq(clk_subst, c_clk_s, c_node_clk)
-            n_time_eq = self._clock_eq(clk_subst, n_clk_s, n_node_clk)
-            time_eq = c_time_eq and n_time_eq
-
-            # iv) invariant should be equivalent with respect to the clock renaming
-            inv_eq = self._clock_eq(clk_subst, n.invariant, node.invariant)
-            if is_final and non_time_eq and time_eq and inv_eq:
-                # mapped_clk = clk_subst.vars()
-                # cur_clk_s = self.get_state_clocks(n)
-
-                # make an identity mapping for the rest of the variables
-                # missed_clk = cur_clk_s.difference(mapped_clk)
-                # for clk in missed_clk:
-                #     clk_subst.add(clk, clk)
+            if clk_subst is not None:
                 return True, n, clk_subst
 
         return False, None, None
@@ -173,21 +156,6 @@ class TableauGraph(Graph['Node', 'Jump']):
             if isinstance(f, TimeProposition):
                 read_clk.add(f.clock)
         return read_clk
-
-    @classmethod
-    def _split_goals(cls, goals: Set[Formula]) -> Tuple[Set[Formula], Set[Formula]]:
-        # split time and non-time goals
-        clk_goals = filter_clock_goals(*goals)
-        other_goals = goals.difference(clk_goals)
-
-        return clk_goals, other_goals
-
-    @classmethod
-    def _clock_eq(cls, clk_subst: ClockSubstitution,
-                  goals1: Set[Formula], goals2: Set[Formula]) -> bool:
-        goal1_hash = hash(frozenset(goals1))
-        goal2_hash = hash(frozenset(map(lambda x: clk_subst.substitute(x), goals2)))
-        return goal1_hash == goal2_hash
 
     def open_label(self, node: 'Node', label: Label):
         assert node not in self._label
@@ -311,103 +279,177 @@ class JumpContradictionChecker:
 
 
 class ClockMatchingInfo:
-    def __init__(self):
-        self._matching_info_cur: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
-        self._matching_info_nxt: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+    def __init__(self, clocks: Set[Real]):
+        self._matching_info: Dict[Tuple[str, hash, hash, str], List[List[Real]]] = dict()
+        self._clocks = clocks.copy()
 
-    def add_cur(self, goal: Formula):
-        self._add(goal, self._matching_info_cur)
-
-    def add_nxt(self, goal: Formula):
-        self._add(goal, self._matching_info_nxt)
-
-    @classmethod
-    def _add(cls, goal: Formula, d: Dict[Tuple[str, hash, hash], List[List[Real]]]):
-        info = _matching_info(goal)
+    def add(self, goal: Formula, ty: str):
+        info = _matching_info(goal, ty)
 
         if info is None:
             return
 
-        if info in d:
-            d[info].append(_get_matching_clocks(goal))
+        if info in self._matching_info:
+            self._matching_info[info].append(_get_matching_clocks(goal))
         else:
-            d[info] = [_get_matching_clocks(goal)]
+            self._matching_info[info] = [_get_matching_clocks(goal)]
 
     def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
         assert isinstance(other, ClockMatchingInfo)
 
-        k_c = set(self._matching_info_cur.keys())
+        if len(self._clocks) != len(other._clocks):
+            return None
+
+        k_c = set(self._matching_info.keys())
         # information must be equal
-        if k_c != set(other._matching_info_cur.keys()):
+        if k_c != set(other._matching_info.keys()):
             return None
 
-        subst = clock_match(list(k_c), other._matching_info_cur, self._matching_info_cur, dict())
-        if subst is None:
+        subst_s = _clock_match(list(k_c), 0, other._matching_info, self._matching_info, dict())
+
+        # if nothing found
+        if len(subst_s) <= 0:
             return None
 
-        k_n = set(self._matching_info_nxt.keys())
-        if k_n != set(other._matching_info_nxt.keys()):
-            return None
-
-        subst = clock_match(list(k_n), other._matching_info_nxt, self._matching_info_nxt, subst)
-        if subst is None:
-            return None
+        subst = max(subst_s, key=lambda x: _subst_score(x))
 
         clk_subst = ClockSubstitution()
         for k in subst:
             clk_subst.add(k, subst[k])
 
+        # filled the remaining matching
+        k_s, v_s = set(), set()
+        for k in subst:
+            k_s.add(k)
+            v_s.add(subst[k])
+
+        k_s = list(self._clocks.difference(k_s))
+        v_s = list(other._clocks.difference(v_s))
+
+        assert len(k_s) == len(v_s)
+
+        for c1, c2 in list(zip(k_s, v_s)):
+            clk_subst.add(c1, c2)
+
         return clk_subst
 
     def __repr__(self):
-        cur = "\n".join(["{} ---> {}".format(k, self._matching_info_cur[k]) for k in self._matching_info_cur])
-        nxt = "\n".join(["{} ---> {}".format(k, self._matching_info_nxt[k]) for k in self._matching_info_nxt])
-        return "clock matching\ncur:\n{}\nnxt:\n{}\n".format(cur, nxt)
+        m = "\n".join(["{} ---> {}".format(k, self._matching_info[k]) for k in self._matching_info])
+        return "clock matching\n{}\n".format(m)
+
+
+def _clock_match(positions: List[Tuple[str, hash, hash, str]], index: int,
+                 match1: Dict[Tuple[str, hash, hash, str], List[List[Real]]],
+                 match2: Dict[Tuple[str, hash, hash, str], List[List[Real]]],
+                 subst: Dict[Real, Real]) -> List[Dict[Real, Real]]:
+    if len(positions) <= index:
+        # check validity assertion
+        # e.g., invalid case: c1 --> c2, c3 --> c2
+        # u = set()
+        # for k in subst:
+        #     if subst[k] in u:
+        #         return list()
+        #     else:
+        #         u.add(subst[k])
+        return [subst]
+
+    pos = positions[index]
+    p_clk1, p_clk2 = match1[pos], match2[pos]
+
+    if len(p_clk1) != len(p_clk2):
+        return list()
+
+    p_clk2_order = list(map(lambda x: list(x), permutations(p_clk2)))
+
+    found = list()
+    for trial, clk2_set in enumerate(p_clk2_order):
+        n_subst = _match_test(subst, p_clk1, clk2_set)
+        if n_subst is None:
+            continue
+
+        m = _clock_match(positions, index + 1, match1, match2, n_subst)
+        if m is not None:
+            found.extend(m)
+
+    return found
+
+
+def _match_test(subst: Dict[Real, Real],
+                c1_set: List[List[Real]], c2_set: List[List[Real]]) -> Optional[Dict[Real, Real]]:
+    new_subst = subst.copy()
+    for clk1_s, clk2_s in list(zip(c1_set, c2_set)):
+        new_subst = _match_clk(new_subst, clk1_s, clk2_s)
+        if new_subst is None:
+            return None
+    return new_subst
+
+
+def _match_clk(subst: Dict[Real, Real],
+               c1_set: List[Real], c2_set: List[Real]) -> Optional[Dict[Real, Real]]:
+    new_subst = subst.copy()
+
+    for c1, c2 in list(zip(c1_set, c2_set)):
+        # conflict
+        if c1 in subst:
+            if not variable_equal(subst[c1], c2):
+                return None
+            else:
+                continue
+        new_subst[c1] = c2
+    return new_subst
+
+
+def _subst_score(subst: Dict[Real, Real]) -> int:
+    score = 0
+    for k in subst:
+        if variable_equal(k, subst[k]):
+            score += 1
+    return score
 
 
 @singledispatch
-def _matching_info(goal: Formula) -> Optional[Tuple[str, hash, hash]]:
+def _matching_info(goal: Formula, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
     return None
 
 
 @_matching_info.register(Up)
-def _(goal: Up) -> Optional[Tuple[str, hash, hash]]:
-    return goal.temporal, hash(goal.interval), hash(goal.formula)
+def _(goal: Up, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return goal.temporal, hash(goal.interval), hash(goal.formula), ty
 
 
 @_matching_info.register(UpDown)
-def _(goal: UpDown) -> Optional[Tuple[str, hash, hash]]:
-    return "{}{}".format(goal.temporal1, goal.temporal2), hash(goal.interval), hash(goal.formula)
+def _(goal: UpDown, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "{}{}".format(goal.temporal1, goal.temporal2), hash(goal.interval), hash(goal.formula), ty
 
 
 @_matching_info.register(TimeProposition)
-def _(goal: TimeProposition) -> Optional[Tuple[str, hash, hash]]:
-    return "T_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0
+def _(goal: TimeProposition, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "T_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), 0, ty
 
 
 @_matching_info.register(ClkAssn)
-def _(goal: ClkAssn) -> Optional[Tuple[str, hash, hash]]:
-    return "assn", hash(goal.value), 0
+def _(goal: ClkAssn, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "assn", hash(goal.value), 0, ty
 
 
 @_matching_info.register(Open)
-def _(goal: Open) -> Optional[Tuple[str, hash, hash]]:
-    return "open", 0, 0
+def _(goal: Open, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "open", 0, 0, ty
 
 
 @_matching_info.register(Close)
-def _(goal: Close) -> Optional[Tuple[str, hash, hash]]:
-    return "close", 0, 0
+def _(goal: Close, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "close", 0, 0, ty
 
 
 @_matching_info.register(OpenClose)
-def _(goal: OpenClose) -> Optional[Tuple[str, hash, hash]]:
-    return "oc", 0, 0
+def _(goal: OpenClose, ty: str) -> Optional[Tuple[str, hash, hash, str]]:
+    return "oc", 0, 0, ty
 
 
 @singledispatch
 def _get_matching_clocks(goal: Formula) -> List[Real]:
-    return list()
+    raise Exception("wrong matching goal")
 
 
 @_get_matching_clocks.register(Up)
@@ -433,4 +475,3 @@ def _(goal: ClkAssn) -> List[Real]:
 @_get_matching_clocks.register(OCProposition)
 def _(goal: OCProposition) -> List[Real]:
     return [goal.get_clock()]
-

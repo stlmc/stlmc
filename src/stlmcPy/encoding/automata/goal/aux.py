@@ -7,10 +7,10 @@ from ....constraints.aux.operations import inf, reduce_not
 from ....constraints.constraints import *
 
 
-def expand(*labels) -> Set[Label]:
-    lb_s: Set[Label] = set()
+def expand(*labels) -> List[Label]:
+    lb_s: List[Label] = list()
     for label in labels:
-        lb_s.update(_expand(label))
+        lb_s.extend(_expand(label))
     return lb_s
 
 

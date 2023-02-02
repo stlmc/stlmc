@@ -143,16 +143,17 @@ class Up(Formula):
         super().__init__()
         self.interval, self.temporal = interval, temporal
         self.formula, self.clock, self.type = formula, clk, ty
-        self._name = "(up{}^{{{},{}}}_{} {})".format(temporal, clk, self.type, hash(interval), hash(formula))
+        self._str = "(up{}^{{{},{}}}_{} {})".format(self.temporal, self.clock, self.type,
+                                                    self.interval, self.formula)
 
     def __hash__(self):
-        return hash(self._name)
+        return hash(self._str)
 
     def __eq__(self, other):
         return hash(self) == hash(other)
 
     def __repr__(self):
-        return "(up{}^{{{},{}}}_{} {})".format(self.temporal, self.clock, self.type, self.interval, self.formula)
+        return self._str
 
 
 class UpDown(Formula):
@@ -165,16 +166,16 @@ class UpDown(Formula):
         # hash
         self._up = "up{}^{{{},{}}}".format(temporal1, clk1, ty1)
         self._down = "down{}^{{{},{}}}".format(temporal2, clk2, ty2)
-        self._name = "({} {})_{} {}".format(self._up, self._down, hash(interval), hash(formula))
+        self._str = "({} {})_{} {}".format(self._up, self._down, self.interval, self.formula)
 
     def __hash__(self):
-        return hash(self._name)
+        return hash(self._str)
 
     def __eq__(self, other):
         return hash(self) == hash(other)
 
     def __repr__(self):
-        return "({} {})_{} {}".format(self._up, self._down, self.interval, self.formula)
+        return self._str
 
 
 class GloballyUp(Up):

@@ -1,31 +1,36 @@
 from .graph import *
 from .label import *
 
+MatchKey = Tuple[str, hash, hash, str]
+MatchVal = Optional[Real]
+MatchInfo = Tuple[MatchKey, MatchVal]
+MatchDict = Dict[MatchKey, Set[MatchVal]]
+
 
 # pre and postfix equivalence
 class PPEquivalence:
     def __init__(self):
-        self._jump_clock_matching: Dict[Jump, ClockMatchingInfo] = dict()
-        self._node_indexing: Dict[FrozenSet[Proposition], List[Node]] = dict()
-        self._node_clock_goals: Dict[Node, Set[Formula]] = dict()
-        self._node_none_clk_goals: Dict[Node, Set[Formula]] = dict()
-        self._node_aps: Dict[Node, Set[Formula]] = dict()
+        self._indexing: Dict[Node, Tuple[hash, hash]] = dict()
+        self._node_indexing: Dict[Tuple[hash, hash], List[Node]] = dict()
         self._node_clocks: Dict[Node, Set[Real]] = dict()
+        self._node_oc_time_prop: Dict[Node, Tuple[Set[Formula], Set[Formula]]] = dict()
+        self.print_verbose = False
+        self.print_debug = False
 
     def reduce(self, graph: TableauGraph):
         self._clear()
 
         self._calc_node_info(graph)
 
-        iter = 0
+        loop = 0
         while True:
-            iter += 1
-            print("reduction iteration #{}".format(iter))
+            loop += 1
+            print("reduction iteration #{}".format(loop))
             old_v = graph.get_nodes().copy()
             old_e = get_node_jumps(graph)
 
             # calculate clock matching information of all jumps
-            pre_clk_m = self._calc_pre_clock_matching_info(graph)
+            pre_clk_m = self._calc_clock_matching_info(graph)
 
             # gather the nodes that have the same pre- or post-states
             pre_equiv_dict = self._make_initial_equiv_class(graph, is_post=False)
@@ -37,7 +42,7 @@ class PPEquivalence:
             self._reduce_pre_graph(graph, pre_equiv_rel)
 
             # calculate clock matching information for post equivalence
-            post_clk_m = self._calc_post_clock_matching_info(graph)
+            post_clk_m = self._calc_clock_matching_info(graph, is_post=True)
 
             # gather the nodes that have the same pre- or post-states
             post_equiv_dict = self._make_initial_equiv_class(graph, is_post=True)
@@ -49,36 +54,57 @@ class PPEquivalence:
             self._reduce_post_graph(graph, post_equiv_rel)
 
             print("v: {}, e: {}".format(len(graph.get_nodes()), len(get_node_jumps(graph))))
-            # break
             if old_v == graph.get_nodes() and old_e == get_node_jumps(graph):
                 break
 
+    def _make_indexing_info(self, node: 'Node') -> Tuple[hash, hash]:
+        inv_idx = self._indexing_info(node.invariant)
+        cur_idx = self._indexing_info(node.cur_goals)
+
+        return hash(inv_idx), hash(cur_idx)
+
     @classmethod
-    def _make_indexing_info(cls, node: 'Node') -> FrozenSet[Proposition]:
+    def _indexing_info(cls, f_s: Set[Formula]) -> FrozenSet[Formula]:
         indexing = set()
-        for f in node.cur_goals:
+        for f in f_s:
             # time props
             open_close = isinstance(f, OCProposition)
             label_time_prop = isinstance(f, TimeProposition)
             clk_time_assn = isinstance(f, ClkAssn)
-            if isinstance(f, Proposition):
-                if not (open_close or label_time_prop or clk_time_assn):
-                    indexing.add(f)
+            up = isinstance(f, Up)
+            updown = isinstance(f, UpDown)
+            if not (open_close or label_time_prop or clk_time_assn or up or updown):
+                indexing.add(f)
         return frozenset(indexing)
 
+    @classmethod
+    def _oc_time_prop_info(cls, f_s: Set[Formula]) -> Set[Formula]:
+        indexing = set()
+        for f in f_s:
+            if isinstance(f, OCProposition) or isinstance(f, TimeProposition):
+                indexing.add(f)
+        return indexing
+
     def _make_equiv_class(self, equiv_dict: Dict[FrozenSet[Node], Set[Node]], graph: TableauGraph,
-                          clock_matching: Dict[Node, ClockMatchingInfo]) -> List[Dict[Node, Set[Tuple[Node, ClockSubstitution]]]]:
+                          clock_matching: Dict[Node, 'EquivClockMatching']) -> List[
+        Dict[Node, Set[Tuple[Node, ClockSubstitution]]]]:
 
         # make coarse equiv class regarding the label's propositions
         coarse_equiv_class = set()
-        for num, eq_nodes in enumerate(equiv_dict):
+        for eq_nodes in equiv_dict:
             n_eq = self._make_coarse_equiv_class(equiv_dict[eq_nodes])
             coarse_equiv_class.update(n_eq)
 
-        equiv_d_l = list()
+        equiv_d_l, v_msg = list(), list()
         # check bisimulation relation to refine equivalent classes
         for c_eq_c in coarse_equiv_class:
-            e_d = self._get_equiv_class(c_eq_c, clock_matching)
+            e_d = self._get_equiv_class(c_eq_c, clock_matching, graph)
+
+            # msg
+            if self.print_verbose:
+                ss = ", ".join([str(len(e_d[n]) + 1) for n in e_d])
+                v_msg.append((len(c_eq_c), ss))
+
             tot = 0
             # assert that no states are missing
             for r_s in e_d:
@@ -86,7 +112,14 @@ class PPEquivalence:
             assert tot == len(c_eq_c)
             equiv_d_l.append(e_d)
 
+        # msg
+        if self.print_verbose:
+            for g_id, (l, d) in enumerate(list(sorted(v_msg, key=lambda x: x[0]))):
+                print("group#{} ({}) -- refined to --> ({})".format(g_id, l, d))
+            print("----------")
+
         return equiv_d_l
+
     @classmethod
     def _make_initial_equiv_class(cls, graph: TableauGraph, is_post=False) -> Dict[FrozenSet[Node], Set[Node]]:
         # get the nodes that have the same predecessors
@@ -107,10 +140,12 @@ class PPEquivalence:
         return equiv_dict
 
     def _make_coarse_equiv_class(self, nodes: Set[Node]) -> Set[FrozenSet[Node]]:
-        equiv_dict: Dict[Tuple[FrozenSet[Proposition], bool, bool], Set[Node]] = dict()
+        equiv_dict: Dict[Tuple[Tuple[hash, hash], bool, bool], Set[Node]] = dict()
 
         for node in nodes:
-            nm = self._make_indexing_info(node)
+            assert node in self._indexing
+            nm = self._indexing[node]
+
             assert nm in self._node_indexing
 
             k = nm, node.is_initial(), node.is_final()
@@ -124,8 +159,8 @@ class PPEquivalence:
             equiv.add(frozenset(equiv_dict[k]))
         return equiv
 
-    def _get_equiv_class(self, nodes: FrozenSet[Node],
-                         clock_matching: Dict[Node, ClockMatchingInfo]) -> Dict[Node, Set[Tuple[Node, ClockSubstitution]]]:
+    def _get_equiv_class(self, nodes: FrozenSet[Node], clock_matching: Dict[Node, 'EquivClockMatching'],
+                         graph: TableauGraph) -> Dict[Node, Set[Tuple[Node, ClockSubstitution]]]:
         if len(nodes) <= 0:
             return dict()
 
@@ -140,8 +175,7 @@ class PPEquivalence:
             for node in equiv_d:
                 # assert graph.get_next_vertices(node) == graph.get_next_vertices(n) for post-
                 # assert graph.get_pred_vertices(node) == graph.get_pred_vertices(n) for pre-
-                clk_subst = self._equiv_checking(node, n, clock_matching)
-
+                clk_subst = self._equiv_checking(node, n, clock_matching, graph)
                 if clk_subst is not None:
                     if node in equiv_d:
                         equiv_d[node].add((n, clk_subst))
@@ -154,29 +188,35 @@ class PPEquivalence:
                 assert n not in equiv_d
                 equiv_d[n] = set()
 
+        # msg
+        if self.print_debug:
+            for e in equiv_d:
+                print("to")
+                print(e)
+                print("@@@@@@@ -->")
+                for n, clk in equiv_d[e]:
+                    print(n)
+                    print(clk)
+            refined = ", ".join([str(len(equiv_d[e]) + 1) for e in equiv_d])
+            print("=====({})===refined=to===>>({})==============".format(len(nodes), refined))
+
         return equiv_d
 
-    # bisimulation ppst equivalence checking
+    # bisimulation pp equivalence checking
     # return clock substitution when the nodes are bisimilar
     # otherwise return none
     def _equiv_checking(self, node1: Node, node2: Node,
-                        clock_matching: Dict[Node, ClockMatchingInfo]) -> Optional[ClockSubstitution]:
+                        clock_matching: Dict[Node, 'EquivClockMatching'],
+                        graph: TableauGraph) -> Optional[ClockSubstitution]:
+        assert node1 in self._indexing and node2 in self._indexing
         assert node1 in self._node_clocks and node2 in self._node_clocks
 
-        c1_clk = self._node_clocks[node1]
-        c2_clk = self._node_clocks[node2]
-
-        # when the number of clocks are different,
-        # the nodes are not bisimilar
-        if len(c1_clk) != len(c2_clk):
+        if len(self._node_clocks[node1]) != len(self._node_clocks[node2]):
             return None
 
-        assert node1 in self._node_none_clk_goals and node2 in self._node_none_clk_goals
-
         # the non-timed goals (i.e., state propositions) must be the same
-        non_clk_g1 = self._node_none_clk_goals[node1]
-        non_clk_g2 = self._node_none_clk_goals[node2]
-        if non_clk_g1 != non_clk_g2:
+        idx1, idx2 = self._indexing[node1], self._indexing[node2]
+        if idx1 != idx2:
             return None
 
         assert node1 in clock_matching and node2 in clock_matching
@@ -185,99 +225,101 @@ class PPEquivalence:
         n2_cm = clock_matching[node2]
 
         # check n1 -> n2
-        clk_subst1 = n1_cm.match(n2_cm)
+        clk_subst = n1_cm.match(n2_cm)
 
         # the two nodes cannot be the same
-        if clk_subst1 is None:
+        if clk_subst is None:
+            if self.print_debug:
+                debug_msg = [
+                    "cut by case ->",
+                    "node1",
+                    str(node1),
+                    str(self._node_clocks[node1]),
+                    "\n".join([str(jp) for jp in graph.get_pred_edges(node1)]),
+                    "-------------",
+                    "node2",
+                    str(node2),
+                    str(self._node_clocks[node2]),
+                    "\n".join([str(jp) for jp in graph.get_pred_edges(node2)]),
+                    "clk1 matching",
+                    str(n1_cm),
+                    "clk2 matching",
+                    str(n2_cm),
+                    "*****************"
+                ]
+                print("\n".join(debug_msg))
+
             return None
 
-        # check n2 -> n1
-        clk_subst2 = n2_cm.match(n1_cm)
+        if self.print_debug:
+            debug_msg = [
+                "found",
+                str(clk_subst),
+                "node1",
+                str(node1),
+                str(self._node_clocks[node1]),
+                "\n".join([str(jp) for jp in graph.get_pred_edges(node1)]),
+                "-------------",
+                "node2",
+                str(node2),
+                str(self._node_clocks[node2]),
+                "\n".join([str(jp) for jp in graph.get_pred_edges(node2)]),
+                "clk1 matching",
+                str(n1_cm),
+                "clk2 matching",
+                str(n2_cm),
+                "*****************"
+            ]
+            print("\n".join(debug_msg))
 
-        if clk_subst2 is None:
-            return None
+        return clk_subst
 
-        # choose one of the clock renaming
-        return clk_subst1
-
-    def _calc_post_clock_matching_info(self, graph: TableauGraph) -> Dict[Node, ClockMatchingInfo]:
-        post_clock_matching: Dict[Node, ClockMatchingInfo] = dict()
+    def _calc_clock_matching_info(self, graph: TableauGraph, is_post=False) -> Dict[Node, 'EquivClockMatching']:
+        clock_matching: Dict[Node, EquivClockMatching] = dict()
+        # handle read positions when pre-equiv.
+        is_read = not is_post
 
         for node in graph.get_nodes():
             # ignore first dummy node
             if node == graph.first_node():
                 continue
 
-            assert node in self._node_aps
-            # get aps and get information for post equivalence checking
-            node_ap_s = self._node_aps[node]
-            node_post_ap_s = set()
-            for jp in graph.get_next_edges(node):
+            assert node in self._node_clocks
+            clk_m = EquivClockMatching(self._node_clocks[node])
+
+            if is_post:
+                jp_s = graph.get_next_edges(node)
+            else:
+                jp_s = graph.get_pred_edges(node)
+
+            # get aps and get information for pre equivalence checking
+            for jp in jp_s:
                 for ap in jp.get_ap():
-                    node_post_ap_s.add((ap, jp.get_trg()))
+                    if is_post:
+                        n = jp.get_trg(),
+                    else:
+                        n = jp.get_src()
 
-            for ap in node_ap_s:
-                node_post_ap_s.add((ap, None))
+                    clk_m.add(ap, "jp", n, is_read)
 
-            clk_m = ClockMatchingInfo()
-            clk_m.add(*node_post_ap_s, is_post=True)
+            assert node in self._node_oc_time_prop
+            inv, cur = self._node_oc_time_prop[node]
+            for f in inv:
+                clk_m.add(f, "inv", None, is_read)
 
-            assert node not in post_clock_matching
-            post_clock_matching[node] = clk_m
+            for g in cur:
+                clk_m.add(g, "cur", None, is_read)
 
-        return post_clock_matching
+            assert node not in clock_matching
+            clock_matching[node] = clk_m
 
-    def _calc_pre_clock_matching_info(self, graph: TableauGraph) -> Dict[Node, ClockMatchingInfo]:
-        pre_clock_matching: Dict[Node, ClockMatchingInfo] = dict()
-
-        for node in graph.get_nodes():
-            # ignore first dummy node
-            if node == graph.first_node():
-                continue
-
-            assert node in self._node_aps
-            # get aps and get information for post equivalence checking
-            node_ap_s = self._node_aps[node]
-            node_pre_ap_s = set()
-            for jp in graph.get_pred_edges(node):
-                for ap in jp.get_ap():
-                    node_pre_ap_s.add((ap, jp.get_src()))
-
-            for ap in node_ap_s:
-                node_pre_ap_s.add((ap, None))
-
-            clk_m = ClockMatchingInfo()
-            clk_m.add(*node_pre_ap_s)
-
-            assert node not in pre_clock_matching
-            pre_clock_matching[node] = clk_m
-
-        return pre_clock_matching
-
+        return clock_matching
 
     def _calc_node_info(self, graph: TableauGraph):
-        # ignore the first dummy node
-        nodes = graph.get_nodes().copy()
-        nodes.discard(graph.first_node())
-
-        for node in nodes:
-            assert node not in self._node_clock_goals
-            assert node not in self._node_none_clk_goals
-            assert node not in self._node_aps
-            assert node not in self._node_clocks
-
-            # calc node clock goals and non clock goals
-            self._node_clock_goals[node] = filter_clock_goals(*node.cur_goals)
-            self._node_none_clk_goals[node] = node.cur_goals.difference(self._node_clock_goals[node])
-
-            # get aps
-            node_ap_s = set(filter(lambda x: isinstance(x, Proposition), self._node_clock_goals[node]))
-            node_ap_s.update(node.invariant)
-
-            self._node_aps[node] = node_ap_s
-
-            # get clocks
-            self._node_clocks[node] = get_clock_pool(*node.cur_goals).union(get_clock_pool(*node.invariant))
+        for node in graph.get_nodes():
+            # ignore the first dummy node
+            if node == graph.first_node():
+                continue
 
             # calc node indexing
             indexing = self._make_indexing_info(node)
@@ -286,20 +328,23 @@ class PPEquivalence:
             else:
                 self._node_indexing[indexing] = [node]
 
-    def _get_jump_clock_subst(self, jump1: Jump, jump2: Jump) -> Optional[ClockSubstitution]:
-        assert jump1 in self._jump_clock_matching and jump2 in self._jump_clock_matching
+            assert node not in self._indexing
+            self._indexing[node] = indexing
 
-        # get clock substitution
-        jp1_m, jp2_m = self._jump_clock_matching[jump1], self._jump_clock_matching[jump2]
-        return jp1_m.match(jp2_m)
+            # calc oc time proposition
+            assert node not in self._node_oc_time_prop
+
+            inv, cur = self._oc_time_prop_info(node.invariant), self._oc_time_prop_info(node.cur_goals)
+            self._node_oc_time_prop[node] = (inv, cur)
+
+            assert node not in self._node_clocks
+            self._node_clocks[node] = get_clock_pool(*node.invariant).union(get_clock_pool(*node.cur_goals))
 
     def _clear(self):
-        self._jump_clock_matching.clear()
+        self._indexing.clear()
         self._node_indexing.clear()
-        self._node_aps.clear()
         self._node_clocks.clear()
-        self._node_clock_goals.clear()
-        self._node_none_clk_goals.clear()
+        self._node_oc_time_prop.clear()
 
     @classmethod
     def _reduce_pre_graph(cls, graph: TableauGraph,
@@ -359,41 +404,51 @@ def _fresh_group_id():
         counter += 1
 
 
-class ClockMatchingInfo:
-    def __init__(self):
-        self._matching_info: Dict[Tuple[str, hash, hash], List[List[Real]]] = dict()
+class EquivClockMatching:
+    def __init__(self, clocks: Set[Real]):
+        self._matching_info: MatchDict = dict()
+        self._clocks = clocks.copy()
 
-    def add(self, *goal_pairs, is_post=False):
-        for f, n in goal_pairs:
-            assert isinstance(f, Formula)
-            assert isinstance(n, Node) or n is None
-            self._add(f, n, is_post)
+    def add(self, goal: Formula, ty: str, node: Optional[Node], is_read: bool):
+        k, v = _matching_info(goal, ty, node, is_read)
 
-    def _add(self, goal: Formula, node: Optional[Node], is_post):
-        info = _matching_info(goal, node, is_post)
-        m_c = _get_matching_clock(goal, is_post)
-        clk_s = [m_c] if m_c is not None else list()
-
-        if info in self._matching_info:
-            self._matching_info[info].append(clk_s)
+        if k in self._matching_info:
+            self._matching_info[k].add(v)
         else:
-            self._matching_info[info] = [clk_s]
+            self._matching_info[k] = {v}
 
-    def match(self, other: 'ClockMatchingInfo') -> Optional[ClockSubstitution]:
-        assert isinstance(other, ClockMatchingInfo)
+    def match(self, other: 'EquivClockMatching') -> Optional[ClockSubstitution]:
+        assert isinstance(other, EquivClockMatching)
+
+        if len(self._clocks) != len(other._clocks):
+            return None
 
         k_c = set(self._matching_info.keys())
         # information must be equal
         if k_c != set(other._matching_info.keys()):
             return None
 
-        subst = clock_match(list(k_c), other._matching_info, self._matching_info, dict())
+        subst = equiv_clock_match(self._matching_info, other._matching_info, list(k_c), 0, dict())
         if subst is None:
             return None
 
         clk_subst = ClockSubstitution()
         for k in subst:
             clk_subst.add(k, subst[k])
+
+        # filled the remaining matching
+        k_s, v_s = set(), set()
+        for k in subst:
+            k_s.add(k)
+            v_s.add(subst[k])
+
+        k_s = list(self._clocks.difference(k_s))
+        v_s = list(other._clocks.difference(v_s))
+
+        assert len(k_s) == len(v_s)
+
+        for c1, c2 in list(zip(k_s, v_s)):
+            clk_subst.add(c1, c2)
 
         return clk_subst
 
@@ -403,65 +458,122 @@ class ClockMatchingInfo:
 
 
 @singledispatch
-def _matching_info(goal: Formula, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
+def _matching_info(goal: Formula, ty: str, node: Optional[Node], is_read: bool) -> Optional[MatchInfo]:
     return None
 
 
 @_matching_info.register(TimeProposition)
-def _(goal: TimeProposition, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
-    return "Time_{{{},{}}}".format(goal.temporal, goal.name_s), hash(goal.interval), hash(node)
+def _(goal: TimeProposition, ty: str, node: Optional[Node], is_read: bool) -> Optional[MatchInfo]:
+    n = "T_{{{},{}}}".format(goal.temporal, goal.name_s)
+    h1, h2 = hash(goal.interval), hash(node)
+    if is_read:
+        return (n, h1, h2, ty), goal.clock
+    else:
+        ty = "{}@{}".format(ty, hash(goal.clock))
+        return (n, h1, h2, ty), None
+
+
+@_matching_info.register(TimeBound)
+def _(goal: TimeBound, ty: str, node: Optional[Node], is_read: bool) -> Optional[MatchInfo]:
+    return ("tb", 0, hash(node), ty), None
+
+
+@_matching_info.register(TimeFinal)
+def _(goal: TimeFinal, ty: str, node: Optional[Node], is_read: bool) -> Optional[MatchInfo]:
+    return (str(goal), 0, hash(node), ty), None
 
 
 @_matching_info.register(ClkAssn)
-def _(goal: ClkAssn, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
-    if is_post:
-        return "assn", hash(goal.clock), hash(node)
+def _(goal: ClkAssn, ty: str, node: Optional[Node], is_read: bool) -> Optional[MatchInfo]:
+    if is_read:
+        if isinstance(goal.value, Real):
+            return ("assn", hash(goal.clock), hash(node), ty), goal.value
+        else:
+            return ("assn", hash(goal.clock), hash(node), "{}@{}".format(ty, hash(goal.value))), None
     else:
-        return "assn", hash(goal.value), hash(node)
+        return ("assn", hash(goal.value), hash(node), ty), goal.clock
 
 
 @_matching_info.register(Close)
-def _(goal: Close, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
-    return "close", 0, hash(node)
+def _(goal: Close, ty: str, node: Optional[Node],
+      is_read: bool) -> Optional[MatchInfo]:
+    if is_read:
+        return ("close", 0, hash(node), ty), goal.get_clock()
+    else:
+        return ("close", hash(goal.get_clock()), hash(node), ty), None
 
 
 @_matching_info.register(Open)
-def _(goal: Open, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
-    return "open", 0, hash(node)
+def _(goal: Open, ty: str, node: Optional[Node],
+      is_read: bool) -> Optional[MatchInfo]:
+    if is_read:
+        return ("open", 0, hash(node), ty), goal.get_clock()
+    else:
+        return ("open", hash(goal.get_clock()), hash(node), ty), None
 
 
 @_matching_info.register(OpenClose)
-def _(goal: OpenClose, node: Optional[Node], is_post: bool) -> Optional[Tuple[str, hash, hash]]:
-    return "openClose", 0, hash(node)
+def _(goal: OpenClose, ty: str, node: Optional[Node],
+      is_read: bool) -> Optional[MatchInfo]:
+    if is_read:
+        return ("openClose", 0, hash(node), ty), goal.get_clock()
+    else:
+        return ("openClose", hash(goal.get_clock()), hash(node), ty), None
 
 
-@singledispatch
-def _get_matching_clock(goal: Formula, is_post: bool) -> Optional[Real]:
+# find clock renaming that renames match1 equivalent to match2
+# \theta(match1) = match2
+def equiv_clock_match(match1: MatchDict, match2: MatchDict,
+                      positions: List[MatchKey], index: int,
+                      subst: Dict[Real, Real]) -> Optional[Dict[Real, Real]]:
+    # if no element left
+    if len(positions) <= index:
+        return subst
+
+    pos = positions[index]
+    m_clk1_s, m_clk2_s = match1[pos], match2[pos]
+
+    if len(m_clk1_s) != len(m_clk2_s):
+        return None
+
+    # fixed ordering of clocks in match1
+    t_clk1 = tuple(m_clk1_s)
+    t_clk2_list = list(permutations(m_clk2_s))
+
+    for t_clk2 in t_clk2_list:
+        assert isinstance(t_clk2, Tuple)
+
+        n_subst = _match_clk(t_clk1, t_clk2, subst)
+        if n_subst is None:
+            continue
+
+        m = equiv_clock_match(match1, match2, positions, index + 1, n_subst)
+        if m is not None:
+            return m
+
     return None
 
 
-@_get_matching_clock.register(ClkAssn)
-def _(goal: ClkAssn, is_post: bool) -> Optional[Real]:
-    if is_post:
-        if isinstance(goal.value, Real):
-            return goal.value
-        else:
+# rename e1 --> e2
+def _match_clk(e1: Tuple[MatchVal], e2: Tuple[MatchVal], subst: Dict[Real, Real]) -> Optional[Dict[Real, Real]]:
+    assert len(e1) == len(e2)
+
+    new_subst = subst.copy()
+
+    for clk1, clk2 in list(zip(e1, e2)):
+        if (clk1 is None) != (clk2 is None):
             return None
-    else:
-        return goal.clock
 
+        if clk1 is None and clk2 is None:
+            continue
 
-@_get_matching_clock.register(OCProposition)
-def _(goal: OCProposition, is_post: bool) -> Optional[Real]:
-    if is_post:
-        return goal.get_clock()
-    else:
-        return None
+        assert isinstance(clk1, Real) and isinstance(clk2, Real)
 
+        if clk1 in new_subst:
+            # conflict
+            if not variable_equal(new_subst[clk1], clk2):
+                return None
+        else:
+            new_subst[clk1] = clk2
 
-@_get_matching_clock.register(TimeProposition)
-def _(goal: TimeProposition, is_post: bool) -> Optional[Real]:
-    if is_post:
-        return goal.clock
-    else:
-        return None
+    return new_subst

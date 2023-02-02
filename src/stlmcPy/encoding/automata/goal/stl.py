@@ -37,7 +37,6 @@ class StlGoal(Goal):
 
         self.tau_subst = VarSubstitution()
         self.tau_subst.add(tau_max(), RealVal(str(self.tau_max)))
-        self.clk_subst_dict = global_clk_subst(int(self.bound))
 
         # get an eps-strengthening reduced formula
         self._formula = strengthen_reduction(subst.substitute(self.formula), self.threshold)
@@ -144,8 +143,8 @@ class StlGoal(Goal):
         print_graph_info(graph)
 
         p_t_s = time.time()
-        post_eq = PPEquivalence()
-        post_eq.reduce(graph)
+        pp_eq = PPEquivalence()
+        pp_eq.reduce(graph)
         p_t_e = time.time()
 
         print("after pp equivalence ({:.3f}s)".format(p_t_e - p_t_s))
