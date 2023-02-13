@@ -32,11 +32,14 @@ class ConfigVisitor(configVisitor):
         self.section_argument_dict["spaceex"] = set()
         self.section_argument_dict["juliareach"] = set()
         self.section_argument_dict["stlmc"] = set()
+        self.section_argument_dict["hycomp"] = {"converter-path"}
+        self.section_argument_dict["dreach"] = {"converter-path"}
 
         self.type_check_dict["common"] = {
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
             ("encoding", frozenset({"smt", "automata"})), ("file", "str"),
-            ("solver", frozenset({"z3", "yices", "dreal", "flowstar", "spaceex", "juliareach", "stlmc"})),
+            ("solver", frozenset({"z3", "yices", "dreal", "flowstar", "spaceex",
+                                  "juliareach", "stlmc", "hycomp", "dreach"})),
             ("goal", "string"), ("time-horizon", "float")
         }
         self.type_check_dict["z3"] = {("logic", frozenset({"qf_nra", "qf_lra"}))}
@@ -46,6 +49,8 @@ class ConfigVisitor(configVisitor):
         self.type_check_dict["spaceex"] = set()
         self.type_check_dict["juliareach"] = set()
         self.type_check_dict["stlmc"] = set()
+        self.type_check_dict["hycomp"] = {("converter-path", "path")}
+        self.type_check_dict["dreach"] = {("converter-path", "path")}
 
         self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose"}
         self.section_boolean_argument_dict["z3"] = set()
@@ -55,9 +60,12 @@ class ConfigVisitor(configVisitor):
         self.section_boolean_argument_dict["spaceex"] = set()
         self.section_boolean_argument_dict["juliareach"] = set()
         self.section_boolean_argument_dict["stlmc"] = set()
+        self.section_boolean_argument_dict["hycomp"] = set()
+        self.section_boolean_argument_dict["dreach"] = set()
 
         self.section_names: List[str] = ["common", "z3", "yices", "dreal",
-                                         "flowstar", "spaceex", "juliareach", "stlmc"]
+                                         "flowstar", "spaceex", "juliareach",
+                                         "stlmc", "hycomp", "dreach"]
 
         self.section_mandatory_dict = dict()
         self.section_mandatory_dict["common"] = {"bound", "time-bound"}
@@ -68,6 +76,8 @@ class ConfigVisitor(configVisitor):
         self.section_mandatory_dict["spaceex"] = set()
         self.section_mandatory_dict["juliareach"] = set()
         self.section_mandatory_dict["stlmc"] = set()
+        self.section_mandatory_dict["hycomp"] = {"converter-path"}
+        self.section_mandatory_dict["dreach"] = {"converter-path"}
 
         self.section_selectable_dict: Dict[str, List[Set[str]]] = dict()
         self.section_selectable_dict["common"] = list()
@@ -78,6 +88,8 @@ class ConfigVisitor(configVisitor):
         self.section_selectable_dict["spaceex"] = list()
         self.section_selectable_dict["juliareach"] = list()
         self.section_selectable_dict["stlmc"] = list()
+        self.section_selectable_dict["hycomp"] = list()
+        self.section_selectable_dict["dreach"] = list()
 
     def get_missing_arguments(self, config: Configuration) -> Dict[str, Set[str]]:
         missing_dict = dict()

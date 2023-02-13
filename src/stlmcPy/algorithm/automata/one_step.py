@@ -3,7 +3,9 @@ import pickle
 
 from ..algorithm import Algorithm
 from ...encoding.automata.goal.ha_converter import HaBoundProcessor
+from ...hybrid_automaton.converter.dreach import DreachConverter
 from ...hybrid_automaton.converter.flowstar import FlowStarConverter
+from ...hybrid_automaton.converter.hycomp import HycompConverter
 from ...hybrid_automaton.converter.juliareach import JuliaReachConverter
 from ...hybrid_automaton.converter.spaceex import SpaceExConverter
 from ...hybrid_automaton.converter.stlmc import StlmcConverter
@@ -49,6 +51,10 @@ class OneStepAlgorithm(Algorithm):
             converter = SpaceExConverter(self._config)
         elif solver_ty == "stlmc":
             converter = StlmcConverter(self._config)
+        elif solver_ty == "hycomp":
+            converter = HycompConverter(self._config)
+        elif solver_ty == "dreach":
+            converter = DreachConverter(self._config)
         else:
             raise Exception("{} is not a valid reachable solver".format(solver_ty))
 
