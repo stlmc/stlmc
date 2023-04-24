@@ -9,6 +9,7 @@ antlr:
 	@cd $(ANTLR_DIR)/model && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
 	@cd $(ANTLR_DIR)/config && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 config.g4 -no-listener -visitor
 	@cd $(ANTLR_DIR)/visualize && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 visualize.g4 -no-listener -visitor
+	@cd $(ANTLR_DIR)/spaceex && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 spaceex.g4 -no-listener -visitor
 
 perm:
 	$(info set permission)
@@ -20,6 +21,7 @@ clean:
 	@cd $(ANTLR_DIR)/model && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 	@cd $(ANTLR_DIR)/config && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
+	@cd $(ANTLR_DIR)/spaceex && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 
 test:
 	$(info start smoke test ...)

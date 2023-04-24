@@ -1,7 +1,7 @@
 import abc
 
 from ..parser.config_visitor import ConfigVisitor
-from ..parser.model_visitor import ModelVisitor
+from ..parser.model_parser import ModelParser
 from ..util.printer import *
 
 
@@ -34,7 +34,7 @@ class DriverFactory:
         pass
 
     @abc.abstractmethod
-    def make_model_parser(self) -> ModelVisitor:
+    def make_model_parser(self) -> ModelParser:
         pass
 
     @abc.abstractmethod
@@ -52,7 +52,7 @@ class DriverFactory:
 
 class Runner:
     @abc.abstractmethod
-    def run(self, config_parser: 'ConfigVisitor', model_parser: 'ModelVisitor',
+    def run(self, config_parser: 'ConfigVisitor', model_parser: 'ModelParser',
             cmd_parser: 'CmdParser', printer: Printer):
         pass
 

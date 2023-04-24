@@ -95,6 +95,8 @@ fragment COMMENT :
 
 stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
+stlGoals : (goal_unit SEMICOLON)* ;
+
 var_val_decl      : CONST VARIABLE EQUAL val=(VALUE | TRUE| FALSE) SEMICOLON;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;

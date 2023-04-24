@@ -1,12 +1,9 @@
-import abc
-
 from .configuration import Configuration
 from ..encoding.smt.goal.stl import StlGoal as SmtStlGoal, ReachStlGoal as SmtReachStlGoal
 from ..encoding.automata.goal.stl import StlGoal as AutomataStlGoal
 from ..encoding.smt.model.stlmc_model import STLmcModel as SmtModel
 from ..encoding.automata.model.stlmc_model import STLmcModel as AutomataModel
-from ..parser.model_visitor import ModelVisitor
-
+from ..parser.stlmc_parser import StlmcParser
 
 class ObjectFactory:
     def __init__(self, config: Configuration):
@@ -16,7 +13,6 @@ class ObjectFactory:
         cfg = self._config
         common_section = cfg.get_section("common")
         enc = common_section.get_value("encoding")
-        # enc = "smt"
 
         if enc == "smt":
             return generate_smt_objects(file_name, cfg)
@@ -27,7 +23,7 @@ class ObjectFactory:
 
 
 def generate_smt_objects(file_name: str, config: Configuration):
-    raw_model, prop_dict, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
+    raw_model, prop_dict, raw_goals, goal_labels = StlmcParser().get_parse_tree(file_name)
     (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
 
     common_section = config.get_section("common")
@@ -53,7 +49,7 @@ def generate_smt_objects(file_name: str, config: Configuration):
 
 
 def generate_ha_objects(file_name: str, config: Configuration):
-    raw_model, prop_dict, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
+    raw_model, prop_dict, raw_goals, goal_labels = StlmcParser().get_parse_tree(file_name)
     (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
 
     common_section = config.get_section("common")

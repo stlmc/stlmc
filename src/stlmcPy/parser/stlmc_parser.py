@@ -1,20 +1,17 @@
-import sys
 from typing import Dict, Tuple
 
-from antlr4 import FileStream, CommonTokenStream
-from antlr4.error.ErrorListener import ErrorListener
-
+from antlr4 import InputStream, FileStream, CommonTokenStream
+from .model_parser import ModelParser
 from .error_listener import StlmcErrorListener
 from ..constraints.aux.generator import *
 from ..constraints.constraints import *
-from ..encoding.smt.model.stlmc_model import STLmcModel
 from ..exception.exception import NotSupportedError
 from ..syntax.model.modelLexer import modelLexer
 from ..syntax.model.modelParser import modelParser
 from ..syntax.model.modelVisitor import modelVisitor
 
 
-class ModelVisitor(modelVisitor):
+class StlmcParser(ModelParser, modelVisitor):
 
     def __init__(self):
         self.type_context = dict()
@@ -44,6 +41,22 @@ class ModelVisitor(modelVisitor):
         parser.addErrorListener(model_err_listener)
         tree = parser.stlMC()
         return self.visit(tree)
+    
+
+    def parse_goals(self, file_name: str):
+        # ignore declaration checking
+        self.variable_decls.ignore = True
+        raw_model = InputStream(file_name)
+        lexer = modelLexer(raw_model)
+        stream = CommonTokenStream(lexer)
+        parser = modelParser(stream)
+        parser.removeErrorListeners()
+        model_err_listener = StlmcErrorListener()
+        parser.addErrorListener(model_err_listener)
+        tree = parser.stlGoals()
+        res = self.visit(tree)
+        self.variable_decls.ignore = False
+        return res
 
     '''
     stlMC
@@ -83,6 +96,26 @@ class ModelVisitor(modelVisitor):
         # print(init)
         return (module_declares, init, self.next_str, variable_decl, self.range_info, self.constant_info,
                 self.proposition_dict, self.init_mode), self.proposition_dict, goals, self.goal_labels
+    
+    
+    # Visit a parse tree produced by modelParser#stlGoals.
+    def visitStlGoals(self, ctx:modelParser.StlGoalsContext):
+        labeled_goals = dict()
+        unlabeled_goals = list()
+        reach_goals = list()
+
+        for i in range(len(ctx.goal_unit())):
+            goal, label, is_reach = self.visit(ctx.goal_unit(i))
+            if label is None:
+                if is_reach:
+                    reach_goals.append(goal)
+                else:
+                    unlabeled_goals.append(goal)
+            else:
+                labeled_goals[label] = goal
+
+        return labeled_goals, unlabeled_goals, reach_goals
+
 
     '''
     declaration of mode variables
@@ -531,6 +564,7 @@ class VariableDeclaration:
         self._v_decls["mode"] = set()
         self._v_decls["continuous"] = set()
         self._v_decls["constant"] = set()
+        self.ignore = False
 
     def declare(self, v_name: str, v_ty: str, ty: str):
         if self.is_declared(v_name):
@@ -550,6 +584,9 @@ class VariableDeclaration:
             raise NotSupportedError("invalid type {}".format(ty))
 
     def is_declared(self, name: str) -> bool:
+        if self.ignore:
+            return True
+
         is_int, is_real, is_bool = self._is_declared(name)
         return is_int or is_real or is_bool
 

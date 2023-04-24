@@ -9,7 +9,8 @@ from ...hybrid_automaton.converter.hycomp import HycompConverter
 from ...hybrid_automaton.converter.juliareach import JuliaReachConverter
 from ...hybrid_automaton.converter.spaceex import SpaceExConverter
 from ...hybrid_automaton.converter.stlmc import StlmcConverter
-from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size
+from ...hybrid_automaton.hybrid_automaton import HybridAutomaton
+from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size, get_ha_vars
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
 from ...objects.model import Model
@@ -20,6 +21,15 @@ class OneStepAlgorithm(Algorithm):
     def __init__(self, config: Configuration):
         self._config = config
         self._ha_bound_proc = HaBoundProcessor(self._config)
+
+    def _add_self_loop(self, automata: HybridAutomaton):
+        v_s = get_ha_vars(automata)
+        
+        for jp in get_jumps(automata):
+            r_v = {v for v, _ in jp.reset}
+            s_r = {(v, v) for v in v_s.difference(r_v)}
+
+            jp.add_reset(*s_r)
 
     def run(self, model: Model, goal: Goal, solver: SMTSolver):
         solver.reset()
@@ -34,6 +44,8 @@ class OneStepAlgorithm(Algorithm):
         # print(g_a)
         # print(m_a)
         automata = composition(m_a, g_a)
+
+        self._add_self_loop(automata)
         self._ha_bound_proc.add_bounds(automata)
 
         print_ha_size("stl", g_a)

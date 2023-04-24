@@ -12,7 +12,7 @@ from ..objects.goal import reach_goal
 from ..objects.object_factory import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
-from ..parser.model_visitor import ModelVisitor
+from ..parser.model_parser import ModelParser
 from ..solver.solver_factory import SolverFactory
 from ..util.printer import *
 from ..visualize.visualizer import sub_formula as vis_sub_formula
@@ -25,8 +25,8 @@ class BaseDriverFactory(DriverFactory):
     def make_config_parser(self) -> ConfigVisitor:
         return ConfigVisitor()
 
-    def make_model_parser(self) -> ModelVisitor:
-        return ModelVisitor()
+    def make_model_parser(self) -> ModelParser:
+        return ModelParser()
 
     def make_cmd_parser(self) -> CmdParser:
         return BaseCmdParser()
@@ -175,7 +175,7 @@ class BaseCmdParser(CmdParser):
 
 
 class BaseRunner(Runner):
-    def run(self, config_parser: ConfigVisitor, model_parser: ModelVisitor,
+    def run(self, config_parser: ConfigVisitor, model_parser: ModelParser,
             cmd_parser: CmdParser, printer: Printer):
         try:
             sys.setrecursionlimit(1000000)
