@@ -1,6 +1,8 @@
 import os
 import xml.etree.ElementTree as elemTree
 
+from stlmcPy.objects.configuration import Configuration
+
 from ..hybrid_automaton.converter.spaceex import obj2se, xml_pretty_print
 from ..hybrid_automaton.hybrid_automaton import *
 from ..hybrid_automaton.utils import *
@@ -361,17 +363,65 @@ class SxParser(ModelParser, spaceexVisitor):
 
 
 class SxWriter:
-    def __init__(self):
+    def __init__(self, sx_bound: float, uncontrolled_inputs: Set[str]):
         self._sx_name = "http://www-verimag.imag.fr/xml-namespaces/sspaceex"
         self._sx_tag = "{{{}}}".format(self._sx_name)
         self._lower, self._upper = -999999, 999999
+        self._sx_bound = sx_bound
+        self._uncontrolled_inputs = uncontrolled_inputs
         # self._dict = dict()
         # self._cur_comp = None
 
     def _get(self, node: elemTree.Element):
         return node.tag.replace(self._sx_tag, ""), node.attrib
+    
+    def add_network(self, file_name: str, system_name: str, network_name: str):
+        f, ext = os.path.splitext(file_name)
 
-    def add_automta(self, file_name: str, config_name: str, ha_name, ha: HybridAutomaton):
+        elemTree.register_namespace('', self._sx_name)
+        tree = elemTree.parse(file_name)
+        root = tree.getroot()
+
+        c_list = root.findall("./{}component[@id='{}']".format(self._sx_tag, system_name))
+        
+        assert len(c_list) <= 1
+
+        if len(c_list) <= 0:
+            raise Exception("no component {} is found".format(system_name))
+        
+        comp = c_list[0]
+        params = comp.findall("./{}param".format(self._sx_tag))
+        
+        
+        network = elemTree.Element("component")
+        network.set("id", network_name)
+        root.append(network)
+
+        for p in params:
+            param = elemTree.SubElement(network, "param")
+            param.attrib = p.attrib.copy()
+
+        bind = elemTree.SubElement(network, "bind")
+        bind.set("component", system_name)
+        bind.set("as", "{}Inst".format(system_name))
+
+        for p in params:
+            # get variable name
+            n = p.get("name")
+
+            m = elemTree.SubElement(bind, "map")
+            m.set("key", n)
+            m.text = n
+
+        xml_pretty_print(root)
+        tree = elemTree.ElementTree(root)
+
+        with open("{}-{}.xml".format(f, network_name), "wb") as file:
+            tree.write(file, encoding="utf-8", xml_declaration=True)
+
+        print("{}-{}.xml".format(f, network_name))
+
+    def add_automta(self, file_name: str, conf: Configuration, config_name: str, ha_name: str, ha: HybridAutomaton):
         f, ext = os.path.splitext(file_name)
         c_f, c_ext = os.path.splitext(config_name)
 
@@ -384,6 +434,94 @@ class SxWriter:
         elemTree.register_namespace('', self._sx_name)
         tree = elemTree.parse(file_name)
         root = tree.getroot()
+
+        # add bound parameters
+        common_section = conf.get_section("common")
+        tb = float(common_section.get_value("time-bound"))
+        bb = int(common_section.get_value("bound"))
+        g_clk, jbc = "gClk", "jbc"
+
+        c_list = root.findall("./{}component".format(self._sx_tag))
+
+        for c in c_list:
+            p_clk = elemTree.Element("param")
+            p_clk.set("name", g_clk)
+            p_clk.set("type", "real")
+            p_clk.set("local", "false")
+            p_clk.set("d1", "1")
+            p_clk.set("d2", "1")
+            p_clk.set("dynamics", "any")
+            c.insert(0, p_clk)
+
+            if bb > 0:
+                p_jbc = elemTree.Element("param")
+                p_jbc.set("name", jbc)
+                p_jbc.set("type", "real")
+                p_jbc.set("local", "false")
+                p_jbc.set("d1", "1")
+                p_jbc.set("d2", "1")
+                p_jbc.set("dynamics", "any")
+                c.insert(0, p_jbc)
+
+            tr_s = c.findall("./{}transition".format(self._sx_tag))
+            for tr in tr_s:
+                g = tr.find("./{}guard".format(self._sx_tag))
+                if g is not None:
+                    if bb > 0:
+                        g.text += " && jbc >= 0 && jbc <= {} && gClk >= 0.0 && gClk <= {}".format(bb, tb)
+
+                a = tr.find("./{}assignment".format(self._sx_tag))
+                if a is not None:
+                    if bb > 0:
+                        a.text += " & jbc := (jbc + 1) & gClk := gClk"
+                    else:
+                        a.text += " & gClk := gClk"
+
+            p_list = c.findall("./{}param".format(self._sx_tag))
+            vs = set()
+            for p in p_list:
+                n = p.get("name")
+                dn = p.get("dynamics")
+                ty = p.get("type")
+
+                # label is not a variable
+                if ty == "label":
+                    continue
+
+                # do not add constants
+                if dn == "const":
+                    continue
+
+                if n is not None:
+                    vs.add(n)
+            
+            # ===(this should be set for some models)====
+            b_inv = " &\n ".join(["{} >= -{} & {} <= {}".format(v, self._sx_bound, v, self._sx_bound) for v in vs])
+
+            loc_list = c.findall("./{}location".format(self._sx_tag))
+            for loc in loc_list:
+                l_inv = loc.get("invariant")
+                if l_inv is None:
+                    n_inv = elemTree.SubElement(loc, "invariant")
+                    n_inv.text = b_inv
+                else:
+                    l_inv += b_inv
+
+
+        b_list = root.findall("./{}component[{}bind]".format(self._sx_tag, self._sx_tag))
+        
+        # there should be only one bind component
+        assert len(b_list) == 1
+
+        bind_comp = b_list[0]
+        bc_list = bind_comp.findall("./{}bind".format(self._sx_tag))
+        bv_list = [g_clk, jbc] if bb > 0 else [g_clk]
+
+        for bind_c in bc_list:
+            for v in bv_list:
+                m = elemTree.SubElement(bind_c, "map")
+                m.set("key", v)
+                m.text = v
 
         comp = elemTree.Element("component")
         root.insert(0, comp)
@@ -401,7 +539,17 @@ class SxWriter:
             p.set("d2", "1")
             p.set("dynamics", "any")
 
-        
+        # add uncontrolled inputs
+        for v in self._uncontrolled_inputs:
+            p = elemTree.SubElement(comp, "param")
+            p.set("name", v.id)
+            p.set("type", v.type)
+            p.set("local", "false")
+            p.set("d1", "1")
+            p.set("d2", "1")
+            p.set("dynamics", "any")
+            p.set("controlled", "false")
+
         m_id_dict = dict()
         for m_id, m in enumerate(ha.get_modes()):
             m_id_dict[m] = m_id
@@ -448,7 +596,11 @@ class SxWriter:
 
             rst = list()
             for v, e in jp.reset:
-                rst.append("{}' == {}".format(obj2se(v), obj2se(e)))
+                rst.append("{} := {}".format(obj2se(v), obj2se(e)))
+        
+            # add uncontrolled inputs
+            for v in self._uncontrolled_inputs:
+                rst.append("{} := {}".format(v, v))
 
             r = elemTree.SubElement(tr, "assignment")
             r.text = "&".join(rst)
@@ -485,8 +637,11 @@ class SxWriter:
             comp_attr[v] = p.attrib
             comp_vars.add(v)
 
+        g_clk_v, jbc_v = Real("gClk"), Real("jbc")
         
         p_vars = comp_vars.difference(bind_vars)
+        p_vars.discard(g_clk_v)
+        p_vars.discard(jbc_v)
         print(p_vars)
 
         # add params
@@ -509,10 +664,13 @@ class SxWriter:
         tree = elemTree.ElementTree(root)
         cfg = self.mk_conf(config_name, m_id_dict, ha_name, ha)
 
-        with open("{}-{}.xml".format(f, ha_name), "wb") as file:
+
+        bname = "ub" if bb < 0 else "b{}".format(bb) 
+
+        with open("{}-{}-{}-tb{}.xml".format(f, ha_name, bname, tb), "wb") as file:
             tree.write(file, encoding="utf-8", xml_declaration=True)
 
-        with open("{}-{}.cfg".format(c_f, ha_name), "w") as file:
+        with open("{}-{}-{}-tb{}.cfg".format(c_f, ha_name, bname, tb), "w") as file:
             file.write(cfg)
 
     @classmethod
@@ -542,11 +700,11 @@ class SxWriter:
                 k, v = c.split("=", 1)
                 v = v.replace("\"", "")
                 if "initially" in k:
-                    init = "(({}) & ({})) & ({})".format(" & ".join(ha_init), v, " || ".join(initial))
+                    init = "(({}) & ({})) & ({})".format(" & ".join(ha_init), v, " | ".join(initial))
                     cfg.append("initially = \"{}\"".format(init))
 
                 elif "forbidden" in k:
-                    fin = "({}) & ({})".format(v, " || ".join(final))
+                    fin = "{}".format(" | ".join(final))
                     cfg.append("forbidden = \"{}\"".format(fin))
 
                 else:

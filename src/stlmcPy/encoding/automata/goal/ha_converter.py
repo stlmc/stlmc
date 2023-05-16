@@ -9,7 +9,7 @@ from ....objects.configuration import Configuration
 class HAConverter:
     def __init__(self, tau_subst: VarSubstitution):
         self._tau_subst: VarSubstitution = tau_subst
-        self._tau_subst.add(Real("g@clk"), self._global_clk())
+        self._tau_subst.add(global_clk(), self._global_clk())
         self._node2mode_dict: Dict[Node, Mode] = dict()
 
     def clear(self):
@@ -49,6 +49,9 @@ class HAConverter:
         clk_s = self._get_clocks(graph)
         d_s = self._make_time_dynamics(clk_s)
 
+        # make clock invariants
+        clk_inv_s = self._make_clk_invariants(clk_s)
+
         # add initial bounds and conditions
         b_s = self._make_initial_bounds(clk_s)
         automata.add_init(*b_s)
@@ -64,6 +67,7 @@ class HAConverter:
             assert len(r) <= 0
 
             mode.add_invariant(*inv)
+            mode.add_invariant(*clk_inv_s)
             mode.add_dynamic(*d_s)
 
             automata.add_mode(mode)
@@ -114,6 +118,15 @@ class HAConverter:
             mode.set_as_initial()
 
         return mode
+    
+    def _make_clk_invariants(self, clocks: Set[Real]) -> Set[Formula]:
+        inv_s, tau_subst = set(), self._tau_subst
+        zero, tb = RealVal("0.0"), tau_max()
+        for clk in clocks:
+            inv_s.add(clk >= zero)
+            inv_s.add(tau_subst.substitute(clk <= tb))
+            inv_s.add(tau_subst.substitute(clk <= global_clk()))
+        return inv_s
 
     def _translate_goals(self, *goals) -> Tuple[Set[Formula], Set[Tuple[Real, RealVal]]]:
         tau_subst = self._tau_subst
@@ -201,9 +214,9 @@ class HaBoundProcessor:
         self._bound = int(common_section.get_value("bound"))
 
     def _make_tb_invariant(self) -> Formula:
-        tb = RealVal(str(self._tb))
+        tb, zero = RealVal(str(self._tb)), RealVal("0.0")
         g_clk = self._global_clk()
-        return g_clk <= tb
+        return And([g_clk >= zero, g_clk <= tb])
 
     def _make_jp_bound_conditions(self) -> Optional[Tuple[Formula, Tuple[Real, Expr], Tuple[Real, Expr], Formula]]:
         one, zero, b_val = RealVal("1.0"), RealVal("0.0"), RealVal(str(self._bound))
@@ -213,7 +226,7 @@ class HaBoundProcessor:
         if self._bound < 0:
             return None
         else:
-            jb_f = jb_c <= b_val
+            jb_f = And([jb_c >= zero, jb_c <= b_val])
             jb_r = (jb_c, jb_c + one)
             jb_d = (jb_c, zero)
             jb_i = jb_c == zero
@@ -236,8 +249,9 @@ class HaBoundProcessor:
 
             # if jump bound condition exists
             if jb_c is not None:
-                _, _, jb_d, _ = jb_c
+                jb_f, _, jb_d, _ = jb_c
                 m.add_dynamic(jb_d)
+                m.add_invariant(jb_f)
 
         # add jump bound to the resets and guards
         for jp in get_jumps(ha):

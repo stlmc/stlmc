@@ -12,6 +12,7 @@ class JuliaReachConverter:
         self.config: Configuration = config
         common_section = self.config.get_section("common")
         self.time_bound = float(common_section.get_value("time-bound"))
+        self.bound = int(common_section.get_value("bound"))
 
     def convert(self, ha: HybridAutomaton):
         preprocessing(ha)
@@ -54,7 +55,7 @@ class JuliaReachConverter:
         analysis = _analysis(
             "TMJets(abstol=1e-15, orderT=10, orderQ=2, maxsteps=50_000)",
             "BoxClustering(100)",
-            self.time_bound
+            self.bound, self.time_bound
         )
 
         final = _unsafe_check(ha, mode_id)
@@ -102,8 +103,8 @@ def _jp_var(jp: Transition):
     return "jp{}".format(id(jp))
 
 
-def _analysis(alg, clustering, time_bound: float):
-    return "@time sol = solve(prob, tspan=(0.0, {}), alg={}, clustering_method={})".format(time_bound, alg, clustering)
+def _analysis(alg, clustering, bound: int, time_bound: float):
+    return "@time sol = solve(prob, tspan=(0.0, {}), alg={}, clustering_method={}, max_jumps={})".format(time_bound, alg, clustering, bound)
 
 
 def _make_init(ha: HybridAutomaton, sys_var: Dict[Variable, int], mode_id: Dict[Mode, int], bound_box: BoundBox):

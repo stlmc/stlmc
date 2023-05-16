@@ -100,8 +100,8 @@ class FlowStarConverter(Converter):
         picked = var_set.pop()
 
         common_section = self.config.get_section("common")
-        tb = common_section.get_value("time-bound")
         time_horizon = common_section.get_value("time-horizon")
+        bound = common_section.get_value("bound")
 
         # config
         net_dict = dict()
@@ -113,7 +113,7 @@ class FlowStarConverter(Converter):
         net_dict["cutoff"] = "1e-13"
         net_dict["precision"] = "53"
         net_dict["no output"] = ""
-        net_dict["max jumps"] = "500000"
+        net_dict["max jumps"] = bound
         net_dict["print on"] = ""
 
         conf_str_list = list()

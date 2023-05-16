@@ -75,7 +75,7 @@ fragment LOWERCASE : [a-z] ;
 fragment UPPERCASE : [A-Z] ;
 TIME : 't' ;
 
-VARIABLE     : (LOWERCASE | UPPERCASE)+ (LOWERCASE | UPPERCASE | DIGIT)* ;
+VARIABLE     : (LOWERCASE | UPPERCASE | '_')+ (LOWERCASE | UPPERCASE | DIGIT)* ;
 ID: ([a-zA-Z] | '_' | '-' | DIGIT )+;
 
 INITIALVAL : VARIABLE '(0)' ;
