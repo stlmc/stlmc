@@ -1,5 +1,7 @@
+import xml.etree.ElementTree as elemTree
+
 from functools import singledispatch
-from typing import Union
+from typing import List, Union
 
 from .converter import Converter
 from ..hybrid_automaton import *
@@ -42,35 +44,83 @@ class SpaceExConverter(Converter):
 
 
 def _make_model(ha: HybridAutomaton):
-    v_set = get_ha_vars(ha)
-    jp_s = get_jumps(ha)
+    elemTree.register_namespace("", "http://www-verimag.imag.fr/xml-namespaces/sspaceex")
+    root = elemTree.Element("sspaceex", {"version" : "0.2", "math" : "SpaceEx"})
 
-    var_str_list, map_str_list = _decl_var(v_set)
-    mode_str_list = "\n".join([_make_loc(mode) for mode in ha.get_modes()])
-    trans_str_list = "\n".join([_make_jp(jp) for jp in jp_s])
+    ha_id = str(id(ha))
 
     # make component
-    ha_id = id(ha)
-    ha_comp_header = "<component id=\"{}\">".format(ha_id)
-    ha_comp_footer = "</component>"
+    main_comp = elemTree.SubElement(root, "component")
+    main_comp.set("id", ha_id)
 
-    ha_comp = "\n".join([ha_comp_header, var_str_list, mode_str_list, trans_str_list, ha_comp_footer])
+    # make variable declarations
+    v_set = get_ha_vars(ha)
+    v_decls: List[elemTree.Element] = list()
+    for v in v_set:
+        v_d = elemTree.Element("param")
+        v_d.set("name", str(v.id))
+        v_d.set("type", str(v.type))
+        v_d.set("local", "false")
+        v_d.set("d1", "1")
+        v_d.set("d2", "1")
+        v_d.set("dynamics", "any")
+        v_decls.append(v_d)
+    
+    # add variable declarations
+    for v_d in v_decls:
+        v = elemTree.Element("param")
+        v.attrib = v_d.attrib.copy()
+        main_comp.append(v)
 
-    # make system
-    sys_comp_header = "<component id=\"system\">"
-    sys_comp_footer = "</component>"
-    bind_header = "<bind component=\"{}\" as=\"subsystem\" x=\"300\" y=\"200\">".format(ha_id, ha_id)
-    bind_footer = "</bind>"
-    sys_comp = "\n".join([sys_comp_header, var_str_list, bind_header, map_str_list, bind_footer, sys_comp_footer])
+    # make locations
+    for mode in ha.get_modes():
+        loc = elemTree.SubElement(main_comp, "location")
+        loc.set("id", str(mode.id))
+        loc.set("name", "mode_id_{}".format(mode.id))
+        loc.set("x", "1")
+        loc.set("y", "1")
+        loc.set("width", "1")
+        loc.set("height", "1")
 
-    xml_header = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-    xml_version = "version=\"0.2\""
-    xml_url = "xmlns=\"http://www-verimag.imag.fr/xml-namespaces/sspaceex\""
-    xml_info = "{} {} math=\"SpaceEx\"".format(xml_url, xml_version)
+        f = elemTree.SubElement(loc, "flow")
+        f.text = _make_flow(mode)
 
-    model_header = "<sspaceex {}>".format(xml_info)
-    model_footer = "</sspaceex>"
-    return "\n".join([xml_header, model_header, ha_comp, sys_comp, model_footer])
+        inv = elemTree.SubElement(loc, "invariant")
+        inv.text = _make_inv(mode)
+        
+    # make jumps
+    for jp in get_jumps(ha):
+        tr = elemTree.SubElement(main_comp, "transition")
+        tr.set("source", str(jp.get_src().id))
+        tr.set("target", str(jp.get_trg().id))
+
+        g = elemTree.SubElement(tr, "guard")
+        g.text = _make_guard(jp)
+
+        r = elemTree.SubElement(tr, "assignment")
+        r.text = _make_reset(jp)
+
+    # make automata network
+    network = elemTree.SubElement(root, "component")
+    network.set("id", "system")
+
+    # add variable declarations
+    for v_d in v_decls:
+        v = elemTree.Element("param")
+        v.attrib = v_d.attrib.copy()
+        network.append(v)
+
+    bind = elemTree.SubElement(network, "bind")
+    bind.set("component", ha_id)
+    bind.set("as", "subsystem")
+    for v in v_set:
+        map = elemTree.SubElement(bind, "map")
+        map.set("key", str(v))
+        map.text = str(v)
+
+    xml_pretty_print(root)
+    raw = elemTree.tostring(root, encoding="utf-8", xml_declaration=True)
+    return str(raw, "utf-8")
 
 
 def _make_conf(ha: HybridAutomaton, config: Configuration):
@@ -87,7 +137,7 @@ def _make_conf(ha: HybridAutomaton, config: Configuration):
         if mode.is_final():
             final_state.append("loc(subsystem) == mode_id_{}".format(mode.id))
 
-    init_const = [obj2se(c, is_initial=True) for c in ha.init]
+    init_const = [obj2se(c) for c in ha.init]
 
     assert len(v_set) > 0
     random_var = v_set.copy().pop()
@@ -110,58 +160,24 @@ def _make_conf(ha: HybridAutomaton, config: Configuration):
     return "\n".join(conf_str_list)
 
 
-def _decl_var(v_set: Set[Variable]):
-    var_str_list = list()
-    def name_f(x): return "name=\"{}\"".format(x.id)
-    def type_f(x): return "type=\"{}\"".format(x.type)
-    other = "local=\"false\" d1=\"1\" d2=\"1\" dynamics=\"any\""
-
-    v_str = ["<param {} {} {} />".format(name_f(v), type_f(v), other) for v in v_set]
-    m_str = ["<map key=\"{}\">{}</map>".format(v.id, v.id) for v in v_set]
-    return "\n".join(v_str), "\n".join(m_str)
-
-
-def _make_loc(mode: Mode):
-    loc_id, loc_name = "id=\"{}\"".format(mode.id), "name=\"mode_id_{}\"".format(mode.id)
-    x, y = "x=\"100\"", "y=\"100\""
-    w, h = "width=\"50\"", "height=\"50\""
-
-    header = "<location {} {} {} {} {} {}>".format(loc_id, loc_name, x, y, w, h)
-    footer = "</location>"
-    f, inv = _make_flow(mode), _make_inv(mode)
-
-    return "\n".join([header, f, inv, footer])
-
-
 def _make_flow(mode: Mode):
     flows = ["{}\' == {}".format(v, obj2se(mode.dynamics[v])) for v in mode.dynamics]
-    return "<flow>{}</flow>".format("&amp;\n".join(flows))
+    return " & \n".join(flows)
 
 
 def _make_inv(mode: Mode):
     inv_s = [obj2se(inv) for inv in mode.invariant]
-    return "<invariant>{}</invariant>".format("&amp;\n".join(inv_s))
-
-
-def _make_jp(jp: Transition):
-    src = "source=\"{}\"".format(jp.get_src().id)
-    trg = "target=\"{}\"".format(jp.get_trg().id)
-    g, r = _make_guard(jp), _make_reset(jp)
-    other = "<labelposition x=\"200\" y=\"200\" width=\"20\" height=\"10\"/>"
-
-    header = "<transition {} {}>".format(src, trg)
-    footer = "</transition>"
-    return "\n".join([header, g, r, other, footer])
+    return " & \n".join(inv_s)
 
 
 def _make_guard(jp: Transition):
     guard_s = [obj2se(guard) for guard in jp.guard]
-    return "<guard>{}</guard>\n".format("&amp;\n".join(guard_s))
+    return " & \n".join(guard_s)
 
 
 def _make_reset(jp: Transition):
-    reset_s = [obj2se(v == e, is_reset=True) for v, e in jp.reset]
-    return "<assignment>{}</assignment>".format("&amp;\n".join(reset_s))
+    reset_s = ["{} := {}".format(v, obj2se(e)) for v, e in jp.reset]
+    return " & \n".join(reset_s)
 
 
 @singledispatch
