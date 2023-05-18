@@ -8,9 +8,6 @@ from ..hybrid_automaton.hybrid_automaton import *
 def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
     ha = HybridAutomaton()
 
-    # ha1vars, ha2vars = get_ha_vars(ha1), get_ha_vars(ha2)
-    # v_s = ha1vars.union(ha2vars)
-
     ha.add_init(*ha1.init)
     ha.add_init(*ha2.init)
 
@@ -23,19 +20,61 @@ def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
         ha.add_mode(mode)
 
     for mode1, mode2 in candidate_modes:
-        tr_s = _make_composed_jumps((mode1, mode2), mode_dict, ha1, ha2)
-        for tr in tr_s:
-            ha.add_transition(tr)
+        _make_composed_jumps(mode1, mode2, candidate_modes, mode_dict, ha1, ha2, ha)
 
-    # assert no redundant mode exists
-    for mode in ha.get_modes().copy():
-        if len(ha.get_pred_vertices(mode)) == 0 and len(ha.get_next_vertices(mode)) == 0:
-            if not mode.is_initial() or not mode.is_final():
-                raise Exception("redundant mode found")
-
+    # remove redundancy
+    ha.remove_unreachable()
     remove_equal_jumps(ha)
 
     return ha
+
+
+def _make_composed_jumps(mode1: Mode, mode2: Mode,  candidate_modes: Set[Tuple[Mode, Mode]], mode_dict: Dict[Tuple[Mode, Mode], Mode],
+                         ha1: HybridAutomaton, ha2: HybridAutomaton, ha: HybridAutomaton) -> Set[Transition]:
+    c_mode = mode_dict[mode1, mode2]
+
+    for cn_m in candidate_modes:
+        c_m = mode_dict[cn_m]
+        m1, m2 = cn_m
+        
+        c_jp1, ty1, jp1_s = _can_jump(mode1, m1, ha1)
+        c_jp2, ty2, jp2_s = _can_jump(mode2, m2, ha2)
+
+        if c_jp1 and c_jp2:
+            # if there is no transition exists
+            if ty1 == ty2 == "stutt":
+                continue
+
+            assert len(jp1_s) > 0 or len(jp2_s) > 0
+
+            if len(jp1_s) <= 0:
+                jp1_s.add(Transition(mode1, m1))
+
+            if len(jp2_s) <= 0:
+                jp2_s.add(Transition(mode2, m2))
+
+            tr_s: Set[Tuple[Transition, Transition]] = set(product(jp1_s, jp2_s))
+
+            for tr1, tr2 in tr_s:
+                new_jp = Transition(c_mode, c_m)
+                new_jp.add_guard(*tr1.guard)
+                new_jp.add_guard(*tr2.guard)
+
+                new_jp.add_reset(*tr1.reset)
+                new_jp.add_reset(*tr2.reset)
+                
+                ha.add_transition(new_jp)
+
+
+def _can_jump(src: Mode, trg: Mode, ha: HybridAutomaton) -> Tuple[bool, str, Set[Transition]]:
+    if _jp_exists(src, trg, ha):
+        nxt = ha.get_next_edges(src)
+        prd = ha.get_pred_edges(trg)
+        return True, "yes", nxt.intersection(prd)
+    elif src == trg:
+        return True, "stutt", set()
+    else:
+        return False, "no", set()
 
 
 def _compose_modes(mode1: Mode, mode2: Mode, m_id: int) -> Mode:
@@ -56,66 +95,8 @@ def _compose_modes(mode1: Mode, mode2: Mode, m_id: int) -> Mode:
     return mode
 
 
-def _make_composed_jumps(composed_mode: Tuple[Mode, Mode], mode_dict: Dict[Tuple[Mode, Mode], Mode],
-                         ha1: HybridAutomaton, ha2: HybridAutomaton) -> Set[Transition]:
-    composed_jp_s = set()
-    (mode1, mode2), c_mode = composed_mode, mode_dict[composed_mode]
-    mode1_set, mode2_set = _find_composed_modes(composed_mode, mode_dict)
-
-    for m_1 in mode1_set:
-        # assert (m_1, mode2) in mode_dict
-        trg_mode = mode_dict[(m_1, mode2)]
-
-        if _jp_exists(mode1, m_1, ha1):
-            for jp in _get_jp_s(mode1, m_1, ha1):
-                new_jp = Transition(c_mode, trg_mode)
-                new_jp.add_guard(*jp.guard)
-                new_jp.add_reset(*jp.reset)
-                composed_jp_s.add(new_jp)
-
-    for m_2 in mode2_set:
-        # assert (mode1, m_2) in mode_dict
-        trg_mode = mode_dict[(mode1, m_2)]
-
-        if _jp_exists(mode2, m_2, ha2):
-            for jp in _get_jp_s(mode2, m_2, ha2):
-                new_jp = Transition(c_mode, trg_mode)
-                new_jp.add_guard(*jp.guard)
-                new_jp.add_reset(*jp.reset)
-                composed_jp_s.add(new_jp)
-
-    return composed_jp_s
-
-
 def _jp_exists(src: Mode, trg: Mode, ha: HybridAutomaton) -> bool:
     return trg in ha.get_next_vertices(src)
-
-
-def _get_jp_s(src: Mode, trg: Mode, ha: HybridAutomaton) -> Set[Transition]:
-    if trg not in ha.get_next_vertices(src):
-        raise Exception("jump does not exist")
-
-    jp_s = set()
-    for jp in ha.get_next_edges(src):
-        if jp.get_trg() == trg:
-            jp_s.add(jp)
-    return jp_s
-
-
-def _find_composed_modes(composed_mode: Tuple[Mode, Mode],
-                         mode_dict: Dict[Tuple[Mode, Mode], Mode]) -> Tuple[Set[Mode], Set[Mode]]:
-    mode1_set: Set[Mode] = set()
-    mode2_set: Set[Mode] = set()
-
-    mode1, mode2 = composed_mode
-    for m1, m2 in mode_dict:
-        if m2 == mode2:
-            mode1_set.add(m1)
-
-        if m1 == mode1:
-            mode2_set.add(m2)
-
-    return mode1_set, mode2_set
 
 
 def remove_equal_jumps(ha: HybridAutomaton):

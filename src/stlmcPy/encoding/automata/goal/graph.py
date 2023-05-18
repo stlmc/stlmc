@@ -162,13 +162,13 @@ class TableauGraph(Graph['Node', 'Jump']):
         self._label[node] = label
 
     def remove_unreachable(self):
-        f_ns = set(filter(lambda x: x.is_final(), self.get_nodes()))
+        f_ns = set(filter(lambda x: x.is_initial(), self.get_nodes()))
         new_states, reachable = f_ns.copy(), f_ns.copy()
 
         while len(new_states) > 0:
             temp = set()
             for s in new_states:
-                temp.update(self.get_pred_vertices(s))
+                temp.update(self.get_next_vertices(s))
             new_states = temp.difference(reachable)
             reachable.update(new_states)
 

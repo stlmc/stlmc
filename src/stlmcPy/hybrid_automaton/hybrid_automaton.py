@@ -30,6 +30,21 @@ class HybridAutomaton(Graph['Mode', 'Transition']):
     def remove_transition(self, transition: 'Transition'):
         self.remove_edge(transition)
 
+    def remove_unreachable(self):
+        f_ns = set(filter(lambda x: x.is_initial(), self.get_modes()))
+        new_states, reachable = f_ns.copy(), f_ns.copy()
+
+        while len(new_states) > 0:
+            temp = set()
+            for s in new_states:
+                temp.update(self.get_next_vertices(s))
+            new_states = temp.difference(reachable)
+            reachable.update(new_states)
+
+        unreachable = self.get_modes().difference(reachable)
+        for s in unreachable:
+            self.remove_mode(s)
+
     def get_bound_box(self) -> 'BoundBox':
         bound_box = BoundBox()
         queue = self.init.copy()
