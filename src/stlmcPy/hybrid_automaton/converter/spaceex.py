@@ -259,7 +259,7 @@ def _(const: Div):
 # maybe not supported
 @obj2se.register(Pow)
 def _(const: Pow):
-    return "(" + obj2se(const.left) + " ** " + obj2se(const.right) + ")"
+    return "(" + obj2se(const.left) + " ^ " + obj2se(const.right) + ")"
 
 
 def xml_pretty_print(current, parent=None, index=-1, depth=0):

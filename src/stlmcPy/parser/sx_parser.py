@@ -472,10 +472,14 @@ class SxWriter:
 
                 a = tr.find("./{}assignment".format(self._sx_tag))
                 if a is not None:
+                    # when assignment is empty. e.g., FISC model
+                    if len(a.text.replace(" ", "").replace("\n", "")) > 0:
+                        a.text += " & "
+
                     if bb > 0:
-                        a.text += " & jbc := (jbc + 1) & gClk := gClk"
+                        a.text += "jbc := (jbc + 1) & gClk := gClk"
                     else:
-                        a.text += " & gClk := gClk"
+                        a.text += "gClk := gClk"
 
             p_list = c.findall("./{}param".format(self._sx_tag))
             vs = set()

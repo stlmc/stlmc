@@ -1,20 +1,22 @@
-from typing import Iterable
+from typing import Iterable, List, Optional
 
 from ....constraints.aux.generator import variable
 from ....constraints.aux.operations import Substitution, clause, get_vars
 from ....hybrid_automaton.hybrid_automaton import *
 from ....objects.model import Model
+from ....objects.configuration import Configuration
 
 
 class STLmcModel(Model):
     def __init__(self, modules, init, next_str, variable_decl: Dict,
                  range_info: Dict, constant_info: Dict, prop_dict: Dict,
-                 init_mode, threshold: float):
+                 init_mode, config: Configuration):
         super().__init__()
         self.modules = modules
         self.init = init
         self.next_str = next_str
         self.mode_var_name = "modeId"
+        self._config = config
 
         # key : string, value : set
         self.variable_decl = variable_decl.copy()
@@ -25,13 +27,25 @@ class STLmcModel(Model):
 
         # encoding related
         self._cur_bound = 0
-        self._threshold = threshold
         self._track_dict: Dict[Bool, Formula] = dict()
 
         # cache - key : bound, value : list of constraint dictionary
         self._cache = dict()
 
+        # bfs mode mapping
+        self._bfs_mapping: Dict[Mode, Mode] = dict()
+
+        # mode id generator
+        self._mode_id_gen = _mode_id_generator()
+
     def encode(self):
+        # make an automaton
+        ha = self._make_automata()
+
+        # explore in bfs and returns tree automaton
+        return self._bfs(ha)
+
+    def _make_automata(self):
         ha = HybridAutomaton()
 
         # make init
@@ -53,6 +67,97 @@ class STLmcModel(Model):
             self._make_jump(module_index, ha, mode_dict, mode_id_dict)
 
         return ha
+    
+    def _bfs(self, ha: HybridAutomaton):
+        # get bound
+        common = self._config.get_section("common")
+        bound = int(common.get_value("bound"))
+
+        ha_tree = HybridAutomaton()
+
+        # initialize a search queue
+        queue = list()
+        for m in ha.get_modes():
+            if m.is_initial():
+                n_m = self._copy_mode(m)
+                self._add_mode(n_m, ha_tree)
+                queue.append(n_m)
+
+        depth = 0
+        while depth < bound:
+            depth += 1
+
+            # no more to explore
+            if len(queue) <= 0:
+                break
+
+            # add next modes
+            mode = queue.pop(0)
+            queue.extend(self._bfs_explore(mode, ha, ha_tree))
+        
+        return ha_tree
+
+    def _bfs_explore(self, mode: Mode, ha: HybridAutomaton, ha_tree: HybridAutomaton) -> List[Mode]:
+        m = self._bfs_mapping[mode]
+        
+        to_be_explored = list()
+        for n_m in ha.get_next_vertices(m):
+            # copy a mode
+            n_mode = self._copy_mode(n_m)
+
+            # add it with all its jumps
+            self._add_mode(n_mode, ha_tree)
+            self._add_jp(mode, n_mode, ha, ha_tree)
+
+            # add the mode to the queue
+            to_be_explored.append(n_mode)
+        
+        return to_be_explored
+
+    def _add_mode(self, mode: Mode, ha_tree: HybridAutomaton):
+        ha_tree.add_mode(mode)
+
+    def _add_jp(self, src: Mode, trg: Mode, ha: HybridAutomaton, ha_tree: HybridAutomaton):
+        m_src, m_trg = self._bfs_mapping[src], self._bfs_mapping[trg]
+
+        for jp in ha.get_pred_edges(m_trg):
+            if jp.get_src() == m_src:
+                n_jp = self._copy_jp(src, trg, jp)
+                ha_tree.add_edge(n_jp)
+
+    def _copy_mode(self, mode: Mode) -> Mode:
+        # assume that the mode is unique
+        m = Mode(next(self._mode_id_gen))
+        if mode.is_initial():
+            m.set_as_initial()
+
+        if mode.is_final():
+            m.set_as_final()
+        
+        # copy dynamics
+        for v in mode.dynamics:
+            m.add_dynamic((v, mode.dynamics[v]))
+
+        # copy invariant
+        m.add_invariant(*mode.invariant)
+
+        self._bfs_mapping[m] = mode
+
+        return m
+
+    def _copy_jp(self, src: Mode, trg: Mode, jp: Transition) -> Mode:
+        m_src, m_trg = self._bfs_mapping[src], self._bfs_mapping[trg]
+        assert jp.get_src() == m_src and jp.get_trg() == m_trg
+        
+        n_jp = Transition(src, trg)
+        
+        # copy guard
+        n_jp.add_guard(*jp.guard)
+
+        # copy reset
+        n_jp.add_reset(*jp.reset)
+
+        return n_jp
 
     def _make_init(self, ha: HybridAutomaton):
         self._check_valid()
@@ -185,3 +290,10 @@ class STLmcModel(Model):
 
 def calc_hash(iterable: Iterable) -> hash:
     return hash(frozenset(iterable))
+
+
+def _mode_id_generator():
+    id = -1
+    while True:
+        id += 1
+        yield id

@@ -26,7 +26,7 @@ def unary_expr(expr: Expr, ty: str):
 
 
 def binary_expr(left: Expr, right: Expr, ty: str):
-    type_dict = {'+': Add, '-': Sub, '*': Mul, '/': Div, '**': Pow}
+    type_dict = {'+': Add, '-': Sub, '*': Mul, '/': Div, '^': Pow}
     if ty not in type_dict:
         return None
     return type_dict[ty](left, right)

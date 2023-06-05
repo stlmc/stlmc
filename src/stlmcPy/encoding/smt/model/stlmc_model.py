@@ -3,17 +3,21 @@ from ...robust.relaxing import weakening
 from ....constraints.aux.operations import Substitution
 from ....constraints.constraints import *
 from ....objects.model import Model
+from ....objects.configuration import Configuration
 from ....util.printer import pprint
 
 
 class STLmcModel(Model):
     def __init__(self, modules, init, next_str, variable_decl: Dict,
                  range_info: Dict, constant_info: Dict, prop_dict: Dict,
-                 init_mode, threshold: float):
+                 init_mode, config: Configuration):
         super().__init__()
         self.modules = modules
         self.init = init
         self.next_str = next_str
+
+        # get config information
+        common = config.get_section("common")
 
         # key : string, value : set
         self.variable_decl = variable_decl.copy()
@@ -24,7 +28,7 @@ class STLmcModel(Model):
 
         # encoding related
         self._cur_bound = 0
-        self._threshold = threshold
+        self._threshold = float(common.get_value("threshold"))
         self._track_dict: Dict[Bool, Formula] = dict()
 
         # cache - key : bound, value : list of constraint dictionary

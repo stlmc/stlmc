@@ -25,7 +25,7 @@ FUNC_OP : (OP_SIN | OP_COS | OP_TAN | OP_ARCSIN | OP_ARCCOS | OP_ARCTAN | OP_SQR
 PLUS     : '+' ;
 MINUS    : '-' ;
 MULTIPLY : '*' ;
-POWER    : '**' ;
+POWER    : '^' ;
 DIVIDE   : '/' ;
 
 MODE : 'mode' ;
@@ -93,23 +93,33 @@ fragment COMMENT :
  * Parser Rules
  */
 
-stlMC : (mode_var_decl | variable_var_decl | var_val_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
+stlMC : (mode_var_decl | variable_var_decl | const_decl)+ mode_module+ init_decl (props)? goal_decl EOF ;
 
 stlGoals : (goal_unit SEMICOLON)* ;
 
-var_val_decl      : CONST VARIABLE EQUAL val=(VALUE | TRUE| FALSE) SEMICOLON;
+const_decl      : CONST VARIABLE EQUAL const_expr SEMICOLON         # realConstDecl
+                | CONST VARIABLE EQUAL val=(TRUE | FALSE) SEMICOLON # boolConstDecl
+                ;
 mode_var_decl     : var_type VARIABLE SEMICOLON ;
 variable_var_decl : var_range VARIABLE SEMICOLON ;
 
-expression  : 
-              LPAREN expression RPAREN # parenthesisExp
+const_expr :  VALUE                                         # constValExpr
+            | VARIABLE                                      # constVarExpr
+            | const_expr POWER const_expr                   # constPowExpr
+            | const_expr MULTIPLY const_expr                # constMulExpr
+            | const_expr DIVIDE const_expr                  # constDivExpr
+            | const_expr PLUS const_expr                    # constAddExpr
+            | const_expr MINUS const_expr                   # constSubExpr
+            ;
+
+expression  : LPAREN expression RPAREN # parenthesisExp
             | VALUE     # constantExp
             | TIME      # constantExp
             | VARIABLE  # constantExp
             | INITIALVAL # initialValue
             | op=(MINUS | FUNC_OP) expression    # unaryExp
-	    | expression op=POWER expression #binaryExp
-	    | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
+            | expression op=POWER expression #binaryExp
+            | expression op=(MULTIPLY | DIVIDE ) expression #binaryExp
             | expression op=(PLUS | MINUS) expression # binaryExp
             ;
 

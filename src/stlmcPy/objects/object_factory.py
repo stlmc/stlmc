@@ -45,7 +45,7 @@ def generate_smt_objects(file_name: str, config: Configuration):
     for raw_goal in reach_goals:
         goals.append(SmtReachStlGoal(raw_goal))
 
-    return SmtModel(*raw_model, threshold), prop_dict, goals, goal_labels
+    return SmtModel(*raw_model, config), prop_dict, goals, goal_labels
 
 
 def generate_ha_objects(file_name: str, config: Configuration):
@@ -73,4 +73,4 @@ def generate_ha_objects(file_name: str, config: Configuration):
     # for raw_goal in reach_goals:
     #     goals.append(ReachStlGoal(raw_goal))
 
-    return AutomataModel(*raw_model, threshold), prop_dict, goals, goal_labels
+    return AutomataModel(*raw_model, config), prop_dict, goals, goal_labels

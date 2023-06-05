@@ -74,8 +74,8 @@ class StlmcParser(ModelParser, modelVisitor):
             self.visit(ctx.variable_var_decl()[i])
 
         # constant
-        for i in range(len(ctx.var_val_decl())):
-            self.visit(ctx.var_val_decl()[i])
+        for i in range(len(ctx.const_decl())):
+            self.visit(ctx.const_decl()[i])
 
         self.variable_decls.unique_checking()
 
@@ -147,31 +147,63 @@ class StlmcParser(ModelParser, modelVisitor):
         return v
 
     '''
-    declaration of constant variables
+    Constants
     '''
-
-    def visitVar_val_decl(self, ctx: modelParser.Var_val_declContext):
+    def visitRealConstDecl(self, ctx:modelParser.RealConstDeclContext):
         name = str(ctx.VARIABLE().getText())
-        val_str = str(ctx.val.text).lower()
 
-        if self.variable_decls.is_declared(name):
-            raise NotSupportedError("{} is already declared".format(name))
-
-        # infer type
-        if val_str == "true" or val_str == "false":
-            val, ty = val_str.capitalize(), "bool"
-        else:
-            # try float conversion
-            try:
-                float(val_str)
-            except ValueError:
-                raise NotSupportedError("wrong value: {}".format(val_str))
-            val, ty = val_str, "real"
-
-        v, val = variable(name, ty), value(val, ty)
-        self.variable_decls.declare(name, ty, "constant")
-        self.constant_info[v] = val
+        v = variable(name, "real")
+        self.variable_decls.declare(name, "real", "constant")
+        self.constant_info[v] = self.visit(ctx.const_expr())
         return v
+
+
+    def visitBoolConstDecl(self, ctx:modelParser.BoolConstDeclContext):
+        return self.visitChildren(ctx)
+
+
+    def visitConstValExpr(self, ctx:modelParser.ConstValExprContext):
+        value_str = str(ctx.VALUE()).lower()
+
+        # try float conversion
+        try:
+            float(value_str)
+        except ValueError:
+            raise NotSupportedError("wrong value: {}".format(value_str))
+
+        return value(value_str, "real")
+
+
+    def visitConstPowExpr(self, ctx:modelParser.ConstPowExprContext):
+        return self.visit(ctx.const_expr(0)) ** self.visit(ctx.const_expr(1))
+
+
+    def visitConstSubExpr(self, ctx:modelParser.ConstSubExprContext):
+        return self.visit(ctx.const_expr(0)) - self.visit(ctx.const_expr(1))
+
+    def visitConstDivExpr(self, ctx:modelParser.ConstDivExprContext):
+        return self.visit(ctx.const_expr(0)) / self.visit(ctx.const_expr(1))
+
+
+    def visitConstMulExpr(self, ctx:modelParser.ConstMulExprContext):
+        return self.visit(ctx.const_expr(0)) * self.visit(ctx.const_expr(1))
+
+
+    def visitConstAddExpr(self, ctx:modelParser.ConstAddExprContext):
+        return self.visit(ctx.const_expr(0)) + self.visit(ctx.const_expr(1))
+
+
+    def visitConstVarExpr(self, ctx:modelParser.ConstVarExprContext):
+        name = str(ctx.VARIABLE().getText())
+
+        if not self.variable_decls.is_declared(name):
+            raise NotSupportedError("{} is not declared".format(name))
+
+        return self.constant_info[name]
+
+    '''
+    Expressions
+    '''
 
     def visitBinaryExp(self, ctx: modelParser.BinaryExpContext):
         left = self.visit(ctx.expression()[0])
@@ -179,9 +211,6 @@ class StlmcParser(ModelParser, modelVisitor):
         op_str = str(ctx.op.text)
         return binary_expr(left, right, op_str)
 
-    '''
-    Not yet
-    '''
 
     def visitUnaryExp(self, ctx: modelParser.UnaryExpContext):
         op_str = str(ctx.op.text).lower()
