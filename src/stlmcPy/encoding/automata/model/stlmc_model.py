@@ -74,6 +74,7 @@ class STLmcModel(Model):
         bound = int(common.get_value("bound"))
 
         ha_tree = HybridAutomaton()
+        ha_tree.add_init(*ha.init)
 
         # initialize a search queue
         queue = list()
