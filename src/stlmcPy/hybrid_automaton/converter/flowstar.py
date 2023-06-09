@@ -260,10 +260,29 @@ def _(const: Div):
     return "(" + obj2fs(const.left) + " / " + obj2fs(const.right) + ")"
 
 
-# maybe not supported
 @obj2fs.register(Pow)
 def _(const: Pow):
     return "(" + obj2fs(const.left) + " ** " + obj2fs(const.right) + ")"
+
+
+@obj2fs.register(Sqrt)
+def _(const: Sqrt):
+    return "(sqrt {})".format(obj2fs(const.child))
+
+
+@obj2fs.register(Sin)
+def _(const: Sin):
+    return "(sin {})".format(obj2fs(const.child))
+
+
+@obj2fs.register(Cos)
+def _(const: Cos):
+    return "(cos {})".format(obj2fs(const.child))
+
+
+@obj2fs.register(Tan)
+def _(const: Tan):
+    return "(tan {})".format(obj2fs(const.child))
 
 
 @obj2fs.register(Forall)

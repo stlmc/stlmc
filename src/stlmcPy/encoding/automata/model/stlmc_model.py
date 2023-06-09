@@ -21,7 +21,7 @@ class STLmcModel(Model):
         # key : string, value : set
         self.variable_decl = variable_decl.copy()
         self.prop_dict = prop_dict.copy()
-        self.range_info = range_info.copy()
+        self.range_info: Dict[Variable, Interval] = range_info.copy()
         self.const_info = constant_info.copy()
         self.init_mode = init_mode
 
@@ -38,12 +38,24 @@ class STLmcModel(Model):
         # mode id generator
         self._mode_id_gen = _mode_id_generator()
 
+        # range consts
+        self._range_consts = self._make_range_consts()
+
     def encode(self):
+        # check encoding
+        common = self._config.get_section("common")
+        encoding = common.get_value("encoding")
+
         # make an automaton
         ha = self._make_automata()
 
-        # explore in bfs and returns tree automaton
-        return self._bfs(ha)
+        if encoding == "automata":
+            return ha
+        elif encoding == "dag-automata":
+            # explore in bfs and returns tree automaton
+            return self._bfs(ha)
+        else:
+            raise Exception("unsupported encoding {}".format(encoding))
 
     def _make_automata(self):
         ha = HybridAutomaton()
@@ -197,6 +209,9 @@ class STLmcModel(Model):
         self._add_dynamics(module_index, mode)
         self._add_invariant(module_index, mode)
 
+        # add range consts to invariant
+        mode.add_invariant(*self._range_consts)
+
         return mode, mode_id
 
     def _make_jump(self, module_index: int, ha: HybridAutomaton, mode_dict, mode_id_dict):
@@ -246,6 +261,9 @@ class STLmcModel(Model):
 
             transition = make_fresh_jump(src_mode, trg_mode)
             transition.add_guard(*jp_pre_cl)
+            
+            # add range consts to guard
+            transition.add_guard(*self._range_consts)
 
             for r in jp_post_cont:
                 assert isinstance(r, Eq)
@@ -284,6 +302,34 @@ class STLmcModel(Model):
         m_v = Int(self.mode_var_name)
         if m_v not in self.variable_decl["mode"]:
             raise Exception("cannot find a necessary mode variable")
+        
+    def _make_range_consts(self) -> List[Formula]:
+        r_c = list()
+        for v in self.range_info:
+            l, r = self._make_range_const(v)
+            r_c.append(l)
+            r_c.append(r)
+        
+        return r_c
+
+    def _make_range_const(self, v: Variable) -> Tuple[Formula, Formula]:
+        assert v in self.range_info
+        
+        range = self.range_info[v]
+        
+        # left
+        if range.left_end:
+            l = range.left <= v
+        else:
+            l = range.left < v
+
+        # right
+        if range.right_end:
+            r = v <= range.right
+        else:
+            r = v < range.right
+
+        return l, r
 
     def get_abstraction(self):
         pass

@@ -9,26 +9,25 @@ from ...smt.goal.aux import *
 from ....constraints.aux.operations import *
 from ....hybrid_automaton.hybrid_automaton import *
 from ....objects.goal import Goal
+from ....objects.configuration import Configuration
 
 
 class StlGoal(Goal):
-    def __init__(self, formula: Formula, config: Dict):
+    def __init__(self, formula: Formula, config: Configuration):
         super().__init__(formula)
 
+        # set configuration
+        self._config = config
+        common = self._config.get_section("common")
+
         # check configuration
-        assert "threshold" in config and "prop_dict" in config
-        assert "time-bound" in config and "bound" in config
+        assert common.is_argument_in("prop_dict")
 
-        # type checking
-        assert isinstance(config["threshold"], float)
-        assert isinstance(config["time-bound"], float)
-        assert isinstance(config["bound"], int)
-        assert isinstance(config["prop_dict"], Dict)
-
-        self.threshold = config["threshold"]
-        self.prop_dict = config["prop_dict"]
-        self.tau_max = config["time-bound"]
-        self.bound = config["bound"]
+        self.threshold = float(common.get_value("threshold"))
+        self.prop_dict: Dict = common.arguments["prop_dict"]
+        self.tau_max = float(common.get_value("time-bound"))
+        self.bound = int(common.get_value("bound"))
+        self._encoding = common.get_value("encoding")
 
         # build substitution for user-defined propositions
         subst = Substitution()
@@ -43,6 +42,8 @@ class StlGoal(Goal):
         self._hybrid_converter = HAConverter(self.tau_subst)
 
     def encode(self):
+        is_dag_generation = self._encoding == "dag-automata"
+
         graph: TableauGraph = TableauGraph(self._formula)
         jp_checker = JumpContradictionChecker()
         self._hybrid_converter.clear()
@@ -63,9 +64,10 @@ class StlGoal(Goal):
             queue = waiting_list.pop(0)
             print("#{} -> {}".format(depth, len(queue)))
 
-            # set upper bound of searching
-            # if depth >= self.bound:
-            #     break
+            # set upper bound of searching when DAG generation
+            if is_dag_generation:
+                if depth >= self.bound:
+                    break
 
             new_queue = list()
             while len(queue) > 0:
@@ -80,6 +82,11 @@ class StlGoal(Goal):
                     n = graph.make_node(lb, is_initial=is_initial)
 
                     exist, f_n, clk_subst = graph.find_node(n)
+                    
+                    # when DAG generation, always add a node
+                    if is_dag_generation:
+                        exist = False
+
                     if exist:
                         # update clock variables at write positions and update clock renaming as resets
                         jp_c = {clk_subst.substitute(f, is_write=True, is_read=False) for f in lb.transition_cur}

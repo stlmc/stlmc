@@ -55,7 +55,7 @@ class JuliaReachConverter:
         analysis = _analysis(
             "TMJets(abstol=1e-15, orderT=10, orderQ=2, maxsteps=50_000)",
             "BoxClustering(100)",
-            self.bound, self.time_bound
+            self.time_bound
         )
 
         final = _unsafe_check(ha, mode_id)
@@ -103,8 +103,8 @@ def _jp_var(jp: Transition):
     return "jp{}".format(id(jp))
 
 
-def _analysis(alg, clustering, bound: int, time_bound: float):
-    return "@time sol = solve(prob, tspan=(0.0, {}), alg={}, clustering_method={}, max_jumps={})".format(time_bound, alg, clustering, bound)
+def _analysis(alg, clustering, time_bound: float):
+    return "@time sol = solve(prob, tspan=(0.0, {}), alg={}, clustering_method={})".format(time_bound, alg, clustering)
 
 
 def _make_init(ha: HybridAutomaton, sys_var: Dict[Variable, int], mode_id: Dict[Mode, int], bound_box: BoundBox):
@@ -298,9 +298,24 @@ def _(const: Pow, sys_var_dict: Dict[Variable, int]):
     return "(" + exp2julia(const.left, sys_var_dict) + "^" + exp2julia(const.right, sys_var_dict) + ")"
 
 
+@exp2julia.register(Sqrt)
+def _(const: Sqrt, sys_var_dict: Dict[Variable, int]):
+    return "(sqrt{})".format(exp2julia(const.child, sys_var_dict))
+
+
 @exp2julia.register(Sin)
 def _(const: Sin, sys_var_dict: Dict[Variable, int]):
-    return "sin(" + exp2julia(const.child, sys_var_dict) + ")"
+    return "(sin{})".format(exp2julia(const.child, sys_var_dict))
+
+
+@exp2julia.register(Cos)
+def _(const: Cos, sys_var_dict: Dict[Variable, int]):
+    return "(cos{})".format(exp2julia(const.child, sys_var_dict))
+
+
+@exp2julia.register(Tan)
+def _(const: Tan, sys_var_dict: Dict[Variable, int]):
+    return "(tan{})".format(exp2julia(const.child, sys_var_dict))
 
 
 def formula2julia(*const):
@@ -405,10 +420,29 @@ def _(const: Div):
     return "(" + _f2julia(const.left) + " / " + _f2julia(const.right) + ")"
 
 
-# maybe not supported
 @_f2julia.register(Pow)
 def _(const: Pow):
     return "(" + _f2julia(const.left) + "^" + _f2julia(const.right) + ")"
+
+
+@_f2julia.register(Sqrt)
+def _(const: Sqrt):
+    return "(sqrt{})".format(_f2julia(const.child))
+
+
+@_f2julia.register(Sin)
+def _(const: Sin):
+    return "(sin{})".format(_f2julia(const.child))
+
+
+@_f2julia.register(Cos)
+def _(const: Cos):
+    return "(cos{})".format(_f2julia(const.child))
+
+
+@_f2julia.register(Tan)
+def _(const: Tan):
+    return "(tan{})".format(_f2julia(const.child))
 
 
 def reset(sys_var: Dict[Variable, int], *rst):
@@ -451,21 +485,28 @@ def _reset(v, expr: Expr, sys_var: Dict[Variable, int], v_s, c_s):
         c_s[sys_var[v] - 1] = float(expr.value)
     elif isinstance(expr, Add):
         # ax + b
-        assert isinstance(expr.left, Mul)
-        assert isinstance(expr.right, RealVal)
+        if isinstance(expr.left, Mul):
+            assert isinstance(expr.right, RealVal)
 
-        v_inside = expr.left.right
-        assert isinstance(v_inside, Real)
+            v_inside = expr.left.right
+            assert isinstance(v_inside, Real)
 
-        if isinstance(expr.left.left, Neg):
-            coefficient = -float(exp2julia(expr.left.left.child, dict()))
-        elif isinstance(expr.left.left, RealVal):
-            coefficient = float(exp2julia(expr.left.left, dict()))
-        else:
-            raise Exception("current reset is not supported")
+            if isinstance(expr.left.left, Neg):
+                coefficient = -float(exp2julia(expr.left.left.child, dict()))
+            elif isinstance(expr.left.left, RealVal):
+                coefficient = float(exp2julia(expr.left.left, dict()))
+            else:
+                raise Exception("current reset is not supported")
 
-        v_sn[sys_var[v_inside] - 1] = coefficient
-        c_s[sys_var[v]] = float(expr.right.value)
+            v_sn[sys_var[v_inside] - 1] = coefficient
+            c_s[sys_var[v] - 1] = float(expr.right.value)
+        elif isinstance(expr.left, Real):
+            # x + b
+            assert isinstance(expr.left, Real)
+            assert isinstance(expr.right, RealVal)
+
+            v_sn[sys_var[expr.left] - 1] = 1.0
+            c_s[sys_var[v] - 1] = float(expr.right.value)
     else:
         raise Exception("cannot translate {} in julia matrix".format(expr))
     return v_sn

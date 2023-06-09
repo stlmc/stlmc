@@ -256,10 +256,29 @@ def _(const: Div):
     return "(" + obj2se(const.left) + " / " + obj2se(const.right) + ")"
 
 
-# maybe not supported
 @obj2se.register(Pow)
 def _(const: Pow):
     return "(" + obj2se(const.left) + " ^ " + obj2se(const.right) + ")"
+
+
+@obj2se.register(Sqrt)
+def _(const: Sqrt):
+    return "(sqrt {})".format(obj2se(const.child))
+
+
+@obj2se.register(Sin)
+def _(const: Sin):
+    return "(sin {})".format(obj2se(const.child))
+
+
+@obj2se.register(Cos)
+def _(const: Cos):
+    return "(cos {})".format(obj2se(const.child))
+
+
+@obj2se.register(Tan)
+def _(const: Tan):
+    return "(tan {})".format(obj2se(const.child))
 
 
 def xml_pretty_print(current, parent=None, index=-1, depth=0):

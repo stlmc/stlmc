@@ -3,6 +3,9 @@ from typing import FrozenSet
 
 from ..constraints.aux.operations import get_vars
 from ..hybrid_automaton.hybrid_automaton import *
+from ..solver.abstract_solver import SMTSolver
+from ..solver.z3 import Z3Solver
+from ..objects.configuration import *
 
 
 def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
@@ -23,7 +26,7 @@ def composition(ha1: HybridAutomaton, ha2: HybridAutomaton) -> HybridAutomaton:
         _make_composed_jumps(mode1, mode2, candidate_modes, mode_dict, ha1, ha2, ha)
 
     # remove redundancy
-    ha.remove_unreachable()
+    remove_unreachable(ha)
     remove_equal_jumps(ha)
 
     return ha
@@ -97,6 +100,107 @@ def _compose_modes(mode1: Mode, mode2: Mode, m_id: int) -> Mode:
 
 def _jp_exists(src: Mode, trg: Mode, ha: HybridAutomaton) -> bool:
     return trg in ha.get_next_vertices(src)
+
+
+def remove_unreachable(ha: HybridAutomaton):
+    _remove_unreachable_to_final(ha)
+    _remove_unreachable_from_initial(ha)
+
+
+def _remove_unreachable_from_initial(ha: HybridAutomaton):
+    f_ns = set(filter(lambda x: x.is_initial(), ha.get_modes()))
+    new_states, reachable = f_ns.copy(), f_ns.copy()
+
+    while len(new_states) > 0:
+        temp = set()
+        for s in new_states:
+            temp.update(ha.get_next_vertices(s))
+        new_states = temp.difference(reachable)
+        reachable.update(new_states)
+
+    unreachable = ha.get_modes().difference(reachable)
+    for s in unreachable:
+        ha.remove_mode(s)
+
+
+def _remove_unreachable_to_final(ha: HybridAutomaton):
+    f_ns = set(filter(lambda x: x.is_final(), ha.get_modes()))
+    new_states, reachable = f_ns.copy(), f_ns.copy()
+
+    while len(new_states) > 0:
+        temp = set()
+        for s in new_states:
+            temp.update(ha.get_pred_vertices(s))
+        new_states = temp.difference(reachable)
+        reachable.update(new_states)
+
+    unreachable = ha.get_modes().difference(reachable)
+    for s in unreachable:
+        ha.remove_mode(s)
+
+
+def remove_contradiction(ha: HybridAutomaton):
+    # make solver config
+    config = Configuration()
+    section = Section()
+    section.name = "z3"
+    section.arguments["logic"] = "QF_LRA"
+    config.add_section(section)
+
+    # initialize solver
+    solver = Z3Solver(config)
+    to_be_removed_modes = set()
+
+    # 1) invariant contradiction checking
+    for m in ha.get_modes():
+        r = solver.check_sat(*m.invariant)
+        
+        # contradiction
+        if r == SMTSolver.unsat:
+            to_be_removed_modes.add(m)
+    
+    for m in to_be_removed_modes:
+        ha.remove_mode(m)
+    
+    jp_s = get_jumps(ha)
+    to_be_removed_jp_s = set()
+
+    # 2) jump guard contradiction checking
+    for jp in jp_s:
+        r = solver.check_sat(*jp.guard)
+
+        # contradiction
+        if r == SMTSolver.unsat:
+            to_be_removed_jp_s.add(jp)
+
+    for jp in to_be_removed_jp_s:
+        ha.remove_transition(jp)
+
+    to_be_removed_jp_s.clear()
+
+    # 3) incoming/outgoing guards and invariant contradiction
+    for m in ha.get_modes():
+
+        # incoming
+        for jp in ha.get_pred_edges(m):
+            r = solver.check_sat(*m.invariant.union(jp.guard))
+            
+            # contradiction
+            if r == SMTSolver.unsat:
+                to_be_removed_jp_s.add(jp)
+
+        # outgoing
+        for jp in ha.get_next_edges(m):
+            r = solver.check_sat(*m.invariant.union(jp.guard))
+            
+            # contradiction
+            if r == SMTSolver.unsat:
+                to_be_removed_jp_s.add(jp)
+
+    for jp in to_be_removed_jp_s:
+        ha.remove_transition(jp)
+    
+    remove_unreachable(ha)
 
 
 def remove_equal_jumps(ha: HybridAutomaton):

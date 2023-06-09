@@ -1,5 +1,5 @@
 import os
-import pickle
+import time
 
 from ..algorithm import Algorithm
 from ...encoding.automata.goal.ha_converter import HaBoundProcessor
@@ -9,8 +9,9 @@ from ...hybrid_automaton.converter.hycomp import HycompConverter
 from ...hybrid_automaton.converter.juliareach import JuliaReachConverter
 from ...hybrid_automaton.converter.spaceex import SpaceExConverter
 from ...hybrid_automaton.converter.stlmc import StlmcConverter
+from ...hybrid_automaton.converter.satreach import SatReachConverter
 from ...hybrid_automaton.hybrid_automaton import HybridAutomaton
-from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size, get_ha_vars
+from ...hybrid_automaton.utils import composition, get_jumps, print_ha_size, get_ha_vars, remove_contradiction
 from ...objects.configuration import Configuration
 from ...objects.goal import Goal
 from ...objects.model import Model
@@ -22,7 +23,7 @@ class OneStepAlgorithm(Algorithm):
         self._config = config
         self._ha_bound_proc = HaBoundProcessor(self._config)
 
-    def _add_self_loop(self, automata: HybridAutomaton):
+    def _add_identity_reset(self, automata: HybridAutomaton):
         v_s = get_ha_vars(automata)
         
         for jp in get_jumps(automata):
@@ -35,6 +36,8 @@ class OneStepAlgorithm(Algorithm):
         solver.reset()
 
         common_section = self._config.get_section("common")
+        encoding = common_section.get_value("encoding")
+
         solver_ty = common_section.get_value("solver")
         file_name = common_section.get_value("file")
         file_name = os.path.basename(file_name)
@@ -45,12 +48,22 @@ class OneStepAlgorithm(Algorithm):
         # print(m_a)
         automata = composition(m_a, g_a)
 
-        self._add_self_loop(automata)
-        self._ha_bound_proc.add_bounds(automata)
+        self._add_identity_reset(automata)
+        self._ha_bound_proc.add_time_bound(automata)
+
+        # add jump counter
+        if encoding == "automata":
+            self._ha_bound_proc.add_jump_bound(automata)
 
         print_ha_size("stl", g_a)
         print_ha_size("model", m_a)
         print_ha_size("composed", automata)
+
+        c_s = time.time()
+        remove_contradiction(automata)
+        c_e = time.time()
+        print("remove contradiction ({:.3f}s)".format(c_e - c_s))
+        print_ha_size("composed after contradiction removal", automata)
 
         if solver_ty == "flowstar":
             # flowstar
@@ -67,6 +80,8 @@ class OneStepAlgorithm(Algorithm):
             converter = HycompConverter(self._config)
         elif solver_ty == "dreach":
             converter = DreachConverter(self._config)
+        elif solver_ty == "satreach":
+            converter = SatReachConverter(self._config)
         else:
             raise Exception("{} is not a valid reachable solver".format(solver_ty))
 

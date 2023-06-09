@@ -125,7 +125,6 @@ class HAConverter:
         for clk in clocks:
             inv_s.add(clk >= zero)
             inv_s.add(tau_subst.substitute(clk <= tb))
-            inv_s.add(tau_subst.substitute(clk <= global_clk()))
         return inv_s
 
     def _translate_goals(self, *goals) -> Tuple[Set[Formula], Set[Tuple[Real, RealVal]]]:
@@ -233,9 +232,16 @@ class HaBoundProcessor:
 
             return jb_f, jb_r, jb_d, jb_i
 
-    def add_bounds(self, ha: HybridAutomaton):
+    def add_time_bound(self, ha: HybridAutomaton):
         # make time bound invariant
         tb_inv = self._make_tb_invariant()
+
+        # add time bound invariant and jump bound condition
+        for m in ha.get_modes():
+            m.add_invariant(tb_inv)
+
+    def add_jump_bound(self, ha: HybridAutomaton):
+        # make jump bound invariant
         jb_c = self._make_jp_bound_conditions()
 
         # if jump bound conditions exists
@@ -245,7 +251,6 @@ class HaBoundProcessor:
 
         # add time bound invariant and jump bound condition
         for m in ha.get_modes():
-            m.add_invariant(tb_inv)
 
             # if jump bound condition exists
             if jb_c is not None:
