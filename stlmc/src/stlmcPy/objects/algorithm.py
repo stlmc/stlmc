@@ -120,7 +120,8 @@ class ParallelAlgRunner(AlgorithmRunner):
         solver.set_file_name(self.debug_name)
 
         self.sema.acquire()
-        proc = solver.process(self.main_queue, self.sema, const)
+        solver.parallel_add(const)
+        proc = solver.process(self.main_queue, self.sema)
         self.procs.add(proc)
 
 

@@ -79,7 +79,15 @@ class SMTSolver(BaseSolver):
 
 class ParallelSMTSolver(SMTSolver):
     @abc.abstractmethod
-    def process(self, main_queue: Queue, sema: Semaphore, const):
+    def process(self, main_queue: Queue, sema: Semaphore):
+        pass
+
+    @abc.abstractmethod
+    def parallel_add(self, const):
+        pass
+
+    @abc.abstractmethod
+    def parallel_check_sat(self, main_queue: Queue, sema: Semaphore, proc: subprocess.Popen):
         pass
 
 

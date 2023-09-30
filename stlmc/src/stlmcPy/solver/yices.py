@@ -135,7 +135,10 @@ class YicesSolver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+    def parallel_add(self, const):
+        self._cache.append(const)
+
+    def process(self, main_queue: Queue, sema: threading.Semaphore):
         proc = Process()
         proc.start()
         check_sat_thread = threading.Thread(target=self.parallel_check_sat, args=(main_queue, sema, proc))
@@ -144,13 +147,14 @@ class YicesSolver(ParallelSMTSolver):
 
         return proc
 
-    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen, const):
+    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen):
         common_section = self.config.get_section("yices")
         logic = common_section.get_value("logic")
         self._logic = logic.upper()
         # print(logic)
         cfg = Config()
-        yices_consts = yicesObj(const)
+        consts = list(map(lambda _x: yicesObj(_x), self._cache))
+        self._cache.clear()
 
         # TODO : current logic input is LRA, it should be QF_NRA
         if logic != "NONE":
@@ -159,7 +163,10 @@ class YicesSolver(ParallelSMTSolver):
             cfg.default_config_for_logic(self._logic)
 
         ctx = Context(cfg)
-        yicesConsts = [Terms.parse_term(yices_consts)]
+        yicesConsts = list()
+        for i in range(len(consts)):
+            yicesConsts.append(Terms.parse_term(consts[i]))
+
         ctx.assert_formulas(yicesConsts)
 
         result = ctx.check_context()

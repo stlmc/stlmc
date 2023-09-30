@@ -6,7 +6,7 @@ from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
 from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
-from ..exception.exception import *
+from ..exception.exception import IllegalArgumentError
 from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, optimize, reach_goal

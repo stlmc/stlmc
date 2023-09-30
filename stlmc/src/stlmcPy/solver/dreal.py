@@ -119,13 +119,13 @@ class dRealSolver(ParallelSMTSolver):
                 result.append(Eq(Real("g@clock_" + str(i) + "_0"), Real("g@clock_" + str(i - 1) + "_t")))
         return result
 
-    def get_declared_variables(self, const, time_horizon: float, time_bound: float):
+    def get_declared_variables(self, consts, time_horizon: float, time_bound: float):
         declare_list = list()
         all_vars = set()
-        clause_set = clause(const)
+        clause_set = set()
         variable_range = list()
-        # for i in self._cache:
-        #     clause_set = clause_set.union(clause(i))
+        for i in self._cache:
+            clause_set = clause_set.union(clause(i))
 
         for c in clause_set:
             possible_range = isinstance(c, Eq) or isinstance(c, Lt) or isinstance(c, Leq) or isinstance(c,
@@ -143,9 +143,8 @@ class dRealSolver(ParallelSMTSolver):
         consider_mode = set()
         global_clock = Real("g@clock")
         clock_vars.add(global_clock)
-        # for i in consts:
-        #     all_vars = all_vars.union(get_vars(i))
-        all_vars = get_vars(const)
+        for i in consts:
+            all_vars = all_vars.union(get_vars(i))
         for i in all_vars:
             if isinstance(i, Real) and i.id.rfind("_") != i.id.find("_"):
                 continuous_vars.add(Real(i.id[0:i.id.find("_")]))
@@ -295,7 +294,10 @@ class dRealSolver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+    def parallel_add(self, const):
+        self._cache.append(const)
+
+    def process(self, main_queue: Queue, sema: threading.Semaphore):
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
         ode_step = dreal_section.get_value("ode-step")
@@ -304,8 +306,11 @@ class dRealSolver(ParallelSMTSolver):
         time_bound = common_section.get_value("time-bound")
         exec_path = dreal_section.get_value("executable-path")
 
-        declares, bound = self.get_declared_variables(const, float(time_horizon), float(time_bound))
-        results = [drealObj(const)]
+        declares, bound = self.get_declared_variables(self._cache.copy(), float(time_horizon), float(time_bound))
+        results = list()
+
+        for i in self._cache:
+            results.append(drealObj(i))
 
         reset_add = self.add_reset_cond(bound)
 
@@ -390,6 +395,7 @@ class dRealSolver(ParallelSMTSolver):
 
         result_model.remove("")
         main_queue.put((result, DrealAssignment(result_model), id(proc)))
+        self._cache.clear()
         sema.release()
 
     def drealcheckSat(self, consts, logic):
@@ -406,10 +412,10 @@ class dRealSolver(ParallelSMTSolver):
         time_bound = common_section.get_value("time-bound")
         exec_path = dreal_section.get_value("executable-path")
 
-        declares, bound = self.get_declared_variables(And(consts.copy()), float(time_horizon), float(time_bound))
+        declares, bound = self.get_declared_variables(consts, float(time_horizon), float(time_bound))
         results = list()
 
-        for i in consts:
+        for i in self._cache:
             results.append(drealObj(i))
 
         reset_add = self.add_reset_cond(bound)
