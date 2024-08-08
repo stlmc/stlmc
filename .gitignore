@@ -1,4 +1,3 @@
-*.smt2
 stlmc.e*
 stlmc.o*
 *.output
@@ -16,6 +15,9 @@ __pycache__
 *.json
 data/
 reports/
+3rd_party/
+*.jar
+*.jl
 
 # Virtual Env for python
 venv/
