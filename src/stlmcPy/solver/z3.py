@@ -145,7 +145,7 @@ class Z3Assignment(Assignment):
             var_type_str = str(d.range()).lower()
             new_var = op_var_dict[var_type_str](d.name())
             z3_val = self._z3_model[d]
-            new_dict[new_var] = op_dict[var_type_str](str(z3_val))
+            new_dict[new_var] = op_dict[var_type_str](str(z3_val).replace("?", ""))
         return new_dict
 
     def eval(self, const):

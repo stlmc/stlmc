@@ -11,7 +11,7 @@ class AlgorithmFactory:
     def generate(self):
         common_section = self.config.get_section("common")
         is_two_step = common_section.get_value("two-step")
-        is_reach = "false"
+        is_reach = common_section.get_value("reach")
         if is_two_step == "true":
             return EnumerateAlgorithm()
         elif is_reach == "true":

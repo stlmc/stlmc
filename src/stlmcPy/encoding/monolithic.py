@@ -27,7 +27,7 @@ class SmtAlgorithm(Algorithm):
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")
         delta_str = common_section.get_value("threshold")
-        is_only_loop = "false"
+        is_only_loop = common_section.get_value("only-loop")
         underlying_solver = common_section.get_value("solver")
 
         total_time = 0.0
@@ -107,6 +107,9 @@ class SmtAlgorithm(Algorithm):
             finished_bound = b
             # stop when find false
             if result == "False":
+                # for reach case, we should translate the result in the opposite way
+                if is_reach:
+                    return "True", total_time, finished_bound, None
                 assn = solver.make_assignment()
                 printer.print_verbose("size : {}".format(total_size))
                 return "False", total_time, finished_bound, assn.get_assignments()
@@ -115,6 +118,10 @@ class SmtAlgorithm(Algorithm):
             goal.clear()
             solver.clear()
         printer.print_verbose("size : {}".format(total_size))
+        # for reach case, we should translate the result in the opposite way
+        # for now, do not make any assignment for reach case
+        if is_reach:
+            return "False", total_time, finished_bound, None
         return final_result, total_time, finished_bound, None
 
 

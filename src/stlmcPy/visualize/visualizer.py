@@ -160,6 +160,10 @@ class SolutionPointSampler(PointSampler):
     def generate_samples(self, time_samples: List[float], dynamic: Dynamics, initial_values: List[float]):
         sample_dict: Dict[Variable, List[float]] = dict()
 
+        # normalize
+        base = time_samples[0]
+        time_samples = [time - base for time in time_samples]
+
         assignment = dict()
         time = sympy.parse_expr("time")
         for index, v in enumerate(dynamic.vars):
@@ -569,6 +573,14 @@ def _(const: BoolVal, point_samples: Dict[Variable, List[List[float]]],
         dp_table[(const, time)] = robust_value
         return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
+
+
+@robustness.register(Eq)
+def _(const: Eq, point_samples: Dict[Variable, List[List[float]]],
+      discrete_samples: Dict[Variable, List[List[float]]],
+      time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
+    return robustness(And([Leq(const.left, const.right),Geq(const.left, const.right)]), 
+                      point_samples, discrete_samples, time, times, time_max, dp_table)
 
 
 @robustness.register(Geq)

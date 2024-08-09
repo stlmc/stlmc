@@ -204,7 +204,7 @@ class BaseRunner(Runner):
             if time_horizon == "time-bound":
                 common_section.set_value("time-horizon", time_bound)
 
-            reach_goal_opt = "false"
+            reach_goal_opt = common_section.get_value("reach")
             gen_result = common_section.get_value("visualize")
             print_type = common_section.get_value("verbose")
 

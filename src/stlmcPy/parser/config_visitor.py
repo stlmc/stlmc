@@ -36,7 +36,7 @@ class ConfigVisitor(configVisitor):
         self.type_check_dict["yices"] = {("logic", frozenset(["qf_nra", "qf_lra"]))}
         self.type_check_dict["dreal"] = {("ode-order", "float"), ("ode-step", "float"), ("executable-path", "path")}
 
-        self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose"}
+        self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose", "reach", "only-loop"}
         self.section_boolean_argument_dict["z3"] = set()
         self.section_boolean_argument_dict["yices"] = set()
         self.section_boolean_argument_dict["dreal"] = set()

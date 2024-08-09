@@ -61,9 +61,11 @@ class ReachAlgorithm(Algorithm):
                 assn = solver.make_assignment()
                 print("solving {}".format(solving_time))
                 # printer.print_verbose("size : {}".format(total_size))
-                return "False", solving_time, bound, assn.get_assignments()
+                # return "False", solving_time, bound, assn.get_assignments()
+                return "True", solving_time, bound, None
         print("solving {}".format(solving_time))
-        return "True", solving_time, bound, None
+        # return "True", solving_time, bound, None
+        return "False", solving_time, bound, None
 
     def set_debug(self, msg: str):
         pass
