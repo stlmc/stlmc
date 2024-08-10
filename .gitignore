@@ -18,6 +18,8 @@ reports/
 3rd_party/
 *.jar
 *.jl
+*.egg-info
+dist/
 
 # Virtual Env for python
 venv/

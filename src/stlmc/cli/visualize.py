@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import re
 import argparse
@@ -10,9 +9,9 @@ from bokeh.io import export_svg
 from bokeh.models import DataRange1d
 from bokeh.plotting import Figure
 
-from stlmcPy.parser.visualize_visitor import VisualizeConfigPaser
-from stlmcPy.constraints.constraints import *
-from stlmcPy.visualize.visualizer import Visualizer, formula2latex, split_groups, pairwise_disjoint_check, flatten
+from ..parser.visualize_visitor import VisualizeConfigPaser
+from ..constraints.constraints import *
+from ..visualize.visualizer import Visualizer, formula2latex, split_groups, pairwise_disjoint_check, flatten
 
 
 def svg_out(main_figure: Figure, rob_figure: Figure):
@@ -190,7 +189,7 @@ def tuple_type(strings):
     return remove_redundant
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs='?', type=str, help="target counterexample data file")
     parser.add_argument('-cfg', metavar='C', type=str,

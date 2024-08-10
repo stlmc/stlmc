@@ -1,4 +1,4 @@
-ANTLR_DIR := $(shell pwd)/src/stlmcPy/syntax
+ANTLR_DIR := $(shell pwd)/src/stlmc/syntax
 TEST_DIR := $(shell pwd)/tests
 DREAL_DIR := $(shell pwd)/stlmc/3rd_party/dreal
 

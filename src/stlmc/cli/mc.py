@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
-from stlmcPy.driver.abstract_driver import *
-from stlmcPy.driver.base_driver import *
-from stlmcPy.exception.exception import *
-from stlmcPy.util.print import *
+from ..driver.abstract_driver import *
+from ..driver.base_driver import *
+from ..exception.exception import *
+from ..util.print import *
 import traceback
 
-if __name__ == '__main__':
+
+def main():
     printer = ExceptionPrinter()
     try:
         # default driver factory
