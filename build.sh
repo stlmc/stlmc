@@ -60,6 +60,7 @@ get_dreal3() {
 
 # build tecla
 build() {
+  pip install build # for github action docker
   python3 -m build
 }
 
