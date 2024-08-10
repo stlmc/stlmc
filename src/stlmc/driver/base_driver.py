@@ -93,7 +93,7 @@ class BaseCmdParser(CmdParser):
     def parse(self):
         args = self.parser.parse_args()
         if args.file is None:
-            raise ValueError("should provide a STLmc model file path")
+            raise ValueError("should provide an STLmc model file path")
 
         if not os.path.exists(args.file):
             raise ValueError("\"{}\" is not a valid STLmc model file path".format(args.file))
