@@ -5,34 +5,37 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "stlmc"
 version = "1.0.0"
-authors = [
-  { name="Geunyeol Yu", email="rgyen@postech.ac.kr" },
-]
 description = "An SMT-based bounded model checker for signal temporal logic"
 readme = "README.md"
-license = {file = "LICENSE"}
+license.text = "GPLv3"
 keywords = ["stlmc", "model checker", "STL", "signal temporal logic", "bounded model checker"]
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+	  "Topic :: Scientific/Engineering",
     "Operating System :: OS Independent",
 ]
 dependencies = [
   "termcolor",
   "yices",
   "z3-solver",
-  "antlr4-python3-runtime==4.9.1",
+  "antlr4-python3-runtime==4.13.2",
   "sympy",
   "numpy",
-  "bokeh",
+  "bokeh==3.1.1",
   "scipy"
 ]
+
+[[project.authors]]
+name  = "Geunyeol Yu"
+email = "rgyen@postech.ac.kr"
 
 [project.scripts]
 stlmc = "stlmc.cli.mc:main"
 stlmc-vis = "stlmc.cli.visualize:main"
 
 [project.urls]
-Homepage = "https://stlmc.github.io/"
-Issues = "https://stlmc.github.io/issues"
+"Homepage"      = "https://stlmc.github.io/"
+"Bug Tracker"   = "https://github.com/stlmc/stlmc/issues"
+"Documentation" = "https://stlmc.github.io/assets/files/stlmc-manual.pdf"
+"Source Code"   = "https://github.com/stlmc/stlmc/"

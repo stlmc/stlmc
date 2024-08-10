@@ -2,7 +2,7 @@
 
 STLmc is an SMT-based bounded model checker for signal temporal logic (STL) of hybrid systems. The algorithm of the tool is refutationally complete for STL properties of bounded signals. 
 
-For more information about STLm, please visit our [website](https://stlmc.github.io/)
+For more information about STLmc, please visit our [website](https://stlmc.github.io/)
 
 ### Features
 
