@@ -58,18 +58,6 @@ get_dreal3() {
   )
 }
 
-# build tecla
-build_docker() {
-  dnf update
-  dnf install -y openssl-devel bzip2-devel libffi-devel
-  dnf install -y python39
-  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-  python3.9 get-pip.py --user
-  python3.9 -m pip install --upgrade pip
-  pip3.9 install scikit-build # for github action docker
-  python3.9 -m build
-}
-
 # Follow the below steps
 #  1. prepare
 
@@ -79,7 +67,6 @@ build_docker() {
 build_command="$1" ; shift
 case "$build_command" in
     prep)               prepare                   "$@" ;;
-    docker)             build_docker              "$@" ;;
     *)      echo "
     usage: $0 [prep]
            $0 script <options>

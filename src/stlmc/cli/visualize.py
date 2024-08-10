@@ -59,10 +59,13 @@ def check_gnuplot():
         ValueError("gnuplot is not available (check: \"gnuplot -V\")")
 
 
-def gnuplot(user_defined_groups: Dict[int, Set[str]],
+def gnuplot(file_name, 
+            user_defined_groups: Dict[int, Set[str]],
+            formula_id_dict,
             states: Dict[Variable, List[List[float]]],
             robustness: Dict[Formula, List[List[float]]],
-            all_time_samples: List[List[float]], formula_label):
+            all_time_samples: List[List[float]], 
+            delta, formula_label):
     user_defined_groups_list = list(user_defined_groups.values())
 
     check_gnuplot()
@@ -241,7 +244,7 @@ def main():
 
         elif output == "pdf":
             point_samples, robustness_dict, time_samples_list, formula_id_dict, formula_label, delta = visualizer.generate_data(*data)
-            gnuplot(config_parser.group, point_samples, robustness_dict, time_samples_list, formula_label)
+            gnuplot(file_name, config_parser.group, formula_id_dict, point_samples, robustness_dict, time_samples_list, delta, formula_label)
 
         else:
             if args.output == "" or args.output is None:
