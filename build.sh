@@ -60,8 +60,8 @@ get_dreal3() {
 
 # build tecla
 build_docker() {
-  apt-get update
-  apt-get install -y python3
+  dnf update
+  dnf install -y python3
   python -m pip install --upgrade pip
   pip install build # for github action docker
   python3 -m build
