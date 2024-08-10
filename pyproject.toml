@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "stlmc"
@@ -39,3 +39,6 @@ stlmc-vis = "stlmc.cli.visualize:main"
 "Bug Tracker"   = "https://github.com/stlmc/stlmc/issues"
 "Documentation" = "https://stlmc.github.io/assets/files/stlmc-manual.pdf"
 "Source Code"   = "https://github.com/stlmc/stlmc/"
+
+[tool.scikit-build]
+sdist.include = ["src/", "3rd_party/", "tests/"]

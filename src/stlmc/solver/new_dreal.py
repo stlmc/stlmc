@@ -2,11 +2,7 @@ import os
 import platform
 import asyncio
 import random
-import subprocess
-import threading
-import time
-from functools import singledispatch, reduce
-from queue import Queue, Empty
+from functools import singledispatch
 from typing import Dict, List
 
 from ..constraints.constraints import *
@@ -163,17 +159,9 @@ class newDRealSolver(SMTSolver):
         with open(str_file_name + ".smt2", 'w') as model_file:
             model_file.write(smt_bb)
 
-        current_os = check_os()
-        if "macOS" in current_os:
-            dreal_exec = "{}/dReal-darwin".format(exec_path)
-        elif "Linux" in current_os:
-            dreal_exec = "{}/dReal".format(exec_path)
-        else:
-            raise NotSupportedError("dreal is not supported for current os")
-
         model_file_name = "{}.smt2".format(str_file_name)
         proc = await asyncio.create_subprocess_exec(
-            dreal_exec, model_file_name,
+            exec_path, model_file_name,
             # "--ode-order", ode_order,
             "--short_sat",
             # "--delta_heuristic",

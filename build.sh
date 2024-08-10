@@ -19,11 +19,6 @@ progress() { echo "===== " $@ ; }
 prepare() {
     get_antlr
     get_dreal3
-
-    cp -r $third_party $src_dir/stlmc
-    rm -rf $src_dir/stlmc/3rd_party/antlr4
-
-    cp -r $top_dir/tests $src_dir/stlmc
 }
 
 #

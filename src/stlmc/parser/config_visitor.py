@@ -32,8 +32,8 @@ class ConfigVisitor(configVisitor):
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
             ("solver", frozenset({"z3", "yices", "dreal"})), ("goal", "string"), ("time-horizon", "float")
         }
-        self.type_check_dict["z3"] = {("logic", frozenset({"qf_nra", "qf_lra"}))}
-        self.type_check_dict["yices"] = {("logic", frozenset(["qf_nra", "qf_lra"]))}
+        self.type_check_dict["z3"] = {("logic", frozenset({"QF_NRA", "QF_LRA"}))}
+        self.type_check_dict["yices"] = {("logic", frozenset(["QF_NRA", "QF_LRA"]))}
         self.type_check_dict["dreal"] = {("ode-order", "float"), ("ode-step", "float"), ("executable-path", "path")}
 
         self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose", "reach", "only-loop"}

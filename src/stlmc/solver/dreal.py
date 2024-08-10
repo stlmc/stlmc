@@ -340,17 +340,9 @@ class dRealSolver(ParallelSMTSolver):
             model_file.write("(check-sat)\n")
             model_file.write("(exit)\n")
 
-        current_os = check_os()
-        if "macOS" in current_os:
-            dreal_exec = "{}/dReal-darwin".format(exec_path)
-        elif "Linux" in current_os:
-            dreal_exec = "{}/dReal".format(exec_path)
-        else:
-            raise NotSupportedError("dreal is not supported for current os")
-
         self._parallel_s_time = time.time()
         proc = subprocess.Popen(
-            [dreal_exec, model_file_name, "--short_sat", "--model"],
+            [exec_path, model_file_name, "--short_sat", "--model"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
@@ -437,17 +429,9 @@ class dRealSolver(ParallelSMTSolver):
             model_file.write("(check-sat)\n")
             model_file.write("(exit)\n")
 
-        current_os = check_os()
-        if "macOS" in current_os:
-            dreal_exec = "{}/dReal-darwin".format(exec_path)
-        elif "Linux" in current_os:
-            dreal_exec = "{}/dReal".format(exec_path)
-        else:
-            raise NotSupportedError("dreal is not supported for current os")
-
         model_file_name = "{}.smt2".format(str_file_name)
         proc = await asyncio.create_subprocess_exec(
-            dreal_exec, model_file_name,
+            exec_path, model_file_name,
             "--short_sat",
             "--model",
             stdout=asyncio.subprocess.PIPE,

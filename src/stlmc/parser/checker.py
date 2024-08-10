@@ -88,7 +88,7 @@ def check_validity(config: Configuration):
             arg_val = section.arguments[arg_name]
             for arg_type, ty in my_check:
                 if arg_type == arg_name:
-                    quote_removed_val = arg_val.replace("\"", "").lower()
+                    quote_removed_val = arg_val.replace("\"", "")
                     if ty == "string":
                         continue
                     elif ty == "integer" or ty == "float":

@@ -104,7 +104,13 @@ class BaseCmdParser(CmdParser):
         if args.default_cfg is not None:
             self.config = self.config_visitor.parse_from_file(args.default_cfg)
         else:
-            self.config = self.config_visitor.parse_from_file("default.cfg")
+            default = os.path.dirname(__file__)
+            self.config = self.config_visitor.parse_from_file("{}/../default.cfg".format(default))
+            
+            dreal = self.config.get_section("dreal")
+            exec = dreal.get_value("executable-path")
+            exec = "{}/{}".format(default, exec)
+            dreal.set_value("executable-path", exec)
 
         if args.model_cfg is not None:
             if not os.path.exists(args.model_cfg):
@@ -242,9 +248,9 @@ class BaseRunner(Runner):
                     yices_section = config.get_section("yices")
                     underlying_solver = "yices"
                     if dynamic_type == "poly":
-                        yices_section.set_value("logic", "qf_nra")
+                        yices_section.set_value("logic", "QF_NRA")
                     else:
-                        yices_section.set_value("logic", "qf_lra")
+                        yices_section.set_value("logic", "QF_LRA")
             cmd_parser.update_solver_config(underlying_solver)
             check_validity(config)
             underlying_solver = common_section.get_value("solver")
