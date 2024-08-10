@@ -58,6 +58,11 @@ get_dreal3() {
   )
 }
 
+# build tecla
+build() {
+  python3 -m build
+}
+
 # Follow the below steps
 #  1. prepare
 
@@ -67,6 +72,7 @@ get_dreal3() {
 build_command="$1" ; shift
 case "$build_command" in
     prep)               prepare                   "$@" ;;
+    compile)            build                     "$@" ;;
     *)      echo "
     usage: $0 [prep]
            $0 script <options>
