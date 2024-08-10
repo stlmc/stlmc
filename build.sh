@@ -62,8 +62,8 @@ get_dreal3() {
 build_docker() {
   dnf update
   dnf install -y python3
-  python -m pip install --upgrade pip
-  pip install build # for github action docker
+  python3 -m pip install --upgrade pip
+  pip3 install build # for github action docker
   python3 -m build
 }
 
