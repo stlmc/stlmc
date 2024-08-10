@@ -95,12 +95,9 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
     needs:
     - build
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     environment:
       name: testpypi
