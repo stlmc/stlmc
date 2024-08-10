@@ -20,10 +20,13 @@ jobs:
         pip install
         build
         --user
+
+    - name: Prepare prerequisites
+      run: ./build.sh prep
+
     - name: Build a binary wheel and a source tarball
-      run: >-
-        ./build.sh prep
-        python3 -m build
+      run: python3 -m build
+
     - name: Store the distribution packages
       uses: actions/upload-artifact@v3
       with:
