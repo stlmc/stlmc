@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stlmc"
-version = "0.1.0.dev6"
+version = "0.1.0.dev7"
 description = "An SMT-based bounded model checker for signal temporal logic"
 readme = "README.md"
 license.text = "GPLv3"

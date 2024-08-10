@@ -6,7 +6,11 @@ on:
 jobs:
   build:
     name: Build distribution 📦
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - name: Setup Python
@@ -91,9 +95,12 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
     needs:
     - build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     environment:
       name: testpypi

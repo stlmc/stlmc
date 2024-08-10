@@ -20,24 +20,16 @@ reports/
 *.jl
 *.egg-info
 dist/
+tests/
 
 # Virtual Env for python
 venv/
 
-# NPM dependencies
-package-lock.json
-package-electron.json
-node_modules/
-
-# WebStorm config file
+# config file
 .idea/
 
-# unignored data
-!visualize/golang/data/
-!visualize/package.json
-!visualize/tsconfig.json
-!visualize/src/.option.json
 !build.sh
+!./tests/
 
 # log
 log/

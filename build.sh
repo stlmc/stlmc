@@ -19,6 +19,11 @@ progress() { echo "===== " $@ ; }
 prepare() {
     get_antlr
     get_dreal3
+
+    cp -r $third_party $src_dir/stlmc
+    rm -rf $src_dir/stlmc/3rd_party/antlr4
+
+    cp -r $top_dir/tests $src_dir/stlmc
 }
 
 #
@@ -45,13 +50,16 @@ get_dreal3() {
   mkdir -p "$third_party/dReal3"
   cd "$third_party/dReal3"
   ( 
-    curl -L https://github.com/dreal/dreal3/releases/download/v3.16.06.02/dReal-3.16.06.02-linux.tar.gz > "dReal-3.16.06.02-linux.tar.gz"
-    tar -xvzf "dReal-3.16.06.02-linux.tar.gz" 
-    mv dReal-3.16.06.02-linux/bin/dReal ./dReal.linux && rm -rf dReal-3.16.06.02-linux.tar.gz dReal-3.16.06.02-linux
-
-    curl -L https://github.com/dreal/dreal3/releases/download/v3.16.06.02/dReal-3.16.06.02-darwin.zip > "dReal-3.16.06.02-darwin.zip"
-    unzip "dReal-3.16.06.02-darwin.zip"
-    mv dReal-3.16.06.02-darwin/bin/dReal ./dReal.darwin && rm -rf dReal-3.16.06.02-darwin.zip dReal-3.16.06.02-darwin
+    os=$(uname)
+    if [[ "$os" == "Darwin" ]]; then
+      curl -L https://github.com/dreal/dreal3/releases/download/v3.16.06.02/dReal-3.16.06.02-darwin.zip > "dReal-3.16.06.02-darwin.zip"
+      unzip "dReal-3.16.06.02-darwin.zip"
+      mv dReal-3.16.06.02-darwin/bin/dReal ./dReal && rm -rf dReal-3.16.06.02-darwin.zip dReal-3.16.06.02-darwin
+    else
+      curl -L https://github.com/dreal/dreal3/releases/download/v3.16.06.02/dReal-3.16.06.02-linux.tar.gz > "dReal-3.16.06.02-linux.tar.gz"
+      tar -xvzf "dReal-3.16.06.02-linux.tar.gz" 
+      mv dReal-3.16.06.02-linux/bin/dReal ./dReal && rm -rf dReal-3.16.06.02-linux.tar.gz dReal-3.16.06.02-linux
+    fi
   )
 }
 
