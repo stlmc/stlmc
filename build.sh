@@ -59,7 +59,9 @@ get_dreal3() {
 }
 
 # build tecla
-build() {
+build_docker() {
+  apt-get update
+  apt-get install -y python3
   python -m pip install --upgrade pip
   pip install build # for github action docker
   python3 -m build
@@ -74,7 +76,7 @@ build() {
 build_command="$1" ; shift
 case "$build_command" in
     prep)               prepare                   "$@" ;;
-    compile)            build                     "$@" ;;
+    docker)             build_docker              "$@" ;;
     *)      echo "
     usage: $0 [prep]
            $0 script <options>

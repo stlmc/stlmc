@@ -31,11 +31,11 @@ jobs:
     - name: Build a binary wheel and a source tarball
       if: matrix.os == 'ubuntu-latest'
       run: |
-        docker run -v $(pwd):/work -w /work quay.io/pypa/manylinux_2_28_x86_64 ./build.sh compile
+        docker run -v $(pwd):/work -w /work quay.io/pypa/manylinux_2_28_x86_64 ./build.sh docker
 
     - name: Build a binary wheel and a source tarball
       if: matrix.os == 'macos-latest'
-      run: ./build.sh compile
+      run: python3 -m build
 
     - name: Store the distribution packages
       uses: actions/upload-artifact@v3
