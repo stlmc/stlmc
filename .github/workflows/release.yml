@@ -64,6 +64,15 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
   github-release:
     name: >-
       Sign the Python 🐍 distribution 📦 with Sigstore
@@ -106,6 +115,7 @@ jobs:
         gh release upload
         '${{ github.ref_name }}' dist/**
         --repo '${{ github.repository }}'
+
 
   # publish-to-testpypi:
   #   name: Publish Python 🐍 distribution 📦 to TestPyPI
