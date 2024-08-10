@@ -63,9 +63,11 @@ build_docker() {
   dnf update
   dnf install -y openssl-devel bzip2-devel libffi-devel
   dnf install -y python39
-  python3 -m pip install --upgrade pip
-  pip3 install scikit-build # for github action docker
-  python3 -m build
+  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+  python3.9 get-pip.py --user
+  python3.9 -m pip install --upgrade pip
+  pip3.9 install scikit-build # for github action docker
+  python3.9 -m build
 }
 
 # Follow the below steps
