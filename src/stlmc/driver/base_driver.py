@@ -138,6 +138,9 @@ class BaseCmdParser(CmdParser):
             else:
                 if value is not None:
                     key = key.replace("_", "-")
+                    if key != "logic":
+                        value = str(value).lower()
+
                     self.arg_value_dict[key] = str(value).lower()
 
         # update the common section first
