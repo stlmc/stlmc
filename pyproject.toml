@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "stlmc"
-version = "1.0.0.dev1"
+version = "1.0.0.dev2"
 description = "An SMT-based bounded model checker for signal temporal logic"
 readme = "README.md"
 license.text = "GPLv3"

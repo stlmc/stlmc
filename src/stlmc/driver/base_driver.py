@@ -141,7 +141,7 @@ class BaseCmdParser(CmdParser):
                     if key != "logic":
                         value = str(value).lower()
 
-                    self.arg_value_dict[key] = str(value).lower()
+                    self.arg_value_dict[key] = value
 
         # update the common section first
         common_section = self.config.get_section("common")
