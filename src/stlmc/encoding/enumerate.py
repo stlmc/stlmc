@@ -48,10 +48,11 @@ class EnumerateAlgorithm(Algorithm):
         loop = "false"
 
         parallel = common_section.get_value("parallel")
+        core = int(common_section.get_value("parallel-core"))
 
         if self.runner is None:
             if parallel == "true":
-                self.runner = ParallelAlgRunner(25)
+                self.runner = ParallelAlgRunner(core)
             else:
                 self.runner = NormalRunner()
 
