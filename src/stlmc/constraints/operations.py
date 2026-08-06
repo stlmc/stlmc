@@ -10,6 +10,13 @@ def substitution(const: Constraint, substitution_dict):
     return const
 
 
+@substitution.register(UnaryExpr)
+def _(const: UnaryExpr, substitution_dict):
+    if const in substitution_dict:
+        return substitution_dict[const]
+    return type(const)(substitution(const.child, substitution_dict))
+
+
 @substitution.register(Variable)
 def _(const: Variable, substitution_dict):
     if const in substitution_dict:

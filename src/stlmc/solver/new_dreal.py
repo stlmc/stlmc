@@ -11,6 +11,7 @@ from ..exception.exception import NotSupportedError
 from ..objects.model import StlMC
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
 from ..solver.assignment import Assignment
+from ..solver.dreal_utils import get_dreal_solver_args
 from ..tree.operations import size_of_tree
 from ..util.logger import Logger
 
@@ -113,12 +114,11 @@ class newDRealSolver(SMTSolver):
         logger = self.logger
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
-        ode_step = dreal_section.get_value("ode-step")
-        ode_order = dreal_section.get_value("ode-order")
         time_horizon = common_section.get_value("time-horizon")
         time_bound = float(common_section.get_value("time-bound"))
         bound = int(common_section.get_value("bound"))
         exec_path = dreal_section.get_value("executable-path")
+        solver_args = get_dreal_solver_args(dreal_section)
 
         decls = list()
         for b in range(bound + 1):
@@ -161,11 +161,8 @@ class newDRealSolver(SMTSolver):
 
         model_file_name = "{}.smt2".format(str_file_name)
         proc = await asyncio.create_subprocess_exec(
-            exec_path, model_file_name,
-            # "--ode-order", ode_order,
+            exec_path, model_file_name, *solver_args,
             "--short_sat",
-            # "--delta_heuristic",
-            # "--sat-prep-bool", "--ode-cache", "--ode-parallel", "--ode-sampling", "--ode-step", ode_step,
             "--model",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)

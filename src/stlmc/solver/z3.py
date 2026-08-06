@@ -1,16 +1,22 @@
+import threading
+import time
+import multiprocessing
+from queue import Empty
+from queue import Queue
+
 import z3
 
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver
+from ..solver.abstract_solver import ParallelSMTSolver
 from ..solver.assignment import Assignment
 from ..tree.operations import size_of_tree
 
 
-class Z3Solver(SMTSolver):
+class Z3Solver(ParallelSMTSolver):
     def __init__(self):
-        SMTSolver.__init__(self)
+        ParallelSMTSolver.__init__(self)
         self._z3_model = None
         self._cache = list()
         self._cache_raw = list()
@@ -29,6 +35,7 @@ class Z3Solver(SMTSolver):
         assert self.logger is not None
         logger = self.logger
 
+        logger.reset_timer()
         logger.start_timer("solving timer")
         self.solver.add(consts)
 
@@ -66,10 +73,42 @@ class Z3Solver(SMTSolver):
     def clear(self):
         self._cache = list()
         self._cache_raw = list()
-        self.solver = z3.Solver()
+        self.solver = None
 
     def set_time_bound(self, time_bound: str):
         pass
+
+    def set_file_name(self, name):
+        pass
+
+    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+        self.set_logic(self.config.get_section("z3").get_value("logic"))
+        result_queue = multiprocessing.Queue()
+        start_time = time.monotonic()
+        proc = multiprocessing.Process(
+            target=_parallel_z3_solve,
+            args=(const, self._logic, result_queue),
+        )
+        proc.start()
+
+        def collect_result():
+            proc.join()
+            try:
+                result, assignments, error_message = result_queue.get(timeout=0.2)
+            except Empty:
+                result = "Unknown"
+                assignments = dict()
+                error_message = "parallel Z3 worker exited with {}".format(proc.exitcode)
+            elapsed = time.monotonic() - start_time
+            main_queue.put((result, Z3Assignment(assignments=assignments), id(proc),
+                            elapsed, error_message))
+            sema.release()
+            result_queue.close()
+
+        collector = threading.Thread(target=collect_result, daemon=True)
+        proc._stlmc_worker = collector
+        collector.start()
+        return proc
 
     def result_simplify(self):
         return z3.simplify(z3.And(self._cache))
@@ -131,11 +170,14 @@ class Z3Solver(SMTSolver):
 
 
 class Z3Assignment(Assignment):
-    def __init__(self, z3_model):
+    def __init__(self, z3_model=None, assignments=None):
         self._z3_model = z3_model
+        self._assignments = assignments
 
     # solver_model_to_generalized_model
     def get_assignments(self):
+        if self._assignments is not None:
+            return self._assignments
         if self._z3_model is None:
             return dict()
         new_dict = dict()
@@ -157,6 +199,23 @@ class Z3Assignment(Assignment):
         if self._z3_model is None:
             raise NotSupportedError("Z3 has no model")
         return self._z3_model.eval(const)
+
+
+def _parallel_z3_solve(const, logic, result_queue):
+    """Solve in an isolated process because Z3's global context is not thread-safe."""
+    try:
+        solver = z3.SolverFor(logic)
+        solver.add(z3Obj(const))
+        status = solver.check()
+        if status == z3.sat:
+            result_queue.put(("False", Z3Assignment(solver.model()).get_assignments(), None))
+        elif status == z3.unsat:
+            result_queue.put(("True", dict(), None))
+        else:
+            result_queue.put(("Unknown", dict(),
+                              "Z3 returned unknown: {}".format(solver.reason_unknown())))
+    except Exception as error:
+        result_queue.put(("Unknown", dict(), "parallel Z3 worker error: {}".format(error)))
 
 
 @singledispatch

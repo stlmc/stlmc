@@ -26,7 +26,7 @@ class ConfigVisitor(configVisitor):
         }
         self.section_argument_dict["z3"] = {"logic"}
         self.section_argument_dict["yices"] = {"logic"}
-        self.section_argument_dict["dreal"] = {"ode-order", "ode-step", "executable-path"}
+        self.section_argument_dict["dreal"] = {"precision", "ode-order", "ode-step", "executable-path"}
 
         self.type_check_dict["common"] = {
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
@@ -34,9 +34,14 @@ class ConfigVisitor(configVisitor):
         }
         self.type_check_dict["z3"] = {("logic", frozenset({"QF_NRA", "QF_LRA"}))}
         self.type_check_dict["yices"] = {("logic", frozenset(["QF_NRA", "QF_LRA"]))}
-        self.type_check_dict["dreal"] = {("ode-order", "float"), ("ode-step", "float"), ("executable-path", "path")}
+        self.type_check_dict["dreal"] = {
+            ("precision", "float"), ("ode-order", "float"),
+            ("ode-step", "float"), ("executable-path", "path")
+        }
 
-        self.section_boolean_argument_dict["common"] = {"two-step", "parallel", "visualize", "verbose", "reach", "only-loop"}
+        self.section_boolean_argument_dict["common"] = {
+            "two-step", "concrete", "parallel", "visualize", "verbose", "reach", "only-loop"
+        }
         self.section_boolean_argument_dict["z3"] = set()
         self.section_boolean_argument_dict["yices"] = set()
         self.section_boolean_argument_dict["dreal"] = set()
@@ -47,7 +52,7 @@ class ConfigVisitor(configVisitor):
         self.section_mandatory_dict["common"] = {"bound", "time-bound"}
         self.section_mandatory_dict["z3"] = set()
         self.section_mandatory_dict["yices"] = set()
-        self.section_mandatory_dict["dreal"] = {"ode-step", "ode-order", "executable-path"}
+        self.section_mandatory_dict["dreal"] = {"ode-order", "executable-path"}
 
         self.section_selectable_dict: Dict[str, List[Set[str]]] = dict()
         self.section_selectable_dict["common"] = list()
@@ -61,7 +66,7 @@ class ConfigVisitor(configVisitor):
             if section.name not in self.section_names:
                 raise IllegalArgumentError("\"{}\" is not a valid section name".format(section.name))
 
-            mandatory = self.section_argument_dict[section.name]
+            mandatory = self.section_mandatory_dict[section.name]
 
             is_skip = False
             choices = self.section_selectable_dict[section.name]

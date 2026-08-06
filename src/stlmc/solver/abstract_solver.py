@@ -1,5 +1,6 @@
 import abc
 import subprocess
+import threading
 from abc import ABC
 from queue import Queue
 from threading import Semaphore
@@ -8,6 +9,41 @@ from ..util.logger import Logger
 
 # all solver have logger
 from ..objects.configuration import Configuration
+
+
+class ThreadWorker:
+    """Small process-like wrapper used by in-process parallel SMT workers."""
+
+    def __init__(self):
+        self._done = threading.Event()
+        self._cancelled = threading.Event()
+        self._thread = None
+        self._stlmc_thread_worker = True
+
+    def start(self, target):
+        self._thread = threading.Thread(target=target, daemon=True)
+        self._thread.start()
+
+    def finish(self):
+        self._done.set()
+
+    @property
+    def cancelled(self):
+        return self._cancelled.is_set()
+
+    def poll(self):
+        return 0 if self._done.is_set() else None
+
+    def terminate(self):
+        self._cancelled.set()
+
+    def kill(self):
+        self.terminate()
+
+    def wait(self, timeout=None):
+        if not self._done.wait(timeout):
+            raise subprocess.TimeoutExpired("SMT worker", timeout)
+        return 0
 
 
 class BaseSolver:

@@ -49,12 +49,15 @@ class EnumerateAlgorithm(Algorithm):
 
         parallel = common_section.get_value("parallel")
         core = int(common_section.get_value("parallel-core"))
+        is_generalized = common_section.get_value("concrete") != "true"
 
-        if self.runner is None:
-            if parallel == "true":
-                self.runner = ParallelAlgRunner(core)
-            else:
-                self.runner = NormalRunner()
+        if self.runner is not None:
+            self.runner.kill_all()
+
+        if parallel == "true":
+            self.runner = ParallelAlgRunner(core)
+        else:
+            self.runner = NormalRunner()
 
         assert self.runner is not None
 
@@ -153,7 +156,7 @@ class EnumerateAlgorithm(Algorithm):
             result, result_model, scenario_time = self.scenario_check(model, b, tau_max, sub_formulas,
                                                                       model_consts, stl_consts, stl_time_consts,
                                                                       model_f_k_final, final_f_k, time_order_const,
-                                                                      solver)
+                                                                      solver, is_generalized=is_generalized)
 
             finished_bound = b
             total_size = acc_size(model_consts)
@@ -179,6 +182,8 @@ class EnumerateAlgorithm(Algorithm):
                     return "False", self.runner.time, finished_bound, runner_model.get_assignments()
         printer.print_verbose("total loop : {}".format(self.runner.number))
         printer.print_verbose("size : {}".format(total_size))
+        if self.runner.had_unknown:
+            return "Unknown", total_time, finished_bound, None
         return "True", total_time, finished_bound, None
 
     # accumulated
@@ -187,7 +192,6 @@ class EnumerateAlgorithm(Algorithm):
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
                        smt_solver: SMTSolver, is_generalized=True):
         total_time = 0.0
-        print("bound: {}".format(bound))
 
         k_model_f = acc_model[bound]
         k_stl_f = acc_stl[bound]
@@ -241,15 +245,18 @@ class EnumerateAlgorithm(Algorithm):
 
                     real_set = set()
                     neg_dict: Dict[str, Eq] = dict()
+                    bool_assignment_dict: Dict[str, Eq] = dict()
                     for v in assn_dict:
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
                             track_id = "p@{}".format(v.id)
+                            bool_assignment_dict[track_id] = Eq(v, valuation)
                             if valuation == true:
                                 neg_dict[track_id] = Eq(v, false)
                                 self.minimize_solver.assert_and_track(z3Obj(Eq(v, true)), track_id)
                             else:
-                                self.minimize_solver.add(z3Obj(Eq(v, false)))
+                                neg_dict[track_id] = Eq(v, true)
+                                self.minimize_solver.assert_and_track(z3Obj(Eq(v, false)), track_id)
                         else:
                             assert isinstance(v, Real) or isinstance(v, Int)
                             real_set.add(v)
@@ -276,12 +283,21 @@ class EnumerateAlgorithm(Algorithm):
                     self.minimize_solver.pop()
                     picked_unsat_cores = {str(unsat_core) for unsat_core in unsat_cores}
                     p_reals = picked_unsat_cores.difference(set(neg_dict.keys()))
-                    p_bools = picked_unsat_cores.difference(p_reals)
+                    core_bool_tracks = picked_unsat_cores.difference(p_reals)
 
-                    # pick time and propositions
-                    # remove intermediate goals
-                    p_bools = pick_time_and_props(p_bools, sub_formulas)
-                    path_bool_consts = {Bool(p_bool.replace("p@", "")) for p_bool in p_bools}
+                    # Preserve both polarities selected by the minimized core.
+                    # Keeping only positive Boolean choices can make path_const
+                    # broader than the scenario that was checked by dReal.
+                    path_bool_consts = {
+                        bool_assignment_dict[track_id] for track_id in core_bool_tracks
+                    }
+                    true_core_tracks = {
+                        track_id for track_id in core_bool_tracks
+                        if bool_assignment_dict[track_id].right == true
+                    }
+                    # Only true proposition/time variables describe the derived
+                    # continuous path constraints passed to dReal.
+                    p_bools = pick_time_and_props(true_core_tracks, sub_formulas)
                     path_real_consts = list(map(lambda p: real_dict[p],
                                                 filter(lambda p: p in real_dict, [p_real for p_real in p_reals])))
 
@@ -328,10 +344,55 @@ class EnumerateAlgorithm(Algorithm):
                     counter += 1
 
                 else:
-                    # w/o generalize
-                    # TODO:
-                    concrete_symbolic_path = Or([neg_dict[track_id] for track_id in neg_dict])
-                    self.scenario_solver.add(z3Obj(concrete_symbolic_path))
+                    # Keep the complete discrete assignment. Real-valued model
+                    # points are deliberately excluded: blocking a single real
+                    # point would not make progress over a continuous domain.
+                    concrete_literals = []
+                    true_bool_ids = set()
+                    for variable, valuation in assn_dict.items():
+                        if isinstance(variable, Bool) and isinstance(valuation, BoolVal):
+                            concrete_literals.append(Eq(variable, valuation))
+                            if valuation == true:
+                                true_bool_ids.add("p@{}".format(variable.id))
+
+                    if len(concrete_literals) == 0:
+                        raise NotSupportedError("cannot construct a concrete scenario without Boolean choices")
+
+                    concrete_path = And(concrete_literals)
+                    p_bools = pick_time_and_props(true_bool_ids, sub_formulas)
+                    model_abstract_const = And(
+                        [Eq(v, model.boolean_abstract[v]) for v in model.boolean_abstract]
+                    )
+                    extra_prop_path, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
+                    extra_prop_path_const = path2const(extra_prop_path, model)
+                    extra_time_path_const = time_path2const(extra_time_path)
+                    range_const = And(
+                        [model.make_range_consts(depth)[0] for depth in range(0, bound + 1)]
+                    )
+
+                    if model.is_gen_reach_condition():
+                        total_const = And([concrete_path, extra_prop_path_const, stl_final,
+                                           extra_time_path_const, range_const])
+                        reduction_dict = {
+                            mac.left: mac.right for mac in model_abstract_const.children
+                            if isinstance(mac, Eq)
+                        }
+                        total_const = substitution(total_const, reduction_dict)
+                    else:
+                        total_const = And([concrete_path, extra_prop_path_const, stl_final,
+                                           extra_time_path_const, range_const,
+                                           model_abstract_const])
+
+                    if not self.loop_mode:
+                        self.runner.set_debug(self.debug_name)
+                        self.runner.run(smt_solver, total_const)
+                        runner_result, runner_model = self.runner.check_sat()
+                        if runner_result:
+                            return True, runner_model, self.runner.time
+
+                    # Exclude exactly this Boolean/discrete cube.
+                    self.scenario_solver.add(z3Obj(Not(concrete_path)))
+                    counter += 1
             if result.r == z3.Z3_L_FALSE:
                 break
 
@@ -343,7 +404,7 @@ class EnumerateAlgorithm(Algorithm):
         self.minimize_solver.push()
         self.minimize_solver.add(z3Obj(next_minimize_var))
 
-        print("# bound: {}, {}".format(bound, counter))
+        print(f"  bound={bound} scenarios={counter}")
         return False, None, self.runner.time
 
 

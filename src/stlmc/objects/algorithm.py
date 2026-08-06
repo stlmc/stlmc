@@ -1,11 +1,12 @@
 import asyncio
+import os
+import signal
 import subprocess
 import threading
 from abc import abstractmethod
-from multiprocessing import *
-from queue import Empty
+from queue import Empty, Queue
+from typing import Dict, Set
 
-from ..encoding.enumerate import *
 from ..constraints.constraints import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal
@@ -57,17 +58,24 @@ def call_back(p):
 
 
 class ParallelAlgRunner(AlgorithmRunner):
+    def _unpack_result(self, message):
+        result, model, proc_id, *metadata = message
+        if len(metadata) > 0:
+            self.time += metadata[0]
+        if len(metadata) > 1 and metadata[1]:
+            self.unknown_errors.append(metadata[1])
+        return result, model, proc_id
+
     def _check_sat(self):
         while True:
             try:
-                result, model, smt_time = self.main_queue.get_nowait()
+                result, model, proc_id = self._unpack_result(self.main_queue.get_nowait())
             except Empty:
                 # no counterexample or unknown
                 pass
             else:
                 self.result = result
                 if result == "False":
-                    self.time += smt_time
                     self.model = model
                 else:
                     self.model = None
@@ -76,7 +84,7 @@ class ParallelAlgRunner(AlgorithmRunner):
 
     def check_sat(self):
         try:
-            result, model, proc_id = self.main_queue.get_nowait()
+            result, model, proc_id = self._unpack_result(self.main_queue.get_nowait())
         except Empty:
             # no counterexample or unknown
             return False, None
@@ -87,6 +95,8 @@ class ParallelAlgRunner(AlgorithmRunner):
                 self.kill_all()
                 return True, model
             else:
+                if result == "Unknown":
+                    self.had_unknown = True
                 procs = self.procs.copy()
                 for proc in procs:
                     if id(proc) == proc_id:
@@ -96,7 +106,7 @@ class ParallelAlgRunner(AlgorithmRunner):
     def __init__(self, max_procs: int):
         super().__init__()
         assert max_procs > 0
-        print("max procs: {}".format(max_procs))
+        print(f"workers={max_procs}")
         self.procs: Set[subprocess.Popen] = set()
         self.sema = threading.Semaphore(max_procs)
         self.time = 0.0
@@ -106,6 +116,8 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.model = None
         self.debug_name = ""
         self.number = 0
+        self.had_unknown = False
+        self.unknown_errors = []
 
 
     def set_debug(self, msg: str):
@@ -120,20 +132,62 @@ class ParallelAlgRunner(AlgorithmRunner):
         solver.set_file_name(self.debug_name)
 
         self.sema.acquire()
-        proc = solver.process(self.main_queue, self.sema, const)
+        try:
+            proc = solver.process(self.main_queue, self.sema, const)
+        except Exception:
+            self.sema.release()
+            raise
         self.procs.add(proc)
 
 
     def kill_all(self):
-        for proc in self.procs:
-            proc.terminate()
-            proc.kill()
-            proc.wait()
+        procs = list(self.procs)
+        self.procs.clear()
+
+        thread_workers = [proc for proc in procs if getattr(proc, "_stlmc_thread_worker", False)]
+        process_workers = [proc for proc in procs if not getattr(proc, "_stlmc_thread_worker", False)]
+
+        for worker in thread_workers:
+            worker.terminate()
+
+        for proc in process_workers:
+            if proc.poll() is None:
+                try:
+                    if getattr(proc, "_stlmc_process_group", False):
+                        os.killpg(proc.pid, signal.SIGTERM)
+                    else:
+                        proc.terminate()
+                except ProcessLookupError:
+                    pass
+
+        for proc in process_workers:
+            try:
+                proc.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                try:
+                    if getattr(proc, "_stlmc_process_group", False):
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    else:
+                        proc.kill()
+                except ProcessLookupError:
+                    pass
+                proc.wait()
+
+        for proc in process_workers:
+            worker = getattr(proc, "_stlmc_worker", None)
+            if worker is not None and worker is not threading.current_thread():
+                worker.join(timeout=1)
+
+        while True:
+            try:
+                self.main_queue.get_nowait()
+            except Empty:
+                break
 
     def wait_and_check_sat(self):
         while len(self.procs) > 0:
             try:
-                result, model, proc_id = self.main_queue.get()
+                result, model, proc_id = self._unpack_result(self.main_queue.get())
             except Empty:
                 raise NotSupportedError("wait and check failed")
             else:
@@ -142,6 +196,8 @@ class ParallelAlgRunner(AlgorithmRunner):
                     self.kill_all()
                     return True, model
                 else:
+                    if result == "Unknown":
+                        self.had_unknown = True
                     procs = self.procs.copy()
                     for proc in procs:
                         if id(proc) == proc_id:
@@ -152,8 +208,10 @@ class ParallelAlgRunner(AlgorithmRunner):
 class NormalRunner(AlgorithmRunner):
     def check_sat(self):
         assert self.solver is not None and self.const is not None
+        self.solver.clear()
         result, size = self.solver.solve(self.const)
         is_true = result == "False"
+        self.had_unknown = self.had_unknown or result == "Unknown"
 
         model = None
         if is_true:
@@ -171,6 +229,7 @@ class NormalRunner(AlgorithmRunner):
         self.solver = None
         self.const = None
         self.number = 0
+        self.had_unknown = False
 
     def set_debug(self, msg: str):
         self.debug_name = msg
@@ -178,10 +237,11 @@ class NormalRunner(AlgorithmRunner):
     def increase_counter(self):
         self.number += 1
 
-    def run(self, solver: ParallelSMTSolver, const: Formula):
-        assert isinstance(solver, ParallelSMTSolver)
+    def run(self, solver: SMTSolver, const: Formula):
+        assert isinstance(solver, SMTSolver)
 
-        solver.set_file_name(self.debug_name)
+        if hasattr(solver, "set_file_name"):
+            solver.set_file_name(self.debug_name)
 
         self.solver = solver
         self.const = const

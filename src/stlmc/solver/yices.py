@@ -1,6 +1,7 @@
 import asyncio
 import subprocess
 import threading
+import time
 from multiprocessing import Process
 from queue import Queue
 
@@ -10,7 +11,7 @@ from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
+from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, ThreadWorker
 from ..solver.assignment import Assignment
 from ..tree.operations import size_of_tree
 
@@ -22,6 +23,8 @@ class YicesAssignment(Assignment):
     # solver_model_to_generalized_model
     def get_assignments(self):
         new_dict = dict()
+        if self._yices_model is None:
+            return new_dict
         for e in self._yices_model.collect_defined_terms():
             if Terms.is_real(e):
                 new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
@@ -81,6 +84,7 @@ class YicesSolver(ParallelSMTSolver):
         for i in range(len(consts)):
             yicesConsts.append(Terms.parse_term(consts[i]))
 
+        logger.reset_timer()
         logger.start_timer("solving timer")
         ctx.assert_formulas(yicesConsts)
 
@@ -92,9 +96,12 @@ class YicesSolver(ParallelSMTSolver):
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
             result = "False"
+        elif result == Status.UNSAT:
+            m = None
+            result = "True"
         else:
             m = None
-            result = "True" if Status.UNSAT else "Unknown"
+            result = "Unknown"
 
         cfg.dispose()
         ctx.dispose()
@@ -136,13 +143,43 @@ class YicesSolver(ParallelSMTSolver):
         self.file_name = name
 
     def process(self, main_queue: Queue, sema: threading.Semaphore, const):
-        proc = Process()
-        proc.start()
-        check_sat_thread = threading.Thread(target=self.parallel_check_sat, args=(main_queue, sema, proc))
-        check_sat_thread.daemon = True
-        check_sat_thread.start()
+        worker = ThreadWorker()
+        start_time = time.monotonic()
 
-        return proc
+        def check_sat():
+            error_message = None
+            try:
+                logic = self.config.get_section("yices").get_value("logic").upper()
+                cfg = Config()
+                cfg.default_config_for_logic(logic)
+                ctx = Context(cfg)
+                ctx.assert_formulas([Terms.parse_term(yicesObj(const))])
+                status = ctx.check_context()
+                if status == Status.SAT:
+                    result = "False"
+                    assignment = YicesAssignment(Model.from_context(ctx, 1))
+                elif status == Status.UNSAT:
+                    result = "True"
+                    assignment = YicesAssignment(None)
+                else:
+                    result = "Unknown"
+                    assignment = YicesAssignment(None)
+                    error_message = "Yices returned {}".format(status)
+                ctx.dispose()
+                cfg.dispose()
+            except Exception as error:
+                result = "Unknown"
+                assignment = YicesAssignment(None)
+                error_message = "parallel Yices worker error: {}".format(error)
+            finally:
+                elapsed = time.monotonic() - start_time
+                worker.finish()
+                if not worker.cancelled:
+                    main_queue.put((result, assignment, id(worker), elapsed, error_message))
+                sema.release()
+
+        worker.start(check_sat)
+        return worker
 
     def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen, const):
         common_section = self.config.get_section("yices")
@@ -167,9 +204,12 @@ class YicesSolver(ParallelSMTSolver):
         if result == Status.SAT:
             m = Model.from_context(ctx, 1)
             result = "False"
+        elif result == Status.UNSAT:
+            m = None
+            result = "True"
         else:
             m = None
-            result = "True" if Status.UNSAT else "Unknown"
+            result = "Unknown"
 
         cfg.dispose()
         ctx.dispose()

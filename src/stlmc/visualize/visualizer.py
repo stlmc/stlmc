@@ -472,6 +472,41 @@ def _(const: Pow, vec, var_list: list):
     return infix_float(const.left, vec, var_list) ** infix_float(const.right, vec, var_list)
 
 
+@infix_float.register(Sqrt)
+def _(const: Sqrt, vec, var_list: list):
+    return np.sqrt(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Sin)
+def _(const: Sin, vec, var_list: list):
+    return np.sin(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Cos)
+def _(const: Cos, vec, var_list: list):
+    return np.cos(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Tan)
+def _(const: Tan, vec, var_list: list):
+    return np.tan(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Arcsin)
+def _(const: Arcsin, vec, var_list: list):
+    return np.arcsin(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Arccos)
+def _(const: Arccos, vec, var_list: list):
+    return np.arccos(infix_float(const.child, vec, var_list))
+
+
+@infix_float.register(Arctan)
+def _(const: Arctan, vec, var_list: list):
+    return np.arctan(infix_float(const.child, vec, var_list))
+
+
 def get_sub_time_samples(time_sample_list: List[List[float]], start: float, end: float, time_max: float) -> List[float]:
     # ignore time points beyond time bound
     if start > time_max:

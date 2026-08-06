@@ -20,6 +20,9 @@ def main():
         printer.print_normal("operation error: {}".format(E))
     except ParsingError as E:
         printer.print_normal("parsing error: {}".format(E))
+    except KeyboardInterrupt:
+        printer.print_normal("interrupted by user")
+        return 130
     except Exception as E:
         printer.print_normal("error: {}".format(E))
         printer.print_normal(traceback.format_exc())

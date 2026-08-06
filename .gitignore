@@ -21,6 +21,10 @@ reports/
 *.egg-info
 dist/
 tests/
+!tests/
+tests/*
+!tests/unit/
+!tests/unit/**
 
 # Virtual Env for python
 venv/

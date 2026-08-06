@@ -14,6 +14,7 @@ from ..constraints.operations import get_vars, substitution_zero2t, substitution
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
 from ..solver.assignment import Assignment
+from ..solver.dreal_utils import get_dreal_solver_args
 from ..tree.operations import size_of_tree
 from ..util.logger import Logger
 
@@ -216,6 +217,15 @@ class dRealSolver(ParallelSMTSolver):
             time_range = "(declare-fun time_{} () Real [0, {}])".format(ki, time_horizon)
             declare_list.append(time_range)
 
+        # add_reset_cond() references every boundary tau, even when an
+        # intermediate tau does not otherwise occur in const.  Declare the
+        # complete sequence instead of only the tau variables returned by
+        # get_vars(const).
+        for ki in range(0, max_bound + 2):
+            declare_list.append(
+                "(declare-fun tau_{} () Real [0, {}])".format(ki, time_bound)
+            )
+
         # continuous variables declaration
         for i in var_range_dict:
             (left_strict, lower, upper, right_strict) = var_range_dict[i]
@@ -229,10 +239,6 @@ class dRealSolver(ParallelSMTSolver):
                     declare_list.append(sub_result)
                     sub_result = "(declare-fun " + i + "_" + str(j) + "_t () Real " + range_str + ")"
                     declare_list.append(sub_result)
-            elif "tau" in i:
-                sub_result = "(declare-fun " + i + " () Real "
-                sub_result = sub_result + range_str + ")"
-                declare_list.append(sub_result)
 
         # time variables declaration
         for i in clock_range_dict:
@@ -298,11 +304,10 @@ class dRealSolver(ParallelSMTSolver):
     def process(self, main_queue: Queue, sema: threading.Semaphore, const):
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
-        ode_step = dreal_section.get_value("ode-step")
-        ode_order = dreal_section.get_value("ode-order")
         time_horizon = common_section.get_value("time-horizon")
         time_bound = common_section.get_value("time-bound")
         exec_path = dreal_section.get_value("executable-path")
+        solver_args = get_dreal_solver_args(dreal_section)
 
         declares, bound = self.get_declared_variables(const, float(time_horizon), float(time_bound))
         results = [drealObj(const)]
@@ -340,49 +345,55 @@ class dRealSolver(ParallelSMTSolver):
             model_file.write("(check-sat)\n")
             model_file.write("(exit)\n")
 
-        self._parallel_s_time = time.time()
+        parallel_s_time = time.monotonic()
         proc = subprocess.Popen(
-            [exec_path, model_file_name, "--short_sat", "--model"],
+            [exec_path, model_file_name, *solver_args, "--short_sat", "--model"],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            start_new_session=os.name == "posix")
+        proc._stlmc_process_group = os.name == "posix"
 
-        check_sat_thread = threading.Thread(target=self.parallel_check_sat, args=(main_queue, sema, proc))
+        check_sat_thread = threading.Thread(target=self.parallel_check_sat,
+                                            args=(main_queue, sema, proc, parallel_s_time))
         check_sat_thread.daemon = True
+        proc._stlmc_worker = check_sat_thread
         check_sat_thread.start()
 
         return proc
 
-    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen):
-        stdout, stderr = proc.communicate()
-        stdout_str = stdout.decode()[len("Solution:\n"):-1]
-        stderr_str = stderr.decode()
-        output_str = "{}\n{}".format(stdout_str, stderr_str)
-        # print(f'[exited with {proc.returncode}]')
-        # if stdout:
-        #     print(f'[stdout]\n{stdout.decode()}')
-        # if stderr:
-        #     print(f'[stderr]\n{stderr.decode()}')
+    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen,
+                           start_time=None):
+        if start_time is None:
+            start_time = time.monotonic()
+        error_message = None
+        try:
+            stdout, stderr = proc.communicate()
+            stdout_text = stdout.decode(errors="replace")
+            stderr_text = stderr.decode(errors="replace")
 
-        # if os.path.isfile(model_file_name):
-        #    os.remove(model_file_name)
+            if proc.returncode != 0:
+                result = "Unknown"
+                error_message = "dReal exited with {}: {}".format(proc.returncode, stderr_text.strip())
+            elif stdout_text.startswith("Solution:\n"):
+                result = "False"
+            elif "unsat" in stdout_text:
+                result = "True"
+            else:
+                result = "Unknown"
+                error_message = "unrecognized dReal output: {}".format(
+                    (stdout_text + "\n" + stderr_text).strip())
 
-        if "currentMode" in output_str:
-            result = "False"
-        elif "unsat" in stdout.decode():
-            result = "True"
-        else:
+            model_text = stdout_text[len("Solution:\n"):] if stdout_text.startswith("Solution:\n") else ""
+            result_model = [line for line in (model_text + "\n" + stderr_text).splitlines() if line]
+            assignment = DrealAssignment(result_model)
+        except Exception as error:
             result = "Unknown"
-
-        cont_var_list = stdout_str.split("\n")
-        bool_var_list = stderr_str.split("\n")
-
-        result_model = list()
-        result_model.extend(cont_var_list)
-        result_model.extend(bool_var_list)
-
-        result_model.remove("")
-        main_queue.put((result, DrealAssignment(result_model), id(proc)))
-        sema.release()
+            error_message = "parallel worker error: {}".format(error)
+            assignment = DrealAssignment([error_message])
+        finally:
+            elapsed = time.monotonic() - start_time
+            main_queue.put((result, assignment, id(proc), elapsed, error_message))
+            sema.release()
 
     def drealcheckSat(self, consts, logic):
         return asyncio.run(self._run(consts, logic))
@@ -392,11 +403,10 @@ class dRealSolver(ParallelSMTSolver):
         logger = self.logger
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
-        ode_step = dreal_section.get_value("ode-step")
-        ode_order = dreal_section.get_value("ode-order")
         time_horizon = common_section.get_value("time-horizon")
         time_bound = common_section.get_value("time-bound")
         exec_path = dreal_section.get_value("executable-path")
+        solver_args = get_dreal_solver_args(dreal_section)
 
         declares, bound = self.get_declared_variables(And(consts.copy()), float(time_horizon), float(time_bound))
         results = list()
@@ -431,7 +441,7 @@ class dRealSolver(ParallelSMTSolver):
 
         model_file_name = "{}.smt2".format(str_file_name)
         proc = await asyncio.create_subprocess_exec(
-            exec_path, model_file_name,
+            exec_path, model_file_name, *solver_args,
             "--short_sat",
             "--model",
             stdout=asyncio.subprocess.PIPE,

@@ -108,9 +108,10 @@ class BaseCmdParser(CmdParser):
             self.config = self.config_visitor.parse_from_file("{}/../default.cfg".format(default))
             
             dreal = self.config.get_section("dreal")
-            exec = dreal.get_value("executable-path")
-            exec = "{}/{}".format(default, exec)
-            dreal.set_value("executable-path", exec)
+            exec_path = dreal.get_value("executable-path")
+            if not os.path.isabs(exec_path):
+                exec_path = os.path.normpath(os.path.join(default, exec_path))
+            dreal.set_value("executable-path", exec_path)
 
         if args.model_cfg is not None:
             if not os.path.exists(args.model_cfg):
@@ -287,8 +288,15 @@ class BaseRunner(Runner):
 
                 time_start = time.time()
                 algorithm.set_debug("{}_{}_{}".format(os.path.basename(file_name), label, underlying_solver))
-                final_result, total_time, finished_bound, assn_dict = algorithm.run(model, goal, PD, config,
-                                                                                    solver, logger, printer)
+                try:
+                    final_result, total_time, finished_bound, assn_dict = algorithm.run(
+                        model, goal, PD, config, solver, logger, printer
+                    )
+                except BaseException:
+                    runner = getattr(algorithm, "runner", None)
+                    if runner is not None:
+                        runner.kill_all()
+                    raise
                 time_end = time.time()
                 total_time = time_end - time_start
 
