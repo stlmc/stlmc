@@ -4,12 +4,48 @@ on:
     tags:
       - 'v*'
 jobs:
+  validate:
+    name: Validate release metadata
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Verify tag matches package version
+      shell: bash
+      run: |
+        package_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml)
+        test "v${package_version}" = "${GITHUB_REF_NAME}" || {
+          echo "Tag ${GITHUB_REF_NAME} does not match package version ${package_version}"
+          exit 1
+        }
+
   build:
-    name: Build distribution 📦
+    name: Build wheel 📦
+    needs: validate
     strategy:
       matrix:
-        python-version: ['3.8','3.9','3.10','3.11','3.12']
-        os: [macos-latest, ubuntu-latest]
+        include:
+        - os: ubuntu-latest
+          python-version: '3.8'
+        - os: ubuntu-latest
+          python-version: '3.9'
+        - os: ubuntu-latest
+          python-version: '3.10'
+        - os: ubuntu-latest
+          python-version: '3.11'
+        - os: ubuntu-latest
+          python-version: '3.12'
+        # These are the newest CPython releases with Apple Silicon builds
+        # available to setup-python for Python 3.8 through 3.10.
+        - os: macos-latest
+          python-version: '3.8.10'
+        - os: macos-latest
+          python-version: '3.9.13'
+        - os: macos-latest
+          python-version: '3.10.11'
+        - os: macos-latest
+          python-version: '3.11'
+        - os: macos-latest
+          python-version: '3.12'
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -29,26 +65,29 @@ jobs:
     - name: Prepare prerequisites
       run: ./build.sh prep
 
-    - name: Build a binary wheel and a source tarball
+    - name: Build a Linux wheel
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt install -y patchelf
         pip install auditwheel
-        python3 -m build
+        python3 -m build --wheel
         for whl in dist/*linux_*.whl; do
           auditwheel repair $whl
         done
         rm -rf dist/
         mv wheelhouse dist
 
-    - name: Build a binary wheel and a source tarball
+    - name: Build an Apple Silicon wheel
       if: matrix.os == 'macos-latest'
-      run: python3 -m build
+      run: |
+        # dReal3 is x86_64-only on macOS and runs on Apple Silicon via Rosetta.
+        ./3rd_party/dReal3/dReal --version
+        python3 -m build --wheel
 
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: python-package-distributions
+        name: python-package-distributions-${{ matrix.os }}-${{ matrix.python-version }}
         path: dist/
 
   publish-to-pypi:
@@ -56,6 +95,7 @@ jobs:
       Publish Python 🐍 distribution 📦 to PyPI
     if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
+    - validate
     - build
     runs-on: ubuntu-latest
     environment:
@@ -66,10 +106,11 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        pattern: python-package-distributions-*
         path: dist/
+        merge-multiple: true
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
@@ -87,15 +128,15 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        pattern: python-package-distributions-*
         path: dist/
+        merge-multiple: true
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v2.1.1
       with:
         inputs: >-
-          ./dist/*.tar.gz
           ./dist/*.whl
     - name: Create GitHub Release
       env:
@@ -132,10 +173,11 @@ jobs:
 
   #   steps:
   #   - name: Download all the dists
-  #     uses: actions/download-artifact@v3
+  #     uses: actions/download-artifact@v4
   #     with:
-  #       name: python-package-distributions
+  #       pattern: python-package-distributions-*
   #       path: dist/
+  #       merge-multiple: true
   #   - name: Publish distribution 📦 to TestPyPI
   #     uses: pypa/gh-action-pypi-publish@release/v1
   #     with:
