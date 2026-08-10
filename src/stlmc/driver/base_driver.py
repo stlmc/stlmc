@@ -18,6 +18,12 @@ from ..parser.model_visitor import ModelVisitor
 from ..solver.abstract_solver import SMTSolver
 from ..solver.dreal import dRealSolver
 from ..solver.solver_factory import SolverFactory
+from ..solver.capability import (
+    expression_requires_dreal,
+    model_requires_dreal,
+    validate_formula_solver_support,
+    validate_model_solver_support,
+)
 from ..solver.z3 import z3Obj
 from ..util.logger import *
 from ..util.print import *
@@ -244,7 +250,17 @@ class BaseRunner(Runner):
             model, PD, goals, goal_labels = object_manager.generate_objects(file_name)
             if underlying_solver == "auto":
                 dynamic_type = check_dynamics(model)
-                if dynamic_type == "ode":
+                formulas_require_dreal = any(
+                    expression_requires_dreal(
+                        substitution(goal.get_formula(), PD)
+                    )
+                    for goal in goals
+                )
+                if (
+                    dynamic_type == "ode"
+                    or model_requires_dreal(model)
+                    or formulas_require_dreal
+                ):
                     common_section.set_value("solver", "dreal")
                     underlying_solver = "dreal"
                 else:
@@ -258,6 +274,7 @@ class BaseRunner(Runner):
             cmd_parser.update_solver_config(underlying_solver)
             check_validity(config)
             underlying_solver = common_section.get_value("solver")
+            validate_model_solver_support(underlying_solver, model)
 
             solver = SolverFactory().generate_solver(config)
             algorithm = AlgorithmFactory(config).generate()
@@ -282,6 +299,7 @@ class BaseRunner(Runner):
                     label = goal_labels[goal.get_formula()]
 
                 formula_string = substitution(goal.get_formula(), PD)
+                validate_formula_solver_support(underlying_solver, formula_string)
                 is_two_step = common_section.get_value("two-step") == "true"
                 is_parallel = (
                     is_two_step
@@ -374,6 +392,8 @@ class BaseRunner(Runner):
                     status, finished_bound, total_time, formula_string,
                     result_scope, counterexample_file, visual_config_file,
                 )
+        except NotSupportedError:
+            raise
         except SyntaxError as e:
             print("syntax error: {}".format(e))
         except Exception as e:

@@ -668,21 +668,21 @@ def _(const):
 @drealObj.register(Arcsin)
 def _(const):
     x = drealObj(const.child)
-    result = '(arcsin ' + x + ')'
+    result = '(asin ' + x + ')'
     return result
 
 
 @drealObj.register(Arccos)
 def _(const):
     x = drealObj(const.child)
-    result = '(arccos ' + x + ')'
+    result = '(acos ' + x + ')'
     return result
 
 
 @drealObj.register(Arctan)
 def _(const):
     x = drealObj(const.child)
-    result = '(/ (cos ' + x + ') (sin ' + x + '))'
+    result = '(atan ' + x + ')'
     return result
 
 

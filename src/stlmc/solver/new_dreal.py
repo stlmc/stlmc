@@ -284,7 +284,7 @@ def _(const: Binary):
 
 @dreal_obj.register(Unary)
 def _(const: Unary):
-    unary = ["sqrt", "sin", "cos", "arcsin", "arccos"]
+    unary = ["sqrt", "sin", "cos"]
 
     x = dreal_obj(const.child)
     if isinstance(const, Neg):
@@ -293,8 +293,14 @@ def _(const: Unary):
     if isinstance(const, Tan):
         return "(/ (sin {}) (cos {}))".format(x, x)
 
+    if isinstance(const, Arcsin):
+        return "(asin {})".format(x)
+
+    if isinstance(const, Arccos):
+        return "(acos {})".format(x)
+
     if isinstance(const, Arctan):
-        return "(/ (cos {}) (sin {}))".format(x, x)
+        return "(atan {})".format(x)
 
     return "({} {})".format(const._op_str, x)
 

@@ -37,7 +37,8 @@ def main():
         if is_interrupted():
             raise StlmcInterrupted
     except NotSupportedError as E:
-        printer.print_normal("system error: {}".format(E))
+        printer.print_normal("conversion error: {}".format(E))
+        return 2
     except OperationError as E:
         printer.print_normal("operation error: {}".format(E))
     except ParsingError as E:
