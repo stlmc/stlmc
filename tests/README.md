@@ -1,9 +1,12 @@
 # Tests
 
-The test suite has two independent parts:
+The test suite has three parts:
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
+- `compare_solvers.py` reruns every Yices benchmark case with Z3, then checks
+  that both solvers produce the same status and finishing bound. It reuses the
+  Yices logs from the preceding benchmark run instead of running Yices twice.
 - `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
   compares each result and finishing bound with the annotation in its model.
 
@@ -12,6 +15,10 @@ Benchmark expectations use this format:
 ```text
 # @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
 ```
+
+The expected bound is the number of discrete jumps and starts at zero. Bound
+zero represents one continuous segment with no jump. Both one-step and
+two-step algorithms use this convention.
 
 Execution logs are written to `artifact-logs/` by default. Violated cases also
 generate their `.counterexample` and visualization `.cfg` files beside the
@@ -28,14 +35,15 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run the solver smoke tests followed by every annotated benchmark:
+Run all three test parts in order: solver smoke tests, every annotated
+benchmark, and the Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run a fast test consisting of the solver smoke tests and every benchmark case
-marked with `@benchmark.fast`:
+Run the fast selection of all three test parts. This currently runs the smoke
+tests, 30 FAST benchmark cases, and 20 Z3/Yices comparisons:
 
 ```sh
 make test FAST=1
@@ -46,6 +54,24 @@ Run only the SMT solver smoke tests:
 ```sh
 make test-smoke
 ```
+
+Compare Z3 with the existing Yices benchmark logs for every Yices model case:
+
+```sh
+make test-solver-equivalence
+```
+
+With `FAST=1`, the comparison includes every Yices case marked with
+`@benchmark.fast` except cases marked with `@benchmark.z3-slow`; without it,
+all Yices benchmark cases are compared. The current fast comparison contains
+20 cases. Z3 outputs are stored beside the normal logs with a `.z3.log`
+suffix. Any unexpected timeout is a test failure. The full run uses the longer
+default timeout and includes all `z3-slow` cases.
+
+Run `make benchmark` first if the matching Yices logs do not exist. `make test`
+does this automatically before starting the solver comparison. The comparison
+runner does not check whether an existing Yices log is stale, so regenerate
+the benchmark logs after changing a model, configuration, or STLMC code.
 
 Run only benchmarks:
 
@@ -68,8 +94,8 @@ Make variables can be combined on the command line:
   `tests/benchmarks`; the default is `.` for every model.
 - `ARTIFACT_JOBS=<count>`: number of benchmark cases executed concurrently;
   the default is `1` (`4` with `FAST=1`).
-- `ARTIFACT_TIMEOUT=<seconds>`: timeout applied separately to each case; the
-  default is `3600` (`120` with `FAST=1`).
+- `ARTIFACT_TIMEOUT=<seconds>`: timeout applied separately to each benchmark
+  and Z3 comparison case; the default is `3600` (`120` with `FAST=1`).
 - `ARTIFACT_OUTPUT=<directory>`: output log directory; the default is
   `artifact-logs`.
 - `PYTHON=<executable>`: Python interpreter used to run the test scripts; the
@@ -89,9 +115,10 @@ specific executable. Both the smoke and benchmark runners use
 `3rd_party/dReal3/dReal` by default; set `STLMC_DREAL` to override the dReal
 executable path for both runners.
 
-Pressing `Ctrl+C` cancels pending benchmark cases, terminates active `stlmc`
-and solver processes, and exits with status `130`. Processes that do not stop
-within five seconds are killed.
+Pressing `Ctrl+C` in either benchmark runner cancels pending cases, terminates
+active `stlmc` and solver processes, and exits with status `130`. Additional
+interrupts are ignored while cleanup is in progress. Processes that do not
+stop within five seconds are killed.
 
 ## Benchmark directory convention
 

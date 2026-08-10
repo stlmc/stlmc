@@ -1,6 +1,7 @@
 # logging: poly
 # @benchmark.expected(f1=violated:1, f2=satisfied:10, f3=violated:1)
 # @benchmark.fast(f1, f2, f3)
+# @benchmark.z3-slow(f2)
 bool a;
 [0, 10] x1;
 bool b;

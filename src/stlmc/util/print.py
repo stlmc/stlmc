@@ -67,24 +67,22 @@ class BasePrinter:
             self.print_normal("Bound checks")
             self._bound_header_printed = True
 
-        prefix = "bound={}".format(bound)
-        query_field = "query={}".format(result)
+        prefix = "bound={:<6}".format(bound)
+        query_field = "query={:<7}".format(result)
+        fields = [prefix]
+        if self.verbose and constraint_size is not None:
+            fields.append("const-size={:<10}".format(constraint_size))
+        fields.append(query_field)
         if scenarios is not None:
-            scenario_field = "scenarios={}".format(scenarios)
-            fields = [prefix, query_field, scenario_field]
-            fields.append("time={:.3f}s".format(elapsed))
-            if found_scenario is not None:
-                fields.append(
-                    "counterexample=scenario {}".format(found_scenario)
-                )
-            line = "  {}".format("\t".join(fields))
-        else:
-            line = "  {}\t{}\ttime={:.3f}s".format(
-                prefix, query_field, elapsed
+            scenario_field = "scenarios={:<10}".format(scenarios)
+            fields.append(scenario_field)
+        fields.append("time={:.3f}s".format(elapsed))
+        if found_scenario is not None:
+            fields.append(
+                "counterexample=scenario {}".format(found_scenario)
             )
+        line = "  {}".format("\t".join(fields))
         self.print_normal(line)
-        if constraint_size is not None:
-            self.print_verbose("  constraint size: {}".format(constraint_size))
 
     def scenario_progress(self, bound, submitted, completed=None):
         if not sys.stdout.isatty():

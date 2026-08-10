@@ -9,7 +9,8 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),120,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all antlr perm clean test test-smoke benchmark
+.PHONY: all antlr perm clean test test-smoke test-solver-equivalence benchmark
+.NOTPARALLEL: test
 
 all:    antlr perm
 
@@ -30,15 +31,24 @@ clean:
 	@cd $(ANTLR_DIR)/config && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 
-test: test-smoke benchmark
+test: test-smoke benchmark test-solver-equivalence
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)
-	@$(PYTHON) $(TEST_DIR)/smoke_solvers.py
+	@$(PYTHON) -u $(TEST_DIR)/smoke_solvers.py
+
+test-solver-equivalence:
+	$(info compare Z3 and Yices results ...)
+	@$(PYTHON) -u $(TEST_DIR)/compare_solvers.py \
+		$(DEFAULT_ARTIFACT_FAST) \
+		--scope $(or $(ARTIFACT_SCOPE),$(DEFAULT_ARTIFACT_SCOPE)) \
+		--timeout $(or $(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \
+		--jobs $(or $(ARTIFACT_JOBS),$(DEFAULT_ARTIFACT_JOBS)) \
+		--output $(or $(ARTIFACT_OUTPUT),artifact-logs)
 
 benchmark:
 	$(info start benchmarks ...)
-	@$(PYTHON) $(TEST_DIR)/run_artifact_benchmarks.py \
+	@$(PYTHON) -u $(TEST_DIR)/run_artifact_benchmarks.py \
 		$(DEFAULT_ARTIFACT_FAST) \
 		--scope $(or $(ARTIFACT_SCOPE),$(DEFAULT_ARTIFACT_SCOPE)) \
 		--timeout $(or $(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \

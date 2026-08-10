@@ -50,7 +50,9 @@ class SmtAlgorithm(Algorithm):
         if is_only_loop == "false":
             static_learner.generate_learned_clause(bound, delta)
 
-        for b in range(1, int(bound) + 1):
+        # The bound is the number of discrete jumps.  Bound 0 still contains
+        # one continuous segment and must be checked for zero-jump witnesses.
+        for b in range(0, int(bound) + 1):
             raise_if_interrupted()
             if is_only_loop == "true":
                 if b < int(bound):

@@ -261,6 +261,7 @@ def main():
     except KeyboardInterrupt:
         interrupted = True
         STOP_REQUESTED.set()
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         for future in futures:
             future.cancel()
         print("\ninterrupted; terminating active benchmark processes...")
