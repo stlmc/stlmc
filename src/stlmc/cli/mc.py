@@ -2,11 +2,22 @@ from ..driver.abstract_driver import *
 from ..driver.base_driver import *
 from ..exception.exception import *
 from ..util.print import *
+import signal
 import traceback
+from ..update_check import notify_if_outdated
+
+
+def _raise_keyboard_interrupt(signum, frame):
+    raise KeyboardInterrupt
 
 
 def main():
+    notify_if_outdated()
     printer = ExceptionPrinter()
+    previous_sigterm_handler = None
+    if hasattr(signal, "SIGTERM"):
+        previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
+        signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
     try:
         # default driver factory
         driver_factory = BaseDriverFactory()
@@ -26,3 +37,6 @@ def main():
     except Exception as E:
         printer.print_normal("error: {}".format(E))
         printer.print_normal(traceback.format_exc())
+    finally:
+        if previous_sigterm_handler is not None:
+            signal.signal(signal.SIGTERM, previous_sigterm_handler)

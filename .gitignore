@@ -23,8 +23,14 @@ dist/
 tests/
 !tests/
 tests/*
-!tests/unit/
-!tests/unit/**
+!tests/run_artifact_benchmarks.py
+!tests/smoke_solvers.py
+!tests/README.md
+!tests/benchmarks/
+!tests/benchmarks/**
+!tests/smt2/
+!tests/smt2/**
+artifact-logs/
 
 # Virtual Env for python
 venv/

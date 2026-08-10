@@ -40,4 +40,5 @@ stlmc-vis = "stlmc.cli.visualize:main"
 "Source Code"   = "https://github.com/stlmc/stlmc/"
 
 [tool.scikit-build]
-sdist.include = ["src/", "3rd_party/", "tests/"]
+sdist.include = ["src/", "3rd_party/dReal3/dReal"]
+sdist.exclude = ["tests/**", "3rd_party/antlr4/**"]

@@ -1,3 +1,4 @@
+# logging: poly
 real b1;
 real b2;
 
@@ -54,4 +55,3 @@ proposition:
 # bound: 10, timebound: 25
 goal:
 [f1]: <>[6, 10] (d2 >= 4); # threshold: 2.5
-
