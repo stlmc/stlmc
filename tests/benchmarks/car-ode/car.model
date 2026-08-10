@@ -1,6 +1,6 @@
 # logging: ode
 # @benchmark.expected(f1=violated:2, f2=violated:2, f3=violated:2)
-# @benchmark.fast(f1, f2, f3)
+# @benchmark.fast(f1, f2)
 bool ix;
 bool iy;
 [-40, 40] rx;

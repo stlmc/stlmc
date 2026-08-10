@@ -59,9 +59,11 @@ Make variables can be combined on the command line:
 
 - `FAST=1`: selects all cases marked with `@benchmark.fast`, a 120-second
   timeout, and four concurrent jobs unless those values are explicitly
-  overridden. The current fast set contains 37 cases. They have artifact
-  reference times of at most 60 seconds each, excluding cases known to have
-  unstable runtimes under parallel execution.
+  overridden. The current fast set contains 30 cases. Cases that timed out or
+  had unstable runtimes during parallel execution are not marked as fast, but
+  remain part of the full benchmark run without `FAST=1`. Currently these are
+  all `bat-ode` cases, `car-ode/f3`, `rail-ode/f1`, `space-ode/f2`, and
+  `wat-ode/f1`.
 - `ARTIFACT_SCOPE=<directory>`: runs only a model directory below
   `tests/benchmarks`; the default is `.` for every model.
 - `ARTIFACT_JOBS=<count>`: number of benchmark cases executed concurrently;

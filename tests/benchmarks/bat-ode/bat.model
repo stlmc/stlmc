@@ -1,6 +1,5 @@
 # logging: ode
 # @benchmark.expected(f1=violated:3, f2=violated:3, f3=violated:3)
-# @benchmark.fast(f1, f2, f3)
 # model description:
 #
 # There are two fully charged batteries, and a control
