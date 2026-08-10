@@ -18,7 +18,7 @@ The model basename matches the model prefix in the directory name. Expected
 results are stored in each model file using this annotation:
 
 ```text
-# @benchmark.expected(f1=False:5, f2=True:10, f3=False:4)
+# @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
 # @benchmark.fast(f1, f2, f3)
 ```
 

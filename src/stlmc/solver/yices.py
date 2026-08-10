@@ -13,6 +13,7 @@ from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, ThreadWorker
 from ..solver.assignment import Assignment
+from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
 
 
@@ -53,6 +54,23 @@ class YicesSolver(ParallelSMTSolver):
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
+
+    def _write_query(self, consts, raw_constraint):
+        if not is_enabled(self.config):
+            return
+        sort_names = {"bool": "Bool", "int": "Int", "real": "Real"}
+        variables = sorted(get_vars(raw_constraint), key=lambda variable: variable.id)
+        lines = ["(set-logic {})".format(self._logic)]
+        for variable in variables:
+            lines.append("(declare-fun {} () {})".format(
+                variable.id, sort_names[variable.type]
+            ))
+        for const in consts:
+            lines.append("(assert {})".format(const))
+        lines.extend(["(check-sat)", "(get-model)"])
+        write_smt2(
+            self.config, "yices", self.file_name, "\n".join(lines) + "\n"
+        )
 
     async def _run(self, consts, logic):
         try:
@@ -117,6 +135,7 @@ class YicesSolver(ParallelSMTSolver):
             self._cache_raw.append(all_consts)
             self._cache.append(yicesObj(all_consts))
         size = size_of_tree(And(self._cache_raw))
+        self._write_query(self._cache, And(self._cache_raw))
         result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
         return result, size
 
@@ -143,6 +162,9 @@ class YicesSolver(ParallelSMTSolver):
         self.file_name = name
 
     def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+        logic = self.config.get_section("yices").get_value("logic")
+        self.set_logic(logic)
+        self._write_query([yicesObj(const)], const)
         worker = ThreadWorker()
         start_time = time.monotonic()
 

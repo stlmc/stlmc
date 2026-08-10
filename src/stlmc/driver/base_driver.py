@@ -139,7 +139,7 @@ class BaseCmdParser(CmdParser):
             else:
                 if value is not None:
                     key = key.replace("_", "-")
-                    if key != "logic":
+                    if key not in {"logic", "smt2-dir", "executable-path"}:
                         value = str(value).lower()
 
                     self.arg_value_dict[key] = value
@@ -282,42 +282,73 @@ class BaseRunner(Runner):
                     label = goal_labels[goal.get_formula()]
 
                 formula_string = substitution(goal.get_formula(), PD)
-                printer.print_normal("> running a model: {}".format(file_name))
-                printer.print_normal("> selected solver: {}".format(underlying_solver))
-                printer.print_verbose("> threshold : {}".format(delta))
+                is_two_step = common_section.get_value("two-step") == "true"
+                is_parallel = (
+                    is_two_step
+                    and common_section.get_value("parallel") == "true"
+                )
+                parallel_core = int(common_section.get_value("parallel-core"))
+                is_reach_query = reach_goal_opt == "true"
+                if is_two_step:
+                    algorithm_name = "two-step"
+                elif is_reach_query:
+                    algorithm_name = "reachability"
+                else:
+                    algorithm_name = "one-step"
+                printer.run_started(
+                    file_name, label, underlying_solver, algorithm_name,
+                    is_parallel, parallel_core, bound, time_bound, delta,
+                    (
+                        "reachability goal"
+                        if is_reach_query
+                        else "negated goal (counterexample search)"
+                    ),
+                )
 
-                time_start = time.time()
+                time_start = time.monotonic()
                 algorithm.set_debug("{}_{}_{}".format(os.path.basename(file_name), label, underlying_solver))
                 try:
                     final_result, total_time, finished_bound, assn_dict = algorithm.run(
                         model, goal, PD, config, solver, logger, printer
                     )
                 except BaseException:
+                    printer.clear_progress()
                     runner = getattr(algorithm, "runner", None)
                     if runner is not None:
                         runner.kill_all()
                     raise
-                time_end = time.time()
+                time_end = time.monotonic()
                 total_time = time_end - time_start
 
-                printer.print_normal_dark("goal : {}".format(formula_string))
-
-                result_bound_string = "up to bound {}".format(finished_bound)
-                if final_result == "False":
-                    result_bound_string = "at bound {}".format(finished_bound)
-                printer.print_normal_dark(
-                    "result : {} {} (time bound: {})".format(final_result, result_bound_string, time_bound))
-                printer.print_normal_dark("running time {:.5f} seconds".format(total_time))
-                printer.print_line()
-
+                status = {
+                    "False": "violated",
+                    "True": "satisfied",
+                    "Unknown": "unknown",
+                }.get(final_result, "unknown")
+                output_name = None
+                counterexample_file = None
+                visual_config_file = None
+                if final_result == "False" and gen_result == "true":
+                    output_name = "{}_b{}_{}_{}".format(
+                        os.path.basename(file_name).split(".")[0], bound,
+                        label, underlying_solver,
+                    )
+                    counterexample_file = "{}.counterexample".format(output_name)
+                    visual_config_file = "{}.cfg".format(output_name)
+                found_witness = (
+                    final_result == "True" if is_reach_query
+                    else final_result == "False"
+                )
+                result_scope = (
+                    "at bound {}" if found_witness else "up to bound {}"
+                ).format(finished_bound)
                 if final_result == "False":
                     if gen_result == "true":
-                        output_name = "{}_b{}_{}_{}".format(os.path.basename(file_name).split(".")[0], bound, label,
-                                                            underlying_solver)
                         import pickle
                         with open("{}.counterexample".format(output_name), "wb") as fw:
                             pickle.dump((assn_dict, model.modules, model.mode_var_dict, model.prop_dict,
-                                         model.range_dict, PD, goal.get_formula(), label, float(delta)), fw)
+                                         model.range_dict, PD, goal.get_formula(), label, float(delta),
+                                         model.init, model.const_dict), fw)
 
                         cfg_string = ["{", "# state variables: {}".format(
                             " , ".join(map(lambda x: x.id, model.range_dict.keys())))]
@@ -339,7 +370,10 @@ class BaseRunner(Runner):
                         f = open("{}.cfg".format(output_name), "w")
                         f.write("\n".join(cfg_string))
                         f.close()
-                        print("generate {}.counterexample and {}.cfg".format(output_name, output_name))
+                printer.run_finished(
+                    status, finished_bound, total_time, formula_string,
+                    result_scope, counterexample_file, visual_config_file,
+                )
         except SyntaxError as e:
             print("syntax error: {}".format(e))
         except Exception as e:

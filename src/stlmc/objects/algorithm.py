@@ -13,6 +13,7 @@ from ..objects.goal import Goal
 from ..objects.model import Model
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
 from ..util.logger import Logger
+from ..util.interrupt import raise_if_interrupted
 from ..util.print import Printer
 
 
@@ -37,7 +38,7 @@ class AlgorithmRunner:
         pass
 
     @abstractmethod
-    def wait_and_check_sat(self):
+    def wait_and_check_sat(self, progress=None):
         pass
 
     @abstractmethod
@@ -58,6 +59,12 @@ def call_back(p):
 
 
 class ParallelAlgRunner(AlgorithmRunner):
+    def _scenario_for_process(self, proc_id):
+        for proc in self.procs:
+            if id(proc) == proc_id:
+                return getattr(proc, "_stlmc_scenario", None)
+        return None
+
     def _unpack_result(self, message):
         result, model, proc_id, *metadata = message
         if len(metadata) > 0:
@@ -90,8 +97,10 @@ class ParallelAlgRunner(AlgorithmRunner):
             return False, None
         else:
             self.increase_counter()
+            scenario = self._scenario_for_process(proc_id)
             # print(result)
             if result == "False":
+                self.winning_scenario = scenario
                 self.kill_all()
                 return True, model
             else:
@@ -106,7 +115,6 @@ class ParallelAlgRunner(AlgorithmRunner):
     def __init__(self, max_procs: int):
         super().__init__()
         assert max_procs > 0
-        print(f"workers={max_procs}")
         self.procs: Set[subprocess.Popen] = set()
         self.sema = threading.Semaphore(max_procs)
         self.time = 0.0
@@ -118,10 +126,15 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.number = 0
         self.had_unknown = False
         self.unknown_errors = []
+        self.current_scenario = None
+        self.winning_scenario = None
 
 
     def set_debug(self, msg: str):
         self.debug_name = msg
+
+    def set_scenario(self, scenario):
+        self.current_scenario = scenario
 
     def increase_counter(self):
         self.number += 1
@@ -131,12 +144,15 @@ class ParallelAlgRunner(AlgorithmRunner):
 
         solver.set_file_name(self.debug_name)
 
-        self.sema.acquire()
+        while not self.sema.acquire(timeout=0.1):
+            raise_if_interrupted()
+        raise_if_interrupted()
         try:
             proc = solver.process(self.main_queue, self.sema, const)
         except Exception:
             self.sema.release()
             raise
+        proc._stlmc_scenario = self.current_scenario
         self.procs.add(proc)
 
 
@@ -150,8 +166,13 @@ class ParallelAlgRunner(AlgorithmRunner):
         for worker in thread_workers:
             worker.terminate()
 
+        def is_running(proc):
+            if hasattr(proc, "poll"):
+                return proc.poll() is None
+            return proc.is_alive()
+
         for proc in process_workers:
-            if proc.poll() is None:
+            if is_running(proc):
                 try:
                     if getattr(proc, "_stlmc_process_group", False):
                         os.killpg(proc.pid, signal.SIGTERM)
@@ -161,17 +182,23 @@ class ParallelAlgRunner(AlgorithmRunner):
                     pass
 
         for proc in process_workers:
-            try:
-                proc.wait(timeout=1)
-            except subprocess.TimeoutExpired:
+            if hasattr(proc, "wait"):
                 try:
-                    if getattr(proc, "_stlmc_process_group", False):
-                        os.killpg(proc.pid, signal.SIGKILL)
-                    else:
-                        proc.kill()
-                except ProcessLookupError:
-                    pass
-                proc.wait()
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    try:
+                        if getattr(proc, "_stlmc_process_group", False):
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        else:
+                            proc.kill()
+                    except ProcessLookupError:
+                        pass
+                    proc.wait()
+            else:
+                proc.join(timeout=1)
+                if proc.is_alive():
+                    proc.kill()
+                    proc.join(timeout=1)
 
         for proc in process_workers:
             worker = getattr(proc, "_stlmc_worker", None)
@@ -184,15 +211,21 @@ class ParallelAlgRunner(AlgorithmRunner):
             except Empty:
                 break
 
-    def wait_and_check_sat(self):
+    def wait_and_check_sat(self, progress=None):
         while len(self.procs) > 0:
             try:
-                result, model, proc_id = self._unpack_result(self.main_queue.get())
+                message = self.main_queue.get(timeout=0.1)
             except Empty:
-                raise NotSupportedError("wait and check failed")
+                raise_if_interrupted()
+                continue
             else:
+                result, model, proc_id = self._unpack_result(message)
                 self.increase_counter()
+                scenario = self._scenario_for_process(proc_id)
                 if result == "False":
+                    self.winning_scenario = scenario
+                    if progress is not None:
+                        progress(self.number)
                     self.kill_all()
                     return True, model
                 else:
@@ -202,6 +235,8 @@ class ParallelAlgRunner(AlgorithmRunner):
                     for proc in procs:
                         if id(proc) == proc_id:
                             self.procs.discard(proc)
+                    if progress is not None:
+                        progress(self.number)
         return False, None
 
 
@@ -216,6 +251,7 @@ class NormalRunner(AlgorithmRunner):
         model = None
         if is_true:
             model = self.solver.make_assignment()
+            self.winning_scenario = self.current_scenario
         self.time = self.solver.logger.get_duration_time("solving timer")
         self.solver = None
         self.const = None
@@ -230,9 +266,14 @@ class NormalRunner(AlgorithmRunner):
         self.const = None
         self.number = 0
         self.had_unknown = False
+        self.current_scenario = None
+        self.winning_scenario = None
 
     def set_debug(self, msg: str):
         self.debug_name = msg
+
+    def set_scenario(self, scenario):
+        self.current_scenario = scenario
 
     def increase_counter(self):
         self.number += 1
@@ -249,5 +290,5 @@ class NormalRunner(AlgorithmRunner):
     def kill_all(self):
         pass
 
-    def wait_and_check_sat(self):
+    def wait_and_check_sat(self, progress=None):
         return False, None

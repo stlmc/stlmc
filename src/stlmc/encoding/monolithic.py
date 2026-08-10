@@ -1,4 +1,5 @@
 from functools import singledispatch
+import time
 from typing import *
 
 from .enumerate import *
@@ -12,6 +13,7 @@ from ..objects.model import Model
 from ..solver.abstract_solver import SMTSolver
 from ..util.logger import Logger
 from ..util.print import Printer
+from ..util.interrupt import raise_if_interrupted
 
 
 class SmtAlgorithm(Algorithm):
@@ -49,10 +51,12 @@ class SmtAlgorithm(Algorithm):
             static_learner.generate_learned_clause(bound, delta)
 
         for b in range(1, int(bound) + 1):
+            raise_if_interrupted()
             if is_only_loop == "true":
                 if b < int(bound):
                     continue
             # start logging
+            bound_started = time.monotonic()
             logger.reset_timer()
 
             model_const = model.make_consts(b)
@@ -89,6 +93,10 @@ class SmtAlgorithm(Algorithm):
                 total_size = size_of_tree(total_consts)
 
             solver.set_time_bound(time_bound)
+            if hasattr(solver, "set_file_name"):
+                solver.set_file_name(
+                    "{}_b{:03d}".format(self.debug_name, b)
+                )
             result, _ = solver.solve(total_consts, model.range_dict, boolean_abstract)
 
             final_result = result
@@ -96,13 +104,13 @@ class SmtAlgorithm(Algorithm):
             smt_time = logger.get_duration_time("solving timer")
             total_time += smt_time + goal_time
 
-            printer.print_verbose("(bound {})".format(b))
-            printer.print_verbose("  result : {}".format(result))
-            printer.print_verbose("  running time : {:.5f} seconds".format(smt_time + goal_time))
-
-            printer.print_debug("(bound {})".format(b))
-            printer.print_debug("  result : {}".format(result))
-            printer.print_debug("  running time : {:.5f} seconds".format(smt_time + goal_time))
+            solver_result = {
+                "False": "sat", "True": "unsat", "Unknown": "unknown"
+            }.get(result, "unknown")
+            printer.bound_finished(
+                b, solver_result, time.monotonic() - bound_started,
+                constraint_size=total_size,
+            )
 
             finished_bound = b
             # stop when find false
@@ -111,13 +119,11 @@ class SmtAlgorithm(Algorithm):
                 if is_reach:
                     return "True", total_time, finished_bound, None
                 assn = solver.make_assignment()
-                printer.print_verbose("size : {}".format(total_size))
                 return "False", total_time, finished_bound, assn.get_assignments()
 
             model.clear()
             goal.clear()
             solver.clear()
-        printer.print_verbose("size : {}".format(total_size))
         # for reach case, we should translate the result in the opposite way
         # for now, do not make any assignment for reach case
         if is_reach:

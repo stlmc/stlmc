@@ -31,6 +31,7 @@ tests/*
 !tests/smt2/
 !tests/smt2/**
 artifact-logs/
+smt2-logs/
 
 # Virtual Env for python
 venv/

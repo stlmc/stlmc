@@ -18,12 +18,16 @@ DREAL_EXECUTABLE = os.environ.get(
 )
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 RESULT_PATTERN = re.compile(
-    r"result\s*:\s*(True|False|Unknown)\s+(?:up to|at) bound\s+(\d+)"
+    r"^\s*status\s*:\s*(satisfied|violated|unknown)\s+"
+    r"(?:at|up to) bound\s+(\d+)\s*$",
+    re.MULTILINE,
 )
 EXPECTED_PATTERN = re.compile(
     r"^# @benchmark\.expected\((.+)\)$", re.MULTILINE
 )
-EXPECTED_ITEM_PATTERN = re.compile(r"(f\d+)=(True|False|Unknown):(\d+)")
+EXPECTED_ITEM_PATTERN = re.compile(
+    r"(f\d+)=(satisfied|violated|unknown):(\d+)"
+)
 FAST_PATTERN = re.compile(r"^# @benchmark\.fast\((.+)\)$", re.MULTILINE)
 ACTIVE_PROCESSES = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
@@ -134,14 +138,17 @@ def run_case(executable, case, timeout, log_path):
         "-model-cfg", str(model_config),
         "-model-specific-cfg", str(specific_config),
         "-executable-path", DREAL_EXECUTABLE,
+        "-visualize",
     ]
+    case_output_dir = log_path.parent.resolve()
+    case_output_dir.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     with ACTIVE_PROCESSES_LOCK:
         if STOP_REQUESTED.is_set():
             return "INTERRUPTED", None, 0.0, 130
         process = subprocess.Popen(
             command,
-            cwd=PROJECT_ROOT,
+            cwd=case_output_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -162,10 +169,11 @@ def run_case(executable, case, timeout, log_path):
 
     elapsed = time.monotonic() - started
     output = ANSI_ESCAPE.sub("", output)
-    log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.write_text(output, encoding="utf-8")
     match = RESULT_PATTERN.search(output)
-    result = "TIMEOUT" if timed_out else (match.group(1) if match else "ERROR")
+    result = "TIMEOUT" if timed_out else (
+        match.group(1) if match else "ERROR"
+    )
     bound = int(match.group(2)) if match else None
     return result, bound, elapsed, process.returncode
 

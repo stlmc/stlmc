@@ -1,5 +1,5 @@
 # logging: linear
-# @benchmark.expected(f1=True:20, f2=False:5, f3=False:8)
+# @benchmark.expected(f1=satisfied:20, f2=violated:5, f3=violated:8)
 # @benchmark.fast(f2, f3)
 real b1; real b2;
 [0, 10] g1; [0, 10] g2;

@@ -1,7 +1,7 @@
 import os
 import platform
 import asyncio
-import random
+import tempfile
 from functools import singledispatch
 from typing import Dict, List
 
@@ -12,6 +12,7 @@ from ..objects.model import StlMC
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
+from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
 from ..util.logger import Logger
 
@@ -106,6 +107,32 @@ class newDRealSolver(SMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
+    def _solver_input(self, content):
+        if is_enabled(self.config):
+            path = write_smt2(
+                self.config, "dreal", self.file_name, content
+            )
+            return [path], None
+        fd, path = tempfile.mkstemp(prefix="stlmc-dreal-", suffix=".smt2")
+        os.close(fd)
+        try:
+            with open(path, "w") as smt2_file:
+                smt2_file.write(content)
+        except Exception:
+            os.unlink(path)
+            raise
+        return [path], path
+
+    @staticmethod
+    def _cleanup_solver_input(path):
+        if path is None:
+            return
+        for generated_path in (path, path + ".model"):
+            try:
+                os.unlink(generated_path)
+            except FileNotFoundError:
+                pass
+
     def dreal_check_sat(self, consts, stl_model):
         return asyncio.run(self._run(consts, stl_model))
 
@@ -154,14 +181,9 @@ class newDRealSolver(SMTSolver):
 
         smt_bb = "(set-logic QF_NRA_ODE)\n{}\n{}\n{}\n(check-sat)\n(exit)".format("\n".join(decls), smt_b, t_c)
 
-        str_file_name = "dreal_model" + str(random.random())
-        # print(str_file_name)
-        with open(str_file_name + ".smt2", 'w') as model_file:
-            model_file.write(smt_bb)
-
-        model_file_name = "{}.smt2".format(str_file_name)
+        input_args, cleanup_path = self._solver_input(smt_bb)
         proc = await asyncio.create_subprocess_exec(
-            exec_path, model_file_name, *solver_args,
+            exec_path, *input_args, *solver_args,
             "--short_sat",
             "--model",
             stdout=asyncio.subprocess.PIPE,
@@ -169,7 +191,10 @@ class newDRealSolver(SMTSolver):
 
         logger.reset_timer()
         logger.start_timer("solving timer")
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await proc.communicate()
+        finally:
+            self._cleanup_solver_input(cleanup_path)
         logger.stop_timer("solving timer")
         self.set_time("solving timer", logger.get_duration_time("solving timer"))
         stdout_str = stdout.decode()[len("Solution:\n"):-1]
@@ -180,9 +205,6 @@ class newDRealSolver(SMTSolver):
         #     print(f'[stdout]\n{stdout.decode()}')
         # if stderr:
         #     print(f'[stderr]\n{stderr.decode()}')
-
-        if os.path.isfile(model_file_name):
-           os.remove(model_file_name)
 
         self.stl_model = None
         if "currentMode" in output_str:

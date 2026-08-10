@@ -18,6 +18,7 @@ from ..util.print import Printer
 class ReachAlgorithm(Algorithm):
     def run(self, model: Model, goal: Goal, prop_dict: Dict, config: Configuration,
             solver: SMTSolver, logger: Logger, printer: Printer):
+        started = time.monotonic()
         common_section = config.get_section("common")
         bound = int(common_section.get_value("bound"))
         time_bound = float(common_section.get_value("time-bound"))
@@ -42,7 +43,6 @@ class ReachAlgorithm(Algorithm):
         # print(contradiction_const)
 
         paths = find_feasible(copied_model, bound + 1)
-        print("total path: {}".format(len(paths)))
         for i, (pc, pd) in enumerate(paths):
             if isinstance(solver, newDRealSolver):
                 solver.set_stl_model(copied_model)
@@ -59,12 +59,15 @@ class ReachAlgorithm(Algorithm):
             # found counterexample
             if r == "False":
                 assn = solver.make_assignment()
-                print("solving {}".format(solving_time))
-                # printer.print_verbose("size : {}".format(total_size))
-                # return "False", solving_time, bound, assn.get_assignments()
+                printer.bound_finished(
+                    bound, "sat", time.monotonic() - started
+                )
+                printer.print_verbose("  feasible paths checked: {} / {}".format(i + 1, len(paths)))
                 return "True", solving_time, bound, None
-        print("solving {}".format(solving_time))
-        # return "True", solving_time, bound, None
+        printer.bound_finished(
+            bound, "unsat", time.monotonic() - started
+        )
+        printer.print_verbose("  feasible paths checked: {}".format(len(paths)))
         return "False", solving_time, bound, None
 
     def set_debug(self, msg: str):
@@ -113,7 +116,7 @@ def find_feasible(model: StlMC, bound: int):
     counter = 0
     cache_c = 0
     memoize_c = 0
-    s = time.time()
+    s = time.monotonic()
     for path in all_combination:
         # print("path: {}".format(path))
         path_const: List[Formula] = list()
@@ -144,7 +147,7 @@ def find_feasible(model: StlMC, bound: int):
         # print("  const: {}".format(path_const))
         feasible_paths.append((path_const, path_dict))
 
-    e = time.time()
+    e = time.monotonic()
     print("memoize : {}%".format(cache_c / counter * 100))
     print("substitution caching : {}%".format(cache_c / counter * 100))
     print("time: {}".format(e - s))

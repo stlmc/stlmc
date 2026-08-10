@@ -1,5 +1,5 @@
 # logging: ode
-# @benchmark.expected(f1=True:5, f2=False:3, f3=False:3)
+# @benchmark.expected(f1=satisfied:5, f2=violated:3, f3=violated:3)
 real loc;
 [-100, 100] x;  [-100, 100] y;  [-100, 100] z;
 [-100, 100] x1; [-100, 100] x2; [-100, 100] x3;

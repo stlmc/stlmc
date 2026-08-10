@@ -1,8 +1,8 @@
 import os
 import platform
 import asyncio
-import random
 import subprocess
+import tempfile
 import threading
 import time
 from functools import singledispatch
@@ -15,6 +15,7 @@ from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
+from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
 from ..util.logger import Logger
 
@@ -301,6 +302,44 @@ class dRealSolver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
+    @staticmethod
+    def _smt2_text(declares, results, reset_dreal):
+        lines = ["(set-logic QF_NRA_ODE)", *declares]
+        lines.append("(assert (and{}))".format(
+            "".join(" " + result for result in results)
+        ))
+        lines.append("(assert (and{}))".format(
+            "".join(" " + reset for reset in reset_dreal)
+        ))
+        lines.extend(["(check-sat)", "(exit)"])
+        return "\n".join(lines) + "\n"
+
+    def _solver_input(self, content):
+        if is_enabled(self.config):
+            path = write_smt2(
+                self.config, "dreal", self.file_name, content
+            )
+            return [path], None
+        fd, path = tempfile.mkstemp(prefix="stlmc-dreal-", suffix=".smt2")
+        os.close(fd)
+        try:
+            with open(path, "w") as smt2_file:
+                smt2_file.write(content)
+        except Exception:
+            os.unlink(path)
+            raise
+        return [path], path
+
+    @staticmethod
+    def _cleanup_solver_input(path):
+        if path is None:
+            return
+        for generated_path in (path, path + ".model"):
+            try:
+                os.unlink(generated_path)
+            except FileNotFoundError:
+                pass
+
     def process(self, main_queue: Queue, sema: threading.Semaphore, const):
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
@@ -318,43 +357,20 @@ class dRealSolver(ParallelSMTSolver):
         for i in reset_add:
             reset_dreal.append(drealObj(i))
 
-        str_file_name = "dreal_model" + str(random.random())
-        if self.file_name == "":
-            dir_name = "./dreal_log"
-            model_file_name = "{}/{}.smt2".format(dir_name, str_file_name)
-        else:
-            dir_name = "./dreal_log/{}".format(self.file_name)
-            model_file_name = "{}/{}.smt2".format(dir_name, str_file_name)
-
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        with open(model_file_name, 'w') as model_file:
-            model_file.write("(set-logic QF_NRA_ODE)\n")
-            model_file.write("\n".join(declares))
-            model_file.write("\n")
-            assertion = "(assert (and"
-            for i in results:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            assertion = "(assert (and"
-            for i in reset_dreal:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            model_file.write("(check-sat)\n")
-            model_file.write("(exit)\n")
+        content = self._smt2_text(declares, results, reset_dreal)
+        input_args, cleanup_path = self._solver_input(content)
 
         parallel_s_time = time.monotonic()
         proc = subprocess.Popen(
-            [exec_path, model_file_name, *solver_args, "--short_sat", "--model"],
+            [exec_path, *input_args, *solver_args, "--short_sat", "--model"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=os.name == "posix")
         proc._stlmc_process_group = os.name == "posix"
 
         check_sat_thread = threading.Thread(target=self.parallel_check_sat,
-                                            args=(main_queue, sema, proc, parallel_s_time))
+                                            args=(main_queue, sema, proc, parallel_s_time,
+                                                  cleanup_path))
         check_sat_thread.daemon = True
         proc._stlmc_worker = check_sat_thread
         check_sat_thread.start()
@@ -362,7 +378,7 @@ class dRealSolver(ParallelSMTSolver):
         return proc
 
     def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen,
-                           start_time=None):
+                           start_time=None, cleanup_path=None):
         if start_time is None:
             start_time = time.monotonic()
         error_message = None
@@ -391,6 +407,7 @@ class dRealSolver(ParallelSMTSolver):
             error_message = "parallel worker error: {}".format(error)
             assignment = DrealAssignment([error_message])
         finally:
+            self._cleanup_solver_input(cleanup_path)
             elapsed = time.monotonic() - start_time
             main_queue.put((result, assignment, id(proc), elapsed, error_message))
             sema.release()
@@ -421,27 +438,10 @@ class dRealSolver(ParallelSMTSolver):
         for i in reset_add:
             reset_dreal.append(drealObj(i))
 
-        str_file_name = "dreal_model" + str(random.random())
-        with open(str_file_name + ".smt2", 'w') as model_file:
-            model_file.write("(set-logic QF_NRA_ODE)\n")
-            model_file.write("\n".join(declares))
-            model_file.write("\n")
-            assertion = "(assert (and"
-            for i in results:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            assertion = "(assert (and"
-            for i in reset_dreal:
-                assertion = assertion + " " + i
-            assertion = assertion + "))"
-            model_file.write(assertion + "\n")
-            model_file.write("(check-sat)\n")
-            model_file.write("(exit)\n")
-
-        model_file_name = "{}.smt2".format(str_file_name)
+        content = self._smt2_text(declares, results, reset_dreal)
+        input_args, cleanup_path = self._solver_input(content)
         proc = await asyncio.create_subprocess_exec(
-            exec_path, model_file_name, *solver_args,
+            exec_path, *input_args, *solver_args,
             "--short_sat",
             "--model",
             stdout=asyncio.subprocess.PIPE,
@@ -449,7 +449,10 @@ class dRealSolver(ParallelSMTSolver):
 
         logger.reset_timer()
         logger.start_timer("solving timer")
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await proc.communicate()
+        finally:
+            self._cleanup_solver_input(cleanup_path)
         logger.stop_timer("solving timer")
         self.set_time("solving timer", logger.get_duration_time("solving timer"))
         stdout_str = stdout.decode()[len("Solution:\n"):-1]
@@ -460,9 +463,6 @@ class dRealSolver(ParallelSMTSolver):
         #     print(f'[stdout]\n{stdout.decode()}')
         # if stderr:
         #     print(f'[stderr]\n{stderr.decode()}')
-
-        if os.path.isfile(model_file_name):
-            os.remove(model_file_name)
 
         if "currentMode" in output_str:
             result = "False"

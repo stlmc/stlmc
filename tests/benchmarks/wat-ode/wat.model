@@ -1,5 +1,5 @@
 # logging: ode
-# @benchmark.expected(f1=False:3, f2=False:2, f3=True:5)
+# @benchmark.expected(f1=violated:3, f2=violated:2, f3=satisfied:5)
 # @benchmark.fast(f1, f2)
 # model description:
 #

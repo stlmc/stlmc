@@ -1,5 +1,5 @@
 # logging: ode
-# @benchmark.expected(f1=True:5, f2=False:2, f3=False:4)
+# @benchmark.expected(f1=satisfied:5, f2=violated:2, f3=violated:4)
 # @benchmark.fast(f2)
 int on0;                int on1;
 [10, 35] x0;            [10, 35] x1;

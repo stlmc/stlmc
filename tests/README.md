@@ -10,10 +10,13 @@ The test suite has two independent parts:
 Benchmark expectations use this format:
 
 ```text
-# @benchmark.expected(f1=False:5, f2=True:10, f3=False:4)
+# @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
 ```
 
-Execution logs are written to `artifact-logs/` by default.
+Execution logs are written to `artifact-logs/` by default. Violated cases also
+generate their `.counterexample` and visualization `.cfg` files beside the
+corresponding log. Each benchmark model has a separate output directory, so
+cases running in parallel cannot overwrite one another's artifacts.
 
 ## Make targets
 

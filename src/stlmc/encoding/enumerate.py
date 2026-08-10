@@ -14,6 +14,7 @@ from ..solver.dreal import dRealSolver, DrealAssignment
 from ..solver.z3 import *
 from ..util.logger import Logger
 from ..util.print import Printer
+from ..util.interrupt import raise_if_interrupted
 
 
 class EnumerateAlgorithm(Algorithm):
@@ -27,6 +28,7 @@ class EnumerateAlgorithm(Algorithm):
         self.runner = None
         self.debug_name = ""
         self.loop_mode = False
+        self.last_scenario_count = 0
 
     def clear(self):
         self.scenario_solver = z3.SolverFor("QF_LRA")
@@ -116,6 +118,9 @@ class EnumerateAlgorithm(Algorithm):
         # starts from 0
         # [ 0 ... bound ]
         for b in range(0, int(bound) + 1):
+            raise_if_interrupted()
+            bound_started = time.monotonic()
+            completed_before_bound = self.runner.number
 
             # generate model consts
             model_f_k, track_f_k = model.k_step_consts(b)
@@ -156,7 +161,9 @@ class EnumerateAlgorithm(Algorithm):
             result, result_model, scenario_time = self.scenario_check(model, b, tau_max, sub_formulas,
                                                                       model_consts, stl_consts, stl_time_consts,
                                                                       model_f_k_final, final_f_k, time_order_const,
-                                                                      solver, is_generalized=is_generalized)
+                                                                      solver, printer,
+                                                                      completed_before_bound,
+                                                                      is_generalized=is_generalized)
 
             finished_bound = b
             total_size = acc_size(model_consts)
@@ -170,27 +177,52 @@ class EnumerateAlgorithm(Algorithm):
             total_time += scenario_time
             # found counter example
             if result:
-                printer.print_verbose("total loop : {}".format(self.runner.number))
-                printer.print_verbose("size : {}".format(total_size))
+                printer.bound_finished(
+                    b, "sat", time.monotonic() - bound_started,
+                    scenarios=self.last_scenario_count,
+                    constraint_size=total_size,
+                    found_scenario=self.runner.winning_scenario,
+                )
+                if is_reach:
+                    return "True", total_time, finished_bound, None
                 return "False", total_time, finished_bound, result_model.get_assignments()
 
             if not self.loop_mode:
-                runner_result, runner_model = self.runner.wait_and_check_sat()
+                runner_result, runner_model = self.runner.wait_and_check_sat(
+                    lambda completed: printer.scenario_progress(
+                        b, self.last_scenario_count,
+                        completed - completed_before_bound,
+                    )
+                )
                 if runner_result:
-                    printer.print_verbose("total loop : {}".format(self.runner.number))
-                    printer.print_verbose("size : {}".format(total_size))
+                    printer.bound_finished(
+                        b, "sat", time.monotonic() - bound_started,
+                        scenarios=self.last_scenario_count,
+                        constraint_size=total_size,
+                        found_scenario=self.runner.winning_scenario,
+                    )
+                    if is_reach:
+                        return "True", self.runner.time, finished_bound, None
                     return "False", self.runner.time, finished_bound, runner_model.get_assignments()
-        printer.print_verbose("total loop : {}".format(self.runner.number))
-        printer.print_verbose("size : {}".format(total_size))
+            printer.bound_finished(
+                b, "unknown" if self.runner.had_unknown else "unsat",
+                time.monotonic() - bound_started,
+                scenarios=self.last_scenario_count,
+                constraint_size=total_size,
+            )
         if self.runner.had_unknown:
             return "Unknown", total_time, finished_bound, None
+        if is_reach:
+            return "False", total_time, finished_bound, None
         return "True", total_time, finished_bound, None
 
     # accumulated
     def scenario_check(self, model: Model, bound: int, tau_max, sub_formulas: Set[Formula],
                        acc_model: List[Formula], acc_stl: List[Formula], acc_stl_time: List[Formula],
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
-                       smt_solver: SMTSolver, is_generalized=True):
+                       smt_solver: SMTSolver, printer: Printer,
+                       completed_before_bound: int,
+                       is_generalized=True):
         total_time = 0.0
 
         k_model_f = acc_model[bound]
@@ -228,10 +260,13 @@ class EnumerateAlgorithm(Algorithm):
         true = BoolVal("True")
         false = BoolVal("False")
         counter = 0
+        submitted = 0
         while True:
-            scenario_s = time.time()
+            raise_if_interrupted()
+            scenario_s = time.monotonic()
             result = self.scenario_solver.check()
-            scenario_e = time.time()
+            raise_if_interrupted()
+            scenario_e = time.monotonic()
             total_time += scenario_e - scenario_s
             # sat, find counterexample
             if result.r == z3.Z3_L_TRUE:
@@ -272,9 +307,10 @@ class EnumerateAlgorithm(Algorithm):
                             else:
                                 self.minimize_solver.add(z3Obj(Eq(c, false)))
 
-                    minimize_s = time.time()
+                    minimize_s = time.monotonic()
                     self.minimize_solver.check()
-                    minimize_e = time.time()
+                    raise_if_interrupted()
+                    minimize_e = time.monotonic()
                     total_time += minimize_e - minimize_s
 
                     unsat_cores = self.minimize_solver.unsat_core()
@@ -333,10 +369,25 @@ class EnumerateAlgorithm(Algorithm):
                                            model_abstract_const])
 
                     if not self.loop_mode:
-                        self.runner.set_debug(self.debug_name)
+                        self.runner.set_debug(
+                            "{}_b{:03d}_s{:03d}".format(
+                                self.debug_name, bound, counter
+                            )
+                        )
+                        self.runner.set_scenario(counter)
                         self.runner.run(smt_solver, total_const)
+                        submitted += 1
                         runner_result, runner_model = self.runner.check_sat()
+                        completed = (
+                            submitted if isinstance(self.runner, NormalRunner)
+                            else self.runner.number - completed_before_bound
+                        )
+                        if isinstance(self.runner, NormalRunner):
+                            printer.scenario_progress(bound, submitted)
+                        else:
+                            printer.scenario_progress(bound, submitted, completed)
                         if runner_result:
+                            self.last_scenario_count = submitted
                             return True, runner_model, self.runner.time
 
                     generalized_symbolic_path = Not(path_const)
@@ -384,10 +435,25 @@ class EnumerateAlgorithm(Algorithm):
                                            model_abstract_const])
 
                     if not self.loop_mode:
-                        self.runner.set_debug(self.debug_name)
+                        self.runner.set_debug(
+                            "{}_b{:03d}_s{:03d}".format(
+                                self.debug_name, bound, counter
+                            )
+                        )
+                        self.runner.set_scenario(counter)
                         self.runner.run(smt_solver, total_const)
+                        submitted += 1
                         runner_result, runner_model = self.runner.check_sat()
+                        completed = (
+                            submitted if isinstance(self.runner, NormalRunner)
+                            else self.runner.number - completed_before_bound
+                        )
+                        if isinstance(self.runner, NormalRunner):
+                            printer.scenario_progress(bound, submitted)
+                        else:
+                            printer.scenario_progress(bound, submitted, completed)
                         if runner_result:
+                            self.last_scenario_count = submitted
                             return True, runner_model, self.runner.time
 
                     # Exclude exactly this Boolean/discrete cube.
@@ -404,7 +470,7 @@ class EnumerateAlgorithm(Algorithm):
         self.minimize_solver.push()
         self.minimize_solver.add(z3Obj(next_minimize_var))
 
-        print(f"  bound={bound} scenarios={counter}")
+        self.last_scenario_count = submitted
         return False, None, self.runner.time
 
 

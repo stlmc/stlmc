@@ -1,6 +1,7 @@
 import threading
 import time
 import multiprocessing
+import signal
 from queue import Empty
 from queue import Queue
 
@@ -11,6 +12,7 @@ from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import ParallelSMTSolver
 from ..solver.assignment import Assignment
+from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
 
 
@@ -26,6 +28,7 @@ class Z3Solver(ParallelSMTSolver):
         self._logic = "NRA"
 
         self.solver = None
+        self.file_name = ""
         self.set_time("solving timer", 0)
 
     def set_logic(self, logic_name: str):
@@ -38,6 +41,9 @@ class Z3Solver(ParallelSMTSolver):
         logger.reset_timer()
         logger.start_timer("solving timer")
         self.solver.add(consts)
+
+        if is_enabled(self.config):
+            write_smt2(self.config, "z3", self.file_name, self.solver.to_smt2())
 
         result = self.solver.check()
         logger.stop_timer("solving timer")
@@ -79,17 +85,28 @@ class Z3Solver(ParallelSMTSolver):
         pass
 
     def set_file_name(self, name):
-        pass
+        self.file_name = name
 
     def process(self, main_queue: Queue, sema: threading.Semaphore, const):
         self.set_logic(self.config.get_section("z3").get_value("logic"))
+        if is_enabled(self.config):
+            dump_solver = z3.SolverFor(self._logic)
+            dump_solver.add(z3Obj(const))
+            write_smt2(self.config, "z3", self.file_name, dump_solver.to_smt2())
         result_queue = multiprocessing.Queue()
         start_time = time.monotonic()
         proc = multiprocessing.Process(
             target=_parallel_z3_solve,
             args=(const, self._logic, result_queue),
         )
-        proc.start()
+        previous_sigint = None
+        if hasattr(signal, "SIGINT"):
+            previous_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            proc.start()
+        finally:
+            if previous_sigint is not None:
+                signal.signal(signal.SIGINT, previous_sigint)
 
         def collect_result():
             proc.join()

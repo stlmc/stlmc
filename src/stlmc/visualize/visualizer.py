@@ -208,6 +208,121 @@ class Visualizer:
         self.plot = None
         print("write counterexample graphs: \'{}.html\'".format(file_name))
 
+    @staticmethod
+    def _model_text(value):
+        # Jump targets use an intentionally unusual suffix internally so they
+        # cannot collide with current-state variables.  Restore the model
+        # language's apostrophe notation in human-readable output.
+        return str(value).replace("##$%^&$%^&##'", "'")
+
+    @staticmethod
+    def _assignment_value(assignment, variable):
+        value = assignment.get(variable)
+        return value.value if value is not None else "?"
+
+    @staticmethod
+    def _range_text(value_range):
+        left_closed, left, right, right_closed = value_range
+        left_bracket = "[" if left_closed else "("
+        right_bracket = "]" if right_closed else ")"
+        return "{}{}, {}{}".format(left_bracket, left, right, right_bracket)
+
+    def write_text(self, file_name, assignment: dict, modules: dict,
+                   mode_var_dict: Dict[str, Variable],
+                   propositions: Dict[Variable, Constraint], cont_var_dict: dict,
+                   prop_dict: dict, formula: Constraint, formula_label: str,
+                   delta: float, init=None, const_dict=None):
+        projector = Projector(assignment, mode_var_dict, propositions, modules)
+        ordered_modules = projector.get_ordered_modules()
+        max_bound = projector.get_max_bound()
+        variable_points = projector.get_variable_points()
+        cont_values = self.make_cont_values(assignment, cont_var_dict, max_bound)
+        expanded_formula = substitution(formula, prop_dict)
+
+        lines = [
+            "Counterexample",
+            "==============",
+            "",
+            "goal: {}".format(formula_label),
+            "formula: {}".format(self._model_text(expanded_formula)),
+            "bound: {}".format(max_bound),
+            "delta: {}".format(delta),
+        ]
+
+        if const_dict:
+            lines.extend(["", "Constants", "---------"])
+            for variable in sorted(const_dict, key=lambda item: item.id):
+                lines.append("{} = {}".format(
+                    variable.id, self._model_text(const_dict[variable])
+                ))
+
+        lines.extend(["", "Variables", "---------"])
+        for variable in sorted(cont_var_dict, key=lambda item: item.id):
+            lines.append("{}: {}".format(
+                variable.id, self._range_text(cont_var_dict[variable])
+            ))
+
+        if init is not None:
+            lines.extend([
+                "",
+                "Initial condition",
+                "-----------------",
+                self._model_text(init),
+            ])
+
+        for index, module in enumerate(ordered_modules):
+            start_time = self._assignment_value(assignment, variable_points[index])
+            end_time = self._assignment_value(assignment, variable_points[index + 1])
+            lines.extend([
+                "",
+                "Bound {}".format(index),
+                "{}".format("-" * (6 + len(str(index)))),
+                "time: {} -> {}".format(start_time, end_time),
+                "mode: {}".format(self._model_text(module["mode"])),
+                "",
+                "invariant:",
+                "  {}".format(self._model_text(module["inv"])),
+                "",
+                "flow:",
+            ])
+
+            dynamics = module["flow"]
+            for variable, expression in zip(dynamics.vars, dynamics.exps):
+                if isinstance(dynamics, Ode):
+                    lhs = "d/dt[{}]".format(variable.id)
+                else:
+                    lhs = "{}(t)".format(variable.id)
+                lines.append("  {} = {}".format(lhs, self._model_text(expression)))
+
+            lines.extend(["", "state:"])
+            for variable in sorted(cont_var_dict, key=lambda item: item.id):
+                start_value, end_value = cont_values[variable.id][index]
+                lines.append("  {}: {} -> {}".format(
+                    variable.id, start_value, end_value
+                ))
+
+            if index < len(ordered_modules) - 1:
+                lines.extend([
+                    "",
+                    "next mode: {}".format(
+                        self._model_text(ordered_modules[index + 1]["mode"])
+                    ),
+                    "jump candidates:",
+                ])
+                jumps = module["jump"]
+                if jumps:
+                    for guard, reset in jumps.items():
+                        lines.append("  {} => {}".format(
+                            self._model_text(guard), self._model_text(reset)
+                        ))
+                else:
+                    lines.append("  (none)")
+
+        output_path = "{}.txt".format(file_name)
+        with open(output_path, "w", encoding="utf-8") as output_file_handle:
+            output_file_handle.write("\n".join(lines) + "\n")
+        print("write counterexample text: \'{}\'".format(output_path))
+
     def generate_data(self, assignment: dict, modules: dict, mode_var_dict: Dict[str, Variable],
                       propositions: Dict[Variable, Constraint], cont_var_dict: dict, prop_dict: dict,
                       formula: Constraint, formula_label: str, delta: float):
