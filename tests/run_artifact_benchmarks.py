@@ -130,7 +130,7 @@ def terminate_active_processes():
             pass
 
 
-def run_case(executable, case, timeout, log_path):
+def run_case(executable, case, timeout, log_path, scenario_batch_size=None):
     model_path, model_config, specific_config = case
     command = [
         executable,
@@ -140,6 +140,8 @@ def run_case(executable, case, timeout, log_path):
         "-executable-path", DREAL_EXECUTABLE,
         "-visualize",
     ]
+    if scenario_batch_size is not None:
+        command.extend(["-scenario-batch-size", str(scenario_batch_size)])
     case_output_dir = log_path.parent.resolve()
     case_output_dir.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -185,7 +187,19 @@ def main():
         "--scope", default=".",
         help="benchmark subtree, e.g. . or rail-poly",
     )
+    parser.add_argument(
+        "--model",
+        help="run one model, relative to tests/benchmarks and without .model",
+    )
+    parser.add_argument(
+        "--formula",
+        help="run one formula/config label, e.g. f3 (requires --model)",
+    )
     parser.add_argument("--timeout", type=int, default=3600)
+    parser.add_argument(
+        "--scenario-batch-size", type=int,
+        help="scenarios combined per two-step OR query",
+    )
     parser.add_argument(
         "--fast", action="store_true",
         help="run only cases marked with @benchmark.fast",
@@ -199,6 +213,12 @@ def main():
 
     if args.jobs < 1:
         parser.error("--jobs must be at least 1")
+    if args.timeout < 1:
+        parser.error("--timeout must be at least 1 second")
+    if args.scenario_batch_size is not None and args.scenario_batch_size < 1:
+        parser.error("--scenario-batch-size must be at least 1")
+    if args.formula and not args.model:
+        parser.error("--formula requires --model")
 
     executable = os.environ.get("STLMC") or shutil.which("stlmc")
     if executable is None:
@@ -207,10 +227,25 @@ def main():
         raise SystemExit(f"benchmark directory is missing: {BENCHMARK_ROOT}")
 
     cases = discover_cases(args.scope)
+    if args.model:
+        requested_model = Path(args.model).with_suffix("").as_posix().lstrip("./")
+        cases = [
+            case for case in cases
+            if case[0].relative_to(BENCHMARK_ROOT).with_suffix("").as_posix()
+            == requested_model
+        ]
+    if args.formula:
+        cases = [
+            case for case in cases
+            if case[2].stem.rsplit("-", 1)[1] == args.formula
+        ]
     if args.fast:
         cases = [case for case in cases if is_fast_case(case)]
     if not cases:
-        raise SystemExit(f"no benchmark cases found under scope: {args.scope}")
+        selection = args.model or args.scope
+        if args.formula:
+            selection = f"{selection} formula {args.formula}"
+        raise SystemExit(f"no benchmark cases found for: {selection}")
 
     output_root = args.output
     failures = 0
@@ -233,7 +268,8 @@ def main():
     try:
         futures = {
             executor.submit(
-                run_case, executable, case, args.timeout, log_path
+                run_case, executable, case, args.timeout, log_path,
+                args.scenario_batch_size,
             ): (case, case_name)
             for case, case_name, log_path in jobs
         }

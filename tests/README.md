@@ -97,6 +97,19 @@ Run only benchmarks:
 make benchmark
 ```
 
+Run one formula from one model, with a per-case timeout and two-step scenario
+batch size:
+
+```sh
+make benchmark MODEL=space-ode/space FORMULA=f3 TIMEOUT=60 BATCH=8
+```
+
+`MODEL` is relative to `tests/benchmarks` and omits the `.model` suffix.
+`FORMULA` is the goal-specific configuration suffix, such as `f1`, `f2`, or
+`f3`. `BATCH` is passed to STLMC as `-scenario-batch-size` and affects the
+scenario enumeration performed by the two-step algorithm; it is not specific
+to dReal.
+
 ## Benchmark options
 
 Make variables can be combined on the command line:
@@ -116,6 +129,16 @@ Make variables can be combined on the command line:
   and Z3 comparison case; the default is `3600` (`120` with `FAST=1`).
 - `ARTIFACT_OUTPUT=<directory>`: output log directory; the default is
   `artifact-logs`.
+- `MODEL=<directory/model>`: runs only the named model below
+  `tests/benchmarks`, without the `.model` suffix. This option applies to the
+  `benchmark` target.
+- `FORMULA=<name>`: runs only one goal-specific configuration for `MODEL`,
+  such as `f3`. `MODEL` is required when this option is used.
+- `BATCH=<count>`: passes the two-step scenario batch size to STLMC. The value
+  must be at least `1`.
+- `SCOPE=<directory>`, `TIMEOUT=<seconds>`, and `OUTPUT=<directory>`: concise
+  aliases for `ARTIFACT_SCOPE`, `ARTIFACT_TIMEOUT`, and `ARTIFACT_OUTPUT` when
+  using the `benchmark` target.
 - `PYTHON=<executable>`: Python interpreter used to run the test scripts; the
   default is `python3`.
 
@@ -126,6 +149,8 @@ make test ARTIFACT_JOBS=2 ARTIFACT_TIMEOUT=1800
 make benchmark ARTIFACT_SCOPE=car-linear ARTIFACT_JOBS=3
 make test FAST=1 ARTIFACT_SCOPE=wat-linear ARTIFACT_JOBS=2
 make benchmark ARTIFACT_OUTPUT=/tmp/stlmc-logs
+make benchmark SCOPE=rail-poly TIMEOUT=300 BATCH=8
+make benchmark MODEL=space-ode/space FORMULA=f3 TIMEOUT=60 BATCH=8
 ```
 
 The benchmark runner uses the installed `stlmc` command. Set `STLMC` to use a

@@ -62,7 +62,10 @@ benchmark:
 	$(info start benchmarks ...)
 	@$(PYTHON) -u $(TEST_DIR)/run_artifact_benchmarks.py \
 		$(DEFAULT_ARTIFACT_FAST) \
-		--scope $(or $(ARTIFACT_SCOPE),$(DEFAULT_ARTIFACT_SCOPE)) \
-		--timeout $(or $(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \
+		--scope $(or $(SCOPE),$(ARTIFACT_SCOPE),$(DEFAULT_ARTIFACT_SCOPE)) \
+		$(if $(MODEL),--model "$(MODEL)") \
+		$(if $(FORMULA),--formula "$(FORMULA)") \
+		$(if $(BATCH),--scenario-batch-size "$(BATCH)") \
+		--timeout $(or $(TIMEOUT),$(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \
 		--jobs $(or $(ARTIFACT_JOBS),$(DEFAULT_ARTIFACT_JOBS)) \
-		--output $(or $(ARTIFACT_OUTPUT),artifact-logs)
+		--output $(or $(OUTPUT),$(ARTIFACT_OUTPUT),artifact-logs)
