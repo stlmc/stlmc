@@ -18,6 +18,27 @@ from ..util.interrupt import raise_if_interrupted
 from ..exception.exception import IllegalArgumentError
 
 
+def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
+                                track_id: str) -> Eq:
+    """Track the exact polarity of a scenario literal and return that literal."""
+    literal = Eq(formula, valuation)
+    solver.assert_and_track(z3Obj(literal), track_id)
+    return literal
+
+
+def evaluated_arithmetic_literals(clauses: Set[Formula], real_set: Set[Variable],
+                                   model) -> List[Eq]:
+    """Return exact truth assignments for clauses determined by real variables."""
+    true = BoolVal("True")
+    false = BoolVal("False")
+    literals = []
+    for clause_formula in clauses:
+        if get_vars(clause_formula).intersection(real_set):
+            valuation = true if model.eval(z3Obj(clause_formula)) else false
+            literals.append(Eq(clause_formula, valuation))
+    return literals
+
+
 def scenario_batch_formula(refinements: List[Tuple[Formula, Formula]]) -> Formula:
     if len(refinements) == 0:
         raise IllegalArgumentError("scenario batch cannot be empty")
@@ -338,27 +359,25 @@ class EnumerateAlgorithm(Algorithm):
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
                             track_id = "p@{}".format(v.id)
-                            bool_assignment_dict[track_id] = Eq(v, valuation)
+                            bool_assignment_dict[track_id] = assert_and_track_assignment(
+                                self.minimize_solver, v, valuation, track_id
+                            )
                             if valuation == true:
                                 neg_dict[track_id] = Eq(v, false)
-                                self.minimize_solver.assert_and_track(z3Obj(Eq(v, true)), track_id)
                             else:
                                 neg_dict[track_id] = Eq(v, true)
-                                self.minimize_solver.assert_and_track(z3Obj(Eq(v, false)), track_id)
                         else:
                             assert isinstance(v, Real) or isinstance(v, Int)
                             real_set.add(v)
 
                     real_dict = dict()
-                    for c in self.clause_set:
-                        c_vars = get_vars(c)
-                        if c_vars.intersection(real_set):
-                            track_id = "p@real_{}".format(id(c))
-                            if m.eval(z3Obj(c)):
-                                real_dict[track_id] = c
-                                self.minimize_solver.assert_and_track(z3Obj(Eq(c, true)), track_id)
-                            else:
-                                self.minimize_solver.add(z3Obj(Eq(c, false)))
+                    for literal in evaluated_arithmetic_literals(
+                            self.clause_set, real_set, m):
+                        track_id = "p@real_{}".format(id(literal.left))
+                        real_dict[track_id] = literal
+                        self.minimize_solver.assert_and_track(
+                            z3Obj(literal), track_id
+                        )
 
                     minimize_s = time.monotonic()
                     self.minimize_solver.check()
@@ -446,13 +465,23 @@ class EnumerateAlgorithm(Algorithm):
                     # Keep the complete discrete assignment. Real-valued model
                     # points are deliberately excluded: blocking a single real
                     # point would not make progress over a continuous domain.
+                    # Preserve the truth values of arithmetic clauses instead,
+                    # so the refinement describes the same symbolic region.
                     concrete_literals = []
                     true_bool_ids = set()
+                    real_set = set()
                     for variable, valuation in assn_dict.items():
                         if isinstance(variable, Bool) and isinstance(valuation, BoolVal):
                             concrete_literals.append(Eq(variable, valuation))
                             if valuation == true:
                                 true_bool_ids.add("p@{}".format(variable.id))
+                        else:
+                            assert isinstance(variable, Real) or isinstance(variable, Int)
+                            real_set.add(variable)
+
+                    concrete_literals.extend(evaluated_arithmetic_literals(
+                        self.clause_set, real_set, m
+                    ))
 
                     if len(concrete_literals) == 0:
                         raise NotSupportedError("cannot construct a concrete scenario without Boolean choices")
