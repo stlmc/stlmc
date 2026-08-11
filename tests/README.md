@@ -1,11 +1,14 @@
 # Tests
 
-The test suite has four parts:
+The test suite has five parts:
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
 - `solver_capabilities.py` verifies solver-specific arithmetic validation and
   dReal inverse-trigonometric translations.
+- `reachability.py` checks zero-jump reachability, unreachable results,
+  threshold relaxation, one-step/two-step agreement, Z3/Yices/dReal
+  agreement, temporal-target validation, and witness generation.
 - `compare_solvers.py` reruns every Yices benchmark case with Z3, then checks
   that both solvers produce the same status and finishing bound. It reuses the
   Yices logs from the preceding benchmark run instead of running Yices twice.
@@ -37,15 +40,16 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run all four test parts in order: solver smoke tests, formula capability tests,
-every annotated benchmark, and the Z3/Yices comparison:
+Run all five test parts in order: solver smoke tests, formula capability tests,
+reachability tests, every annotated benchmark, and the Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all four test parts. This currently runs the smoke
-and capability tests, 30 FAST benchmark cases, and 20 Z3/Yices comparisons:
+Run the fast selection of all five test parts. This currently runs the smoke,
+capability, and reachability tests, 30 FAST benchmark cases, and 20 Z3/Yices
+comparisons:
 
 ```sh
 make test FAST=1
@@ -61,6 +65,12 @@ Run only the solver formula capability tests:
 
 ```sh
 make test-capabilities
+```
+
+Run only the reachability semantics tests:
+
+```sh
+make test-reachability
 ```
 
 Compare Z3 with the existing Yices benchmark logs for every Yices model case:

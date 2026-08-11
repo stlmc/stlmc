@@ -9,7 +9,9 @@ from ..encoding.static_learning import StaticLearner
 from ..exception.exception import *
 from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
-from ..objects.goal import Goal, optimize, reach_goal
+from ..objects.goal import (
+    Goal, ReachGoal, optimize, reach_goal, validate_reach_formula,
+)
 from ..objects.model import Model
 from ..objects.object_factory import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
@@ -299,6 +301,8 @@ class BaseRunner(Runner):
                     label = goal_labels[goal.get_formula()]
 
                 formula_string = substitution(goal.get_formula(), PD)
+                if isinstance(goal, ReachGoal):
+                    validate_reach_formula(formula_string)
                 validate_formula_solver_support(underlying_solver, formula_string)
                 is_two_step = common_section.get_value("two-step") == "true"
                 is_parallel = (
@@ -306,9 +310,12 @@ class BaseRunner(Runner):
                     and common_section.get_value("parallel") == "true"
                 )
                 parallel_core = int(common_section.get_value("parallel-core"))
-                is_reach_query = reach_goal_opt == "true"
+                is_reach_query = isinstance(goal, ReachGoal)
                 if is_two_step:
-                    algorithm_name = "two-step"
+                    algorithm_name = (
+                        "two-step reachability"
+                        if is_reach_query else "two-step"
+                    )
                 elif is_reach_query:
                     algorithm_name = "reachability"
                 else:
@@ -338,32 +345,40 @@ class BaseRunner(Runner):
                 time_end = time.monotonic()
                 total_time = time_end - time_start
 
-                status = {
-                    "False": "violated",
-                    "True": "satisfied",
-                    "Unknown": "unknown",
-                }.get(final_result, "unknown")
+                if is_reach_query:
+                    status = {
+                        "False": "unreachable",
+                        "True": "reachable",
+                        "Unknown": "unknown",
+                    }.get(final_result, "unknown")
+                else:
+                    status = {
+                        "False": "violated",
+                        "True": "satisfied",
+                        "Unknown": "unknown",
+                    }.get(final_result, "unknown")
                 output_name = None
                 counterexample_file = None
                 visual_config_file = None
-                if final_result == "False" and gen_result == "true":
-                    output_name = "{}_b{}_{}_{}".format(
-                        os.path.basename(file_name).split(".")[0], bound,
-                        label, underlying_solver,
-                    )
-                    counterexample_file = "{}.counterexample".format(output_name)
-                    visual_config_file = "{}.cfg".format(output_name)
                 found_witness = (
                     final_result == "True" if is_reach_query
                     else final_result == "False"
                 )
+                if found_witness and gen_result == "true":
+                    output_name = "{}_b{}_{}_{}".format(
+                        os.path.basename(file_name).split(".")[0], finished_bound,
+                        label, underlying_solver,
+                    )
+                    artifact_suffix = "witness" if is_reach_query else "counterexample"
+                    counterexample_file = "{}.{}".format(output_name, artifact_suffix)
+                    visual_config_file = "{}.cfg".format(output_name)
                 result_scope = (
                     "at bound {}" if found_witness else "up to bound {}"
                 ).format(finished_bound)
-                if final_result == "False":
+                if found_witness:
                     if gen_result == "true":
                         import pickle
-                        with open("{}.counterexample".format(output_name), "wb") as fw:
+                        with open(counterexample_file, "wb") as fw:
                             pickle.dump((assn_dict, model.modules, model.mode_var_dict, model.prop_dict,
                                          model.range_dict, PD, goal.get_formula(), label, float(delta),
                                          model.init, model.const_dict), fw)

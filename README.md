@@ -7,5 +7,6 @@ For more information about STLmc, please visit our [website](https://stlmc.githu
 ### Features
 
 * Bounded model checking
+* [Bounded reachability checking](docs/reachability.md)
 * Generating trajectories that falsify the given STL properties if any exists
 * Supporting various SMT solvers (e.g., Z3, Yices2, dReal3)

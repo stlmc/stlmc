@@ -7,6 +7,7 @@ from ..constraints import partition as PART
 from ..constraints import separation as SEP
 from ..constraints.operations import *
 from ..encoding.time import make_zeno_time_const, make_non_zeno_time_const
+from ..exception.exception import NotSupportedError
 
 
 class Goal:
@@ -310,6 +311,7 @@ class ReachGoal(Goal):
         result = list()
         # return to original const
         decoded_consts = substitution(self.formula, updated_proposition_dict)
+        decoded_consts = relaxing(decoded_consts, float(delta))
         sub_result = list()
 
         # make goal specific dictionary and substitute it
@@ -333,11 +335,26 @@ class ReachGoal(Goal):
         goal_end_dict = make_dict(k, model.mode_var_dict, model.range_dict, model.const_dict, "_t")
 
         decoded_consts = substitution(self.formula, proposition_dict)
+        decoded_consts = relaxing(decoded_consts, float(delta))
 
         start_consts = substitution(decoded_consts, goal_start_dict)
         end_consts = substitution(decoded_consts, goal_end_dict)
 
         return Or([start_consts, end_consts])
+
+
+def validate_reach_formula(formula: Formula):
+    """Reject temporal reach targets; reachability is defined for states."""
+    waiting = [formula]
+    while waiting:
+        current = waiting.pop()
+        if isinstance(current, (UnaryTemporalFormula, BinaryTemporalFormula)):
+            raise NotSupportedError(
+                "reachability requires a state formula without temporal operators: {}"
+                .format(formula)
+            )
+        if isinstance(current, NonLeaf):
+            waiting.extend(current.children)
 
 
 class GoalFactory:

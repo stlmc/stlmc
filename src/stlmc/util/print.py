@@ -60,7 +60,8 @@ class BasePrinter:
         self.print_normal("\n".join(lines))
 
     def bound_finished(self, bound, result, elapsed, scenarios=None,
-                       constraint_size=None, found_scenario=None):
+                       constraint_size=None, found_scenario=None,
+                       witness_label="counterexample"):
         self.clear_progress()
         self._last_progress_update = None
         if not self._bound_header_printed:
@@ -79,7 +80,7 @@ class BasePrinter:
         fields.append("time={:.3f}s".format(elapsed))
         if found_scenario is not None:
             fields.append(
-                "counterexample=scenario {}".format(found_scenario)
+                "{}=scenario {}".format(witness_label, found_scenario)
             )
         line = "  {}".format("\t".join(fields))
         self.print_normal(line)

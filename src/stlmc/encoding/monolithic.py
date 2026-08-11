@@ -35,6 +35,7 @@ class SmtAlgorithm(Algorithm):
         total_time = 0.0
         total_size = 0
         final_result = "Unknown"
+        had_unknown = False
         finished_bound = bound
         delta = float(delta_str)
 
@@ -102,6 +103,8 @@ class SmtAlgorithm(Algorithm):
             result, _ = solver.solve(total_consts, model.range_dict, boolean_abstract)
 
             final_result = result
+            if result == "Unknown":
+                had_unknown = True
 
             smt_time = logger.get_duration_time("solving timer")
             total_time += smt_time + goal_time
@@ -119,7 +122,8 @@ class SmtAlgorithm(Algorithm):
             if result == "False":
                 # for reach case, we should translate the result in the opposite way
                 if is_reach:
-                    return "True", total_time, finished_bound, None
+                    assn = solver.make_assignment()
+                    return "True", total_time, finished_bound, assn.get_assignments()
                 assn = solver.make_assignment()
                 return "False", total_time, finished_bound, assn.get_assignments()
 
@@ -127,9 +131,12 @@ class SmtAlgorithm(Algorithm):
             goal.clear()
             solver.clear()
         # for reach case, we should translate the result in the opposite way
-        # for now, do not make any assignment for reach case
         if is_reach:
+            if had_unknown:
+                return "Unknown", total_time, finished_bound, None
             return "False", total_time, finished_bound, None
+        if had_unknown:
+            return "Unknown", total_time, finished_bound, None
         return final_result, total_time, finished_bound, None
 
 

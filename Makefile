@@ -9,7 +9,7 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),120,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all antlr perm clean test test-smoke test-capabilities test-solver-equivalence benchmark
+.PHONY: all antlr perm clean test test-smoke test-capabilities test-reachability test-solver-equivalence benchmark
 .NOTPARALLEL: test
 
 all:    antlr perm
@@ -31,7 +31,7 @@ clean:
 	@cd $(ANTLR_DIR)/config && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 
-test: test-smoke test-capabilities benchmark test-solver-equivalence
+test: test-smoke test-capabilities test-reachability benchmark test-solver-equivalence
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)
@@ -40,6 +40,10 @@ test-smoke:
 test-capabilities:
 	$(info test solver formula capabilities ...)
 	@$(PYTHON) -u $(TEST_DIR)/solver_capabilities.py
+
+test-reachability:
+	$(info test reachability semantics ...)
+	@$(PYTHON) -u $(TEST_DIR)/reachability.py
 
 test-solver-equivalence:
 	$(info compare Z3 and Yices results ...)

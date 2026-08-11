@@ -26,6 +26,7 @@ tests/*
 !tests/run_artifact_benchmarks.py
 !tests/compare_solvers.py
 !tests/solver_capabilities.py
+!tests/reachability.py
 !tests/smoke_solvers.py
 !tests/README.md
 !tests/benchmarks/

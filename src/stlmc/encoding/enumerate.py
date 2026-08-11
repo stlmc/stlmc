@@ -182,9 +182,10 @@ class EnumerateAlgorithm(Algorithm):
                     scenarios=self.last_scenario_count,
                     constraint_size=total_size,
                     found_scenario=self.runner.winning_scenario,
+                    witness_label="witness" if is_reach else "counterexample",
                 )
                 if is_reach:
-                    return "True", total_time, finished_bound, None
+                    return "True", total_time, finished_bound, result_model.get_assignments()
                 return "False", total_time, finished_bound, result_model.get_assignments()
 
             if not self.loop_mode:
@@ -200,9 +201,10 @@ class EnumerateAlgorithm(Algorithm):
                         scenarios=self.last_scenario_count,
                         constraint_size=total_size,
                         found_scenario=self.runner.winning_scenario,
+                        witness_label="witness" if is_reach else "counterexample",
                     )
                     if is_reach:
-                        return "True", self.runner.time, finished_bound, None
+                        return "True", self.runner.time, finished_bound, runner_model.get_assignments()
                     return "False", self.runner.time, finished_bound, runner_model.get_assignments()
             printer.bound_finished(
                 b, "unknown" if self.runner.had_unknown else "unsat",
