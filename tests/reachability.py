@@ -39,7 +39,8 @@ goal:
 
 class ReachabilityIntegrationTest(unittest.TestCase):
     def run_model(self, goal, *, threshold="0.01", two_step=False,
-                  extra_args=(), visualize=False, solver="dreal", bound=0):
+                  extra_args=(), visualize=False, solver="dreal", bound=0,
+                  scenario_batch_size=1):
         with tempfile.TemporaryDirectory(prefix="stlmc-reach-") as directory:
             work = Path(directory)
             model = work / "reach.model"
@@ -54,6 +55,7 @@ common {{
     solver = "{solver}"
     two-step = "{two_step}"
     parallel = "false"
+    scenario-batch-size = {scenario_batch_size}
     visualize = "{visualize}"
     verbose = "false"
 }}
@@ -68,6 +70,7 @@ dreal {{
                     two_step=str(two_step).lower(),
                     visualize=str(visualize).lower(),
                     solver=solver,
+                    scenario_batch_size=scenario_batch_size,
                     dreal=DREAL,
                 ),
                 encoding="utf-8",
@@ -122,6 +125,15 @@ dreal {{
         self.assertIn("status      : reachable at bound 0", completed.stdout)
         self.assertIn("witness=scenario", completed.stdout)
         self.assertNotIn("counterexample=scenario", completed.stdout)
+
+    def test_two_step_flushes_partial_scenario_batch(self):
+        completed, _ = self.run_model(
+            "reach (and (x >= 4) (x <= 6))",
+            two_step=True,
+            scenario_batch_size=8,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("status      : reachable at bound 0", completed.stdout)
 
     def test_supported_solvers_agree_on_reachable_target(self):
         for solver in ("z3", "yices", "dreal"):

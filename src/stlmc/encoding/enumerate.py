@@ -15,6 +15,23 @@ from ..solver.z3 import *
 from ..util.logger import Logger
 from ..util.print import Printer
 from ..util.interrupt import raise_if_interrupted
+from ..exception.exception import IllegalArgumentError
+
+
+def scenario_batch_formula(refinements: List[Tuple[Formula, Formula]]) -> Formula:
+    if len(refinements) == 0:
+        raise IllegalArgumentError("scenario batch cannot be empty")
+
+    common = refinements[0][0]
+    if all(refinement_common == common for refinement_common, _ in refinements):
+        scenario_parts = [scenario_part for _, scenario_part in refinements]
+        disjunction = scenario_parts[0] if len(scenario_parts) == 1 else Or(scenario_parts)
+        return And([common, disjunction])
+
+    # A future encoding may produce scenario-dependent "common" constraints.
+    # Preserve correctness in that case instead of factoring them unsafely.
+    return Or([And([refinement_common, scenario_part])
+               for refinement_common, scenario_part in refinements])
 
 
 class EnumerateAlgorithm(Algorithm):
@@ -51,6 +68,9 @@ class EnumerateAlgorithm(Algorithm):
 
         parallel = common_section.get_value("parallel")
         core = int(common_section.get_value("parallel-core"))
+        scenario_batch_size = int(common_section.get_value("scenario-batch-size"))
+        if scenario_batch_size < 1:
+            raise IllegalArgumentError("scenario-batch-size must be at least 1")
         is_generalized = common_section.get_value("concrete") != "true"
 
         if self.runner is not None:
@@ -162,7 +182,7 @@ class EnumerateAlgorithm(Algorithm):
                                                                       model_consts, stl_consts, stl_time_consts,
                                                                       model_f_k_final, final_f_k, time_order_const,
                                                                       solver, printer,
-                                                                      completed_before_bound,
+                                                                      scenario_batch_size,
                                                                       is_generalized=is_generalized)
 
             finished_bound = b
@@ -223,7 +243,7 @@ class EnumerateAlgorithm(Algorithm):
                        acc_model: List[Formula], acc_stl: List[Formula], acc_stl_time: List[Formula],
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
                        smt_solver: SMTSolver, printer: Printer,
-                       completed_before_bound: int,
+                       scenario_batch_size: int,
                        is_generalized=True):
         total_time = 0.0
 
@@ -263,6 +283,37 @@ class EnumerateAlgorithm(Algorithm):
         false = BoolVal("False")
         counter = 0
         submitted = 0
+        pending_refinements: List[Tuple[Formula, Formula]] = []
+        pending_scenarios: List[int] = []
+
+        def submit_pending_batch():
+            nonlocal submitted
+            if len(pending_refinements) == 0 or self.loop_mode:
+                return False, None
+
+            first_scenario = pending_scenarios[0]
+            last_scenario = pending_scenarios[-1]
+            scenario_label = (
+                first_scenario if first_scenario == last_scenario
+                else "{}-{}".format(first_scenario, last_scenario)
+            )
+            self.runner.set_debug(
+                "{}_b{:03d}_s{}".format(self.debug_name, bound, scenario_label)
+            )
+            self.runner.set_scenario(scenario_label)
+            # Multinary formulas retain the supplied list, so detach it before
+            # clearing the pending batch.
+            batch_formula = scenario_batch_formula(list(pending_refinements))
+            batch_scenario_count = len(pending_refinements)
+            pending_refinements.clear()
+            pending_scenarios.clear()
+
+            self.runner.run(smt_solver, batch_formula)
+            submitted += batch_scenario_count
+            runner_result, runner_model = self.runner.check_sat()
+            printer.scenario_progress(bound, submitted)
+            return runner_result, runner_model
+
         while True:
             raise_if_interrupted()
             scenario_s = time.monotonic()
@@ -355,39 +406,34 @@ class EnumerateAlgorithm(Algorithm):
                     range_consts = list(map(lambda t: t[0], [model.make_range_consts(d) for d in range(0, bound + 1)]))
                     range_const = And(range_consts)
 
-                    # total_const = And([path_const, stl_acc_time, range_const, model_abstract_const])
+                    # Split scenario-specific and shared constraints so an OR
+                    # batch does not duplicate the full flow/invariant model.
                     if model.is_gen_reach_condition():
-                        total_const = And([path_const, extra_prop_path_const, stl_final,
-                                           extra_time_path_const, range_const])
-
                         reduction_dict = dict()
                         for mac in model_abstract_const.children:
                             assert isinstance(mac, Eq)
                             reduction_dict[mac.left] = mac.right
-                        total_const = substitution(total_const, reduction_dict)
+                        scenario_part = substitution(
+                            And([path_const, extra_prop_path_const, extra_time_path_const]),
+                            reduction_dict,
+                        )
+                        common_part = substitution(
+                            And([stl_final, range_const]), reduction_dict
+                        )
                     else:
-                        total_const = And([path_const, extra_prop_path_const, stl_final,
-                                           extra_time_path_const, range_const,
-                                           model_abstract_const])
+                        scenario_part = And(
+                            [path_const, extra_prop_path_const, extra_time_path_const]
+                        )
+                        common_part = And(
+                            [stl_final, range_const, model_abstract_const]
+                        )
 
                     if not self.loop_mode:
-                        self.runner.set_debug(
-                            "{}_b{:03d}_s{:03d}".format(
-                                self.debug_name, bound, counter
-                            )
-                        )
-                        self.runner.set_scenario(counter)
-                        self.runner.run(smt_solver, total_const)
-                        submitted += 1
-                        runner_result, runner_model = self.runner.check_sat()
-                        completed = (
-                            submitted if isinstance(self.runner, NormalRunner)
-                            else self.runner.number - completed_before_bound
-                        )
-                        if isinstance(self.runner, NormalRunner):
-                            printer.scenario_progress(bound, submitted)
-                        else:
-                            printer.scenario_progress(bound, submitted, completed)
+                        pending_refinements.append((common_part, scenario_part))
+                        pending_scenarios.append(counter)
+                        runner_result, runner_model = (False, None)
+                        if len(pending_refinements) >= scenario_batch_size:
+                            runner_result, runner_model = submit_pending_batch()
                         if runner_result:
                             self.last_scenario_count = submitted
                             return True, runner_model, self.runner.time
@@ -424,36 +470,31 @@ class EnumerateAlgorithm(Algorithm):
                     )
 
                     if model.is_gen_reach_condition():
-                        total_const = And([concrete_path, extra_prop_path_const, stl_final,
-                                           extra_time_path_const, range_const])
                         reduction_dict = {
                             mac.left: mac.right for mac in model_abstract_const.children
                             if isinstance(mac, Eq)
                         }
-                        total_const = substitution(total_const, reduction_dict)
+                        scenario_part = substitution(
+                            And([concrete_path, extra_prop_path_const, extra_time_path_const]),
+                            reduction_dict,
+                        )
+                        common_part = substitution(
+                            And([stl_final, range_const]), reduction_dict
+                        )
                     else:
-                        total_const = And([concrete_path, extra_prop_path_const, stl_final,
-                                           extra_time_path_const, range_const,
-                                           model_abstract_const])
+                        scenario_part = And(
+                            [concrete_path, extra_prop_path_const, extra_time_path_const]
+                        )
+                        common_part = And(
+                            [stl_final, range_const, model_abstract_const]
+                        )
 
                     if not self.loop_mode:
-                        self.runner.set_debug(
-                            "{}_b{:03d}_s{:03d}".format(
-                                self.debug_name, bound, counter
-                            )
-                        )
-                        self.runner.set_scenario(counter)
-                        self.runner.run(smt_solver, total_const)
-                        submitted += 1
-                        runner_result, runner_model = self.runner.check_sat()
-                        completed = (
-                            submitted if isinstance(self.runner, NormalRunner)
-                            else self.runner.number - completed_before_bound
-                        )
-                        if isinstance(self.runner, NormalRunner):
-                            printer.scenario_progress(bound, submitted)
-                        else:
-                            printer.scenario_progress(bound, submitted, completed)
+                        pending_refinements.append((common_part, scenario_part))
+                        pending_scenarios.append(counter)
+                        runner_result, runner_model = (False, None)
+                        if len(pending_refinements) >= scenario_batch_size:
+                            runner_result, runner_model = submit_pending_batch()
                         if runner_result:
                             self.last_scenario_count = submitted
                             return True, runner_model, self.runner.time
@@ -463,6 +504,11 @@ class EnumerateAlgorithm(Algorithm):
                     counter += 1
             if result.r == z3.Z3_L_FALSE:
                 break
+
+        runner_result, runner_model = submit_pending_batch()
+        if runner_result:
+            self.last_scenario_count = submitted
+            return True, runner_model, self.runner.time
 
         self.scenario_solver.pop()
         self.scenario_solver.add(z3Obj(n_symbolic_path_next))
