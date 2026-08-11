@@ -1,11 +1,13 @@
 # Tests
 
-The test suite has five parts:
+The test suite has six parts:
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
 - `solver_capabilities.py` verifies solver-specific arithmetic validation and
   dReal inverse-trigonometric translations.
+- `process_cleanup.py` verifies that parallel solver workers share one bounded
+  cleanup deadline and are forcefully reaped when graceful termination stalls.
 - `reachability.py` checks zero-jump reachability, unreachable results,
   threshold relaxation, one-step/two-step agreement, Z3/Yices/dReal
   agreement, temporal-target validation, and witness generation.
@@ -40,16 +42,17 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run all five test parts in order: solver smoke tests, formula capability tests,
-reachability tests, every annotated benchmark, and the Z3/Yices comparison:
+Run all six test parts in order: solver smoke tests, formula capability tests,
+robustness and process-cleanup tests, reachability tests, every annotated
+benchmark, and the Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all five test parts. This currently runs the smoke,
-capability, and reachability tests, 30 FAST benchmark cases, and 20 Z3/Yices
-comparisons:
+Run the fast selection of all six test parts. This currently runs the smoke,
+capability, robustness, process-cleanup, and reachability tests, 30 FAST
+benchmark cases, and 20 Z3/Yices comparisons:
 
 ```sh
 make test FAST=1

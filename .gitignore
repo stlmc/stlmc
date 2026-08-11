@@ -28,6 +28,7 @@ tests/*
 !tests/solver_capabilities.py
 !tests/reachability.py
 !tests/robustness_operations.py
+!tests/process_cleanup.py
 !tests/smoke_solvers.py
 !tests/README.md
 !tests/benchmarks/

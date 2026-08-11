@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import threading
+import time
 from abc import abstractmethod
 from queue import Empty, Queue
 from typing import Dict, Set
@@ -128,6 +129,7 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.unknown_errors = []
         self.current_scenario = None
         self.winning_scenario = None
+        self.cleanup_timeout = 3.0
 
 
     def set_debug(self, msg: str):
@@ -147,18 +149,33 @@ class ParallelAlgRunner(AlgorithmRunner):
         while not self.sema.acquire(timeout=0.1):
             raise_if_interrupted()
         raise_if_interrupted()
+        # A signal between spawning a solver and registering it in self.procs
+        # would leave cleanup unable to find the child.  Block termination
+        # signals across that small critical section; a pending signal is
+        # delivered immediately after the registered process becomes visible.
+        blocked_signals = {
+            sig for sig in (getattr(signal, "SIGINT", None),
+                            getattr(signal, "SIGTERM", None))
+            if sig is not None
+        }
+        previous_mask = None
+        if hasattr(signal, "pthread_sigmask"):
+            previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked_signals)
         try:
-            proc = solver.process(self.main_queue, self.sema, const)
-        except Exception:
-            self.sema.release()
-            raise
-        proc._stlmc_scenario = self.current_scenario
-        self.procs.add(proc)
+            try:
+                proc = solver.process(self.main_queue, self.sema, const)
+            except Exception:
+                self.sema.release()
+                raise
+            proc._stlmc_scenario = self.current_scenario
+            self.procs.add(proc)
+        finally:
+            if previous_mask is not None:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
 
 
     def kill_all(self):
         procs = list(self.procs)
-        self.procs.clear()
 
         thread_workers = [proc for proc in procs if getattr(proc, "_stlmc_thread_worker", False)]
         process_workers = [proc for proc in procs if not getattr(proc, "_stlmc_thread_worker", False)]
@@ -181,24 +198,44 @@ class ParallelAlgRunner(AlgorithmRunner):
                 except ProcessLookupError:
                     pass
 
+        # Use one deadline for the whole worker set.  Waiting one second per
+        # worker can exceed the outer benchmark runner's five-second grace
+        # period and let it kill STLMC before child cleanup has finished.
+        deadline = time.monotonic() + self.cleanup_timeout
+        for proc in process_workers:
+            remaining = max(0.0, deadline - time.monotonic())
+            if not is_running(proc):
+                continue
+            if hasattr(proc, "wait"):
+                try:
+                    proc.wait(timeout=remaining)
+                except subprocess.TimeoutExpired:
+                    pass
+            else:
+                proc.join(timeout=remaining)
+
+        for proc in process_workers:
+            if not is_running(proc):
+                continue
+            try:
+                if hasattr(proc, "wait"):
+                    if getattr(proc, "_stlmc_process_group", False):
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    else:
+                        proc.kill()
+                else:
+                    proc.kill()
+            except ProcessLookupError:
+                pass
+
         for proc in process_workers:
             if hasattr(proc, "wait"):
                 try:
                     proc.wait(timeout=1)
                 except subprocess.TimeoutExpired:
-                    try:
-                        if getattr(proc, "_stlmc_process_group", False):
-                            os.killpg(proc.pid, signal.SIGKILL)
-                        else:
-                            proc.kill()
-                    except ProcessLookupError:
-                        pass
-                    proc.wait()
+                    pass
             else:
                 proc.join(timeout=1)
-                if proc.is_alive():
-                    proc.kill()
-                    proc.join(timeout=1)
 
         for proc in process_workers:
             worker = getattr(proc, "_stlmc_worker", None)
@@ -210,6 +247,11 @@ class ParallelAlgRunner(AlgorithmRunner):
                 self.main_queue.get_nowait()
             except Empty:
                 break
+        finished_processes = {
+            proc for proc in process_workers if not is_running(proc)
+        }
+        self.procs.difference_update(thread_workers)
+        self.procs.difference_update(finished_processes)
 
     def wait_and_check_sat(self, progress=None):
         while len(self.procs) > 0:
