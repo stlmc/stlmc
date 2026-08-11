@@ -179,19 +179,6 @@ class StlMC(Model):
                 end_vector.append(Real(dyn_var_id + "_" + str(bound) + "_t"))
                 index += 1
             new_dynamics = make_new_dynamics(dynamics, bound, self.mode_var_dict, self.range_dict, self.const_dict)
-            constant_consts = list()
-
-            if isinstance(new_dynamics, Ode):
-                for cur_ode in range(len(new_dynamics.exps)):
-                    cur_flow = new_dynamics.exps[cur_ode]
-                    if len(get_vars(cur_flow)) == 0:
-                        constant_consts.append(
-                            Eq(end_vector[cur_ode], start_vector[cur_ode] + cur_flow * Real("time_" + str(bound))))
-                        if bound == 0:
-                            constant_consts.append(Eq(Real("time_0"), Real("tau_0")))
-                        else:
-                            constant_consts.append(Eq(Real("time_" + str(bound)),
-                                                      (Real("tau_" + str(bound + 1)) - Real("tau_" + str(bound)))))
             integral = Integral(module_index, end_vector, start_vector, new_dynamics)
             bool_integral = Bool("newIntegral_" + str(module_index) + "_" + str(bound))
             self.boolean_abstract[bool_integral] = integral
