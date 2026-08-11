@@ -1,4 +1,5 @@
 import concurrent.futures
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, ProcessPoolExecutor
 from functools import reduce
@@ -37,6 +38,44 @@ def evaluated_arithmetic_literals(clauses: Set[Formula], real_set: Set[Variable]
             valuation = true if model.eval(z3Obj(clause_formula)) else false
             literals.append(Eq(clause_formula, valuation))
     return literals
+
+
+def smaller_unsat_core(solver, tracked_literals: Dict[str, Formula],
+                       initial_core: Set[str], attempts: int,
+                       seed: int = 0) -> Set[str]:
+    """Try shuffled assertion orders and retain the smallest minimized core."""
+    if attempts <= 1 or len(initial_core) <= 1:
+        return initial_core
+
+    track_ids = set(tracked_literals.keys())
+    base_assertions = []
+    for assertion in solver.assertions():
+        is_tracked = (
+            z3.is_implies(assertion) and assertion.num_args() == 2 and
+            str(assertion.arg(0)) in track_ids
+        )
+        if not is_tracked:
+            base_assertions.append(assertion)
+
+    best = set(initial_core)
+    ordered_literals = list(tracked_literals.items())
+    for attempt in range(1, attempts):
+        candidate_solver = z3.SolverFor("QF_LRA")
+        candidate_solver.set(":core.minimize", True)
+        candidate_solver.set("random_seed", seed + attempt)
+        candidate_solver.add(*base_assertions)
+
+        shuffled = list(ordered_literals)
+        random.Random(seed + attempt).shuffle(shuffled)
+        for track_id, literal in shuffled:
+            candidate_solver.assert_and_track(z3Obj(literal), track_id)
+
+        if candidate_solver.check().r != z3.Z3_L_FALSE:
+            continue
+        candidate = {str(item) for item in candidate_solver.unsat_core()}
+        if len(candidate) < len(best):
+            best = candidate
+    return best
 
 
 def scenario_batch_formula(refinements: List[Tuple[Formula, Formula]]) -> Formula:
@@ -92,6 +131,9 @@ class EnumerateAlgorithm(Algorithm):
         scenario_batch_size = int(common_section.get_value("scenario-batch-size"))
         if scenario_batch_size < 1:
             raise IllegalArgumentError("scenario-batch-size must be at least 1")
+        core_minimize_attempts = int(common_section.get_value("core-minimize-attempts"))
+        if core_minimize_attempts < 1:
+            raise IllegalArgumentError("core-minimize-attempts must be at least 1")
         is_generalized = common_section.get_value("concrete") != "true"
 
         if self.runner is not None:
@@ -204,6 +246,7 @@ class EnumerateAlgorithm(Algorithm):
                                                                       model_f_k_final, final_f_k, time_order_const,
                                                                       solver, printer,
                                                                       scenario_batch_size,
+                                                                      core_minimize_attempts,
                                                                       is_generalized=is_generalized)
 
             finished_bound = b
@@ -265,6 +308,7 @@ class EnumerateAlgorithm(Algorithm):
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
                        smt_solver: SMTSolver, printer: Printer,
                        scenario_batch_size: int,
+                       core_minimize_attempts: int,
                        is_generalized=True):
         total_time = 0.0
 
@@ -380,16 +424,29 @@ class EnumerateAlgorithm(Algorithm):
                         )
 
                     minimize_s = time.monotonic()
-                    self.minimize_solver.check()
+                    minimize_result = self.minimize_solver.check()
                     raise_if_interrupted()
                     minimize_e = time.monotonic()
                     total_time += minimize_e - minimize_s
 
+                    if minimize_result.r != z3.Z3_L_FALSE:
+                        self.minimize_solver.pop()
+                        raise NotSupportedError(
+                            "cannot construct an unsatisfiable scenario core"
+                        )
+
                     unsat_cores = self.minimize_solver.unsat_core()
 
                     # remove tracking infos
-                    self.minimize_solver.pop()
                     picked_unsat_cores = {str(unsat_core) for unsat_core in unsat_cores}
+                    tracked_literals = dict(bool_assignment_dict)
+                    tracked_literals.update(real_dict)
+                    picked_unsat_cores = smaller_unsat_core(
+                        self.minimize_solver, tracked_literals,
+                        picked_unsat_cores, core_minimize_attempts,
+                        seed=(bound + 1) * 1000003 + counter,
+                    )
+                    self.minimize_solver.pop()
                     p_reals = picked_unsat_cores.difference(set(neg_dict.keys()))
                     core_bool_tracks = picked_unsat_cores.difference(p_reals)
 

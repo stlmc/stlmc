@@ -23,7 +23,7 @@ class ConfigVisitor(configVisitor):
         self.section_argument_dict["common"] = {
             "threshold", "bound", "time-bound",
             "solver", "goal", "time-horizon", "parallel-core",
-            "scenario-batch-size", "smt2-dir"
+            "scenario-batch-size", "core-minimize-attempts", "smt2-dir"
         }
         self.section_argument_dict["z3"] = {"logic"}
         self.section_argument_dict["yices"] = {"logic"}
@@ -33,6 +33,7 @@ class ConfigVisitor(configVisitor):
             ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
             ("solver", frozenset({"z3", "yices", "dreal"})), ("goal", "string"), ("time-horizon", "float"), ("parallel-core", "integer"),
             ("scenario-batch-size", "integer"),
+            ("core-minimize-attempts", "integer"),
             ("smt2-dir", "string")
         }
         self.type_check_dict["z3"] = {("logic", frozenset({"QF_NRA", "QF_LRA"}))}

@@ -12,6 +12,7 @@ from stlmc.constraints.constraints import Bool, BoolVal, Eq, Gt, Leq, Real, Real
 from stlmc.encoding.enumerate import (
     assert_and_track_assignment,
     evaluated_arithmetic_literals,
+    smaller_unsat_core,
 )
 from stlmc.solver.z3 import z3Obj
 
@@ -57,6 +58,24 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
 
         self.assertEqual(literals, [Eq(clause, self.false)])
 
+    def test_extra_core_attempts_never_return_a_larger_core(self):
+        a = Bool("a")
+        b = Bool("b")
+        solver = z3.SolverFor("QF_LRA")
+        solver.set(":core.minimize", True)
+        solver.add(z3.Not(z3.And(z3Obj(a), z3Obj(b))))
+        literals = {
+            "track-a": Eq(a, BoolVal("True")),
+            "track-b": Eq(b, BoolVal("True")),
+        }
+        for track_id, literal in literals.items():
+            solver.assert_and_track(z3Obj(literal), track_id)
+        self.assertEqual(solver.check(), z3.unsat)
+        initial = {str(item) for item in solver.unsat_core()}
+
+        improved = smaller_unsat_core(solver, literals, initial, attempts=3)
+
+        self.assertLessEqual(len(improved), len(initial))
 
 if __name__ == "__main__":
     unittest.main()
