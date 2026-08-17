@@ -19,33 +19,47 @@ jobs:
         }
 
   build:
-    name: Build wheel 📦
+    name: Build and test wheel 📦
     needs: validate
     strategy:
+      # Run every environment so a failure report is available for each one.
+      # The matrix job still fails if any environment fails, which blocks
+      # publishing jobs that depend on it.
+      fail-fast: false
       matrix:
         include:
         - os: ubuntu-latest
           python-version: '3.8'
+          architecture: x64
         - os: ubuntu-latest
           python-version: '3.9'
+          architecture: x64
         - os: ubuntu-latest
           python-version: '3.10'
+          architecture: x64
         - os: ubuntu-latest
           python-version: '3.11'
+          architecture: x64
         - os: ubuntu-latest
           python-version: '3.12'
+          architecture: x64
         # These are the newest CPython releases with Apple Silicon builds
         # available to setup-python for Python 3.8 through 3.10.
-        - os: macos-latest
+        - os: macos-15
           python-version: '3.8.10'
-        - os: macos-latest
+          architecture: arm64
+        - os: macos-15
           python-version: '3.9.13'
-        - os: macos-latest
+          architecture: arm64
+        - os: macos-15
           python-version: '3.10.11'
-        - os: macos-latest
+          architecture: arm64
+        - os: macos-15
           python-version: '3.11'
-        - os: macos-latest
+          architecture: arm64
+        - os: macos-15
           python-version: '3.12'
+          architecture: arm64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,6 +68,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.architecture }}
 
     - name: Install pypa/build
       run: >-
@@ -64,6 +79,13 @@ jobs:
 
     - name: Prepare prerequisites
       run: ./build.sh prep
+
+    - name: Ensure Rosetta is available
+      if: matrix.os == 'macos-15'
+      run: |
+        if ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+          sudo softwareupdate --install-rosetta --agree-to-license
+        fi
 
     - name: Build a Linux wheel
       if: matrix.os == 'ubuntu-latest'
@@ -78,11 +100,32 @@ jobs:
         mv wheelhouse dist
 
     - name: Build an Apple Silicon wheel
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-15'
+      env:
+        # Apple Silicon was introduced with macOS 11.  Building on macOS 15
+        # without this would unnecessarily restrict the wheel to macOS 15+.
+        MACOSX_DEPLOYMENT_TARGET: '11.0'
       run: |
         # dReal3 is x86_64-only on macOS and runs on Apple Silicon via Rosetta.
+        test "$(uname -m)" = "arm64"
+        file ./3rd_party/dReal3/dReal | grep -q x86_64
         ./3rd_party/dReal3/dReal --version
         python3 -m build --wheel
+
+    - name: Install the built wheel
+      run: |
+        python3 -m pip install --force-reinstall dist/*.whl
+        python3 -m pip check
+
+    - name: Test the installed distribution
+      env:
+        # Avoid network update checks during the release test matrix.
+        STLMC_DISABLE_UPDATE_CHECK: '1'
+      run: >-
+        make test
+        FAST=1
+        PYTHON=python3
+        ARTIFACT_OUTPUT='${{ runner.temp }}/artifact-logs'
 
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
