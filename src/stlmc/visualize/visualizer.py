@@ -239,9 +239,10 @@ class Visualizer:
         cont_values = self.make_cont_values(assignment, cont_var_dict, max_bound)
         expanded_formula = substitution(formula, prop_dict)
 
+        heading = "Witness" if file_name.endswith(".witness") else "Counterexample"
         lines = [
-            "Counterexample",
-            "==============",
+            heading,
+            "=" * len(heading),
             "",
             "goal: {}".format(formula_label),
             "formula: {}".format(self._model_text(expanded_formula)),

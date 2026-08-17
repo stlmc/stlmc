@@ -173,6 +173,8 @@ jobs:
         merge-multiple: true
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
 
   github-release:
     name: >-
@@ -201,21 +203,47 @@ jobs:
     - name: Create GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      run: >-
-        gh release create
-        '${{ github.ref_name }}'
-        --repo '${{ github.repository }}'
-        --notes ""
+        RELEASE_TAG: ${{ github.ref_name }}
+        RELEASE_REPO: ${{ github.repository }}
+      shell: bash
+      run: |
+        for attempt in 1 2 3 4 5; do
+          # A previous request may have created the release even if GitHub
+          # returned a transient 5xx response to the client.
+          if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+            echo "GitHub Release $RELEASE_TAG already exists"
+            exit 0
+          fi
+          if gh release create "$RELEASE_TAG" --repo "$RELEASE_REPO" --notes ""; then
+            exit 0
+          fi
+          if [ "$attempt" -eq 5 ]; then
+            echo "Failed to create GitHub Release after $attempt attempts" >&2
+            exit 1
+          fi
+          sleep $((attempt * 10))
+        done
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ github.ref_name }}
+        RELEASE_REPO: ${{ github.repository }}
       # Upload to GitHub Release using the `gh` CLI.
       # `dist/` contains the built packages, and the
       # sigstore-produced signatures and certificates.
-      run: >-
-        gh release upload
-        '${{ github.ref_name }}' dist/**
-        --repo '${{ github.repository }}'
+      shell: bash
+      run: |
+        for attempt in 1 2 3 4 5; do
+          if gh release upload "$RELEASE_TAG" dist/* \
+              --repo "$RELEASE_REPO" --clobber; then
+            exit 0
+          fi
+          if [ "$attempt" -eq 5 ]; then
+            echo "Failed to upload release artifacts after $attempt attempts" >&2
+            exit 1
+          fi
+          sleep $((attempt * 10))
+        done
 
 
   # publish-to-testpypi:
