@@ -39,6 +39,11 @@ class InstallerCliTest(unittest.TestCase):
             "Application Support/stlmc/solvers/dReal3/dReal",
             "XDG_DATA_HOME",
             "x86-64 Linux",
+            "brew trust --formula sri-csl/sri-csl/yices2",
+            "brew trust --formula sri-csl/sri-csl/libpoly",
+            "brew trust --formula sri-csl/sri-csl/cudd",
+            "entire SRI tap is not required",
+            "DYLD_LIBRARY_PATH",
             "stlmc-install-solvers dreal",
         ):
             with self.subTest(expected=expected):

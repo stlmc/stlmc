@@ -1,6 +1,7 @@
 # logging: linear
 # @benchmark.expected(f1=satisfied:20, f2=violated:3, f3=violated:3)
 # @benchmark.fast(f1, f2, f3)
+# @benchmark.quick(f1, f2, f3)
 # model description:
 #
 # There exist a train and a crossing barrier on a

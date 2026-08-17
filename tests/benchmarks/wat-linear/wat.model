@@ -1,6 +1,7 @@
 # logging: linear
 # @benchmark.expected(f1=satisfied:20, f2=violated:4, f3=satisfied:20)
 # @benchmark.fast(f1, f2, f3)
+# @benchmark.quick(f1, f2, f3)
 bool a;     bool b;
 [0, 10] x1; [0, 10] x2;
 { mode: a = false; b = false;

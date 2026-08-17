@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,25 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_quoted_config_value_preserves_spaces(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "space-path.cfg"
+            expected = (
+                "/Users/runner/Library/Application Support/"
+                "stlmc/solvers/dReal3/dReal"
+            )
+            config_path.write_text(
+                'dreal { executable-path = "' + expected + '" }\n',
+                encoding="utf-8",
+            )
+
+            config = ConfigVisitor().parse_from_file(str(config_path))
+
+        self.assertEqual(
+            config.get_section("dreal").get_value("executable-path"),
+            expected,
+        )
+
     def test_every_config_option_has_a_specific_description(self):
         visitor = ConfigVisitor()
         value_options, boolean_options = visitor.generate_cmd_args()

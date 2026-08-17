@@ -23,7 +23,7 @@ RCURLY : '}' ;
 LTUPLE : '(';
 RTUPLE : ')';
 COMMA  : ',' ;
-QUOTE : '"' ;
+STRING : '"' ~["\r\n]* '"' ;
 EQ : '=' ;
 
 fragment DIGIT      : [0-9] ;
@@ -56,14 +56,9 @@ args: (arg_assn)*;
 arg_assn: arg EQ value;
 
 arg : VALUE;
-value: QUOTE VALUE QUOTE # string_val
-    | QUOTE varible_names QUOTE # multi_string_val
+value: STRING # string_val
     | RUNALL # runall_val
     | RUNLABELED # runlabeled_only
     | NUMBER # number_val
     | # empty_val
     ;
-
-varible_names: VALUE COMMA varible_names # list_of_variable_names
-            |  VALUE # single_variable_name
-            ;

@@ -60,7 +60,7 @@ def _(f: UnaryTemporalFormula, sepMap, gen, fMap):
     op = {GloballyFormula: And, FinallyFormula: Or}
     global_time = f.global_time
     sep_point = list(sepMap[f])
-    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall(r"\d+", x.id)[0]))
     if isinstance(global_time.left, float):
         left = RealVal(str(global_time.left))
     else:
@@ -87,7 +87,7 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
     op1 = {UntilFormula: Or, ReleaseFormula: And}
     global_time = f.global_time
     sep_point = list(sepMap[f])
-    sep_point = sorted(sep_point, key=lambda x: int(re.findall("\d+", x.id)[0]))
+    sep_point = sorted(sep_point, key=lambda x: int(re.findall(r"\d+", x.id)[0]))
     if isinstance(global_time.left, float):
         left = RealVal(str(global_time.left))
     else:
@@ -104,7 +104,7 @@ def _(f: BinaryTemporalFormula, sepMap, gen, fMap):
 
 
 def _separateUnary(f: UnaryTemporalFormula, index, partition):
-    """
+    r"""
     >>> f = GloballyFormula(Interval(True, 1.0, False, 2.0), universeInterval, PropositionFormula('p'))
     >>> print(_separateUnary(f, 0, [1,2,3]))
     (([]_[1.0,2.0)^[0.0,1) p) /\ ([]_[1.0,2.0)^[1,1] p) /\ ([]_[1.0,2.0)^(1,2) p) /\ ([]_[1.0,2.0)^[2,2] p) /\ ([]_[1.0,2.0)^(2,3) p) /\ ([]_[1.0,2.0)^[3,3] p) /\ ([]_[1.0,2.0)^(3,inf) p))
@@ -127,7 +127,7 @@ def _separateUnary(f: UnaryTemporalFormula, index, partition):
 
 
 def _separateBinary(f: BinaryTemporalFormula, index, partition):
-    """
+    r"""
     >>> r = UntilFormula(Interval(False, 1.0, True, 2.0), universeInterval, PropositionFormula('p'), PropositionFormula('q'))
     >>> print(_separateBinary(r, 0, [1,2,3]))
     ((p U_(1.0,2.0]^[0.0,1) q) \/ (([]_[0,inf)^[0.0,1) p) /\ ([]_[0,inf)^[1,1] p) /\ ((<>_(1.0,2.0]^[1,1] q) \/ (p U_(1.0,2.0]^(1,2) q) \/ (([]_[0,inf)^(1,2) p) /\ ([]_[0,inf)^[2,2] p) /\ ((<>_(1.0,2.0]^[2,2] q) \/ (p U_(1.0,2.0]^(2,3) q) \/ (([]_[0,inf)^(2,3) p) /\ ([]_[0,inf)^[3,3] p) /\ ((<>_(1.0,2.0]^[3,3] q) \/ (p U_(1.0,2.0]^(3,inf) q))))))))

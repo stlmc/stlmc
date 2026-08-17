@@ -9,7 +9,7 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all antlr perm clean test test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark
+.PHONY: all antlr perm clean test test-quick test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark benchmark-quick
 .NOTPARALLEL: test
 
 all:    antlr perm
@@ -32,6 +32,10 @@ clean:
 	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 
 test: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
+
+# Short release checks plus benchmark cases that completed within 50 seconds
+# in the reference artifact logs. Each selected case gets a 200-second limit.
+test-quick: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)
@@ -85,3 +89,11 @@ benchmark:
 		--timeout $(or $(TIMEOUT),$(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \
 		--jobs $(or $(ARTIFACT_JOBS),$(DEFAULT_ARTIFACT_JOBS)) \
 		--output $(or $(OUTPUT),$(ARTIFACT_OUTPUT),artifact-logs)
+
+benchmark-quick:
+	$(info start quick release benchmarks ...)
+	@$(PYTHON) -u $(TEST_DIR)/run_artifact_benchmarks.py \
+		--quick \
+		--timeout 200 \
+		--jobs $(or $(QUICK_JOBS),4) \
+		--output $(or $(QUICK_OUTPUT),$(ARTIFACT_OUTPUT),artifact-logs)

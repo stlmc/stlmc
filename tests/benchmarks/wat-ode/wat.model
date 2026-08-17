@@ -1,6 +1,7 @@
 # logging: ode
 # @benchmark.expected(f1=violated:3, f2=violated:2, f3=satisfied:5)
 # @benchmark.fast(f2)
+# @benchmark.quick(f2)
 # model description:
 #
 # Two water tanks are connected by a single pipe.

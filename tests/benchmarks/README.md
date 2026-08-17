@@ -21,10 +21,14 @@ results are stored in each model file using this annotation:
 # @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
 # @benchmark.expected(f1=satisfied:0, reach=reachable:0)
 # @benchmark.fast(f1, f2, f3)
+# @benchmark.quick(f1, f2)
 ```
 
 The annotation label matches the suffix of its goal-specific configuration
 file. Reachability cases use `reachable` or `unreachable` as their status.
+The `quick` selection records chosen cases whose reference
+`logs/artifact-logs` run completed within 50 seconds, excluding `car-ode` and
+`bat-poly`, and `car-poly`; release CI gives each one a 200-second timeout.
 
 Run every benchmark with `make benchmark`. Select one model with, for example,
 `make benchmark ARTIFACT_SCOPE=rail-poly`.

@@ -182,12 +182,7 @@ class ConfigVisitor(configVisitor):
 
     # Visit a parse tree produced by configParser#string_val.
     def visitString_val(self, ctx: configParser.String_valContext):
-        return "\"{}\"".format(ctx.VALUE().getText())
-
-    # Visit a parse tree produced by configParser#multi_string_val.
-    def visitMulti_string_val(self, ctx: configParser.Multi_string_valContext):
-        vals = self.visit(ctx.varible_names())
-        return ",".join(vals)
+        return ctx.STRING().getText()
 
     # Visit a parse tree produced by configParser#runall_val.
     def visitRunall_val(self, ctx: configParser.Runall_valContext):
@@ -204,13 +199,3 @@ class ConfigVisitor(configVisitor):
     # Visit a parse tree produced by configParser#empty_val.
     def visitEmpty_val(self, ctx: configParser.Empty_valContext):
         return ""
-
-    # Visit a parse tree produced by configParser#list_of_variable_names.
-    def visitList_of_variable_names(self, ctx: configParser.List_of_variable_namesContext):
-        variables = [ctx.VALUE().getText()]
-        variables.extend(self.visit(ctx.varible_names()))
-        return variables
-
-    # Visit a parse tree produced by configParser#single_variable_name.
-    def visitSingle_variable_name(self, ctx: configParser.Single_variable_nameContext):
-        return [ctx.VALUE().getText()]

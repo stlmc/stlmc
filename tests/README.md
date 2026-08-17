@@ -1,6 +1,6 @@
 # Tests
 
-The test suite has nine parts:
+The test suite has ten parts:
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
@@ -15,6 +15,9 @@ The test suite has nine parts:
 - `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
   remain synchronized and that importing the visualization CLI does not load
   Bokeh or the full visualizer.
+- `install_solvers.py` checks solver selection and status behavior, platform
+  installation commands, dReal installation permissions and locations, and
+  executable discovery precedence without accessing the network.
 - `process_cleanup.py` verifies that parallel solver workers share one bounded
   cleanup deadline and are forcefully reaped when graceful termination stalls.
 - `reachability.py` checks zero-jump reachability, unreachable results,
@@ -75,6 +78,24 @@ and 20 Z3/Yices comparisons:
 
 ```sh
 make test FAST=1
+```
+
+Run the release workflow selection: all short unit/integration checks plus the
+23 artifact benchmark cases selected from those that completed within 50
+seconds in the reference `logs/artifact-logs` results, excluding `car-ode` and
+`bat-poly`, and `car-poly`.
+Quick benchmark cases run four at a time with a
+200-second timeout per case. The full benchmark suite and Z3/Yices benchmark
+comparison remain local pre-release checks:
+
+```sh
+make test-quick
+```
+
+Override quick benchmark concurrency or output location when needed:
+
+```sh
+make test-quick QUICK_JOBS=2 QUICK_OUTPUT=/tmp/stlmc-quick-logs
 ```
 
 Run only the SMT solver smoke tests:
@@ -151,6 +172,13 @@ Run only benchmarks:
 make benchmark
 ```
 
+Run only the 23 quick release benchmark cases with their fixed 200-second
+per-case timeout:
+
+```sh
+make benchmark-quick
+```
+
 Run one formula from one model, with a per-case timeout and solver candidate
 batch size:
 
@@ -183,6 +211,10 @@ Make variables can be combined on the command line:
   and Z3 comparison case; the default is `3600` (`300` with `FAST=1`).
 - `ARTIFACT_OUTPUT=<directory>`: output log directory; the default is
   `artifact-logs`.
+- `QUICK_JOBS=<count>`: concurrency for `benchmark-quick` and the benchmark
+  portion of `test-quick`; the default is `4`.
+- `QUICK_OUTPUT=<directory>`: output directory for `benchmark-quick`; it falls
+  back to `ARTIFACT_OUTPUT` and then `artifact-logs`.
 - `MODEL=<directory/model>`: runs only the named model below
   `tests/benchmarks`, without the `.model` suffix. This option applies to the
   `benchmark` target.

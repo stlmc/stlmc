@@ -19,7 +19,7 @@ For the project website, publications, and full manual, visit
 
 ## Requirements and installation
 
-STLmc requires Python 3.8 or later. Install the released package with:
+STLmc supports CPython 3.8 through 3.14. Install the released package with:
 
 ```sh
 python -m pip install stlmc
@@ -62,6 +62,31 @@ Yices additionally requires its native library. Automatic Yices installation
 uses the SRI package repository on Ubuntu/Debian and Homebrew on macOS, and may
 request administrator privileges. On other Linux distributions, install the
 Yices native library with the system package manager before running `--check`.
+
+On Homebrew 6, a first-time Yices installation may require explicit trust for
+the three third-party formulae that will be installed. If Homebrew reports an
+untrusted-tap error, run:
+
+```sh
+brew tap SRI-CSL/sri-csl
+brew trust --formula sri-csl/sri-csl/yices2
+brew trust --formula sri-csl/sri-csl/libpoly
+brew trust --formula sri-csl/sri-csl/cudd
+stlmc-install-solvers yices
+```
+
+These commands trust only Yices and its `libpoly` and `cudd` dependencies.
+Trusting the entire SRI tap is not required. Users whose Yices Python binding
+and native library are already available do not need this setup.
+
+If Yices is installed on Apple Silicon but `--check` reports that
+`libyices.dylib` cannot be found, expose the Apple Silicon Homebrew library
+directory in the current shell and check again:
+
+```sh
+export DYLD_LIBRARY_PATH="$(brew --prefix)/lib"
+stlmc-install-solvers yices --check
+```
 
 The installer downloads the dReal 3 executable to:
 
@@ -177,6 +202,14 @@ For a faster development check:
 
 ```sh
 make test FAST=1
+```
+
+Run the release selection of short checks and the 23 reference benchmark cases
+that previously completed within 50 seconds. These benchmarks run four at a
+time with a 200-second per-case timeout:
+
+```sh
+make test-quick
 ```
 
 See [tests/README.md](tests/README.md) for individual test targets, running one

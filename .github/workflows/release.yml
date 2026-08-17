@@ -43,6 +43,12 @@ jobs:
         - os: ubuntu-latest
           python-version: '3.12'
           architecture: x64
+        - os: ubuntu-latest
+          python-version: '3.13'
+          architecture: x64
+        - os: ubuntu-latest
+          python-version: '3.14'
+          architecture: x64
         # These are the newest CPython releases with Apple Silicon builds
         # available to setup-python for Python 3.8 through 3.10.
         - os: macos-15
@@ -59,6 +65,12 @@ jobs:
           architecture: arm64
         - os: macos-15
           python-version: '3.12'
+          architecture: arm64
+        - os: macos-15
+          python-version: '3.13'
+          architecture: arm64
+        - os: macos-15
+          python-version: '3.14'
           architecture: arm64
 
     runs-on: ${{ matrix.os }}
@@ -104,6 +116,20 @@ jobs:
         python3 -m pip check
         python3 -c "from stlmc.parser.config_visitor import ConfigVisitor; print('ANTLR parser loaded')"
 
+    - name: Trust Yices formulae on the temporary macOS runner
+      if: matrix.os == 'macos-15'
+      run: |
+        brew tap SRI-CSL/sri-csl
+        # Homebrew 6 requires explicit trust for third-party formulae. Limit
+        # trust to Yices and its two tap dependencies, not the entire tap.
+        brew trust --formula sri-csl/sri-csl/yices2
+        brew trust --formula sri-csl/sri-csl/libpoly
+        brew trust --formula sri-csl/sri-csl/cudd
+        # The yices Python binding only probes the Intel Homebrew prefix by
+        # default. Make the Apple Silicon Homebrew library visible to dyld in
+        # all subsequent installer, check, and test steps.
+        echo "DYLD_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
+
     - name: Install external solvers through STLMC
       run: stlmc-install-solvers all
 
@@ -116,11 +142,7 @@ jobs:
       env:
         # Avoid network update checks during the release test matrix.
         STLMC_DISABLE_UPDATE_CHECK: '1'
-      run: >-
-        make test
-        FAST=1
-        PYTHON=python3
-        ARTIFACT_OUTPUT='${{ runner.temp }}/artifact-logs'
+      run: make test-quick PYTHON=python3
 
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4

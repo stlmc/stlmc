@@ -31,6 +31,7 @@ EXPECTED_ITEM_PATTERN = re.compile(
     r"(satisfied|violated|reachable|unreachable|unknown):(\d+)"
 )
 FAST_PATTERN = re.compile(r"^# @benchmark\.fast\((.+)\)$", re.MULTILINE)
+QUICK_PATTERN = re.compile(r"^# @benchmark\.quick\((.+)\)$", re.MULTILINE)
 ACTIVE_PROCESSES = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
 STOP_REQUESTED = threading.Event()
@@ -69,14 +70,22 @@ def load_expected_result(case):
     return expected.get(label)
 
 
-def is_fast_case(case):
+def has_label_annotation(case, pattern):
     model_path, _, specific_config = case
     label = specific_config.stem.rsplit("-", 1)[1]
-    annotation = FAST_PATTERN.search(model_path.read_text(encoding="utf-8"))
+    annotation = pattern.search(model_path.read_text(encoding="utf-8"))
     if annotation is None:
         return False
-    fast_labels = {item.strip() for item in annotation.group(1).split(",")}
-    return label in fast_labels
+    labels = {item.strip() for item in annotation.group(1).split(",")}
+    return label in labels
+
+
+def is_fast_case(case):
+    return has_label_annotation(case, FAST_PATTERN)
+
+
+def is_quick_case(case):
+    return has_label_annotation(case, QUICK_PATTERN)
 
 
 def terminate_process_group(process):
@@ -202,9 +211,14 @@ def main():
         "--solver-batch-size", type=int,
         help="candidates combined per solver OR query",
     )
-    parser.add_argument(
+    selection_group = parser.add_mutually_exclusive_group()
+    selection_group.add_argument(
         "--fast", action="store_true",
         help="run only cases marked with @benchmark.fast",
+    )
+    selection_group.add_argument(
+        "--quick", action="store_true",
+        help="run only cases marked with @benchmark.quick",
     )
     parser.add_argument(
         "--jobs", type=int, default=1,
@@ -243,6 +257,8 @@ def main():
         ]
     if args.fast:
         cases = [case for case in cases if is_fast_case(case)]
+    if args.quick:
+        cases = [case for case in cases if is_quick_case(case)]
     if not cases:
         selection = args.model or args.scope
         if args.formula:

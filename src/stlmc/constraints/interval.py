@@ -52,7 +52,7 @@ def aux_inInterval(x: Constraint, j: Interval):
 
 @singledispatch
 def inInterval(x: Real, j: Interval):
-    """
+    r"""
     return a constraint for x \in j
 
     >>> inInterval(RealVal(1.5), Interval(True, 1.0, True,  2.0))

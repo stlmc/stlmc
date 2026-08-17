@@ -1,6 +1,7 @@
 # logging: linear
 # @benchmark.expected(f1=satisfied:20, f2=satisfied:20, f3=violated:2)
 # @benchmark.fast(f1, f2, f3)
+# @benchmark.quick(f1, f2, f3)
 # model description:
 #
 # Two rooms are connected by an open door.
