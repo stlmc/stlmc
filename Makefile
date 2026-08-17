@@ -9,7 +9,7 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all antlr perm clean test test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-process-cleanup test-reachability test-solver-equivalence benchmark
+.PHONY: all antlr perm clean test test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark
 .NOTPARALLEL: test
 
 all:    antlr perm
@@ -31,7 +31,7 @@ clean:
 	@cd $(ANTLR_DIR)/config && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
 
-test: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-process-cleanup test-reachability benchmark test-solver-equivalence
+test: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)
@@ -52,6 +52,10 @@ test-scenario-minimization:
 test-cli-help:
 	$(info test CLI help coverage ...)
 	@$(PYTHON) -u $(TEST_DIR)/cli_help.py
+
+test-install-solvers:
+	$(info test solver installer and discovery ...)
+	@$(PYTHON) -u $(TEST_DIR)/install_solvers.py
 
 test-process-cleanup:
 	$(info test parallel solver process cleanup ...)

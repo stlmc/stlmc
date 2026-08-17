@@ -49,7 +49,7 @@ another arithmetic expression.
 
 ## dReal function names
 
-The model language uses `arcsin`, `arccos`, and `arctan`. The bundled dReal 3
+The model language uses `arcsin`, `arccos`, and `arctan`. The supported dReal 3
 SMT2 syntax uses `asin`, `acos`, and `atan`; STLMC translates these names. The
 `tan` operator is emitted as `sin(x) / cos(x)` for compatibility with the
 bundled solver.

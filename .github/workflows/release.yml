@@ -77,23 +77,6 @@ jobs:
         build
         --user
 
-    - name: Prepare prerequisites
-      run: ./build.sh prep
-
-    - name: Install Yices CLI on Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo add-apt-repository -y ppa:sri-csl/formal-methods
-        sudo apt-get update
-        sudo apt-get install -y yices2
-        yices-smt2 --version
-
-    - name: Install Yices CLI on macOS
-      if: matrix.os == 'macos-15'
-      run: |
-        brew install SRI-CSL/sri-csl/yices2
-        yices-smt2 --version
-
     - name: Ensure Rosetta is available
       if: matrix.os == 'macos-15'
       run: |
@@ -103,33 +86,27 @@ jobs:
 
     - name: Build a Linux wheel
       if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt install -y patchelf
-        pip install auditwheel
-        python3 -m build --wheel
-        for whl in dist/*linux_*.whl; do
-          auditwheel repair $whl
-        done
-        rm -rf dist/
-        mv wheelhouse dist
+      run: python3 -m build --wheel
 
     - name: Build an Apple Silicon wheel
       if: matrix.os == 'macos-15'
       env:
-        # Apple Silicon was introduced with macOS 11.  Building on macOS 15
-        # without this would unnecessarily restrict the wheel to macOS 15+.
+        # Keep generated metadata compatible with all Apple Silicon releases.
         MACOSX_DEPLOYMENT_TARGET: '11.0'
-      run: |
-        # dReal3 is x86_64-only on macOS and runs on Apple Silicon via Rosetta.
-        test "$(uname -m)" = "arm64"
-        file ./3rd_party/dReal3/dReal | grep -q x86_64
-        ./3rd_party/dReal3/dReal --version
-        python3 -m build --wheel
+      run: python3 -m build --wheel
 
     - name: Install the built wheel
       run: |
         python3 -m pip install --force-reinstall dist/*.whl
         python3 -m pip check
+
+    - name: Install external solvers through STLMC
+      run: stlmc-install-solvers all
+
+    - name: Check solver installation
+      run: |
+        stlmc-install-solvers --check
+        python3 -c "from stlmc.solver.availability import find_dreal; print('STLMC_DREAL=' + find_dreal())" >> "$GITHUB_ENV"
 
     - name: Test the installed distribution
       env:

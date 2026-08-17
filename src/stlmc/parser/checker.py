@@ -6,6 +6,7 @@ from ..constraints.constraints import *
 from ..constraints.operations import get_vars
 from ..objects.configuration import Configuration
 from ..objects.model import StlMC
+from ..exception.exception import SolverUnavailableError
 
 
 def is_dynamics_constant(flows: Dynamics):
@@ -106,6 +107,12 @@ def check_validity(config: Configuration):
                                              "(please provide one of {{{}}})"
                                              .format(quote_removed_val, arg_name, " , ".join(ty)))
                     elif ty == "path" and underlying_solver == "dreal":
-                        if not os.path.exists(quote_removed_val):
-                            raise ValueError("\"{}\" is not a valid executable path containing dReal executable"
-                                             .format(quote_removed_val))
+                        if (not os.path.isfile(quote_removed_val)
+                                or not os.access(quote_removed_val, os.X_OK)):
+                            raise SolverUnavailableError(
+                                "dReal executable was not found or is not executable: {}. "
+                                "Run: stlmc-install-solvers dreal, or pass "
+                                "-executable-path /path/to/dReal".format(
+                                    quote_removed_val
+                                )
+                            )

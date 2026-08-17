@@ -18,6 +18,7 @@ from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
 from ..solver.abstract_solver import SMTSolver
+from ..solver.availability import find_dreal
 from ..solver.dreal import dRealSolver
 from ..solver.solver_factory import SolverFactory
 from ..solver.capability import (
@@ -120,14 +121,8 @@ class BaseCmdParser(CmdParser):
             
             dreal = self.config.get_section("dreal")
             exec_path = dreal.get_value("executable-path")
-            if not os.path.isabs(exec_path):
-                bundled_path = os.path.normpath(os.path.join(package_dir, exec_path))
-                source_path = os.path.normpath(os.path.join(
-                    package_dir, "..", "..", exec_path
-                ))
-                exec_path = (
-                    bundled_path if os.path.isfile(bundled_path) else source_path
-                )
+            if exec_path == "dReal":
+                exec_path = find_dreal() or exec_path
             dreal.set_value("executable-path", exec_path)
 
         if args.model_cfg is not None:
@@ -423,7 +418,7 @@ class BaseRunner(Runner):
                     status, finished_bound, total_time, formula_string,
                     result_scope, counterexample_file, visual_config_file,
                 )
-        except (NotSupportedError, IllegalArgumentError):
+        except (NotSupportedError, IllegalArgumentError, SolverUnavailableError):
             raise
         except SyntaxError as e:
             print("syntax error: {}".format(e))

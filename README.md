@@ -19,7 +19,13 @@ For the project website, publications, and full manual, visit
 
 ## Requirements and installation
 
-STLmc requires Python 3.8 or later. Install the current checkout with:
+STLmc requires Python 3.8 or later. Install the released package with:
+
+```sh
+python -m pip install stlmc
+```
+
+Install the current checkout with:
 
 ```sh
 python -m pip install .
@@ -30,6 +36,47 @@ For development, use an editable installation:
 ```sh
 python -m pip install -e .
 ```
+
+STLMC installs the Python interfaces for Z3 and Yices by default. Check all
+solver prerequisites after installation with:
+
+```sh
+stlmc-install-solvers --check
+```
+
+Install all missing solver prerequisites where supported with:
+
+```sh
+stlmc-install-solvers
+```
+
+The default target is `all`; an individual solver can be selected with `z3`,
+`yices`, or `dreal`, for example:
+
+```sh
+stlmc-install-solvers dreal
+stlmc-install-solvers yices
+```
+
+Yices additionally requires its native library. Automatic Yices installation
+uses the SRI package repository on Ubuntu/Debian and Homebrew on macOS, and may
+request administrator privileges. On other Linux distributions, install the
+Yices native library with the system package manager before running `--check`.
+
+The installer downloads the dReal 3 executable to:
+
+- macOS: `~/Library/Application Support/stlmc/solvers/dReal3/dReal`
+- Linux: `$XDG_DATA_HOME/stlmc/solvers/dReal3/dReal` when `XDG_DATA_HOME` is
+  set, otherwise `~/.local/share/stlmc/solvers/dReal3/dReal`
+
+Automatic dReal installation supports macOS and x86-64 Linux. At runtime STLMC
+searches for an executable named `dReal` in `PATH` first and then checks the
+user solver directory above. A differently named or separately installed
+executable can be selected with `-executable-path /path/to/dReal`.
+
+If a solver required by the selected analysis is unavailable, STLMC reports
+the corresponding installer command instead of failing with an import or
+process traceback.
 
 Confirm the installation and inspect every available option with:
 

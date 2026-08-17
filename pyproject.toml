@@ -32,6 +32,7 @@ email = "rgyen@postech.ac.kr"
 [project.scripts]
 stlmc = "stlmc.cli.mc:main"
 stlmc-vis = "stlmc.cli.visualize:main"
+stlmc-install-solvers = "stlmc.cli.install_solvers:main"
 
 [project.urls]
 "Homepage"      = "https://stlmc.github.io/"
@@ -40,5 +41,8 @@ stlmc-vis = "stlmc.cli.visualize:main"
 "Source Code"   = "https://github.com/stlmc/stlmc/"
 
 [tool.scikit-build]
-sdist.include = ["src/", "3rd_party/dReal3/dReal"]
+sdist.include = ["src/"]
 sdist.exclude = ["tests/**", "3rd_party/antlr4/**"]
+wheel.cmake = false
+wheel.platlib = false
+wheel.py-api = "py3"

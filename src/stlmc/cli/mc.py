@@ -18,10 +18,9 @@ def main():
     import signal
     import traceback
 
-    from ..driver.abstract_driver import StlModelChecker
-    from ..driver.base_driver import BaseDriverFactory
     from ..exception.exception import (
         IllegalArgumentError, NotSupportedError, OperationError, ParsingError,
+        SolverUnavailableError,
     )
     from ..update_check import notify_if_outdated
     from ..util.interrupt import StlmcInterrupted, clear_interrupt, is_interrupted
@@ -30,6 +29,19 @@ def main():
     clear_interrupt()
     notify_if_outdated()
     printer = ExceptionPrinter()
+    # Z3 is also used internally by STLMC's abstraction and core-learning
+    # machinery, independently of the selected continuous solver.
+    try:
+        import z3  # noqa: F401
+    except (ImportError, OSError) as error:
+        printer.print_normal(
+            "solver error: Z3 is unavailable ({}). "
+            "Run: stlmc-install-solvers z3".format(error)
+        )
+        return 3
+
+    from ..driver.abstract_driver import StlModelChecker
+    from ..driver.base_driver import BaseDriverFactory
     previous_sigint_handler = None
     previous_sigterm_handler = None
     if hasattr(signal, "SIGINT"):
@@ -57,6 +69,9 @@ def main():
         printer.print_normal("operation error: {}".format(E))
     except ParsingError as E:
         printer.print_normal("parsing error: {}".format(E))
+    except SolverUnavailableError as E:
+        printer.print_normal("solver error: {}".format(E))
+        return 3
     except (KeyboardInterrupt, StlmcInterrupted):
         printer.print_normal("interrupted by user")
         return 130

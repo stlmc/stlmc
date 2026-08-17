@@ -21,3 +21,7 @@ class IllegalArgumentError(Exception):
 
 class ParsingError(Exception):
     pass
+
+
+class SolverUnavailableError(Exception):
+    pass

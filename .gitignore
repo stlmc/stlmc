@@ -31,6 +31,7 @@ tests/*
 !tests/robustness_operations.py
 !tests/scenario_minimization.py
 !tests/cli_help.py
+!tests/install_solvers.py
 !tests/process_cleanup.py
 !tests/smoke_solvers.py
 !tests/README.md

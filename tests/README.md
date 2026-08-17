@@ -60,16 +60,16 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run all nine test parts in order: solver smoke tests, formula capability tests,
+Run all ten test parts in order: solver smoke tests, formula capability tests,
 robustness transformations, scenario minimization, CLI help/schema checks,
-process cleanup, reachability semantics, every annotated benchmark, and the
-Z3/Yices comparison:
+solver installer/discovery tests, process cleanup, reachability semantics,
+every annotated benchmark, and the Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all nine test parts. Unit and integration tests are
+Run the fast selection of all ten test parts. Unit and integration tests are
 still run in full; the benchmark stages are reduced to 33 FAST benchmark cases
 and 20 Z3/Yices comparisons:
 
@@ -81,6 +81,13 @@ Run only the SMT solver smoke tests:
 
 ```sh
 make test-smoke
+```
+
+Run the solver installer and executable-discovery tests without downloading or
+installing external software:
+
+```sh
+make test-install-solvers
 ```
 
 Run only the solver formula capability tests:
