@@ -2,8 +2,8 @@ SECTION_NAMES = ("common", "z3", "yices", "dreal")
 
 SECTION_VALUE_OPTIONS = {
     "common": (
-        "threshold", "bound", "time-bound", "solver", "goal",
-        "time-horizon", "parallel-core", "scenario-batch-size",
+        "threshold", "bound", "time-bound", "solver", "goal", "path-strategy",
+        "time-horizon", "parallel-core", "solver-batch-size",
         "core-minimize-attempts", "smt2-dir",
     ),
     "z3": ("logic",),
@@ -14,7 +14,7 @@ SECTION_VALUE_OPTIONS = {
 SECTION_BOOLEAN_OPTIONS = {
     "common": (
         "two-step", "concrete", "parallel", "visualize", "verbose",
-        "reach", "only-loop", "save-smt2",
+        "reach", "save-smt2",
     ),
     "z3": (),
     "yices": (),
@@ -28,9 +28,10 @@ SECTION_TYPE_RULES = {
         ("time-bound", "float"),
         ("solver", frozenset({"z3", "yices", "dreal"})),
         ("goal", "string"),
+        ("path-strategy", frozenset({"symbolic", "explicit"})),
         ("time-horizon", "float"),
         ("parallel-core", "integer"),
-        ("scenario-batch-size", "integer"),
+        ("solver-batch-size", "integer"),
         ("core-minimize-attempts", "integer"),
         ("smt2-dir", "string"),
     },
@@ -57,13 +58,14 @@ OPTION_HELP = {
     "model-cfg": "path to the model configuration file",
     "model-specific-cfg": "path to the goal-specific configuration file",
     "goal": "goal name to check, or 'all'",
+    "path-strategy": "discrete path handling: symbolic or explicit",
     "solver": "underlying solver: auto, dreal, z3, or yices",
     "bound": "maximum discrete jump bound",
     "time-bound": "maximum global trace time",
     "time-horizon": "maximum duration allowed in one mode, or 'time-bound'",
     "threshold": "robustness threshold used to relax the negated goal",
     "parallel-core": "maximum number of parallel solver workers",
-    "scenario-batch-size": "number of two-step scenarios combined in one OR query",
+    "solver-batch-size": "maximum candidates combined in one solver OR query",
     "core-minimize-attempts": "number of minimized unsat cores tried per scenario",
     "smt2-dir": "directory used for generated SMT2 files",
     "logic": "SMT logic used by Z3 or Yices, such as QF_LRA or QF_NRA",
@@ -77,7 +79,6 @@ OPTION_HELP = {
     "visualize": "write a counterexample or witness artifact",
     "verbose": "print detailed progress information",
     "reach": "treat an ordinary state goal as a reachability query",
-    "only-loop": "restrict checking to loop scenarios",
     "save-smt2": "save generated SMT2 queries",
 }
 

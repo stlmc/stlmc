@@ -40,7 +40,7 @@ goal:
 class ReachabilityIntegrationTest(unittest.TestCase):
     def run_model(self, goal, *, threshold="0.01", two_step=False,
                   extra_args=(), visualize=False, solver="dreal", bound=0,
-                  scenario_batch_size=1):
+                  solver_batch_size=1, path_strategy="symbolic"):
         with tempfile.TemporaryDirectory(prefix="stlmc-reach-") as directory:
             work = Path(directory)
             model = work / "reach.model"
@@ -53,9 +53,10 @@ common {{
     time-bound = 10
     threshold = {threshold}
     solver = "{solver}"
+    path-strategy = "{path_strategy}"
     two-step = "{two_step}"
     parallel = "false"
-    scenario-batch-size = {scenario_batch_size}
+    solver-batch-size = {solver_batch_size}
     visualize = "{visualize}"
     verbose = "false"
 }}
@@ -70,7 +71,8 @@ dreal {{
                     two_step=str(two_step).lower(),
                     visualize=str(visualize).lower(),
                     solver=solver,
-                    scenario_batch_size=scenario_batch_size,
+                    path_strategy=path_strategy,
+                    solver_batch_size=solver_batch_size,
                     dreal=DREAL,
                 ),
                 encoding="utf-8",
@@ -126,14 +128,37 @@ dreal {{
         self.assertIn("witness=scenario", completed.stdout)
         self.assertNotIn("counterexample=scenario", completed.stdout)
 
-    def test_two_step_flushes_partial_scenario_batch(self):
+    def test_two_step_flushes_partial_solver_batch(self):
         completed, _ = self.run_model(
             "reach (and (x >= 4) (x <= 6))",
             two_step=True,
-            scenario_batch_size=8,
+            solver_batch_size=8,
         )
         self.assertEqual(completed.returncode, 0, completed.stdout)
         self.assertIn("status      : reachable at bound 0", completed.stdout)
+
+    def test_explicit_paths_support_one_step_and_two_step(self):
+        for two_step in (False, True):
+            with self.subTest(two_step=two_step):
+                completed, _ = self.run_model(
+                    "reach (not active)",
+                    bound=1,
+                    two_step=two_step,
+                    path_strategy="explicit",
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout)
+                self.assertIn("status      : reachable at bound 1", completed.stdout)
+
+    def test_explicit_paths_support_stl_one_step_and_two_step(self):
+        for two_step in (False, True):
+            with self.subTest(two_step=two_step):
+                completed, _ = self.run_model(
+                    "<>[0, 1] (x >= 0)",
+                    two_step=two_step,
+                    path_strategy="explicit",
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout)
+                self.assertIn("status      : satisfied up to bound 0", completed.stdout)
 
     def test_supported_solvers_agree_on_reachable_target(self):
         for solver in ("z3", "yices", "dreal"):

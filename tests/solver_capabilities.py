@@ -15,7 +15,6 @@ from stlmc.solver.capability import (
     validate_formula_solver_support,
 )
 from stlmc.solver.dreal import drealObj
-from stlmc.solver.new_dreal import dreal_obj
 
 
 class SolverCapabilityTest(unittest.TestCase):
@@ -58,7 +57,6 @@ class SolverCapabilityTest(unittest.TestCase):
         for expression, output in expected.items():
             with self.subTest(expression=expression):
                 self.assertEqual(drealObj(expression), output)
-                self.assertEqual(dreal_obj(expression), output)
 
     def test_auto_solver_detects_nested_dreal_arithmetic(self):
         x = Real("x")

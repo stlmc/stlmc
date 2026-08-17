@@ -3,6 +3,8 @@ import time
 from typing import *
 
 from .enumerate import *
+from .batching import candidate_batch_formula
+from .path import PathProvider, SymbolicPathProvider
 from .static_learning import StaticLearner
 from ..constraints.constraints import *
 from ..constraints.operations import *
@@ -16,9 +18,11 @@ from ..util.print import Printer
 from ..util.interrupt import raise_if_interrupted
 
 
-class SmtAlgorithm(Algorithm):
-    def __init__(self):
+class OneStepAlgorithm(Algorithm):
+    """Solve the complete encoding directly, without two-step abstraction."""
+    def __init__(self, path_provider: PathProvider = None):
         self.debug_name = ""
+        self.path_provider = path_provider or SymbolicPathProvider()
 
     def set_debug(self, msg: str):
         self.debug_name = msg
@@ -29,8 +33,10 @@ class SmtAlgorithm(Algorithm):
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")
         delta_str = common_section.get_value("threshold")
-        is_only_loop = common_section.get_value("only-loop")
         underlying_solver = common_section.get_value("solver")
+        solver_batch_size = int(common_section.get_value("solver-batch-size"))
+        if solver_batch_size < 1:
+            raise IllegalArgumentError("solver-batch-size must be at least 1")
 
         total_time = 0.0
         total_size = 0
@@ -48,16 +54,12 @@ class SmtAlgorithm(Algorithm):
             model.gen_stl_condition()
 
         static_learner = StaticLearner(model, goal_f)
-        if is_only_loop == "false":
-            static_learner.generate_learned_clause(bound, delta)
+        static_learner.generate_learned_clause(bound, delta)
 
         # The bound is the number of discrete jumps.  Bound 0 still contains
         # one continuous segment and must be checked for zero-jump witnesses.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
-            if is_only_loop == "true":
-                if b < int(bound):
-                    continue
             # start logging
             bound_started = time.monotonic()
             logger.reset_timer()
@@ -77,11 +79,8 @@ class SmtAlgorithm(Algorithm):
             logger.stop_timer("goal timer")
             goal_time = logger.get_duration_time("goal timer")
 
-            if is_only_loop == "false":
-                clause_in_consts = clause(And([model_const, stl_const, boolean_abstract_consts]))
-                contradiction_const = static_learner.get_contradiction_upto(b, clause_in_consts)
-            else:
-                contradiction_const = BoolVal("True")
+            clause_in_consts = clause(And([model_const, stl_const, boolean_abstract_consts]))
+            contradiction_const = static_learner.get_contradiction_upto(b, clause_in_consts)
 
             if model.is_gen_reach_condition():
                 total_consts = And([model_const, contradiction_const, stl_const])
@@ -95,23 +94,39 @@ class SmtAlgorithm(Algorithm):
                 total_consts = And([model_const, contradiction_const, stl_const, boolean_abstract_consts])
                 total_size = size_of_tree(total_consts)
 
-            solver.set_time_bound(time_bound)
-            if hasattr(solver, "set_file_name"):
-                solver.set_file_name(
-                    "{}_b{:03d}".format(self.debug_name, b)
+            path_candidates = self.path_provider.candidates(model, b)
+            bound_result = "True"
+            found_assignment = None
+            for offset in range(0, len(path_candidates), solver_batch_size):
+                batch = path_candidates[offset:offset + solver_batch_size]
+                batch_formula = candidate_batch_formula([
+                    (total_consts, candidate.constraint) for candidate in batch
+                ])
+                solver.set_time_bound(time_bound)
+                if hasattr(solver, "set_file_name"):
+                    solver.set_file_name(
+                        "{}_b{:03d}_p{}-{}".format(
+                            self.debug_name, b, batch[0].index, batch[-1].index
+                        )
+                    )
+                result, _ = solver.solve(
+                    batch_formula, model.range_dict, boolean_abstract
                 )
-            result, _ = solver.solve(total_consts, model.range_dict, boolean_abstract)
+                total_time += logger.get_duration_time("solving timer")
+                final_result = result
+                if result == "False":
+                    bound_result = result
+                    found_assignment = solver.make_assignment()
+                    break
+                if result == "Unknown":
+                    had_unknown = True
+                    bound_result = "Unknown"
+                solver.clear()
 
-            final_result = result
-            if result == "Unknown":
-                had_unknown = True
-
-            smt_time = logger.get_duration_time("solving timer")
-            total_time += smt_time + goal_time
-
+            total_time += goal_time
             solver_result = {
                 "False": "sat", "True": "unsat", "Unknown": "unknown"
-            }.get(result, "unknown")
+            }.get(bound_result, "unknown")
             printer.bound_finished(
                 b, solver_result, time.monotonic() - bound_started,
                 constraint_size=total_size,
@@ -119,13 +134,14 @@ class SmtAlgorithm(Algorithm):
 
             finished_bound = b
             # stop when find false
-            if result == "False":
+            if bound_result == "False":
                 # for reach case, we should translate the result in the opposite way
                 if is_reach:
-                    assn = solver.make_assignment()
-                    return "True", total_time, finished_bound, assn.get_assignments()
-                assn = solver.make_assignment()
-                return "False", total_time, finished_bound, assn.get_assignments()
+                    return "True", total_time, finished_bound, found_assignment.get_assignments()
+                return "False", total_time, finished_bound, found_assignment.get_assignments()
+
+            if len(path_candidates) == 0:
+                break
 
             model.clear()
             goal.clear()
@@ -321,3 +337,7 @@ def _(const: MultinaryFormula):
         return result
     else:
         return set()
+
+
+# Backward-compatible name for external imports.
+SmtAlgorithm = OneStepAlgorithm

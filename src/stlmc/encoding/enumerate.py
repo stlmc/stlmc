@@ -17,6 +17,8 @@ from ..util.logger import Logger
 from ..util.print import Printer
 from ..util.interrupt import raise_if_interrupted
 from ..exception.exception import IllegalArgumentError
+from .batching import candidate_batch_formula
+from .path import PathProvider, SymbolicPathProvider
 
 
 def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
@@ -78,24 +80,9 @@ def smaller_unsat_core(solver, tracked_literals: Dict[str, Formula],
     return best
 
 
-def scenario_batch_formula(refinements: List[Tuple[Formula, Formula]]) -> Formula:
-    if len(refinements) == 0:
-        raise IllegalArgumentError("scenario batch cannot be empty")
-
-    common = refinements[0][0]
-    if all(refinement_common == common for refinement_common, _ in refinements):
-        scenario_parts = [scenario_part for _, scenario_part in refinements]
-        disjunction = scenario_parts[0] if len(scenario_parts) == 1 else Or(scenario_parts)
-        return And([common, disjunction])
-
-    # A future encoding may produce scenario-dependent "common" constraints.
-    # Preserve correctness in that case instead of factoring them unsafely.
-    return Or([And([refinement_common, scenario_part])
-               for refinement_common, scenario_part in refinements])
-
-
-class EnumerateAlgorithm(Algorithm):
-    def __init__(self):
+class TwoStepAlgorithm(Algorithm):
+    """Enumerate abstract scenarios and check their continuous refinements."""
+    def __init__(self, path_provider: PathProvider = None):
         self.scenario_solver = z3.SolverFor("QF_LRA")
         self.minimize_solver = z3.SolverFor("QF_LRA")
         self.minimize_solver.set(":core.minimize", True)
@@ -104,8 +91,8 @@ class EnumerateAlgorithm(Algorithm):
         self.run_queue = set()
         self.runner = None
         self.debug_name = ""
-        self.loop_mode = False
         self.last_scenario_count = 0
+        self.path_provider = path_provider or SymbolicPathProvider()
 
     def clear(self):
         self.scenario_solver = z3.SolverFor("QF_LRA")
@@ -124,13 +111,11 @@ class EnumerateAlgorithm(Algorithm):
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")
         delta = common_section.get_value("threshold")
-        loop = "false"
-
         parallel = common_section.get_value("parallel")
         core = int(common_section.get_value("parallel-core"))
-        scenario_batch_size = int(common_section.get_value("scenario-batch-size"))
-        if scenario_batch_size < 1:
-            raise IllegalArgumentError("scenario-batch-size must be at least 1")
+        solver_batch_size = int(common_section.get_value("solver-batch-size"))
+        if solver_batch_size < 1:
+            raise IllegalArgumentError("solver-batch-size must be at least 1")
         core_minimize_attempts = int(common_section.get_value("core-minimize-attempts"))
         if core_minimize_attempts < 1:
             raise IllegalArgumentError("core-minimize-attempts must be at least 1")
@@ -147,8 +132,6 @@ class EnumerateAlgorithm(Algorithm):
         assert self.runner is not None
 
         self.clear()
-
-        self.loop_mode = True if loop == "on" else False
 
         model.boolean_abstract.clear()
 
@@ -241,14 +224,6 @@ class EnumerateAlgorithm(Algorithm):
                 stl_time_consts.append(BoolVal("True"))
                 time_order_const = reach_time_ordering(2 * b + 2, tau_max)
                 final_f_k = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
-            result, result_model, scenario_time = self.scenario_check(model, b, tau_max, sub_formulas,
-                                                                      model_consts, stl_consts, stl_time_consts,
-                                                                      model_f_k_final, final_f_k, time_order_const,
-                                                                      solver, printer,
-                                                                      scenario_batch_size,
-                                                                      core_minimize_attempts,
-                                                                      is_generalized=is_generalized)
-
             finished_bound = b
             total_size = acc_size(model_consts)
             total_size += acc_size(stl_consts)
@@ -258,31 +233,44 @@ class EnumerateAlgorithm(Algorithm):
             total_size += size_of_tree(time_f_k)
             total_size += size_of_tree(time_order_const)
             total_size += size_of_tree(final_f_k)
-            total_time += scenario_time
-            # found counter example
-            if result:
-                printer.bound_finished(
-                    b, "sat", time.monotonic() - bound_started,
-                    scenarios=self.last_scenario_count,
-                    constraint_size=total_size,
-                    found_scenario=self.runner.winning_scenario,
-                    witness_label="witness" if is_reach else "counterexample",
+            path_candidates = self.path_provider.candidates(model, b)
+            bound_scenarios = 0
+            for path_offset, path_candidate in enumerate(path_candidates):
+                is_last_path = path_offset == len(path_candidates) - 1
+                result, result_model, scenario_time = self.scenario_check(
+                    model, b, tau_max, sub_formulas,
+                    model_consts, stl_consts, stl_time_consts,
+                    model_f_k_final, final_f_k, time_order_const,
+                    solver, printer, solver_batch_size,
+                    core_minimize_attempts,
+                    explicit_path=path_candidate.constraint,
+                    finalize_bound=is_last_path,
+                    is_generalized=is_generalized,
                 )
-                if is_reach:
-                    return "True", total_time, finished_bound, result_model.get_assignments()
-                return "False", total_time, finished_bound, result_model.get_assignments()
+                total_time += scenario_time
+                bound_scenarios += self.last_scenario_count
+                if result:
+                    printer.bound_finished(
+                        b, "sat", time.monotonic() - bound_started,
+                        scenarios=bound_scenarios,
+                        constraint_size=total_size,
+                        found_scenario=self.runner.winning_scenario,
+                        witness_label="witness" if is_reach else "counterexample",
+                    )
+                    if is_reach:
+                        return "True", total_time, finished_bound, result_model.get_assignments()
+                    return "False", total_time, finished_bound, result_model.get_assignments()
 
-            if not self.loop_mode:
                 runner_result, runner_model = self.runner.wait_and_check_sat(
                     lambda completed: printer.scenario_progress(
-                        b, self.last_scenario_count,
+                        b, bound_scenarios,
                         completed - completed_before_bound,
                     )
                 )
                 if runner_result:
                     printer.bound_finished(
                         b, "sat", time.monotonic() - bound_started,
-                        scenarios=self.last_scenario_count,
+                        scenarios=bound_scenarios,
                         constraint_size=total_size,
                         found_scenario=self.runner.winning_scenario,
                         witness_label="witness" if is_reach else "counterexample",
@@ -293,9 +281,13 @@ class EnumerateAlgorithm(Algorithm):
             printer.bound_finished(
                 b, "unknown" if self.runner.had_unknown else "unsat",
                 time.monotonic() - bound_started,
-                scenarios=self.last_scenario_count,
+                scenarios=bound_scenarios,
                 constraint_size=total_size,
             )
+            if len(path_candidates) == 0:
+                # An explicit transition tree cannot regain paths at a larger
+                # exact jump bound after its frontier becomes empty.
+                break
         if self.runner.had_unknown:
             return "Unknown", total_time, finished_bound, None
         if is_reach:
@@ -307,8 +299,10 @@ class EnumerateAlgorithm(Algorithm):
                        acc_model: List[Formula], acc_stl: List[Formula], acc_stl_time: List[Formula],
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
                        smt_solver: SMTSolver, printer: Printer,
-                       scenario_batch_size: int,
+                       solver_batch_size: int,
                        core_minimize_attempts: int,
+                       explicit_path: Formula = BoolVal("True"),
+                       finalize_bound=True,
                        is_generalized=True):
         total_time = 0.0
 
@@ -319,8 +313,10 @@ class EnumerateAlgorithm(Algorithm):
         cur_minimize_var = Bool("unsat@{}".format(bound))
         next_minimize_var = Bool("unsat@{}".format(bound + 1))
 
-        current_minimize_info = Eq(cur_minimize_var, And([model_f_k_final, k_stl_f, k_stl_time_f,
-                                                          stl_time_order, next_minimize_var]))
+        current_minimize_info = Eq(cur_minimize_var, And([
+            model_f_k_final, k_stl_f, k_stl_time_f, stl_time_order,
+            explicit_path, next_minimize_var,
+        ]))
 
         self.minimize_solver.pop()
         self.minimize_solver.push()
@@ -328,11 +324,17 @@ class EnumerateAlgorithm(Algorithm):
         self.minimize_solver.add(z3Obj(next_minimize_var))
 
         # n_symbolic_path: final, n_symbolic_path_next: non-final
-        n_symbolic_path = And([model_f_k_final, k_stl_f, k_stl_time_f, stl_time_order])
+        base_symbolic_path = And([
+            model_f_k_final, k_stl_f, k_stl_time_f, stl_time_order,
+        ])
+        n_symbolic_path = And([base_symbolic_path, explicit_path])
         n_symbolic_path_next = And([k_model_f, k_stl_f, k_stl_time_f])
 
         self.clause_set.update(clause(n_symbolic_path_next))
-        self.clause_set.update(clause(n_symbolic_path))
+        # Explicit path constraints are fixed context, not scenario literals.
+        # Keeping them out of the accumulated clause set prevents one path's
+        # arithmetic literals from leaking into another path's refinement.
+        self.clause_set.update(clause(base_symbolic_path))
 
         contra_v_const, contra_e_const = contradiction_gen(self.clause_set, sub_formulas)
         contra_v_inv = contradiction_gen_inv(model.boolean_abstract)
@@ -348,12 +350,12 @@ class EnumerateAlgorithm(Algorithm):
         false = BoolVal("False")
         counter = 0
         submitted = 0
-        pending_refinements: List[Tuple[Formula, Formula]] = []
+        pending_candidates: List[Tuple[Formula, Formula]] = []
         pending_scenarios: List[int] = []
 
         def submit_pending_batch():
             nonlocal submitted
-            if len(pending_refinements) == 0 or self.loop_mode:
+            if len(pending_candidates) == 0:
                 return False, None
 
             first_scenario = pending_scenarios[0]
@@ -368,9 +370,9 @@ class EnumerateAlgorithm(Algorithm):
             self.runner.set_scenario(scenario_label)
             # Multinary formulas retain the supplied list, so detach it before
             # clearing the pending batch.
-            batch_formula = scenario_batch_formula(list(pending_refinements))
-            batch_scenario_count = len(pending_refinements)
-            pending_refinements.clear()
+            batch_formula = candidate_batch_formula(list(pending_candidates))
+            batch_scenario_count = len(pending_candidates)
+            pending_candidates.clear()
             pending_scenarios.clear()
 
             self.runner.run(smt_solver, batch_formula)
@@ -494,25 +496,24 @@ class EnumerateAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const]), reduction_dict
+                            And([stl_final, range_const, explicit_path]), reduction_dict
                         )
                     else:
                         scenario_part = And(
                             [path_const, extra_prop_path_const, extra_time_path_const]
                         )
                         common_part = And(
-                            [stl_final, range_const, model_abstract_const]
+                            [stl_final, range_const, model_abstract_const, explicit_path]
                         )
 
-                    if not self.loop_mode:
-                        pending_refinements.append((common_part, scenario_part))
-                        pending_scenarios.append(counter)
-                        runner_result, runner_model = (False, None)
-                        if len(pending_refinements) >= scenario_batch_size:
-                            runner_result, runner_model = submit_pending_batch()
-                        if runner_result:
-                            self.last_scenario_count = submitted
-                            return True, runner_model, self.runner.time
+                    pending_candidates.append((common_part, scenario_part))
+                    pending_scenarios.append(counter)
+                    runner_result, runner_model = (False, None)
+                    if len(pending_candidates) >= solver_batch_size:
+                        runner_result, runner_model = submit_pending_batch()
+                    if runner_result:
+                        self.last_scenario_count = submitted
+                        return True, runner_model, self.runner.time
 
                     generalized_symbolic_path = Not(path_const)
                     self.scenario_solver.add(z3Obj(generalized_symbolic_path))
@@ -565,25 +566,24 @@ class EnumerateAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const]), reduction_dict
+                            And([stl_final, range_const, explicit_path]), reduction_dict
                         )
                     else:
                         scenario_part = And(
                             [concrete_path, extra_prop_path_const, extra_time_path_const]
                         )
                         common_part = And(
-                            [stl_final, range_const, model_abstract_const]
+                            [stl_final, range_const, model_abstract_const, explicit_path]
                         )
 
-                    if not self.loop_mode:
-                        pending_refinements.append((common_part, scenario_part))
-                        pending_scenarios.append(counter)
-                        runner_result, runner_model = (False, None)
-                        if len(pending_refinements) >= scenario_batch_size:
-                            runner_result, runner_model = submit_pending_batch()
-                        if runner_result:
-                            self.last_scenario_count = submitted
-                            return True, runner_model, self.runner.time
+                    pending_candidates.append((common_part, scenario_part))
+                    pending_scenarios.append(counter)
+                    runner_result, runner_model = (False, None)
+                    if len(pending_candidates) >= solver_batch_size:
+                        runner_result, runner_model = submit_pending_batch()
+                    if runner_result:
+                        self.last_scenario_count = submitted
+                        return True, runner_model, self.runner.time
 
                     # Exclude exactly this Boolean/discrete cube.
                     self.scenario_solver.add(z3Obj(Not(concrete_path)))
@@ -597,12 +597,19 @@ class EnumerateAlgorithm(Algorithm):
             return True, runner_model, self.runner.time
 
         self.scenario_solver.pop()
-        self.scenario_solver.add(z3Obj(n_symbolic_path_next))
         self.minimize_solver.pop()
-        self.minimize_solver.add(z3Obj(Eq(cur_minimize_var, And([k_model_f, k_stl_f, k_stl_time_f,
-                                                                 next_minimize_var]))))
-        self.minimize_solver.push()
-        self.minimize_solver.add(z3Obj(next_minimize_var))
+        if finalize_bound:
+            self.scenario_solver.add(z3Obj(n_symbolic_path_next))
+            self.minimize_solver.add(z3Obj(Eq(cur_minimize_var, And([
+                k_model_f, k_stl_f, k_stl_time_f, next_minimize_var,
+            ]))))
+            self.minimize_solver.push()
+            self.minimize_solver.add(z3Obj(next_minimize_var))
+        else:
+            # Restore the assumption present before checking this path so the
+            # next explicit path at the same bound starts from identical state.
+            self.minimize_solver.push()
+            self.minimize_solver.add(z3Obj(cur_minimize_var))
 
         self.last_scenario_count = submitted
         return False, None, self.runner.time
@@ -1323,3 +1330,7 @@ def contradiction_gen_inv(boolean_dict):
 
 def acc_size(acc: List[Formula]):
     return size_of_tree(And(acc))
+
+
+# Backward-compatible name for external imports.
+EnumerateAlgorithm = TwoStepAlgorithm

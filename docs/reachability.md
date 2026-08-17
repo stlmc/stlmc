@@ -42,6 +42,11 @@ Reachability uses the regular one-step or two-step BMC engine selected by
 `two-step`. It supports Z3, Yices, and dReal subject to each solver's formula
 capabilities described in [Solver formula support](solver-formula-support.md).
 
+The `path-strategy` option is independent of `two-step`. `symbolic` keeps all
+mode and jump choices in the encoding, while `explicit` enumerates exact
+transition paths first. Either path strategy can use direct one-step solving or
+the two-step abstraction/refinement algorithm.
+
 ## Results and witnesses
 
 The final status is one of:

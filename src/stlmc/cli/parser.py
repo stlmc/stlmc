@@ -51,8 +51,9 @@ def build_parser(prog=None):
 
     common = parser.add_argument_group("model checking")
     for name in (
-        "goal", "solver", "bound", "time-bound", "time-horizon", "threshold",
-        "parallel-core", "scenario-batch-size", "core-minimize-attempts", "smt2-dir",
+        "goal", "solver", "path-strategy", "bound", "time-bound", "time-horizon", "threshold",
+        "parallel-core", "solver-batch-size",
+        "core-minimize-attempts", "smt2-dir",
     ):
         common.add_argument("-{}".format(name), help=argument_help(name))
 
@@ -63,7 +64,7 @@ def build_parser(prog=None):
     flags = parser.add_argument_group("feature flags")
     for name in (
         "two-step", "concrete", "parallel", "visualize", "verbose", "reach",
-        "only-loop", "save-smt2",
+        "save-smt2",
     ):
         flags.add_argument("-{}".format(name), action="store_true", help=argument_help(name))
     return parser

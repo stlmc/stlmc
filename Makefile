@@ -5,7 +5,7 @@ PYTHON ?= python3
 FAST ?= 0
 
 DEFAULT_ARTIFACT_SCOPE := .
-DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),120,3600)
+DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
@@ -77,7 +77,7 @@ benchmark:
 		--scope $(or $(SCOPE),$(ARTIFACT_SCOPE),$(DEFAULT_ARTIFACT_SCOPE)) \
 		$(if $(MODEL),--model "$(MODEL)") \
 		$(if $(FORMULA),--formula "$(FORMULA)") \
-		$(if $(BATCH),--scenario-batch-size "$(BATCH)") \
+		$(if $(BATCH),--solver-batch-size "$(BATCH)") \
 		--timeout $(or $(TIMEOUT),$(ARTIFACT_TIMEOUT),$(DEFAULT_ARTIFACT_TIMEOUT)) \
 		--jobs $(or $(ARTIFACT_JOBS),$(DEFAULT_ARTIFACT_JOBS)) \
 		--output $(or $(OUTPUT),$(ARTIFACT_OUTPUT),artifact-logs)

@@ -8,12 +8,13 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import z3
 
-from stlmc.constraints.constraints import Bool, BoolVal, Eq, Gt, Leq, Real, RealVal
+from stlmc.constraints.constraints import And, Bool, BoolVal, Eq, Gt, Leq, Or, Real, RealVal
 from stlmc.encoding.enumerate import (
     assert_and_track_assignment,
     evaluated_arithmetic_literals,
     smaller_unsat_core,
 )
+from stlmc.encoding.batching import candidate_batch_formula
 from stlmc.solver.z3 import z3Obj
 
 
@@ -76,6 +77,36 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         improved = smaller_unsat_core(solver, literals, initial, attempts=3)
 
         self.assertLessEqual(len(improved), len(initial))
+
+    def test_candidate_batch_factors_shared_constraints(self):
+        common = Bool("common")
+        first = Bool("first")
+        second = Bool("second")
+
+        batch = candidate_batch_formula([
+            (common, first),
+            (common, second),
+        ])
+
+        self.assertEqual(
+            repr(batch), repr(And([common, Or([first, second])]))
+        )
+
+    def test_candidate_batch_preserves_distinct_constraints(self):
+        common_a = Bool("common-a")
+        common_b = Bool("common-b")
+        first = Bool("first")
+        second = Bool("second")
+
+        batch = candidate_batch_formula([
+            (common_a, first),
+            (common_b, second),
+        ])
+
+        self.assertEqual(repr(batch), repr(Or([
+            And([common_a, first]),
+            And([common_b, second]),
+        ])))
 
 if __name__ == "__main__":
     unittest.main()

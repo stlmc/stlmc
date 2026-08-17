@@ -130,7 +130,7 @@ def terminate_active_processes():
             pass
 
 
-def run_case(executable, case, timeout, log_path, scenario_batch_size=None):
+def run_case(executable, case, timeout, log_path, solver_batch_size=None):
     model_path, model_config, specific_config = case
     command = [
         executable,
@@ -140,8 +140,8 @@ def run_case(executable, case, timeout, log_path, scenario_batch_size=None):
         "-executable-path", DREAL_EXECUTABLE,
         "-visualize",
     ]
-    if scenario_batch_size is not None:
-        command.extend(["-scenario-batch-size", str(scenario_batch_size)])
+    if solver_batch_size is not None:
+        command.extend(["-solver-batch-size", str(solver_batch_size)])
     case_output_dir = log_path.parent.resolve()
     case_output_dir.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -197,8 +197,8 @@ def main():
     )
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument(
-        "--scenario-batch-size", type=int,
-        help="scenarios combined per two-step OR query",
+        "--solver-batch-size", type=int,
+        help="candidates combined per solver OR query",
     )
     parser.add_argument(
         "--fast", action="store_true",
@@ -215,8 +215,8 @@ def main():
         parser.error("--jobs must be at least 1")
     if args.timeout < 1:
         parser.error("--timeout must be at least 1 second")
-    if args.scenario_batch_size is not None and args.scenario_batch_size < 1:
-        parser.error("--scenario-batch-size must be at least 1")
+    if args.solver_batch_size is not None and args.solver_batch_size < 1:
+        parser.error("--solver-batch-size must be at least 1")
     if args.formula and not args.model:
         parser.error("--formula requires --model")
 
@@ -269,7 +269,7 @@ def main():
         futures = {
             executor.submit(
                 run_case, executable, case, args.timeout, log_path,
-                args.scenario_batch_size,
+                args.solver_batch_size,
             ): (case, case_name)
             for case, case_name, log_path in jobs
         }

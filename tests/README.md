@@ -18,8 +18,9 @@ The test suite has nine parts:
 - `process_cleanup.py` verifies that parallel solver workers share one bounded
   cleanup deadline and are forcefully reaped when graceful termination stalls.
 - `reachability.py` checks zero-jump reachability, unreachable results,
-  threshold relaxation, one-step/two-step agreement, Z3/Yices/dReal
-  agreement, temporal-target validation, and witness generation.
+  threshold relaxation, symbolic/explicit path strategies with one-step and
+  two-step solving, Z3/Yices/dReal agreement, temporal-target validation, and
+  witness generation.
 - `compare_solvers.py` reruns every Yices benchmark case with Z3, then checks
   that both solvers produce the same status and finishing bound. It reuses the
   Yices logs from the preceding benchmark run instead of running Yices twice.
@@ -135,7 +136,7 @@ Run only benchmarks:
 make benchmark
 ```
 
-Run one formula from one model, with a per-case timeout and two-step scenario
+Run one formula from one model, with a per-case timeout and solver candidate
 batch size:
 
 ```sh
@@ -144,15 +145,15 @@ make benchmark MODEL=space-ode/space FORMULA=f3 TIMEOUT=60 BATCH=8
 
 `MODEL` is relative to `tests/benchmarks` and omits the `.model` suffix.
 `FORMULA` is the goal-specific configuration suffix, such as `f1`, `f2`, or
-`f3`. `BATCH` is passed to STLMC as `-scenario-batch-size` and affects the
-scenario enumeration performed by the two-step algorithm; it is not specific
+`f3`. `BATCH` is passed to STLMC as `-solver-batch-size` and controls how many
+candidate refinements are combined in one solver OR query. It is not specific
 to dReal.
 
 ## Benchmark options
 
 Make variables can be combined on the command line:
 
-- `FAST=1`: selects all cases marked with `@benchmark.fast`, a 120-second
+- `FAST=1`: selects all cases marked with `@benchmark.fast`, a 300-second
   timeout, and four concurrent jobs unless those values are explicitly
   overridden. The current fast set contains 30 cases. Cases that timed out or
   had unstable runtimes during parallel execution are not marked as fast, but
@@ -164,7 +165,7 @@ Make variables can be combined on the command line:
 - `ARTIFACT_JOBS=<count>`: number of benchmark cases executed concurrently;
   the default is `1` (`4` with `FAST=1`).
 - `ARTIFACT_TIMEOUT=<seconds>`: timeout applied separately to each benchmark
-  and Z3 comparison case; the default is `3600` (`120` with `FAST=1`).
+  and Z3 comparison case; the default is `3600` (`300` with `FAST=1`).
 - `ARTIFACT_OUTPUT=<directory>`: output log directory; the default is
   `artifact-logs`.
 - `MODEL=<directory/model>`: runs only the named model below
@@ -172,7 +173,7 @@ Make variables can be combined on the command line:
   `benchmark` target.
 - `FORMULA=<name>`: runs only one goal-specific configuration for `MODEL`,
   such as `f3`. `MODEL` is required when this option is used.
-- `BATCH=<count>`: passes the two-step scenario batch size to STLMC. The value
+- `BATCH=<count>`: passes the solver candidate batch size to STLMC. The value
   must be at least `1`.
 - `SCOPE=<directory>`, `TIMEOUT=<seconds>`, and `OUTPUT=<directory>`: concise
   aliases for `ARTIFACT_SCOPE`, `ARTIFACT_TIMEOUT`, and `ARTIFACT_OUTPUT` when

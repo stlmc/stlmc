@@ -58,6 +58,5 @@ class CliHelpTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 0, completed.stdout)
 
-
 if __name__ == "__main__":
     unittest.main()

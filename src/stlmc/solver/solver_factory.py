@@ -1,8 +1,6 @@
 from ..solver.yices import YicesSolver
 from ..solver.z3 import Z3Solver
 from ..solver.dreal import dRealSolver
-from ..solver.flowstar import FlowStarSolverUnsatCoreMerging, FlowStarSolverUnsatCore
-from ..solver.spaceex import *
 
 
 class SolverFactory:
@@ -16,9 +14,4 @@ class SolverFactory:
             return Z3Solver()
         elif self.solver_type == 'dreal':
             return dRealSolver()
-        elif 'flowstar' in self.solver_type:
-            return FlowStarSolverUnsatCore()
-        elif "spaceex" in self.solver_type:
-            return SpaceExSolverUnsatCore()
-
         return YicesSolver()
