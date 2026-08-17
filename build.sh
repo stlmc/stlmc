@@ -73,10 +73,13 @@ get_dreal3() {
 build_command="$1" ; shift
 case "$build_command" in
     prep)               prepare                   "$@" ;;
+    antlr)              get_antlr                 "$@" ;;
+    dreal)              get_dreal3                "$@" ;;
     *)      echo "
-    usage: $0 [prep]
-           $0 script <options>
+    usage: $0 {prep|antlr|dreal}
 
-    $0 prep     :   prepare STLmc
+    $0 prep     : prepare ANTLR parsers and dReal
+    $0 antlr    : prepare ANTLR parsers only
+    $0 dreal    : prepare dReal only
 " ;;
 esac
