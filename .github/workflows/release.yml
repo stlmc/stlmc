@@ -80,6 +80,20 @@ jobs:
     - name: Prepare prerequisites
       run: ./build.sh prep
 
+    - name: Install Yices CLI on Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo add-apt-repository -y ppa:sri-csl/formal-methods
+        sudo apt-get update
+        sudo apt-get install -y yices2
+        yices-smt2 --version
+
+    - name: Install Yices CLI on macOS
+      if: matrix.os == 'macos-15'
+      run: |
+        brew install SRI-CSL/sri-csl/yices2
+        yices-smt2 --version
+
     - name: Ensure Rosetta is available
       if: matrix.os == 'macos-15'
       run: |
