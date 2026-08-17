@@ -176,9 +176,8 @@ class TwoStepAlgorithm(Algorithm):
         model_consts = []
         model_track_consts = []
 
-        # bound is the number of jumps
-        # starts from 0
-        # [ 0 ... bound ]
+        # For STL, the bound covers mode changes and variable points.  For a
+        # state reachability goal there are no STL variable points.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
             bound_started = time.monotonic()

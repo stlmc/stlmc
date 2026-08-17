@@ -26,14 +26,22 @@ The test suite has nine parts:
   Yices logs from the preceding benchmark run instead of running Yices twice.
 - `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
   compares each result and finishing bound with the annotation in its model.
+  The `tank-ode/tank-f2` case covers bound-zero STL checking of a jump-free
+  ODE model, ensuring that its initial continuous segment is not skipped.
 
 Benchmark expectations use this format:
 
 ```text
 # @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
+# @benchmark.expected(f1=satisfied:0, reach=reachable:0)
 ```
 
-The expected bound is the number of discrete jumps and starts at zero. Bound
+Labels match the suffix of each goal-specific configuration file. In addition
+to STL statuses (`satisfied` and `violated`), reachability cases use
+`reachable` and `unreachable`.
+
+For reachability cases, the expected bound is the number of jumps and
+starts at zero. For STL cases, it also includes STL variable points. Bound
 zero represents one continuous segment with no jump. Both one-step and
 two-step algorithms use this convention.
 
@@ -62,7 +70,7 @@ make test
 ```
 
 Run the fast selection of all nine test parts. Unit and integration tests are
-still run in full; the benchmark stages are reduced to 30 FAST benchmark cases
+still run in full; the benchmark stages are reduced to 33 FAST benchmark cases
 and 20 Z3/Yices comparisons:
 
 ```sh
@@ -155,7 +163,7 @@ Make variables can be combined on the command line:
 
 - `FAST=1`: selects all cases marked with `@benchmark.fast`, a 300-second
   timeout, and four concurrent jobs unless those values are explicitly
-  overridden. The current fast set contains 30 cases. Cases that timed out or
+  overridden. The current fast set contains 33 cases. Cases that timed out or
   had unstable runtimes during parallel execution are not marked as fast, but
   remain part of the full benchmark run without `FAST=1`. Currently these are
   all `bat-ode` cases, `car-ode/f3`, `rail-ode/f1`, `space-ode/f2`, and

@@ -269,28 +269,29 @@ class StlMC(Model):
                 jump_flat.extend(jump_post.children)
                 jump_sub_children.append(And(jump_flat))
 
-            # generate steady jump const
-            steady_jump_const_children = list()
+            # An STL variable point splits a flow without changing the mode or
+            # state. It is an encoding transition, not a model-declared jump.
+            variable_point_transition_children = list()
             op_dict = {'bool': Bool, 'int': Int, 'real': Real}
 
             for mode_var_id in self.mode_var_dict:
                 mode_var = self.mode_var_dict[mode_var_id]
                 next_var = op_dict[mode_var.type](mode_var_id + self.next_str)
-                steady_jump_const_children.append(Eq(next_var, mode_var))
+                variable_point_transition_children.append(Eq(next_var, mode_var))
 
                 # add bounded info
                 substitute_dict[next_var] = op_dict[mode_var.type](mode_var_id + "_" + str(bound + 1))
 
             for range_var in self.range_dict:
                 next_var = Real(range_var.id + self.next_str)
-                steady_jump_const_children.append(Eq(next_var, range_var))
+                variable_point_transition_children.append(Eq(next_var, range_var))
 
                 # add bounded info
                 substitute_dict[next_var] = Real(range_var.id + "_" + str(bound + 1) + "_0")
 
-            steady_jump_const = And(steady_jump_const_children)
+            variable_point_transition = And(variable_point_transition_children)
             if not self.is_stl_reach:
-                jump_sub_children.append(steady_jump_const)
+                jump_sub_children.append(variable_point_transition)
 
             jumps = list()
             for jump_index, jump in enumerate(jump_sub_children):

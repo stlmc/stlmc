@@ -1,0 +1,32 @@
+# @benchmark.expected(f1=violated:1, f2=satisfied:0, reach=reachable:0)
+# @benchmark.fast(f1, f2, reach)
+[-1e10, 1e10] x1;
+[-1e10, 1e10] x2;
+
+const k = 0.015;
+const k2 = 0.01;
+const g = 9.81;
+
+{
+  mode: true;
+  inv: true;
+  flow:
+    d/dt[x1] = 0.1 + k2 * (4 - x2) - k * sqrt(2 * g) * sqrt(x1);
+    d/dt[x2] = k * sqrt(2 * g) * (sqrt(x1) - sqrt(x2));
+  jump:
+}
+
+init:
+  - x2 + 1.8 <= 0;
+  x1 + -2.2 <= 0;
+  x2 + -2.2 <= 0;
+  - x1 + 1.8 <= 0;
+
+proposition:
+  [p1]: x2 <= 2.5;
+  [p2]: x2 > 2.5;
+
+goal:
+  [f1]: [][0, 400] (p1);
+  [f2]: <>[0, 400] (p2);
+  [f2r]: p2;

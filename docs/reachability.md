@@ -1,9 +1,12 @@
 # Reachability
 
-STLMC treats a reachability bound as the maximum number of discrete jumps.
+STLMC treats a reachability bound as the maximum number of jumps.
 Bound zero therefore checks the initial continuous segment, and bound `k`
 checks paths containing at most `k` jumps. The search stops at the first bound
 that contains a witness.
+
+`time-horizon` limits the duration of each continuous segment. Reachability
+segments are separated by jumps.
 
 ## Writing a query
 

@@ -33,6 +33,20 @@ from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
 
 
+def validate_requested_goal_labels(requested_labels, goal_labels):
+    available_labels = sorted(set(goal_labels.values()))
+    missing_labels = sorted(set(requested_labels).difference(available_labels))
+    if not missing_labels:
+        return
+
+    available = ", ".join(available_labels) if available_labels else "none"
+    raise IllegalArgumentError(
+        "unknown goal label(s): {}; available goals: {}".format(
+            ", ".join(missing_labels), available
+        )
+    )
+
+
 class BaseDriverFactory(DriverFactory):
     def __init__(self):
         super().__init__()
@@ -226,7 +240,7 @@ class BaseRunner(Runner):
             f_labels = list()
             if is_formula_label:
                 f_label_raw = common_section.get_value("goal")
-                f_labels = f_label_raw.split(",")
+                f_labels = [label.strip() for label in f_label_raw.split(",")]
                 if len(f_labels) > 1:
                     for f_label in f_labels:
                         if f_label == "all":
@@ -245,6 +259,7 @@ class BaseRunner(Runner):
                 printer.verbose = True
 
             model, PD, goals, goal_labels = object_manager.generate_objects(file_name)
+            validate_requested_goal_labels(f_labels, goal_labels)
             if underlying_solver == "auto":
                 dynamic_type = check_dynamics(model)
                 formulas_require_dreal = any(
@@ -317,7 +332,13 @@ class BaseRunner(Runner):
                     algorithm_name = "one-step"
                 printer.run_started(
                     file_name, label, underlying_solver, algorithm_name,
-                    is_parallel, parallel_core, bound, time_bound, delta,
+                    is_parallel, parallel_core, bound,
+                    (
+                        "mode changes"
+                        if is_reach_query
+                        else "mode changes + STL variable points"
+                    ),
+                    time_bound, delta,
                     (
                         "reachability goal"
                         if is_reach_query
@@ -402,7 +423,7 @@ class BaseRunner(Runner):
                     status, finished_bound, total_time, formula_string,
                     result_scope, counterexample_file, visual_config_file,
                 )
-        except NotSupportedError:
+        except (NotSupportedError, IllegalArgumentError):
             raise
         except SyntaxError as e:
             print("syntax error: {}".format(e))

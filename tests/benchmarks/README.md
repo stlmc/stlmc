@@ -19,8 +19,12 @@ results are stored in each model file using this annotation:
 
 ```text
 # @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
+# @benchmark.expected(f1=satisfied:0, reach=reachable:0)
 # @benchmark.fast(f1, f2, f3)
 ```
+
+The annotation label matches the suffix of its goal-specific configuration
+file. Reachability cases use `reachable` or `unreachable` as their status.
 
 Run every benchmark with `make benchmark`. Select one model with, for example,
 `make benchmark ARTIFACT_SCOPE=rail-poly`.

@@ -18,7 +18,8 @@ DREAL_EXECUTABLE = os.environ.get(
 )
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 RESULT_PATTERN = re.compile(
-    r"^\s*status\s*:\s*(satisfied|violated|unknown)\s+"
+    r"^\s*status\s*:\s*"
+    r"(satisfied|violated|reachable|unreachable|unknown)\s+"
     r"(?:at|up to) bound\s+(\d+)\s*$",
     re.MULTILINE,
 )
@@ -26,7 +27,8 @@ EXPECTED_PATTERN = re.compile(
     r"^# @benchmark\.expected\((.+)\)$", re.MULTILINE
 )
 EXPECTED_ITEM_PATTERN = re.compile(
-    r"(f\d+)=(satisfied|violated|unknown):(\d+)"
+    r"([A-Za-z][A-Za-z0-9_-]*)="
+    r"(satisfied|violated|reachable|unreachable|unknown):(\d+)"
 )
 FAST_PATTERN = re.compile(r"^# @benchmark\.fast\((.+)\)$", re.MULTILINE)
 ACTIVE_PROCESSES = set()
@@ -193,7 +195,7 @@ def main():
     )
     parser.add_argument(
         "--formula",
-        help="run one formula/config label, e.g. f3 (requires --model)",
+        help="run one formula/config label, e.g. f3 or reach (requires --model)",
     )
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument(

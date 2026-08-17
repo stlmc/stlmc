@@ -96,6 +96,15 @@ dreal {{
         self.assertIn("query       : reachability goal", completed.stdout)
         self.assertIn("status      : reachable at bound 0", completed.stdout)
 
+    def test_unknown_goal_label_reports_available_labels(self):
+        completed, _ = self.run_model(
+            "[known]: (x >= 0)",
+            extra_args=("-goal", "missing"),
+        )
+        self.assertEqual(completed.returncode, 2, completed.stdout)
+        self.assertIn("unknown goal label(s): missing", completed.stdout)
+        self.assertIn("available goals: known", completed.stdout)
+
     def test_unreachable_up_to_zero_jump_bound(self):
         completed, _ = self.run_model("reach (x >= 11)")
         self.assertEqual(completed.returncode, 0, completed.stdout)

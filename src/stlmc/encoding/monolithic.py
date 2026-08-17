@@ -56,8 +56,8 @@ class OneStepAlgorithm(Algorithm):
         static_learner = StaticLearner(model, goal_f)
         static_learner.generate_learned_clause(bound, delta)
 
-        # The bound is the number of discrete jumps.  Bound 0 still contains
-        # one continuous segment and must be checked for zero-jump witnesses.
+        # The STL bound covers mode changes and proposition variable points.
+        # Bound 0 still contains one continuous segment.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
             # start logging

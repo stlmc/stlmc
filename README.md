@@ -40,8 +40,13 @@ stlmc-vis -h
 
 ## Basic usage
 
-An analysis requires a model, a maximum discrete-jump bound, and a global time
-bound. These values may be supplied by a model configuration file:
+An analysis requires a model, a discrete STL bound, and a global time bound.
+For STL model checking, the discrete bound limits mode changes plus
+variable points where an STL subformula changes truth value. For state
+reachability it limits jumps. `time-horizon` limits the duration
+of each continuous segment separated by a mode change or STL variable
+point; it defaults to the global `time-bound`. These values may be supplied by
+a model configuration file:
 
 ```sh
 stlmc system.model -model-cfg system.cfg

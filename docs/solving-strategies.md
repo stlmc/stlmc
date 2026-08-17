@@ -3,6 +3,12 @@
 STLmc separates discrete path exploration from continuous solving. The two
 choices are independent and are composed by the model-checking algorithm.
 
+For STL model checking, `bound` limits the combined number of mode changes and
+STL variable points. A variable point splits a continuous trajectory when a
+subformula changes truth value. `time-horizon` limits the duration of every
+continuous segment separated by a mode change or variable point. For a state
+reachability query there are no STL variable points, so `bound` limits jumps.
+
 ## One-step and two-step solving
 
 One-step solving sends the complete bounded encoding, including flow and

@@ -20,7 +20,9 @@ def main():
 
     from ..driver.abstract_driver import StlModelChecker
     from ..driver.base_driver import BaseDriverFactory
-    from ..exception.exception import NotSupportedError, OperationError, ParsingError
+    from ..exception.exception import (
+        IllegalArgumentError, NotSupportedError, OperationError, ParsingError,
+    )
     from ..update_check import notify_if_outdated
     from ..util.interrupt import StlmcInterrupted, clear_interrupt, is_interrupted
     from ..util.print import ExceptionPrinter
@@ -47,6 +49,9 @@ def main():
             raise StlmcInterrupted
     except NotSupportedError as E:
         printer.print_normal("conversion error: {}".format(E))
+        return 2
+    except IllegalArgumentError as E:
+        printer.print_normal("argument error: {}".format(E))
         return 2
     except OperationError as E:
         printer.print_normal("operation error: {}".format(E))

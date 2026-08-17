@@ -36,7 +36,7 @@ class BasePrinter:
         print("======================================", flush=True)
 
     def run_started(self, model, goal, solver, algorithm, parallel, workers,
-                    max_bound, time_bound, threshold, query_kind):
+                    max_bound, bound_kind, time_bound, threshold, query_kind):
         self._bound_header_printed = False
         self.clear_progress()
         self._last_progress_update = None
@@ -52,6 +52,7 @@ class BasePrinter:
             "  algorithm   : {}".format(algorithm),
             "  execution   : {}".format(execution),
             "  max bound   : {}".format(max_bound),
+            "  bound kind  : {}".format(bound_kind),
             "  time bound  : {}".format(time_bound),
             "  threshold   : {}".format(threshold),
             "  query       : {}".format(query_kind),
