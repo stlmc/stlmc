@@ -68,7 +68,7 @@ class InstallerCliTest(unittest.TestCase):
 
         self.assertEqual(
             pip.call_args_list,
-            [mock.call("z3-solver"), mock.call("yices")],
+            [mock.call("z3-solver==4.13.2.0"), mock.call("yices")],
         )
         yices.assert_called_once_with()
         dreal.assert_called_once_with()

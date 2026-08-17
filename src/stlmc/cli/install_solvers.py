@@ -15,6 +15,7 @@ from ..solver.availability import find_dreal, user_dreal_path
 
 
 _DREAL_VERSION = "3.16.06.02"
+_Z3_PACKAGE = "z3-solver==4.13.2.0"
 
 
 def _status():
@@ -161,7 +162,7 @@ def main():
     before = _status()
     if not args.check:
         if "z3" in selected and not before["z3"][0]:
-            _install_python_package("z3-solver")
+            _install_python_package(_Z3_PACKAGE)
         if "yices" in selected and not before["yices"][0]:
             _install_python_package("yices")
             _install_yices()
