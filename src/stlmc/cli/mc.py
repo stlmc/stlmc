@@ -1,21 +1,30 @@
-from ..driver.abstract_driver import *
-from ..driver.base_driver import *
-from ..exception.exception import *
-from ..util.print import *
-import signal
-import traceback
-from ..update_check import notify_if_outdated
-from ..util.interrupt import (
-    StlmcInterrupted, clear_interrupt, is_interrupted, request_interrupt,
-)
+import sys
 
 
 def _raise_keyboard_interrupt(signum, frame):
+    from ..util.interrupt import StlmcInterrupted, request_interrupt
+
     request_interrupt()
     raise StlmcInterrupted
 
 
 def main():
+    # Help must not load ANTLR, Z3, dReal, or visualization modules.
+    if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+        from .parser import print_help
+
+        return print_help(prog=sys.argv[0])
+
+    import signal
+    import traceback
+
+    from ..driver.abstract_driver import StlModelChecker
+    from ..driver.base_driver import BaseDriverFactory
+    from ..exception.exception import NotSupportedError, OperationError, ParsingError
+    from ..update_check import notify_if_outdated
+    from ..util.interrupt import StlmcInterrupted, clear_interrupt, is_interrupted
+    from ..util.print import ExceptionPrinter
+
     clear_interrupt()
     notify_if_outdated()
     printer = ExceptionPrinter()

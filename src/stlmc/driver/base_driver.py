@@ -1,8 +1,8 @@
-import argparse
 import os.path
 import sys
 
 from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
+from ..cli.parser import build_parser
 from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
@@ -62,21 +62,8 @@ class BaseCmdParser(CmdParser):
         self.config = Configuration()
         self.built_in_names = ["file", "model_cfg", "model_specific_cfg"]
 
-        self.parser = argparse.ArgumentParser(description='For more information. See below:')
-        self.parser.add_argument('file', nargs='?', type=str, help="Type file or directory to process")
-        self.parser.add_argument('-default-cfg', type=str, help="system configuration file")
-        self.parser.add_argument('-model-cfg', type=str, help="model configuration file")
-        self.parser.add_argument('-model-specific-cfg', type=str, help="model-specific configuration file")
+        self.parser = build_parser()
         self.arg_value_dict = dict()
-
-        cmd_args, bool_cmd_args = self.config_visitor.generate_cmd_args()
-        for arg in cmd_args:
-            self.parser.add_argument("-{}".format(arg), type=str)
-
-        # https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
-        for bool_arg in bool_cmd_args:
-            self.parser.add_argument("-{}".format(bool_arg), dest="{}".format(bool_arg),
-                                     action="store_true", default=False)
         self.file = ""
 
     def get_config(self) -> Configuration:

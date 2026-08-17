@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import argparse
@@ -5,16 +7,10 @@ import subprocess
 from functools import reduce
 from typing import *
 
-from bokeh.io import export_svg
-from bokeh.models import DataRange1d
-from bokeh.plotting import figure
-
-from ..parser.visualize_visitor import VisualizeConfigPaser
-from ..constraints.constraints import *
-from ..visualize.visualizer import Visualizer, formula2latex, split_groups, pairwise_disjoint_check, flatten
-
-
 def svg_out(main_figure: figure, rob_figure: figure):
+    from bokeh.io import export_svg
+    from bokeh.models import DataRange1d
+
     # assert visualizer.plot is not None
     # assert isinstance(visualizer.plot, Plot)
     # visualizer.plot
@@ -66,6 +62,10 @@ def gnuplot(file_name,
             robustness: Dict[Formula, List[List[float]]],
             all_time_samples: List[List[float]], 
             delta, formula_label):
+    from ..visualize.visualizer import (
+        flatten, formula2latex, pairwise_disjoint_check, split_groups,
+    )
+
     user_defined_groups_list = list(user_defined_groups.values())
 
     check_gnuplot()
@@ -210,6 +210,11 @@ def main():
 
         if os.path.isdir(args.file):
             raise ValueError("\'{}\' is not a file".format(args.file))
+
+        # Visualization dependencies are intentionally loaded after argparse,
+        # so `stlmc-vis -h` does not initialize Bokeh, ANTLR, or STLmc solvers.
+        from ..parser.visualize_visitor import VisualizeConfigPaser
+        from ..visualize.visualizer import Visualizer
 
         import pickle
 

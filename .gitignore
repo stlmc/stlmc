@@ -6,6 +6,7 @@ stlmc.o*
 *.interp
 *.tokens
 *Parser.py
+!src/stlmc/cli/parser.py
 *Lexer.py
 *.pyc
 *.swp
@@ -29,6 +30,7 @@ tests/*
 !tests/reachability.py
 !tests/robustness_operations.py
 !tests/scenario_minimization.py
+!tests/cli_help.py
 !tests/process_cleanup.py
 !tests/smoke_solvers.py
 !tests/README.md

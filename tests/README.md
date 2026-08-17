@@ -1,11 +1,20 @@
 # Tests
 
-The test suite has six parts:
+The test suite has nine parts:
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
 - `solver_capabilities.py` verifies solver-specific arithmetic validation and
   dReal inverse-trigonometric translations.
+- `robustness_operations.py` checks STL weakening, strengthening, negation,
+  and implication polarity transformations.
+- `scenario_minimization.py` checks that Boolean and arithmetic scenario
+  literals retain their true/false polarity, concrete scenarios preserve
+  arithmetic clauses, and repeated core minimization never selects a larger
+  core.
+- `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
+  remain synchronized and that importing the visualization CLI does not load
+  Bokeh or the full visualizer.
 - `process_cleanup.py` verifies that parallel solver workers share one bounded
   cleanup deadline and are forcefully reaped when graceful termination stalls.
 - `reachability.py` checks zero-jump reachability, unreachable results,
@@ -42,17 +51,18 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run all six test parts in order: solver smoke tests, formula capability tests,
-robustness and process-cleanup tests, reachability tests, every annotated
-benchmark, and the Z3/Yices comparison:
+Run all nine test parts in order: solver smoke tests, formula capability tests,
+robustness transformations, scenario minimization, CLI help/schema checks,
+process cleanup, reachability semantics, every annotated benchmark, and the
+Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all six test parts. This currently runs the smoke,
-capability, robustness, process-cleanup, and reachability tests, 30 FAST
-benchmark cases, and 20 Z3/Yices comparisons:
+Run the fast selection of all nine test parts. Unit and integration tests are
+still run in full; the benchmark stages are reduced to 30 FAST benchmark cases
+and 20 Z3/Yices comparisons:
 
 ```sh
 make test FAST=1
@@ -68,6 +78,31 @@ Run only the solver formula capability tests:
 
 ```sh
 make test-capabilities
+```
+
+Run only the STL robustness transformation tests:
+
+```sh
+make test-robustness
+```
+
+Run only the scenario minimization and literal-polarity tests:
+
+```sh
+make test-scenario-minimization
+```
+
+Run only the CLI schema, default-value, and lazy-help tests for `stlmc` and
+`stlmc-vis`:
+
+```sh
+make test-cli-help
+```
+
+Run only the parallel solver process cleanup tests:
+
+```sh
+make test-process-cleanup
 ```
 
 Run only the reachability semantics tests:

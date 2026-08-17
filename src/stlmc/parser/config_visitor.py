@@ -3,6 +3,15 @@ from typing import Union
 from antlr4 import FileStream, CommonTokenStream
 
 from .error_listener import StlmcErrorListener
+from ..config_schema import (
+    SECTION_BOOLEAN_OPTIONS,
+    SECTION_MANDATORY_OPTIONS,
+    SECTION_NAMES,
+    SECTION_TYPE_RULES,
+    SECTION_VALUE_OPTIONS,
+    all_boolean_options,
+    all_value_options,
+)
 from ..exception.exception import IllegalArgumentError
 from ..exception.exception import NotSupportedError
 from ..objects.configuration import *
@@ -16,47 +25,19 @@ class ConfigVisitor(configVisitor):
     def __init__(self):
         # reference
         self.config: Configuration = Configuration()
-        self.section_boolean_argument_dict = dict()
-        self.section_argument_dict = dict()
-        self.type_check_dict = dict()
-
-        self.section_argument_dict["common"] = {
-            "threshold", "bound", "time-bound",
-            "solver", "goal", "time-horizon", "parallel-core",
-            "scenario-batch-size", "core-minimize-attempts", "smt2-dir"
+        self.section_argument_dict = {
+            section: set(SECTION_VALUE_OPTIONS[section]) for section in SECTION_NAMES
         }
-        self.section_argument_dict["z3"] = {"logic"}
-        self.section_argument_dict["yices"] = {"logic"}
-        self.section_argument_dict["dreal"] = {"precision", "ode-order", "ode-step", "executable-path"}
-
-        self.type_check_dict["common"] = {
-            ("threshold", "float"), ("bound", "integer"), ("time-bound", "float"),
-            ("solver", frozenset({"z3", "yices", "dreal"})), ("goal", "string"), ("time-horizon", "float"), ("parallel-core", "integer"),
-            ("scenario-batch-size", "integer"),
-            ("core-minimize-attempts", "integer"),
-            ("smt2-dir", "string")
+        self.section_boolean_argument_dict = {
+            section: set(SECTION_BOOLEAN_OPTIONS[section]) for section in SECTION_NAMES
         }
-        self.type_check_dict["z3"] = {("logic", frozenset({"QF_NRA", "QF_LRA"}))}
-        self.type_check_dict["yices"] = {("logic", frozenset(["QF_NRA", "QF_LRA"]))}
-        self.type_check_dict["dreal"] = {
-            ("precision", "float"), ("ode-order", "float"),
-            ("ode-step", "float"), ("executable-path", "path")
+        self.type_check_dict = {
+            section: set(SECTION_TYPE_RULES[section]) for section in SECTION_NAMES
         }
-
-        self.section_boolean_argument_dict["common"] = {
-            "two-step", "concrete", "parallel", "visualize", "verbose", "reach", "only-loop", "save-smt2"
+        self.section_names: List[str] = list(SECTION_NAMES)
+        self.section_mandatory_dict = {
+            section: set(SECTION_MANDATORY_OPTIONS[section]) for section in SECTION_NAMES
         }
-        self.section_boolean_argument_dict["z3"] = set()
-        self.section_boolean_argument_dict["yices"] = set()
-        self.section_boolean_argument_dict["dreal"] = set()
-
-        self.section_names: List[str] = ["common", "z3", "yices", "dreal"]
-
-        self.section_mandatory_dict = dict()
-        self.section_mandatory_dict["common"] = {"bound", "time-bound"}
-        self.section_mandatory_dict["z3"] = set()
-        self.section_mandatory_dict["yices"] = set()
-        self.section_mandatory_dict["dreal"] = {"ode-order", "executable-path"}
 
         self.section_selectable_dict: Dict[str, List[Set[str]]] = dict()
         self.section_selectable_dict["common"] = list()
@@ -88,14 +69,7 @@ class ConfigVisitor(configVisitor):
         return missing_dict
 
     def generate_cmd_args(self):
-        cmds = set()
-        for section_name in self.section_argument_dict:
-            cmds.update(self.section_argument_dict[section_name])
-
-        bool_cmds = set()
-        for section_name in self.section_boolean_argument_dict:
-            bool_cmds.update(self.section_boolean_argument_dict[section_name])
-        return cmds, bool_cmds
+        return all_value_options(), all_boolean_options()
 
     def parse_from_file(self, file_name: str, base: Union[Configuration, None] = None) -> Configuration:
         self.config = Configuration()
