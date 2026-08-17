@@ -99,13 +99,21 @@ class BaseCmdParser(CmdParser):
         if args.default_cfg is not None:
             self.config = self.config_visitor.parse_from_file(args.default_cfg)
         else:
-            default = os.path.dirname(__file__)
-            self.config = self.config_visitor.parse_from_file("{}/../default.cfg".format(default))
+            package_dir = os.path.dirname(os.path.dirname(__file__))
+            self.config = self.config_visitor.parse_from_file(
+                os.path.join(package_dir, "default.cfg")
+            )
             
             dreal = self.config.get_section("dreal")
             exec_path = dreal.get_value("executable-path")
             if not os.path.isabs(exec_path):
-                exec_path = os.path.normpath(os.path.join(default, exec_path))
+                bundled_path = os.path.normpath(os.path.join(package_dir, exec_path))
+                source_path = os.path.normpath(os.path.join(
+                    package_dir, "..", "..", exec_path
+                ))
+                exec_path = (
+                    bundled_path if os.path.isfile(bundled_path) else source_path
+                )
             dreal.set_value("executable-path", exec_path)
 
         if args.model_cfg is not None:

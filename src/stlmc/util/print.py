@@ -71,12 +71,12 @@ class BasePrinter:
         prefix = "bound={:<6}".format(bound)
         query_field = "query={:<7}".format(result)
         fields = [prefix]
-        if self.verbose and constraint_size is not None:
-            fields.append("const-size={:<10}".format(constraint_size))
-        fields.append(query_field)
         if scenarios is not None:
             scenario_field = "scenarios={:<10}".format(scenarios)
             fields.append(scenario_field)
+        fields.append(query_field)
+        if self.verbose and constraint_size is not None:
+            fields.append("const-size={:<10}".format(constraint_size))
         fields.append("time={:.3f}s".format(elapsed))
         if found_scenario is not None:
             fields.append(

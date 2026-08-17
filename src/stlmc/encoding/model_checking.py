@@ -4,8 +4,7 @@ from ..objects.algorithm import Algorithm
 class ModelCheckingAlgorithm(Algorithm):
     """Compose discrete path exploration with a continuous solving engine."""
 
-    def __init__(self, path_provider, continuous_solving):
-        self.path_provider = path_provider
+    def __init__(self, continuous_solving):
         self.continuous_solving = continuous_solving
 
     @property

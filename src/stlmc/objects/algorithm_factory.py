@@ -19,4 +19,4 @@ class AlgorithmFactory:
             continuous_solving = TwoStepAlgorithm(path_provider)
         else:
             continuous_solving = OneStepAlgorithm(path_provider)
-        return ModelCheckingAlgorithm(path_provider, continuous_solving)
+        return ModelCheckingAlgorithm(continuous_solving)

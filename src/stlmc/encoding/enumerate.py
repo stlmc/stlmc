@@ -1,12 +1,8 @@
-import concurrent.futures
 import random
 import time
-from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, ProcessPoolExecutor
 from functools import reduce
 from typing import *
 
-from ..objects.algorithm import *
-# from .algorithm import ParallelAlgRunner
 from ..objects.algorithm import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
@@ -1330,7 +1326,3 @@ def contradiction_gen_inv(boolean_dict):
 
 def acc_size(acc: List[Formula]):
     return size_of_tree(And(acc))
-
-
-# Backward-compatible name for external imports.
-EnumerateAlgorithm = TwoStepAlgorithm

@@ -337,7 +337,3 @@ def _(const: MultinaryFormula):
         return result
     else:
         return set()
-
-
-# Backward-compatible name for external imports.
-SmtAlgorithm = OneStepAlgorithm
