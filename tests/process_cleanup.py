@@ -2,6 +2,7 @@ import subprocess
 import sys
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -50,6 +51,23 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         self.assertFalse(runner.procs)
         self.assertTrue(all(worker.terminated for worker in workers))
         self.assertTrue(all(worker.killed for worker in workers))
+
+    def test_cleanup_falls_back_when_process_group_signal_is_denied(self):
+        runner = ParallelAlgRunner(1)
+        runner.cleanup_timeout = 0
+        worker = SlowProcess(100)
+        worker._stlmc_process_group = True
+        runner.procs.add(worker)
+
+        with mock.patch(
+            "stlmc.objects.algorithm.os.killpg",
+            side_effect=PermissionError(1, "Operation not permitted"),
+        ):
+            runner.kill_all()
+
+        self.assertTrue(worker.terminated)
+        self.assertTrue(worker.killed)
+        self.assertFalse(runner.procs)
 
 
 if __name__ == "__main__":

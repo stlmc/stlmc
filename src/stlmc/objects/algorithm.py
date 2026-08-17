@@ -188,15 +188,31 @@ class ParallelAlgRunner(AlgorithmRunner):
                 return proc.poll() is None
             return proc.is_alive()
 
-        for proc in process_workers:
-            if is_running(proc):
+        def signal_process(proc, sig):
+            try:
+                if getattr(proc, "_stlmc_process_group", False):
+                    os.killpg(proc.pid, sig)
+                elif sig == signal.SIGTERM:
+                    proc.terminate()
+                else:
+                    proc.kill()
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                # A process group can disappear or become inaccessible between
+                # poll() and killpg() on macOS.  The child process handle is
+                # still safe to terminate directly.
                 try:
-                    if getattr(proc, "_stlmc_process_group", False):
-                        os.killpg(proc.pid, signal.SIGTERM)
-                    else:
+                    if sig == signal.SIGTERM:
                         proc.terminate()
+                    else:
+                        proc.kill()
                 except ProcessLookupError:
                     pass
+
+        for proc in process_workers:
+            if is_running(proc):
+                signal_process(proc, signal.SIGTERM)
 
         # Use one deadline for the whole worker set.  Waiting one second per
         # worker can exceed the outer benchmark runner's five-second grace
@@ -217,16 +233,7 @@ class ParallelAlgRunner(AlgorithmRunner):
         for proc in process_workers:
             if not is_running(proc):
                 continue
-            try:
-                if hasattr(proc, "wait"):
-                    if getattr(proc, "_stlmc_process_group", False):
-                        os.killpg(proc.pid, signal.SIGKILL)
-                    else:
-                        proc.kill()
-                else:
-                    proc.kill()
-            except ProcessLookupError:
-                pass
+            signal_process(proc, signal.SIGKILL)
 
         for proc in process_workers:
             if hasattr(proc, "wait"):
