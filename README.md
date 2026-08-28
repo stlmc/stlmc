@@ -177,8 +177,19 @@ maximum number of final candidates combined in one solver OR query:
 stlmc system.model -two-step -solver-batch-size 8
 ```
 
+With `-two-step -parallel`, scenario generation and unsat-core minimization
+remain sequential, while completed refinement batches are checked concurrently
+by solver workers. `parallel-core` limits those workers. Batching and
+parallelism therefore have different effects: a larger batch reduces the
+number of solver jobs and can reduce available parallelism. Start with batch
+size `1` when solver utilization is the priority, then try `2` or `4` to trade
+some parallelism for fewer solver invocations.
+
 See [Solving strategies](docs/solving-strategies.md) for the abstraction, path,
-batching, and parallelism relationships.
+batching, parallelism, and live progress fields.
+
+Pressing `Ctrl+C` stops scenario generation, terminates active solver process
+groups, reaps their worker threads, and exits.
 
 ## Visualization
 

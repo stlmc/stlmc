@@ -20,6 +20,8 @@ The test suite has ten parts:
   executable discovery precedence without accessing the network.
 - `process_cleanup.py` verifies that parallel solver workers share one bounded
   cleanup deadline and are forcefully reaped when graceful termination stalls.
+  It also checks that completed batches update scenario and job progress in
+  their respective units, including batches containing multiple scenarios.
 - `reachability.py` checks zero-jump reachability, unreachable results,
   threshold relaxation, symbolic/explicit path strategies with one-step and
   two-step solving, Z3/Yices/dReal agreement, temporal-target validation, and

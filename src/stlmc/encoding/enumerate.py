@@ -180,8 +180,8 @@ class TwoStepAlgorithm(Algorithm):
         # state reachability goal there are no STL variable points.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
+            self.runner.reset_progress()
             bound_started = time.monotonic()
-            completed_before_bound = self.runner.number
 
             # generate model consts
             model_f_k, track_f_k = model.k_step_consts(b)
@@ -258,8 +258,7 @@ class TwoStepAlgorithm(Algorithm):
 
                 runner_result, runner_model = self.runner.wait_and_check_sat(
                     lambda completed: printer.scenario_progress(
-                        b, bound_scenarios,
-                        completed - completed_before_bound,
+                        b, **self.runner.progress_snapshot()
                     )
                 )
                 if runner_result:
@@ -362,18 +361,18 @@ class TwoStepAlgorithm(Algorithm):
             self.runner.set_debug(
                 "{}_b{:03d}_s{}".format(self.debug_name, bound, scenario_label)
             )
-            self.runner.set_scenario(scenario_label)
             # Multinary formulas retain the supplied list, so detach it before
             # clearing the pending batch.
             batch_formula = candidate_batch_formula(list(pending_candidates))
             batch_scenario_count = len(pending_candidates)
+            self.runner.set_scenario(scenario_label, batch_scenario_count)
             pending_candidates.clear()
             pending_scenarios.clear()
 
             self.runner.run(smt_solver, batch_formula)
             submitted += batch_scenario_count
             runner_result, runner_model = self.runner.check_sat()
-            printer.scenario_progress(bound, submitted)
+            printer.scenario_progress(bound, **self.runner.progress_snapshot())
             return runner_result, runner_model
 
         while True:
@@ -503,6 +502,8 @@ class TwoStepAlgorithm(Algorithm):
 
                     pending_candidates.append((common_part, scenario_part))
                     pending_scenarios.append(counter)
+                    self.runner.record_scenario_generated()
+                    printer.scenario_progress(bound, **self.runner.progress_snapshot())
                     runner_result, runner_model = (False, None)
                     if len(pending_candidates) >= solver_batch_size:
                         runner_result, runner_model = submit_pending_batch()
@@ -573,6 +574,8 @@ class TwoStepAlgorithm(Algorithm):
 
                     pending_candidates.append((common_part, scenario_part))
                     pending_scenarios.append(counter)
+                    self.runner.record_scenario_generated()
+                    printer.scenario_progress(bound, **self.runner.progress_snapshot())
                     runner_result, runner_model = (False, None)
                     if len(pending_candidates) >= solver_batch_size:
                         runner_result, runner_model = submit_pending_batch()

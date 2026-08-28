@@ -86,7 +86,8 @@ class BasePrinter:
         line = "  {}".format("\t".join(fields))
         self.print_normal(line)
 
-    def scenario_progress(self, bound, submitted, completed=None):
+    def scenario_progress(self, bound, generated, submitted, completed, pending,
+                          submitted_jobs, completed_jobs, active_workers):
         if not sys.stdout.isatty():
             return
         if not self._bound_header_printed:
@@ -99,15 +100,13 @@ class BasePrinter:
         ):
             return
         self._last_progress_update = now
-        if completed is None:
-            text = "  bound={}\tscenarios={}".format(bound, submitted)
-        else:
-            pending = max(submitted - completed, 0)
-            text = (
-                "  bound={}\tsubmitted={}\tcompleted={}\tpending={}".format(
-                    bound, submitted, completed, pending
-                )
+        text = (
+            "  bound={}\tgenerated={}\tsubmitted={}\tcompleted={}\t"
+            "pending={}\tjobs={}/{}\tactive={}".format(
+                bound, generated, submitted, completed, pending,
+                completed_jobs, submitted_jobs, active_workers,
             )
+        )
         print("\r\033[2K{}".format(text), end="", flush=True)
         self._progress_active = True
 

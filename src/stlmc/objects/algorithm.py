@@ -46,6 +46,28 @@ class AlgorithmRunner:
     def set_debug(self, msg: str):
         pass
 
+    def reset_progress(self):
+        self.generated_scenarios = 0
+        self.submitted_scenarios = 0
+        self.completed_scenarios = 0
+        self.submitted_jobs = 0
+        self.completed_jobs = 0
+
+    def record_scenario_generated(self):
+        self.generated_scenarios += 1
+
+    def progress_snapshot(self):
+        pending = max(self.submitted_scenarios - self.completed_scenarios, 0)
+        return {
+            "generated": self.generated_scenarios,
+            "submitted": self.submitted_scenarios,
+            "completed": self.completed_scenarios,
+            "pending": pending,
+            "submitted_jobs": self.submitted_jobs,
+            "completed_jobs": self.completed_jobs,
+            "active_workers": self.active_workers(),
+        }
+
 
 async def solve(solver: SMTSolver, const: Formula):
     return await asyncio.wait_for(solver.solve(const), timeout=100000000.0)
@@ -66,8 +88,16 @@ class ParallelAlgRunner(AlgorithmRunner):
                 return getattr(proc, "_stlmc_scenario", None)
         return None
 
+    def _scenario_count_for_process(self, proc_id):
+        for proc in self.procs:
+            if id(proc) == proc_id:
+                return getattr(proc, "_stlmc_scenario_count", 1)
+        return 1
+
     def _unpack_result(self, message):
         result, model, proc_id, *metadata = message
+        self.completed_jobs += 1
+        self.completed_scenarios += self._scenario_count_for_process(proc_id)
         if len(metadata) > 0:
             self.time += metadata[0]
         if len(metadata) > 1 and metadata[1]:
@@ -130,13 +160,25 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.current_scenario = None
         self.winning_scenario = None
         self.cleanup_timeout = 3.0
+        self.current_scenario_count = 1
+        self.reset_progress()
 
 
     def set_debug(self, msg: str):
         self.debug_name = msg
 
-    def set_scenario(self, scenario):
+    def set_scenario(self, scenario, scenario_count=1):
         self.current_scenario = scenario
+        self.current_scenario_count = scenario_count
+
+    def active_workers(self):
+        active = 0
+        for proc in self.procs:
+            if getattr(proc, "_stlmc_thread_worker", False):
+                active += int(proc.is_alive())
+            else:
+                active += int(proc.poll() is None)
+        return active
 
     def increase_counter(self):
         self.number += 1
@@ -168,7 +210,10 @@ class ParallelAlgRunner(AlgorithmRunner):
                 self.sema.release()
                 raise
             proc._stlmc_scenario = self.current_scenario
+            proc._stlmc_scenario_count = self.current_scenario_count
             self.procs.add(proc)
+            self.submitted_jobs += 1
+            self.submitted_scenarios += self.current_scenario_count
         finally:
             if previous_mask is not None:
                 signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
@@ -305,6 +350,8 @@ class NormalRunner(AlgorithmRunner):
         self.solver = None
         self.const = None
         self.number = 0
+        self.completed_jobs += 1
+        self.completed_scenarios += self.current_scenario_count
         return is_true, model
 
     def __init__(self):
@@ -317,12 +364,18 @@ class NormalRunner(AlgorithmRunner):
         self.had_unknown = False
         self.current_scenario = None
         self.winning_scenario = None
+        self.current_scenario_count = 1
+        self.reset_progress()
 
     def set_debug(self, msg: str):
         self.debug_name = msg
 
-    def set_scenario(self, scenario):
+    def set_scenario(self, scenario, scenario_count=1):
         self.current_scenario = scenario
+        self.current_scenario_count = scenario_count
+
+    def active_workers(self):
+        return int(self.solver is not None)
 
     def increase_counter(self):
         self.number += 1
@@ -335,6 +388,8 @@ class NormalRunner(AlgorithmRunner):
 
         self.solver = solver
         self.const = const
+        self.submitted_jobs += 1
+        self.submitted_scenarios += self.current_scenario_count
 
     def kill_all(self):
         pass

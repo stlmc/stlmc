@@ -48,7 +48,47 @@ class SlowProcess:
         raise subprocess.TimeoutExpired("fake solver", timeout)
 
 
+class FinishedProcess:
+    def __init__(self, scenario_count):
+        self._stlmc_scenario = "0-{}".format(scenario_count - 1)
+        self._stlmc_scenario_count = scenario_count
+
+    def poll(self):
+        return 0
+
+
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_completed_batch_counts_all_scenarios(self):
+        runner = ParallelAlgRunner(25)
+        runner.generated_scenarios = 5
+        runner.submitted_scenarios = 5
+        runner.submitted_jobs = 1
+        worker = FinishedProcess(5)
+        runner.procs.add(worker)
+        runner.main_queue.put(("True", None, id(worker), 0.1, None))
+
+        self.assertEqual(runner.check_sat(), (False, None))
+        self.assertEqual(runner.completed_scenarios, 5)
+        self.assertEqual(runner.completed_jobs, 1)
+        self.assertEqual(runner.progress_snapshot()["pending"], 0)
+
+    def test_pending_batch_is_reported_in_scenario_units(self):
+        runner = ParallelAlgRunner(25)
+        runner.generated_scenarios = 10
+        runner.submitted_scenarios = 10
+        runner.submitted_jobs = 2
+        first = FinishedProcess(5)
+        second = FinishedProcess(5)
+        runner.procs.update((first, second))
+        runner.main_queue.put(("True", None, id(first), 0.1, None))
+
+        self.assertEqual(runner.check_sat(), (False, None))
+        snapshot = runner.progress_snapshot()
+        self.assertEqual(snapshot["completed"], 5)
+        self.assertEqual(snapshot["pending"], 5)
+        self.assertEqual(snapshot["completed_jobs"], 1)
+        self.assertEqual(snapshot["submitted_jobs"], 2)
+
     def test_cleanup_uses_one_deadline_for_all_workers(self):
         runner = ParallelAlgRunner(4)
         runner.cleanup_timeout = 0.05
