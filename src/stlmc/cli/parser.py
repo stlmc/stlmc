@@ -51,7 +51,7 @@ def build_parser(prog=None):
 
     common = parser.add_argument_group("model checking")
     for name in (
-        "goal", "solver", "path-strategy", "bound", "time-bound", "time-horizon", "threshold",
+        "goal", "solver", "path-strategy", "scenario-strategy", "bound", "time-bound", "time-horizon", "threshold",
         "parallel-core", "solver-batch-size",
         "core-minimize-attempts", "smt2-dir",
     ):

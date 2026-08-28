@@ -56,6 +56,29 @@ Both path strategies support both solving engines:
 The `reach` option changes query semantics only. It does not select a path or
 continuous-solving strategy.
 
+## Symbolic scenario grouping
+
+Two-step solving normally minimizes a complete abstract assignment into a
+literal cube.  The experimental `scenario-strategy = "symbolic-group"` mode
+groups all `chi` completions that share the same bounded mode valuation and
+temporal interval decisions (`T`, `T1`, `T2`, and `T3`).  The narrower
+`symbolic-group-prop` variant also fixes atomic-proposition `chi` values, while
+derived temporal truth values remain symbolic.  Keeping atomic propositions
+fixed constrains the continuous state regions and can make refinements easier.
+Both strategies check the complete bounded formula, with flow and invariant
+abstractions restored, under the decision cube.  A satisfiable group is a valid
+counterexample; an unsatisfiable group permits the entire decision cube to be
+blocked.  Unknown groups are retained as unknown results.
+
+These strategies can reduce redundant `chi` scenarios, but each refinement is
+broader and may be harder for the continuous solver.  The default remains
+`minimal-cube`.
+
+```sh
+stlmc system.model -two-step -scenario-strategy symbolic-group
+stlmc system.model -two-step -scenario-strategy symbolic-group-prop
+```
+
 ## Batching
 
 `solver-batch-size` specifies the maximum number of final candidates combined

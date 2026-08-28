@@ -17,6 +17,9 @@ from .batching import candidate_batch_formula
 from .path import PathProvider, SymbolicPathProvider
 
 
+SYMBOLIC_GROUP_STRATEGIES = {"symbolic-group", "symbolic-group-prop"}
+
+
 def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
                                 track_id: str) -> Eq:
     """Track the exact polarity of a scenario literal and return that literal."""
@@ -116,6 +119,7 @@ class TwoStepAlgorithm(Algorithm):
         if core_minimize_attempts < 1:
             raise IllegalArgumentError("core-minimize-attempts must be at least 1")
         is_generalized = common_section.get_value("concrete") != "true"
+        scenario_strategy = common_section.get_value("scenario-strategy")
 
         if self.runner is not None:
             self.runner.kill_all()
@@ -228,6 +232,28 @@ class TwoStepAlgorithm(Algorithm):
             total_size += size_of_tree(time_f_k)
             total_size += size_of_tree(time_order_const)
             total_size += size_of_tree(final_f_k)
+
+            symbolic_refinement = None
+            if scenario_strategy in SYMBOLIC_GROUP_STRATEGIES and is_generalized:
+                full_model_const = model.make_consts(b)
+                if is_reach:
+                    full_goal_const = And([
+                        goal.k_step_consts(
+                            b, float(time_bound), delta, model, goal_prop_dict
+                        ),
+                        reach_time_ordering(2 * b + 2, float(time_bound)),
+                    ])
+                else:
+                    full_goal_const = k_size_stl_formula(
+                        model, goal, goal_prop_dict, b,
+                        float(delta), float(time_bound),
+                    )
+                full_abstract_links = make_boolean_abstract_consts(
+                    dict(model.boolean_abstract)
+                )
+                symbolic_refinement = And([
+                    full_model_const, full_goal_const, full_abstract_links,
+                ])
             path_candidates = self.path_provider.candidates(model, b)
             bound_scenarios = 0
             for path_offset, path_candidate in enumerate(path_candidates):
@@ -241,6 +267,8 @@ class TwoStepAlgorithm(Algorithm):
                     explicit_path=path_candidate.constraint,
                     finalize_bound=is_last_path,
                     is_generalized=is_generalized,
+                    scenario_strategy=scenario_strategy,
+                    symbolic_refinement=symbolic_refinement,
                 )
                 total_time += scenario_time
                 bound_scenarios += self.last_scenario_count
@@ -297,7 +325,9 @@ class TwoStepAlgorithm(Algorithm):
                        core_minimize_attempts: int,
                        explicit_path: Formula = BoolVal("True"),
                        finalize_bound=True,
-                       is_generalized=True):
+                       is_generalized=True,
+                       scenario_strategy="minimal-cube",
+                       symbolic_refinement=None):
         total_time = 0.0
 
         k_model_f = acc_model[bound]
@@ -347,6 +377,33 @@ class TwoStepAlgorithm(Algorithm):
         pending_candidates: List[Tuple[Formula, Formula]] = []
         pending_scenarios: List[int] = []
 
+        symbolic_decision_vars = []
+        if scenario_strategy in SYMBOLIC_GROUP_STRATEGIES and is_generalized:
+            mode_ids = tuple(model.mode_var_dict.keys())
+            for variable in get_vars(And([n_symbolic_path, stl_final])):
+                if not isinstance(variable, (Bool, Real, Int)):
+                    continue
+                is_mode_decision = any(
+                    variable.id.startswith("{}_".format(mode_id))
+                    for mode_id in mode_ids
+                )
+                is_time_decision = (
+                    isinstance(variable, Bool)
+                    and variable.id.startswith(("T^", "T1^", "T2^", "T3^"))
+                )
+                is_atomic_prop_decision = False
+                if (isinstance(variable, Bool)
+                        and variable.id.startswith("chi^")):
+                    formula, _, _ = v_type1_info(
+                        "p@{}".format(variable.id), sub_formulas
+                    )
+                    is_atomic_prop_decision = is_proposition(formula)
+                if (is_mode_decision or is_time_decision
+                        or (scenario_strategy == "symbolic-group-prop"
+                            and is_atomic_prop_decision)):
+                    symbolic_decision_vars.append(variable)
+            symbolic_decision_vars.sort(key=lambda variable: variable.id)
+
         def submit_pending_batch():
             nonlocal submitted
             if len(pending_candidates) == 0:
@@ -387,6 +444,54 @@ class TwoStepAlgorithm(Algorithm):
                 m = self.scenario_solver.model()
                 assn = Z3Assignment(m)
                 assn_dict = assn.get_assignments()
+
+                if (scenario_strategy in SYMBOLIC_GROUP_STRATEGIES
+                        and is_generalized):
+                    if symbolic_refinement is None:
+                        raise NotSupportedError(
+                            "symbolic-group requires a complete refinement formula"
+                        )
+                    assignment_by_id = {
+                        variable.id: valuation
+                        for variable, valuation in assn_dict.items()
+                        if isinstance(variable, (Bool, Real, Int))
+                    }
+                    missing_decisions = [
+                        variable.id for variable in symbolic_decision_vars
+                        if variable.id not in assignment_by_id
+                    ]
+                    if missing_decisions:
+                        raise NotSupportedError(
+                            "symbolic-group model omits decision variables: {}".format(
+                                ", ".join(missing_decisions)
+                            )
+                        )
+                    decision_literals = [
+                        Eq(variable, assignment_by_id[variable.id])
+                        for variable in symbolic_decision_vars
+                    ]
+
+                    decision_cube = And(decision_literals)
+                    common_part = And([symbolic_refinement, explicit_path])
+                    pending_candidates.append((common_part, decision_cube))
+                    pending_scenarios.append(counter)
+                    self.runner.record_scenario_generated()
+                    printer.scenario_progress(
+                        bound, **self.runner.progress_snapshot()
+                    )
+                    runner_result, runner_model = (False, None)
+                    if len(pending_candidates) >= solver_batch_size:
+                        runner_result, runner_model = submit_pending_batch()
+                    if runner_result:
+                        self.last_scenario_count = submitted
+                        return True, runner_model, self.runner.time
+
+                    # The complete refinement checks every STL/time completion
+                    # under this decision cube, so excluding it preserves all
+                    # unsubmitted abstract regions.
+                    self.scenario_solver.add(z3Obj(Not(decision_cube)))
+                    counter += 1
+                    continue
 
                 # pop final and time ordering constraints
                 if is_generalized:
@@ -662,6 +767,75 @@ def k_depth_stl_consts(sub_formulas: Set[Formula], depth: int, tau_max: float) -
     final_const = And([final(f, depth) for f in sub_formulas])
 
     return goal_const, time_const, final_const
+
+
+def k_size_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
+                       delta: float, tau_max):
+    """Build the complete bounded STL formula for one-step refinements."""
+    raw_stl_formula = substitution(goal.get_formula(), goal_prop_dict)
+    neg_formula = reduce_not(Not(raw_stl_formula))
+    reduced_formula = remove_binary(neg_formula)
+    stl_formula = relaxing(reduced_formula, delta)
+
+    sub_formulas = calc_sub_formulas(stl_formula)
+    initial_stl_f = chi(1, 1, stl_formula)
+    total_stl_children = [initial_stl_f]
+    total_time_children = []
+    final_f_k = None
+
+    max_depth = 2 * (bound + 1)
+    for depth in range(1, max_depth + 1):
+        stl_f_d, time_f_d, final_f_d = k_depth_stl_consts(
+            sub_formulas, depth, tau_max
+        )
+        total_stl_children.append(stl_f_d)
+        total_time_children.append(time_f_d)
+        final_f_k = final_f_d
+
+    assert final_f_k is not None
+    time_order_const = time_ordering(max_depth, tau_max)
+    path_const_children = (
+        total_stl_children + total_time_children + [time_order_const]
+    )
+    path_const = And(path_const_children)
+
+    bools = get_bools(path_const)
+    p_bools = {boolean.id for boolean in bools}
+    extra_prop_path, _ = assn2path(p_bools, sub_formulas, tau_max)
+    extra_prop_path_const = path2const(extra_prop_path, model)
+
+    return And(path_const_children + [final_f_k, extra_prop_path_const])
+
+
+@singledispatch
+def get_bools(formula: Formula) -> Set[Bool]:
+    return set()
+
+
+@get_bools.register(Bool)
+def _(formula: Bool) -> Set[Bool]:
+    return {formula}
+
+
+@get_bools.register(UnaryFormula)
+def _(const: UnaryFormula):
+    return get_bools(const.child) if isinstance(const, NonLeaf) else set()
+
+
+@get_bools.register(BinaryFormula)
+def _(const: BinaryFormula):
+    if isinstance(const, NonLeaf) or isinstance(const, Eq):
+        return get_bools(const.left).union(get_bools(const.right))
+    return set()
+
+
+@get_bools.register(MultinaryFormula)
+def _(const: MultinaryFormula):
+    result = set()
+    if isinstance(const, NonLeaf):
+        for child in const.children:
+            result.update(get_bools(child))
+    return result
 
 
 def calc_sub_formulas(formula: Formula) -> Set[Formula]:

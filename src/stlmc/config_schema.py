@@ -3,6 +3,7 @@ SECTION_NAMES = ("common", "z3", "yices", "dreal")
 SECTION_VALUE_OPTIONS = {
     "common": (
         "threshold", "bound", "time-bound", "solver", "goal", "path-strategy",
+        "scenario-strategy",
         "time-horizon", "parallel-core", "solver-batch-size",
         "core-minimize-attempts", "smt2-dir",
     ),
@@ -29,6 +30,9 @@ SECTION_TYPE_RULES = {
         ("solver", frozenset({"z3", "yices", "dreal"})),
         ("goal", "string"),
         ("path-strategy", frozenset({"symbolic", "explicit"})),
+        ("scenario-strategy", frozenset({
+            "minimal-cube", "symbolic-group", "symbolic-group-prop",
+        })),
         ("time-horizon", "float"),
         ("parallel-core", "integer"),
         ("solver-batch-size", "integer"),
@@ -59,6 +63,7 @@ OPTION_HELP = {
     "model-specific-cfg": "path to the goal-specific configuration file",
     "goal": "goal name to check, or 'all'",
     "path-strategy": "discrete path handling: symbolic or explicit",
+    "scenario-strategy": "two-step grouping: minimal-cube, symbolic-group, or symbolic-group-prop",
     "solver": "underlying solver: auto, dreal, z3, or yices",
     "bound": "maximum mode changes and variable points (reach: jumps)",
     "time-bound": "maximum global trace time",
