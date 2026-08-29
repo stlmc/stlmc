@@ -12,7 +12,7 @@ from ..constraints.constraints import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal
 from ..objects.model import Model
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
+from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, SolveResult
 from ..util.logger import Logger
 from ..util.interrupt import raise_if_interrupted
 from ..util.print import Printer
@@ -95,7 +95,15 @@ class ParallelAlgRunner(AlgorithmRunner):
         return 1
 
     def _unpack_result(self, message):
-        result, model, proc_id, *metadata = message
+        if len(message) == 2 and isinstance(message[0], SolveResult):
+            solve_result, worker = message
+            result = solve_result.result
+            model = solve_result.assignment
+            proc_id = id(worker)
+            metadata = [solve_result.elapsed, solve_result.error]
+        else:
+            # Compatibility with queued results from older/custom workers.
+            result, model, proc_id, *metadata = message
         self.completed_jobs += 1
         self.completed_scenarios += self._scenario_count_for_process(proc_id)
         if len(metadata) > 0:
@@ -205,7 +213,13 @@ class ParallelAlgRunner(AlgorithmRunner):
             previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked_signals)
         try:
             try:
-                proc = solver.process(self.main_queue, self.sema, const)
+                def completed(solve_result, worker):
+                    try:
+                        self.main_queue.put((solve_result, worker))
+                    finally:
+                        self.sema.release()
+
+                proc = solver.submit(const, completed)
             except Exception:
                 self.sema.release()
                 raise

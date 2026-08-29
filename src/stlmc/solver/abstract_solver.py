@@ -1,10 +1,9 @@
 import abc
 import subprocess
 import threading
+from dataclasses import dataclass
 from enum import Enum
 from abc import ABC
-from queue import Queue
-from threading import Semaphore
 
 from ..util.logger import Logger
 
@@ -16,6 +15,16 @@ class SolverStatus(Enum):
     SAT = "sat"
     UNSAT = "unsat"
     UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class SolveResult:
+    """Backend-neutral result produced by a submitted solver job."""
+
+    result: str
+    assignment: object
+    elapsed: float = 0.0
+    error: str = None
 
 
 class IncrementalFormulaSolver(ABC):
@@ -75,6 +84,9 @@ class ThreadWorker:
 
     def poll(self):
         return 0 if self._done.is_set() else None
+
+    def is_alive(self):
+        return not self._done.is_set()
 
     def terminate(self):
         self._cancelled.set()
@@ -157,7 +169,8 @@ class SMTSolver(BaseSolver):
 
 class ParallelSMTSolver(SMTSolver):
     @abc.abstractmethod
-    def process(self, main_queue: Queue, sema: Semaphore, const):
+    def submit(self, const, on_complete):
+        """Start a solve and call ``on_complete(result, worker)`` exactly once."""
         pass
 
 

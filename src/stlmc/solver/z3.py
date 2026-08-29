@@ -11,7 +11,7 @@ from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import (
-    IncrementalFormulaSolver, ParallelSMTSolver, SolverStatus,
+    IncrementalFormulaSolver, ParallelSMTSolver, SolveResult, SolverStatus,
 )
 from ..solver.assignment import Assignment
 from ..util.smt2_output import is_enabled, write_smt2
@@ -89,7 +89,7 @@ class Z3Solver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+    def submit(self, const, on_complete):
         self.set_logic(self.config.get_section("z3").get_value("logic"))
         if is_enabled(self.config):
             dump_solver = z3.SolverFor(self._logic)
@@ -119,9 +119,10 @@ class Z3Solver(ParallelSMTSolver):
                 assignments = dict()
                 error_message = "parallel Z3 worker exited with {}".format(proc.exitcode)
             elapsed = time.monotonic() - start_time
-            main_queue.put((result, Z3Assignment(assignments=assignments), id(proc),
-                            elapsed, error_message))
-            sema.release()
+            on_complete(SolveResult(
+                result, Z3Assignment(assignments=assignments),
+                elapsed, error_message,
+            ), proc)
             result_queue.close()
 
         collector = threading.Thread(target=collect_result, daemon=True)

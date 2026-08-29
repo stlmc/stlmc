@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.objects.algorithm import ParallelAlgRunner
+from stlmc.solver.abstract_solver import SolveResult, ThreadWorker
 
 
 class FakeClock:
@@ -58,6 +59,12 @@ class FinishedProcess:
 
 
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_thread_worker_exposes_process_compatible_liveness(self):
+        worker = ThreadWorker()
+        self.assertTrue(worker.is_alive())
+        worker.finish()
+        self.assertFalse(worker.is_alive())
+
     def test_completed_batch_counts_all_scenarios(self):
         runner = ParallelAlgRunner(25)
         runner.generated_scenarios = 5
@@ -65,7 +72,9 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner.submitted_jobs = 1
         worker = FinishedProcess(5)
         runner.procs.add(worker)
-        runner.main_queue.put(("True", None, id(worker), 0.1, None))
+        runner.main_queue.put((
+            SolveResult("True", None, elapsed=0.1), worker
+        ))
 
         self.assertEqual(runner.check_sat(), (False, None))
         self.assertEqual(runner.completed_scenarios, 5)

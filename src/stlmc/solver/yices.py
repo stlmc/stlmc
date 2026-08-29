@@ -11,7 +11,7 @@ from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, ThreadWorker
+from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, SolveResult, ThreadWorker
 from ..solver.assignment import Assignment
 from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
@@ -161,7 +161,7 @@ class YicesSolver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
+    def submit(self, const, on_complete):
         logic = self.config.get_section("yices").get_value("logic")
         self.set_logic(logic)
         self._write_query([yicesObj(const)], const)
@@ -196,9 +196,11 @@ class YicesSolver(ParallelSMTSolver):
             finally:
                 elapsed = time.monotonic() - start_time
                 worker.finish()
-                if not worker.cancelled:
-                    main_queue.put((result, assignment, id(worker), elapsed, error_message))
-                sema.release()
+                # Completion must always be reported so the runner can release
+                # its capacity token, including when cancellation won the race.
+                on_complete(SolveResult(
+                    result, assignment, elapsed, error_message
+                ), worker)
 
         worker.start(check_sat)
         return worker
