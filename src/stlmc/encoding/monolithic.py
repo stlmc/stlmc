@@ -13,7 +13,6 @@ from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
 from ..solver.abstract_solver import JobSolver
-from ..util.logger import Logger
 from ..util.print import Printer
 from ..util.interrupt import raise_if_interrupted
 
@@ -28,7 +27,7 @@ class OneStepAlgorithm(Algorithm):
         self.debug_name = msg
 
     def run(self, model: Model, goal: Goal, goal_prop_dict: Dict, config: Configuration,
-            solver: JobSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, printer: Printer):
         common_section = config.get_section("common")
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")
@@ -60,12 +59,10 @@ class OneStepAlgorithm(Algorithm):
         # Bound 0 still contains one continuous segment.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
-            # start logging
             bound_started = time.monotonic()
-            logger.reset_timer()
 
             model_const = model.make_consts(b)
-            logger.start_timer("goal timer")
+            goal_started = time.monotonic()
             if is_reach:
                 k_step_goal = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
                 time_order_const = reach_time_ordering(2 * b + 2, float(time_bound))
@@ -76,8 +73,7 @@ class OneStepAlgorithm(Algorithm):
             boolean_abstract = dict()
             boolean_abstract.update(model.boolean_abstract)
             boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-            logger.stop_timer("goal timer")
-            goal_time = logger.get_duration_time("goal timer")
+            goal_time = time.monotonic() - goal_started
 
             clause_in_consts = clause(And([model_const, stl_const, boolean_abstract_consts]))
             contradiction_const = static_learner.get_contradiction_upto(b, clause_in_consts)
@@ -112,7 +108,7 @@ class OneStepAlgorithm(Algorithm):
                 result, _ = solver.solve(
                     batch_formula, model.range_dict, boolean_abstract
                 )
-                total_time += logger.get_duration_time("solving timer")
+                total_time += solver.solve_time
                 final_result = result
                 if result == "False":
                     bound_result = result

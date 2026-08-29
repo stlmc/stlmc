@@ -27,7 +27,6 @@ from ..solver.capability import (
     validate_model_solver_support,
 )
 from ..solver.z3 import z3Obj
-from ..util.logger import *
 from ..util.print import *
 from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
@@ -62,9 +61,6 @@ class BaseDriverFactory(DriverFactory):
 
     def make_runner(self) -> Runner:
         return BaseRunner()
-
-    def make_logger(self) -> Logger:
-        return Logger()
 
     def make_printer(self) -> Printer:
         return Printer()
@@ -206,7 +202,7 @@ class BaseCmdParser(CmdParser):
 
 class BaseRunner(Runner):
     def run(self, config_parser: ConfigVisitor, model_parser: ModelVisitor,
-            cmd_parser: CmdParser, logger: Logger, printer: Printer):
+            cmd_parser: CmdParser, printer: Printer):
         try:
             sys.setrecursionlimit(1000000)
 
@@ -284,7 +280,6 @@ class BaseRunner(Runner):
 
             solver = SolverFactory().generate_solver(config)
             algorithm = AlgorithmFactory(config).generate()
-            solver.append_logger(logger)
             solver.set_config(config)
 
             for goal in goals:
@@ -344,7 +339,7 @@ class BaseRunner(Runner):
                 algorithm.set_debug("{}_{}_{}".format(os.path.basename(file_name), label, underlying_solver))
                 try:
                     final_result, total_time, finished_bound, assn_dict = algorithm.run(
-                        model, goal, PD, config, solver, logger, printer
+                        model, goal, PD, config, solver, printer
                     )
                 except BaseException:
                     printer.clear_progress()

@@ -29,7 +29,6 @@ class Z3Solver(JobSolver):
 
         self.file_name = ""
         self._last_assignment = None
-        self.set_time("solving timer", 0)
 
     def set_logic(self, logic_name: str):
         self._logic = (self._logic_dict[logic_name.upper()] if logic_name.upper() in self._logic_dict else "NRA")

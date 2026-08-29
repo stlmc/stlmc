@@ -43,7 +43,6 @@ class YicesSolver(JobSolver):
         JobSolver.__init__(self)
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
-        self.set_time("solving timer", 0)
         self.file_name = ""
         self._last_assignment = None
 

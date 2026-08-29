@@ -12,7 +12,6 @@ from ..objects.configuration import Configuration
 from ..objects.goal import Goal
 from ..objects.model import Model
 from ..solver.abstract_solver import JobSolver, SolveResult
-from ..util.logger import Logger
 from ..util.interrupt import raise_if_interrupted
 from ..util.print import Printer
 
@@ -20,7 +19,7 @@ from ..util.print import Printer
 class Algorithm:
     @abstractmethod
     def run(self, model: Model, goal: Goal, prop_dict: Dict, config: Configuration,
-            solver: JobSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, printer: Printer):
         pass
 
     @abstractmethod
@@ -331,7 +330,7 @@ class NormalRunner(AlgorithmRunner):
         if is_true:
             model = self.solver.make_assignment()
             self.winning_scenario = self.current_scenario
-        self.time = self.solver.logger.get_duration_time("solving timer")
+        self.time = self.solver.solve_time
         self.solver = None
         self.const = None
         self.number = 0

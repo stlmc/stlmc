@@ -17,7 +17,6 @@ from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
 from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
-from ..util.logger import Logger
 
 
 class DrealAssignment(Assignment):

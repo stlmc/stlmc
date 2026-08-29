@@ -14,7 +14,7 @@ class ModelCheckingAlgorithm(Algorithm):
     def set_debug(self, msg: str):
         self.continuous_solving.set_debug(msg)
 
-    def run(self, model, goal, prop_dict, config, solver, logger, printer):
+    def run(self, model, goal, prop_dict, config, solver, printer):
         return self.continuous_solving.run(
-            model, goal, prop_dict, config, solver, logger, printer
+            model, goal, prop_dict, config, solver, printer
         )

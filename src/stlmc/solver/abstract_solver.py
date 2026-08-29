@@ -6,9 +6,6 @@ from dataclasses import dataclass
 from enum import Enum
 from abc import ABC
 
-from ..util.logger import Logger
-
-# all solver have logger
 from ..objects.configuration import Configuration
 
 
@@ -174,28 +171,12 @@ class ThreadWorker:
         return 0
 
 
-class BaseSolver:
+class JobSolver(ABC):
+    """Solver whose single execution primitive is a cancellable job."""
+
     def __init__(self):
-        self.logger = None
-        self._optimize_dict = dict()
         self.config = Configuration()
-        self.time_dict = dict()
-
-    def set_optimize_flag(self, name: str, value: bool):
-        assert isinstance(value, bool)
-        self._optimize_dict[name] = value
-
-    def get_optimize_flag(self, name: str):
-        if name in self._optimize_dict:
-            return self._optimize_dict[name]
-        return False
-
-    def append_logger(self, logger: Logger):
-        self.logger = logger
-
-    @abc.abstractmethod
-    def solve(self, all_consts=None, cont_vars_dict=None, boolean_abstract_dict=None):
-        pass
+        self.solve_time = 0.0
 
     @abc.abstractmethod
     def make_assignment(self):
@@ -204,31 +185,10 @@ class BaseSolver:
     def set_config(self, config: Configuration):
         self.config = config
 
-    def set_time(self, keyword: str, value):
-        if keyword in self.time_dict:
-            self.time_dict[keyword] += value
-        else:
-            self.time_dict[keyword] = value
-
-    def get_time(self, keyword: str):
-        assert keyword in self.time_dict
-        return self.time_dict[keyword]
-
-    def reset_time(self, keyword: str):
-        if keyword in self.time_dict:
-            self.time_dict[keyword] = 0
-
-
-class JobSolver(BaseSolver):
-    """Solver whose single execution primitive is a cancellable job."""
-
     def solve(self, all_consts=None, cont_vars_dict=None,
               boolean_abstract_dict=None):
         if all_consts is None:
             raise ValueError("solve requires a formula")
-        assert self.logger is not None
-        self.logger.reset_timer()
-        self.logger.start_timer("solving timer")
         job = self.submit(all_consts)
         timeout = getattr(self, "_solve_timeout", None)
         try:
@@ -238,10 +198,7 @@ class JobSolver(BaseSolver):
             solve_result = SolveResult(
                 "Unknown", None, error="solver job timed out"
             )
-        finally:
-            self.logger.stop_timer("solving timer")
-        self.reset_time("solving timer")
-        self.set_time("solving timer", solve_result.elapsed)
+        self.solve_time = solve_result.elapsed
         self._last_assignment = solve_result.assignment
         return solve_result.result, solve_result.size
 
@@ -261,12 +218,3 @@ class JobSolver(BaseSolver):
     @abc.abstractmethod
     def set_time_bound(self, time_bound: str):
         pass
-
-
-# Backward-compatible imports for integrations written against the old names.
-SMTSolver = JobSolver
-ParallelSMTSolver = JobSolver
-
-
-class OdeSolver(BaseSolver, ABC):
-    pass
