@@ -34,10 +34,6 @@ class YicesAssignment(Assignment):
                 NotSupportedError("cannot generate assignments")
         return new_dict
 
-    def eval(self, const):
-        pass
-
-
 class YicesSolver(JobSolver):
     def __init__(self):
         JobSolver.__init__(self)
@@ -71,9 +67,6 @@ class YicesSolver(JobSolver):
 
     def clear(self):
         self._last_assignment = None
-
-    def set_time_bound(self, time_bound: str):
-        pass
 
     def set_file_name(self, name):
         self.file_name = name

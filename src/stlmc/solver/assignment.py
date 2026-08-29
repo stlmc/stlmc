@@ -19,7 +19,3 @@ class Assignment:
     @abc.abstractmethod
     def get_assignments(self):
         pass
-
-    @abc.abstractmethod
-    def eval(self, const):
-        pass

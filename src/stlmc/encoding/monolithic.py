@@ -98,16 +98,13 @@ class OneStepAlgorithm(Algorithm):
                 batch_formula = candidate_batch_formula([
                     (total_consts, candidate.constraint) for candidate in batch
                 ])
-                solver.set_time_bound(time_bound)
                 if hasattr(solver, "set_file_name"):
                     solver.set_file_name(
                         "{}_b{:03d}_p{}-{}".format(
                             self.debug_name, b, batch[0].index, batch[-1].index
                         )
                     )
-                result, _ = solver.solve(
-                    batch_formula, model.range_dict, boolean_abstract
-                )
+                result, _ = solver.solve(batch_formula)
                 total_time += solver.solve_time
                 final_result = result
                 if result == "False":

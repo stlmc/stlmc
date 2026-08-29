@@ -36,9 +36,6 @@ class Z3Solver(JobSolver):
     def clear(self):
         self._last_assignment = None
 
-    def set_time_bound(self, time_bound: str):
-        pass
-
     def set_file_name(self, name):
         self.file_name = name
 

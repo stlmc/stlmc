@@ -182,8 +182,7 @@ class JobSolver(ABC):
     def set_config(self, config: Configuration):
         self.config = config
 
-    def solve(self, all_consts=None, cont_vars_dict=None,
-              boolean_abstract_dict=None):
+    def solve(self, all_consts=None):
         if all_consts is None:
             raise ValueError("solve requires a formula")
         job = self.submit(all_consts)
@@ -210,8 +209,4 @@ class JobSolver(ABC):
 
     @abc.abstractmethod
     def set_logic(self, logic_name: str):
-        pass
-
-    @abc.abstractmethod
-    def set_time_bound(self, time_bound: str):
         pass

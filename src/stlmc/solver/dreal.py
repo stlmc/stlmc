@@ -83,25 +83,17 @@ class DrealAssignment(Assignment):
         new_dict.update(time_dict)
         return new_dict
 
-    def eval(self, const):
-        pass
-
-
 class dRealSolver(JobSolver):
     def __init__(self):
         JobSolver.__init__(self)
         self._logic_list = ["QF_NRA_ODE"]
         self._logic = "QF_NRA_ODE"
-        self._time_bound = None
         self.file_name = ""
         self._solve_timeout = None
         self._last_assignment = None
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA_ODE')
-
-    def set_time_bound(self, time_bound: float):
-        pass
 
     def set_solve_timeout(self, timeout):
         self._solve_timeout = timeout
