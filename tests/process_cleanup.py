@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.objects.algorithm import ParallelAlgRunner
-from stlmc.solver.abstract_solver import SolveResult, ThreadWorker
+from stlmc.solver.abstract_solver import SolveResult, SolverJob, ThreadWorker
 
 
 class FakeClock:
@@ -58,7 +58,31 @@ class FinishedProcess:
         return 0
 
 
+class JoinWorker:
+    def __init__(self):
+        self.exitcode = None
+        self.terminated = False
+
+    def is_alive(self):
+        return self.exitcode is None
+
+    def join(self, timeout=None):
+        self.exitcode = 0
+
+    def terminate(self):
+        self.terminated = True
+        self.exitcode = -15
+
+
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_solver_job_normalizes_multiprocessing_worker(self):
+        worker = JoinWorker()
+        job = SolverJob()
+        job.set_worker(worker)
+        self.assertIsNone(job.poll())
+        self.assertEqual(job.wait(timeout=0.1), 0)
+        self.assertEqual(job.poll(), 0)
+
     def test_thread_worker_exposes_process_compatible_liveness(self):
         worker = ThreadWorker()
         self.assertTrue(worker.is_alive())

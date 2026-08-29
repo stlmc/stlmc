@@ -213,9 +213,9 @@ class ParallelAlgRunner(AlgorithmRunner):
             previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked_signals)
         try:
             try:
-                def completed(solve_result, worker):
+                def completed(solve_result, job):
                     try:
-                        self.main_queue.put((solve_result, worker))
+                        self.main_queue.put((solve_result, job))
                     finally:
                         self.sema.release()
 

@@ -1,9 +1,4 @@
-import asyncio
-import subprocess
-import threading
 import time
-from multiprocessing import Process
-from queue import Queue
 
 from yices import *
 
@@ -11,7 +6,9 @@ from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, SolveResult, ThreadWorker
+from ..solver.abstract_solver import (
+    SMTSolver, ParallelSMTSolver, SolveResult, SolverJob, ThreadWorker,
+)
 from ..solver.assignment import Assignment
 from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
@@ -51,6 +48,7 @@ class YicesSolver(ParallelSMTSolver):
         self._logic = "QF_NRA"
         self.set_time("solving timer", 0)
         self.file_name = ""
+        self._last_assignment = None
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
@@ -72,74 +70,9 @@ class YicesSolver(ParallelSMTSolver):
             self.config, "yices", self.file_name, "\n".join(lines) + "\n"
         )
 
-    async def _run(self, consts, logic):
-        try:
-            return await asyncio.wait_for(self._yicescheckSat(consts, logic), timeout=100000000.0)
-        except asyncio.TimeoutError:
-            print('timeout!')
-
-    def yicescheckSat(self, consts, logic):
-        return asyncio.run(self._run(consts, logic))
-
-    async def _yicescheckSat(self, consts, logic):
-        assert self.logger is not None
-        logger = self.logger
-
-        common_section = self.config.get_section("yices")
-        logic = common_section.get_value("logic")
-        self._logic = logic.upper()
-
-        cfg = Config()
-
-        # TODO : current logic input is LRA, it should be QF_NRA
-        if logic != "NONE":
-            cfg.default_config_for_logic(self._logic)
-        else:
-            cfg.default_config_for_logic(self._logic)
-
-        ctx = Context(cfg)
-        yicesConsts = list()
-        for i in range(len(consts)):
-            yicesConsts.append(Terms.parse_term(consts[i]))
-
-        logger.reset_timer()
-        logger.start_timer("solving timer")
-        ctx.assert_formulas(yicesConsts)
-
-        result = ctx.check_context()
-
-        logger.stop_timer("solving timer")
-        self.set_time("solving timer", logger.get_duration_time("solving timer"))
-
-        if result == Status.SAT:
-            m = Model.from_context(ctx, 1)
-            result = "False"
-        elif result == Status.UNSAT:
-            m = None
-            result = "True"
-        else:
-            m = None
-            result = "Unknown"
-
-        cfg.dispose()
-        ctx.dispose()
-
-        return result, m
-
-    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        yices_section = self.config.get_section("yices")
-        logic = yices_section.get_value("logic")
-        self.set_logic(logic)
-
-        if all_consts is not None:
-            self._cache_raw.append(all_consts)
-            self._cache.append(yicesObj(all_consts))
-        size = size_of_tree(And(self._cache_raw))
-        self._write_query(self._cache, And(self._cache_raw))
-        result, self._yices_model = self.yicescheckSat(self._cache, self._logic)
-        return result, size
-
     def make_assignment(self):
+        if self._last_assignment is not None:
+            return self._last_assignment
         return YicesAssignment(self._yices_model)
 
     def clear(self):
@@ -161,7 +94,8 @@ class YicesSolver(ParallelSMTSolver):
     def set_file_name(self, name):
         self.file_name = name
 
-    def submit(self, const, on_complete):
+    def submit(self, const, on_complete=None):
+        job = SolverJob(on_complete)
         logic = self.config.get_section("yices").get_value("logic")
         self.set_logic(logic)
         self._write_query([yicesObj(const)], const)
@@ -198,49 +132,14 @@ class YicesSolver(ParallelSMTSolver):
                 worker.finish()
                 # Completion must always be reported so the runner can release
                 # its capacity token, including when cancellation won the race.
-                on_complete(SolveResult(
-                    result, assignment, elapsed, error_message
-                ), worker)
+                job.complete(SolveResult(
+                    result, assignment, elapsed, error_message,
+                    size_of_tree(const),
+                ))
 
+        job.set_worker(worker)
         worker.start(check_sat)
-        return worker
-
-    def parallel_check_sat(self, main_queue: Queue, sema: threading.Semaphore, proc: subprocess.Popen, const):
-        common_section = self.config.get_section("yices")
-        logic = common_section.get_value("logic")
-        self._logic = logic.upper()
-        # print(logic)
-        cfg = Config()
-        yices_consts = yicesObj(const)
-
-        # TODO : current logic input is LRA, it should be QF_NRA
-        if logic != "NONE":
-            cfg.default_config_for_logic(self._logic)
-        else:
-            cfg.default_config_for_logic(self._logic)
-
-        ctx = Context(cfg)
-        yicesConsts = [Terms.parse_term(yices_consts)]
-        ctx.assert_formulas(yicesConsts)
-
-        result = ctx.check_context()
-
-        if result == Status.SAT:
-            m = Model.from_context(ctx, 1)
-            result = "False"
-        elif result == Status.UNSAT:
-            m = None
-            result = "True"
-        else:
-            m = None
-            result = "Unknown"
-
-        cfg.dispose()
-        ctx.dispose()
-
-        main_queue.put((result, YicesAssignment(m), id(proc)))
-        sema.release()
-
+        return job
 
 @singledispatch
 def yicesObj(const: Constraint):

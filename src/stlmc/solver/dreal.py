@@ -1,6 +1,5 @@
 import os
 import platform
-import asyncio
 import subprocess
 import tempfile
 import threading
@@ -12,7 +11,9 @@ from typing import Dict, List
 from ..constraints.constraints import *
 from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, SolveResult
+from ..solver.abstract_solver import (
+    SMTSolver, ParallelSMTSolver, SolveResult, SolverJob,
+)
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
 from ..util.smt2_output import is_enabled, write_smt2
@@ -106,6 +107,7 @@ class dRealSolver(ParallelSMTSolver):
         self._parallel_e_time = 0.0
         self.file_name = ""
         self._solve_timeout = None
+        self._last_assignment = None
 
     def set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA_ODE')
@@ -289,17 +291,6 @@ class dRealSolver(ParallelSMTSolver):
 
         return declare_list, max_bound
 
-    async def _run(self, consts, logic):
-        try:
-            timeout = self._solve_timeout
-            if timeout is None:
-                timeout = 100000000.0
-            return await asyncio.wait_for(
-                self._drealcheckSat(consts, logic), timeout=timeout
-            )
-        except asyncio.TimeoutError:
-            return "Unknown", None
-
     @staticmethod
     def enqueue_out(out, queue):
         msg = list()
@@ -404,7 +395,9 @@ class dRealSolver(ParallelSMTSolver):
             except FileNotFoundError:
                 pass
 
-    def submit(self, const, on_complete):
+    def submit(self, const, on_complete=None):
+        job = SolverJob(on_complete)
+        formula_size = size_of_tree(const)
         command, cleanup_path = self._prepare_solver_command(const)
         parallel_s_time = time.monotonic()
         proc = subprocess.Popen(
@@ -415,16 +408,17 @@ class dRealSolver(ParallelSMTSolver):
         proc._stlmc_process_group = os.name == "posix"
 
         check_sat_thread = threading.Thread(target=self.parallel_check_sat,
-                                            args=(on_complete, proc, parallel_s_time,
-                                                  cleanup_path))
+                                            args=(job, proc, parallel_s_time,
+                                                  cleanup_path, formula_size))
         check_sat_thread.daemon = True
         proc._stlmc_worker = check_sat_thread
+        job.set_worker(proc)
         check_sat_thread.start()
 
-        return proc
+        return job
 
-    def parallel_check_sat(self, on_complete, proc: subprocess.Popen,
-                           start_time=None, cleanup_path=None):
+    def parallel_check_sat(self, job, proc: subprocess.Popen,
+                           start_time=None, cleanup_path=None, formula_size=0):
         if start_time is None:
             start_time = time.monotonic()
         try:
@@ -442,53 +436,13 @@ class dRealSolver(ParallelSMTSolver):
             elapsed = time.monotonic() - start_time
             solve_result = SolveResult(
                 solve_result.result, solve_result.assignment,
-                elapsed, solve_result.error,
+                elapsed, solve_result.error, formula_size,
             )
-            on_complete(solve_result, proc)
-
-    def drealcheckSat(self, consts, logic):
-        return asyncio.run(self._run(consts, logic))
-
-    async def _drealcheckSat(self, consts, logic):
-        assert self.logger is not None
-        logger = self.logger
-        command, cleanup_path = self._prepare_solver_command(And(consts.copy()))
-        proc = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE)
-
-        logger.reset_timer()
-        logger.start_timer("solving timer")
-        try:
-            stdout, stderr = await proc.communicate()
-        except asyncio.CancelledError:
-            proc.kill()
-            await proc.communicate()
-            raise
-        finally:
-            self._cleanup_solver_input(cleanup_path)
-            logger.stop_timer("solving timer")
-        self.set_time("solving timer", logger.get_duration_time("solving timer"))
-        solve_result = self._parse_solver_output(
-            proc.returncode, stdout, stderr
-        )
-        model = (
-            solve_result.assignment._dreal_model
-            if solve_result.result == "False" else None
-        )
-        return solve_result.result, model
-
-    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        self._cache.clear()
-        if all_consts is not None:
-            self._cache.append(all_consts)
-            self._cache_raw.append(all_consts)
-        size = size_of_tree(And(self._cache_raw))
-        result, self._dreal_model = self.drealcheckSat(self._cache, self._logic)
-        return result, size
+            job.complete(solve_result)
 
     def make_assignment(self):
+        if self._last_assignment is not None:
+            return self._last_assignment
         return DrealAssignment(self._dreal_model)
 
     def clear(self):
