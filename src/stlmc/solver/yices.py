@@ -103,7 +103,7 @@ class YicesSolver(JobSolver):
                     size_of_tree(const),
                 ))
 
-        job.set_worker(worker)
+        job.set_worker(worker, kind="thread")
         worker.start(check_sat)
         return job
 

@@ -1,7 +1,6 @@
 import abc
 import subprocess
 import threading
-import time
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC
@@ -34,9 +33,22 @@ class SolverJob:
         self._result = None
         self._worker = None
         self._on_complete = on_complete
+        self.worker_kind = "process"
+        self.process_group = False
+        self.completion_worker = None
+        self.scenario = None
+        self.scenario_count = 1
 
-    def set_worker(self, worker):
+    def set_worker(self, worker, *, kind="process", process_group=False,
+                   completion_worker=None):
         self._worker = worker
+        self.worker_kind = kind
+        self.process_group = process_group
+        self.completion_worker = completion_worker
+
+    @property
+    def pid(self):
+        return getattr(self._worker, "pid", None)
 
     def complete(self, result: SolveResult):
         if self._done.is_set():
@@ -50,10 +62,8 @@ class SolverJob:
         return self._done.is_set()
 
     def result(self, timeout=None):
-        deadline = None if timeout is None else time.monotonic() + timeout
-        while not self._done.wait(0.1):
-            if deadline is not None and time.monotonic() >= deadline:
-                raise TimeoutError("solver job timed out")
+        if not self._done.wait(timeout):
+            raise TimeoutError("solver job timed out")
         return self._result
 
     def poll(self):
@@ -90,13 +100,6 @@ class SolverJob:
                 raise subprocess.TimeoutExpired("solver worker", timeout)
             return getattr(self._worker, "exitcode", 0)
         return 0
-
-    def __getattr__(self, name):
-        worker = object.__getattribute__(self, "_worker")
-        if worker is None:
-            raise AttributeError(name)
-        return getattr(worker, name)
-
 
 class IncrementalFormulaSolver(ABC):
     """Backend-neutral incremental solver over STLmc Formula objects."""
@@ -139,7 +142,6 @@ class ThreadWorker:
     def __init__(self):
         self._done = threading.Event()
         self._thread = None
-        self._stlmc_thread_worker = True
 
     def start(self, target):
         self._thread = threading.Thread(target=target, daemon=True)

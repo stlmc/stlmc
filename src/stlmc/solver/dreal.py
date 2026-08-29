@@ -359,14 +359,15 @@ class dRealSolver(JobSolver):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=os.name == "posix")
-        proc._stlmc_process_group = os.name == "posix"
-
         check_sat_thread = threading.Thread(target=self.parallel_check_sat,
                                             args=(job, proc, parallel_s_time,
                                                   cleanup_path, formula_size))
         check_sat_thread.daemon = True
-        proc._stlmc_worker = check_sat_thread
-        job.set_worker(proc)
+        job.set_worker(
+            proc,
+            process_group=os.name == "posix",
+            completion_worker=check_sat_thread,
+        )
         check_sat_thread.start()
 
         return job

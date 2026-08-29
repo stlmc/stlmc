@@ -69,8 +69,7 @@ class Z3Solver(JobSolver):
             result_queue.close()
 
         collector = threading.Thread(target=collect_result, daemon=True)
-        proc._stlmc_worker = collector
-        job.set_worker(proc)
+        job.set_worker(proc, completion_worker=collector)
         collector.start()
         return job
 

@@ -71,13 +71,13 @@ class ParallelAlgRunner(AlgorithmRunner):
     def _scenario_for_process(self, proc_id):
         for proc in self.procs:
             if id(proc) == proc_id:
-                return getattr(proc, "_stlmc_scenario", None)
+                return proc.scenario
         return None
 
     def _scenario_count_for_process(self, proc_id):
         for proc in self.procs:
             if id(proc) == proc_id:
-                return getattr(proc, "_stlmc_scenario_count", 1)
+                return proc.scenario_count
         return 1
 
     def _unpack_result(self, message):
@@ -150,13 +150,7 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.current_scenario_count = scenario_count
 
     def active_workers(self):
-        active = 0
-        for proc in self.procs:
-            if getattr(proc, "_stlmc_thread_worker", False):
-                active += int(proc.is_alive())
-            else:
-                active += int(proc.poll() is None)
-        return active
+        return sum(proc.poll() is None for proc in self.procs)
 
     def increase_counter(self):
         self.number += 1
@@ -193,8 +187,8 @@ class ParallelAlgRunner(AlgorithmRunner):
             except Exception:
                 self.sema.release()
                 raise
-            proc._stlmc_scenario = self.current_scenario
-            proc._stlmc_scenario_count = self.current_scenario_count
+            proc.scenario = self.current_scenario
+            proc.scenario_count = self.current_scenario_count
             self.procs.add(proc)
             self.submitted_jobs += 1
             self.submitted_scenarios += self.current_scenario_count
@@ -206,8 +200,8 @@ class ParallelAlgRunner(AlgorithmRunner):
     def kill_all(self):
         procs = list(self.procs)
 
-        thread_workers = [proc for proc in procs if getattr(proc, "_stlmc_thread_worker", False)]
-        process_workers = [proc for proc in procs if not getattr(proc, "_stlmc_thread_worker", False)]
+        thread_workers = [proc for proc in procs if proc.worker_kind == "thread"]
+        process_workers = [proc for proc in procs if proc.worker_kind == "process"]
 
         for worker in thread_workers:
             worker.terminate()
@@ -219,7 +213,7 @@ class ParallelAlgRunner(AlgorithmRunner):
 
         def signal_process(proc, sig):
             try:
-                if getattr(proc, "_stlmc_process_group", False):
+                if proc.process_group:
                     os.killpg(proc.pid, sig)
                 elif sig == signal.SIGTERM:
                     proc.terminate()
@@ -274,7 +268,7 @@ class ParallelAlgRunner(AlgorithmRunner):
                 proc.join(timeout=1)
 
         for proc in process_workers:
-            worker = getattr(proc, "_stlmc_worker", None)
+            worker = proc.completion_worker
             if worker is not None and worker is not threading.current_thread():
                 worker.join(timeout=1)
 

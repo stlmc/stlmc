@@ -29,7 +29,9 @@ class SlowProcess:
         self.clock = clock
         self.terminated = False
         self.killed = False
-        self._stlmc_process_group = False
+        self.process_group = False
+        self.worker_kind = "process"
+        self.completion_worker = None
 
     def poll(self):
         return -9 if self.killed else None
@@ -51,8 +53,11 @@ class SlowProcess:
 
 class FinishedProcess:
     def __init__(self, scenario_count):
-        self._stlmc_scenario = "0-{}".format(scenario_count - 1)
-        self._stlmc_scenario_count = scenario_count
+        self.scenario = "0-{}".format(scenario_count - 1)
+        self.scenario_count = scenario_count
+        self.worker_kind = "process"
+        self.process_group = False
+        self.completion_worker = None
 
     def poll(self):
         return 0
@@ -75,6 +80,11 @@ class JoinWorker:
 
 
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_solver_job_result_honors_timeout(self):
+        job = SolverJob()
+        with self.assertRaises(TimeoutError):
+            job.result(timeout=0)
+
     def test_solver_job_normalizes_multiprocessing_worker(self):
         worker = JoinWorker()
         job = SolverJob()
@@ -144,7 +154,7 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner = ParallelAlgRunner(1)
         runner.cleanup_timeout = 0
         worker = SlowProcess(100)
-        worker._stlmc_process_group = True
+        worker.process_group = True
         runner.procs.add(worker)
 
         with mock.patch(
