@@ -15,6 +15,53 @@ def main():
 
         return print_help(prog=sys.argv[0])
 
+    # Missing input is a CLI usage error. Report it before importing solver,
+    # parser, numerical, and visualization dependencies.
+    if len(sys.argv) == 1:
+        print("error: should provide an STLmc model file path", flush=True)
+        return 2
+
+    # Validate CLI syntax and the positional model path before importing the
+    # model checker. This keeps all usage errors independent of solver and UI
+    # startup costs.
+    import os.path
+    from .parser import build_parser
+
+    preflight_args = build_parser(prog=sys.argv[0]).parse_args(sys.argv[1:])
+    if preflight_args.file is None:
+        print("error: should provide an STLmc model file path", flush=True)
+        return 2
+    if not os.path.exists(preflight_args.file):
+        print(
+            'error: "{}" is not a valid STLmc model file path'.format(
+                preflight_args.file
+            ),
+            flush=True,
+        )
+        return 2
+    if not os.path.isfile(preflight_args.file):
+        print(
+            'error: "{}" is not a file (please provide an STLmc model "file")'
+            .format(preflight_args.file),
+            flush=True,
+        )
+        return 2
+
+    config_paths = (
+        ("default configuration", preflight_args.default_cfg),
+        ("model configuration", preflight_args.model_cfg),
+        ("model-specific configuration", preflight_args.model_specific_cfg),
+    )
+    for description, path in config_paths:
+        if path is not None and not os.path.isfile(path):
+            print(
+                'error: {} file "{}" does not exist or is not a file'.format(
+                    description, path
+                ),
+                flush=True,
+            )
+            return 2
+
     import signal
     import traceback
 
