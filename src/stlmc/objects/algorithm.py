@@ -164,8 +164,6 @@ class ParallelAlgRunner(AlgorithmRunner):
     def run(self, solver: JobSolver, const: Formula):
         assert isinstance(solver, JobSolver)
 
-        solver.set_file_name(self.debug_name)
-
         while not self.sema.acquire(timeout=0.1):
             raise_if_interrupted()
         raise_if_interrupted()
@@ -189,7 +187,9 @@ class ParallelAlgRunner(AlgorithmRunner):
                     finally:
                         self.sema.release()
 
-                proc = solver.submit(const, completed)
+                proc = solver.submit(
+                    const, on_complete=completed, query_name=self.debug_name
+                )
             except Exception:
                 self.sema.release()
                 raise
@@ -321,16 +321,17 @@ class ParallelAlgRunner(AlgorithmRunner):
 class NormalRunner(AlgorithmRunner):
     def check_sat(self):
         assert self.solver is not None and self.const is not None
-        self.solver.clear()
-        result, size = self.solver.solve(self.const)
-        is_true = result == "False"
-        self.had_unknown = self.had_unknown or result == "Unknown"
+        solve_result = self.solver.solve(
+            self.const, query_name=self.debug_name
+        )
+        is_true = solve_result.result == "False"
+        self.had_unknown = self.had_unknown or solve_result.result == "Unknown"
 
         model = None
         if is_true:
-            model = self.solver.make_assignment()
+            model = solve_result.assignment
             self.winning_scenario = self.current_scenario
-        self.time = self.solver.solve_time
+        self.time = solve_result.elapsed
         self.solver = None
         self.const = None
         self.number = 0
@@ -366,9 +367,6 @@ class NormalRunner(AlgorithmRunner):
 
     def run(self, solver: JobSolver, const: Formula):
         assert isinstance(solver, JobSolver)
-
-        if hasattr(solver, "set_file_name"):
-            solver.set_file_name(self.debug_name)
 
         self.solver = solver
         self.const = const

@@ -39,13 +39,11 @@ class YicesSolver(JobSolver):
         JobSolver.__init__(self)
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
-        self.file_name = ""
-        self._last_assignment = None
 
-    def set_logic(self, logic_name: str):
+    def _set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
 
-    def _write_query(self, consts, raw_constraint):
+    def _write_query(self, consts, raw_constraint, query_name):
         if not is_enabled(self.config):
             return
         sort_names = {"bool": "Bool", "int": "Int", "real": "Real"}
@@ -59,23 +57,14 @@ class YicesSolver(JobSolver):
             lines.append("(assert {})".format(const))
         lines.extend(["(check-sat)", "(get-model)"])
         write_smt2(
-            self.config, "yices", self.file_name, "\n".join(lines) + "\n"
+            self.config, "yices", query_name, "\n".join(lines) + "\n"
         )
 
-    def make_assignment(self):
-        return self._last_assignment
-
-    def clear(self):
-        self._last_assignment = None
-
-    def set_file_name(self, name):
-        self.file_name = name
-
-    def submit(self, const, on_complete=None):
+    def submit(self, const, on_complete=None, query_name=""):
         job = SolverJob(on_complete)
         logic = self.config.get_section("yices").get_value("logic")
-        self.set_logic(logic)
-        self._write_query([yicesObj(const)], const)
+        self._set_logic(logic)
+        self._write_query([yicesObj(const)], const, query_name)
         worker = ThreadWorker()
         start_time = time.monotonic()
 

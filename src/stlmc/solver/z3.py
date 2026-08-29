@@ -27,25 +27,17 @@ class Z3Solver(JobSolver):
         self._logic_dict["QF_LRA"] = "LRA"
         self._logic = "NRA"
 
-        self.file_name = ""
-        self._last_assignment = None
 
-    def set_logic(self, logic_name: str):
+    def _set_logic(self, logic_name: str):
         self._logic = (self._logic_dict[logic_name.upper()] if logic_name.upper() in self._logic_dict else "NRA")
 
-    def clear(self):
-        self._last_assignment = None
-
-    def set_file_name(self, name):
-        self.file_name = name
-
-    def submit(self, const, on_complete=None):
+    def submit(self, const, on_complete=None, query_name=""):
         job = SolverJob(on_complete)
-        self.set_logic(self.config.get_section("z3").get_value("logic"))
+        self._set_logic(self.config.get_section("z3").get_value("logic"))
         if is_enabled(self.config):
             dump_solver = z3.SolverFor(self._logic)
             dump_solver.add(z3Obj(const))
-            write_smt2(self.config, "z3", self.file_name, dump_solver.to_smt2())
+            write_smt2(self.config, "z3", query_name, dump_solver.to_smt2())
         result_queue = multiprocessing.Queue()
         start_time = time.monotonic()
         proc = multiprocessing.Process(
@@ -81,10 +73,6 @@ class Z3Solver(JobSolver):
         job.set_worker(proc)
         collector.start()
         return job
-
-    def make_assignment(self):
-        return self._last_assignment
-
 
 class Z3FormulaSolver(IncrementalFormulaSolver):
     """Incremental Z3 adapter whose public API only accepts STLmc formulas."""

@@ -173,20 +173,14 @@ class JobSolver(ABC):
 
     def __init__(self):
         self.config = Configuration()
-        self.solve_time = 0.0
-
-    @abc.abstractmethod
-    def make_assignment(self):
-        pass
 
     def set_config(self, config: Configuration):
         self.config = config
 
-    def solve(self, all_consts=None):
+    def solve(self, all_consts=None, timeout=None, query_name=""):
         if all_consts is None:
             raise ValueError("solve requires a formula")
-        job = self.submit(all_consts)
-        timeout = getattr(self, "_solve_timeout", None)
+        job = self.submit(all_consts, query_name=query_name)
         try:
             solve_result = job.result(timeout)
         except TimeoutError:
@@ -194,19 +188,9 @@ class JobSolver(ABC):
             solve_result = SolveResult(
                 "Unknown", None, error="solver job timed out"
             )
-        self.solve_time = solve_result.elapsed
-        self._last_assignment = solve_result.assignment
-        return solve_result.result, solve_result.size
+        return solve_result
 
     @abc.abstractmethod
-    def submit(self, const, on_complete=None):
+    def submit(self, const, on_complete=None, query_name=""):
         """Start a solve and call ``on_complete(result, worker)`` exactly once."""
-        pass
-
-    @abc.abstractmethod
-    def clear(self):
-        pass
-
-    @abc.abstractmethod
-    def set_logic(self, logic_name: str):
         pass

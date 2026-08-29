@@ -98,23 +98,21 @@ class OneStepAlgorithm(Algorithm):
                 batch_formula = candidate_batch_formula([
                     (total_consts, candidate.constraint) for candidate in batch
                 ])
-                if hasattr(solver, "set_file_name"):
-                    solver.set_file_name(
-                        "{}_b{:03d}_p{}-{}".format(
-                            self.debug_name, b, batch[0].index, batch[-1].index
-                        )
-                    )
-                result, _ = solver.solve(batch_formula)
-                total_time += solver.solve_time
-                final_result = result
-                if result == "False":
-                    bound_result = result
-                    found_assignment = solver.make_assignment()
+                query_name = "{}_b{:03d}_p{}-{}".format(
+                    self.debug_name, b, batch[0].index, batch[-1].index
+                )
+                solve_result = solver.solve(
+                    batch_formula, query_name=query_name
+                )
+                total_time += solve_result.elapsed
+                final_result = solve_result.result
+                if solve_result.result == "False":
+                    bound_result = solve_result.result
+                    found_assignment = solve_result.assignment
                     break
-                if result == "Unknown":
+                if solve_result.result == "Unknown":
                     had_unknown = True
                     bound_result = "Unknown"
-                solver.clear()
 
             total_time += goal_time
             solver_result = {
@@ -138,7 +136,6 @@ class OneStepAlgorithm(Algorithm):
 
             model.clear()
             goal.clear()
-            solver.clear()
         # for reach case, we should translate the result in the opposite way
         if is_reach:
             if had_unknown:

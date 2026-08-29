@@ -86,18 +86,6 @@ class DrealAssignment(Assignment):
 class dRealSolver(JobSolver):
     def __init__(self):
         JobSolver.__init__(self)
-        self._logic_list = ["QF_NRA_ODE"]
-        self._logic = "QF_NRA_ODE"
-        self.file_name = ""
-        self._solve_timeout = None
-        self._last_assignment = None
-
-    def set_logic(self, logic_name: str):
-        self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA_ODE')
-
-    def set_solve_timeout(self, timeout):
-        self._solve_timeout = timeout
-
     def add_reset_cond(self, bound: int):
         result = list()
         result.append(Eq(Real("tau_" + str(0)), Real("g@clock_0_0")))
@@ -268,9 +256,6 @@ class dRealSolver(JobSolver):
 
         return declare_list, max_bound
 
-    def set_file_name(self, name):
-        self.file_name = name
-
     @staticmethod
     def _smt2_text(declares, results, reset_dreal):
         lines = ["(set-logic QF_NRA_ODE)", *declares]
@@ -283,10 +268,10 @@ class dRealSolver(JobSolver):
         lines.extend(["(check-sat)", "(exit)"])
         return "\n".join(lines) + "\n"
 
-    def _solver_input(self, content):
+    def _solver_input(self, content, query_name):
         if is_enabled(self.config):
             path = write_smt2(
-                self.config, "dreal", self.file_name, content
+                self.config, "dreal", query_name, content
             )
             return [path], None
         fd, path = tempfile.mkstemp(prefix="stlmc-dreal-", suffix=".smt2")
@@ -299,7 +284,7 @@ class dRealSolver(JobSolver):
             raise
         return [path], path
 
-    def _prepare_solver_command(self, const):
+    def _prepare_solver_command(self, const, query_name):
         dreal_section = self.config.get_section("dreal")
         common_section = self.config.get_section("common")
         time_horizon = float(common_section.get_value("time-horizon"))
@@ -311,7 +296,7 @@ class dRealSolver(JobSolver):
         results = [drealObj(const)]
         reset_dreal = [drealObj(item) for item in self.add_reset_cond(bound)]
         input_args, cleanup_path = self._solver_input(
-            self._smt2_text(declares, results, reset_dreal)
+            self._smt2_text(declares, results, reset_dreal), query_name
         )
         command = [
             dreal_section.get_value("executable-path"),
@@ -364,10 +349,10 @@ class dRealSolver(JobSolver):
             except FileNotFoundError:
                 pass
 
-    def submit(self, const, on_complete=None):
+    def submit(self, const, on_complete=None, query_name=""):
         job = SolverJob(on_complete)
         formula_size = size_of_tree(const)
-        command, cleanup_path = self._prepare_solver_command(const)
+        command, cleanup_path = self._prepare_solver_command(const, query_name)
         parallel_s_time = time.monotonic()
         proc = subprocess.Popen(
             command,
@@ -408,13 +393,6 @@ class dRealSolver(JobSolver):
                 elapsed, solve_result.error, formula_size,
             )
             job.complete(solve_result)
-
-    def make_assignment(self):
-        return self._last_assignment
-
-    def clear(self):
-        self._last_assignment = None
-
 
 def check_os():
     return platform.platform()
