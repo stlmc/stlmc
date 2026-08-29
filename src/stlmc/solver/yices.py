@@ -7,7 +7,7 @@ from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import (
-    SMTSolver, ParallelSMTSolver, SolveResult, SolverJob, ThreadWorker,
+    JobSolver, SolveResult, SolverJob, ThreadWorker,
 )
 from ..solver.assignment import Assignment
 from ..util.smt2_output import is_enabled, write_smt2
@@ -38,12 +38,9 @@ class YicesAssignment(Assignment):
         pass
 
 
-class YicesSolver(ParallelSMTSolver):
+class YicesSolver(JobSolver):
     def __init__(self):
-        SMTSolver.__init__(self)
-        self._yices_model = None
-        self._cache = list()
-        self._cache_raw = list()
+        JobSolver.__init__(self)
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
         self.set_time("solving timer", 0)
@@ -71,22 +68,10 @@ class YicesSolver(ParallelSMTSolver):
         )
 
     def make_assignment(self):
-        if self._last_assignment is not None:
-            return self._last_assignment
-        return YicesAssignment(self._yices_model)
+        return self._last_assignment
 
     def clear(self):
-        self._cache = list()
-        self._cache_raw = list()
-
-    def simplify(self, consts):
-        pass
-
-    def substitution(self, const, *dicts):
-        pass
-
-    def add(self, const):
-        pass
+        self._last_assignment = None
 
     def set_time_bound(self, time_bound: str):
         pass

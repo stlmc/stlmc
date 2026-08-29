@@ -11,7 +11,7 @@ from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import (
-    IncrementalFormulaSolver, ParallelSMTSolver, SolveResult, SolverJob,
+    IncrementalFormulaSolver, JobSolver, SolveResult, SolverJob,
     SolverStatus,
 )
 from ..solver.assignment import Assignment
@@ -19,18 +19,14 @@ from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
 
 
-class Z3Solver(ParallelSMTSolver):
+class Z3Solver(JobSolver):
     def __init__(self):
-        ParallelSMTSolver.__init__(self)
-        self._z3_model = None
-        self._cache = list()
-        self._cache_raw = list()
+        JobSolver.__init__(self)
         self._logic_dict = dict()
         self._logic_dict["QF_NRA"] = "NRA"
         self._logic_dict["QF_LRA"] = "LRA"
         self._logic = "NRA"
 
-        self.solver = None
         self.file_name = ""
         self._last_assignment = None
         self.set_time("solving timer", 0)
@@ -39,9 +35,7 @@ class Z3Solver(ParallelSMTSolver):
         self._logic = (self._logic_dict[logic_name.upper()] if logic_name.upper() in self._logic_dict else "NRA")
 
     def clear(self):
-        self._cache = list()
-        self._cache_raw = list()
-        self.solver = None
+        self._last_assignment = None
 
     def set_time_bound(self, time_bound: str):
         pass
@@ -92,65 +86,8 @@ class Z3Solver(ParallelSMTSolver):
         collector.start()
         return job
 
-    def result_simplify(self):
-        return z3.simplify(z3.And(self._cache))
-
-    def simplify(self, consts):
-        return z3.simplify(consts)
-
-    def cache(self):
-        return self._cache
-
-    def add(self, const):
-        self._cache_raw.append(const)
-        self.solver.add(z3Obj(const))
-        self.solver.push()
-
-    def raw_add(self, const):
-        self.solver.add(z3Obj(const))
-
-    def raw_push(self):
-        self.solver.push()
-
-    def raw_pop(self):
-        self.solver.pop()
-
-    def raw_check(self):
-        return self.solver.check()
-
-    def raw_model(self):
-        return Z3Assignment(self.solver.model())
-
-    def substitution(self, const, *dicts):
-        total_dict = dict()
-        for i in range(len(dicts)):
-            total_dict.update(dicts[i])
-        substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
-        return z3.substitute(z3Obj(const), substitute_list)
-
     def make_assignment(self):
-        if self._last_assignment is not None:
-            return self._last_assignment
-        return Z3Assignment(self._z3_model)
-
-    def unsat_core(self, psi, assertion_and_trace):
-        trace_dict = dict()
-        for (assertion, trace) in assertion_and_trace:
-            # trace should be boolean var
-            trace_dict[str(trace.id)] = assertion
-            self.solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
-        # self.add(Not(psi))
-        self.solver.add(z3.Not(z3.And(psi)))
-        self.solver.set(':core.minimize', True)
-        self.solver.check()
-        unsat_cores = self.solver.unsat_core()
-        result = set()
-        for unsat_core in unsat_cores:
-            result.add(trace_dict[str(unsat_core)])
-        return result
-
-    def add_contradict_consts(self):
-        pass
+        return self._last_assignment
 
 
 class Z3FormulaSolver(IncrementalFormulaSolver):

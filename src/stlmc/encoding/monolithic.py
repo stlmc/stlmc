@@ -12,7 +12,7 @@ from ..objects.algorithm import Algorithm
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
-from ..solver.abstract_solver import SMTSolver
+from ..solver.abstract_solver import JobSolver
 from ..util.logger import Logger
 from ..util.print import Printer
 from ..util.interrupt import raise_if_interrupted
@@ -28,7 +28,7 @@ class OneStepAlgorithm(Algorithm):
         self.debug_name = msg
 
     def run(self, model: Model, goal: Goal, goal_prop_dict: Dict, config: Configuration,
-            solver: SMTSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, logger: Logger, printer: Printer):
         common_section = config.get_section("common")
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")

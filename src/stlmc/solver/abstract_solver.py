@@ -219,29 +219,9 @@ class BaseSolver:
             self.time_dict[keyword] = 0
 
 
-class SMTSolver(BaseSolver):
-    @abc.abstractmethod
-    def simplify(self, consts):
-        pass
+class JobSolver(BaseSolver):
+    """Solver whose single execution primitive is a cancellable job."""
 
-    @abc.abstractmethod
-    def substitution(self, const, *dicts):
-        pass
-
-    @abc.abstractmethod
-    def add(self, const):
-        pass
-
-    @abc.abstractmethod
-    def set_logic(self, logic_name: str):
-        pass
-
-    @abc.abstractmethod
-    def set_time_bound(self, time_bound: str):
-        pass
-
-
-class ParallelSMTSolver(SMTSolver):
     def solve(self, all_consts=None, cont_vars_dict=None,
               boolean_abstract_dict=None):
         if all_consts is None:
@@ -269,6 +249,23 @@ class ParallelSMTSolver(SMTSolver):
     def submit(self, const, on_complete=None):
         """Start a solve and call ``on_complete(result, worker)`` exactly once."""
         pass
+
+    @abc.abstractmethod
+    def clear(self):
+        pass
+
+    @abc.abstractmethod
+    def set_logic(self, logic_name: str):
+        pass
+
+    @abc.abstractmethod
+    def set_time_bound(self, time_bound: str):
+        pass
+
+
+# Backward-compatible imports for integrations written against the old names.
+SMTSolver = JobSolver
+ParallelSMTSolver = JobSolver
 
 
 class OdeSolver(BaseSolver, ABC):

@@ -1,4 +1,3 @@
-import asyncio
 import os
 import signal
 import subprocess
@@ -12,7 +11,7 @@ from ..constraints.constraints import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal
 from ..objects.model import Model
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver, SolveResult
+from ..solver.abstract_solver import JobSolver, SolveResult
 from ..util.logger import Logger
 from ..util.interrupt import raise_if_interrupted
 from ..util.print import Printer
@@ -21,7 +20,7 @@ from ..util.print import Printer
 class Algorithm:
     @abstractmethod
     def run(self, model: Model, goal: Goal, prop_dict: Dict, config: Configuration,
-            solver: SMTSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, logger: Logger, printer: Printer):
         pass
 
     @abstractmethod
@@ -31,7 +30,7 @@ class Algorithm:
 
 class AlgorithmRunner:
     @abstractmethod
-    def run(self, solver: SMTSolver, const: Formula):
+    def run(self, solver: JobSolver, const: Formula):
         pass
 
     @abstractmethod
@@ -69,18 +68,6 @@ class AlgorithmRunner:
         }
 
 
-async def solve(solver: SMTSolver, const: Formula):
-    return await asyncio.wait_for(solver.solve(const), timeout=100000000.0)
-
-
-def call_back(p):
-    print(p)
-    if p[0] == "False":
-        print("not done!")
-    else:
-        print("done!")
-
-
 class ParallelAlgRunner(AlgorithmRunner):
     def _scenario_for_process(self, proc_id):
         for proc in self.procs:
@@ -111,22 +98,6 @@ class ParallelAlgRunner(AlgorithmRunner):
         if len(metadata) > 1 and metadata[1]:
             self.unknown_errors.append(metadata[1])
         return result, model, proc_id
-
-    def _check_sat(self):
-        while True:
-            try:
-                result, model, proc_id = self._unpack_result(self.main_queue.get_nowait())
-            except Empty:
-                # no counterexample or unknown
-                pass
-            else:
-                self.result = result
-                if result == "False":
-                    self.model = model
-                else:
-                    self.model = None
-                self.kill_all()
-                break
 
     def check_sat(self):
         try:
@@ -191,8 +162,8 @@ class ParallelAlgRunner(AlgorithmRunner):
     def increase_counter(self):
         self.number += 1
 
-    def run(self, solver: ParallelSMTSolver, const: Formula):
-        assert isinstance(solver, ParallelSMTSolver)
+    def run(self, solver: JobSolver, const: Formula):
+        assert isinstance(solver, JobSolver)
 
         solver.set_file_name(self.debug_name)
 
@@ -394,8 +365,8 @@ class NormalRunner(AlgorithmRunner):
     def increase_counter(self):
         self.number += 1
 
-    def run(self, solver: SMTSolver, const: Formula):
-        assert isinstance(solver, SMTSolver)
+    def run(self, solver: JobSolver, const: Formula):
+        assert isinstance(solver, JobSolver)
 
         if hasattr(solver, "set_file_name"):
             solver.set_file_name(self.debug_name)

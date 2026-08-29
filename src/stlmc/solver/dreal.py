@@ -5,14 +5,13 @@ import tempfile
 import threading
 import time
 from functools import singledispatch
-from queue import Queue, Empty
 from typing import Dict, List
 
 from ..constraints.constraints import *
 from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
 from ..exception.exception import NotSupportedError
 from ..solver.abstract_solver import (
-    SMTSolver, ParallelSMTSolver, SolveResult, SolverJob,
+    JobSolver, SolveResult, SolverJob,
 )
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
@@ -89,22 +88,12 @@ class DrealAssignment(Assignment):
         pass
 
 
-class dRealSolver(ParallelSMTSolver):
+class dRealSolver(JobSolver):
     def __init__(self):
-        SMTSolver.__init__(self)
-        self._dreal_model = None
-        self._cache = list()
-        self._cache_raw = list()
+        JobSolver.__init__(self)
         self._logic_list = ["QF_NRA_ODE"]
         self._logic = "QF_NRA_ODE"
         self._time_bound = None
-        self.stdout_msg = Queue()
-        self.stderr_msg = Queue()
-        self.done = False
-        self._parallel_result = None
-        self._parallel_model = None
-        self._parallel_s_time = 0.0
-        self._parallel_e_time = 0.0
         self.file_name = ""
         self._solve_timeout = None
         self._last_assignment = None
@@ -132,9 +121,6 @@ class dRealSolver(ParallelSMTSolver):
         all_vars = set()
         clause_set = clause(const)
         variable_range = list()
-        # for i in self._cache:
-        #     clause_set = clause_set.union(clause(i))
-
         for c in clause_set:
             possible_range = isinstance(c, Eq) or isinstance(c, Lt) or isinstance(c, Leq) or isinstance(c,
                                                                                                         Gt) or isinstance(
@@ -441,22 +427,10 @@ class dRealSolver(ParallelSMTSolver):
             job.complete(solve_result)
 
     def make_assignment(self):
-        if self._last_assignment is not None:
-            return self._last_assignment
-        return DrealAssignment(self._dreal_model)
+        return self._last_assignment
 
     def clear(self):
-        self._cache = list()
-        self._cache_raw = list()
-
-    def simplify(self, consts):
-        pass
-
-    def substitution(self, const, *dicts):
-        pass
-
-    def add(self, const):
-        pass
+        self._last_assignment = None
 
 
 def check_os():

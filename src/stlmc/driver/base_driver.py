@@ -17,7 +17,6 @@ from ..objects.object_factory import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
-from ..solver.abstract_solver import SMTSolver
 from ..solver.availability import find_dreal
 from ..solver.dreal import dRealSolver
 from ..solver.solver_factory import SolverFactory
