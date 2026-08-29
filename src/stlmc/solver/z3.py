@@ -20,8 +20,8 @@ from ..tree.operations import size_of_tree
 
 
 class Z3Solver(JobSolver):
-    def __init__(self):
-        JobSolver.__init__(self)
+    def __init__(self, config=None):
+        JobSolver.__init__(self, config)
         self._logic_dict = dict()
         self._logic_dict["QF_NRA"] = "NRA"
         self._logic_dict["QF_LRA"] = "LRA"

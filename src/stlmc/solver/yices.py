@@ -35,8 +35,8 @@ class YicesAssignment(Assignment):
         return new_dict
 
 class YicesSolver(JobSolver):
-    def __init__(self):
-        JobSolver.__init__(self)
+    def __init__(self, config=None):
+        JobSolver.__init__(self, config)
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
 

@@ -171,11 +171,8 @@ class ThreadWorker:
 class JobSolver(ABC):
     """Solver whose single execution primitive is a cancellable job."""
 
-    def __init__(self):
-        self.config = Configuration()
-
-    def set_config(self, config: Configuration):
-        self.config = config
+    def __init__(self, config=None):
+        self.config = config if config is not None else Configuration()
 
     def solve(self, all_consts=None, timeout=None, query_name=""):
         if all_consts is None:

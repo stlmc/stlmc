@@ -84,8 +84,8 @@ class DrealAssignment(Assignment):
         return new_dict
 
 class dRealSolver(JobSolver):
-    def __init__(self):
-        JobSolver.__init__(self)
+    def __init__(self, config=None):
+        JobSolver.__init__(self, config)
     def add_reset_cond(self, bound: int):
         result = list()
         result.append(Eq(Real("tau_" + str(0)), Real("g@clock_0_0")))

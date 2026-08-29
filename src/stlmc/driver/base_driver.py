@@ -277,7 +277,6 @@ class BaseRunner(Runner):
 
             solver = SolverFactory().generate_solver(config)
             algorithm = AlgorithmFactory(config).generate()
-            solver.set_config(config)
 
             for goal in goals:
                 if len(f_labels) > 0:

@@ -6,21 +6,18 @@ from .availability import find_dreal
 
 
 class SolverFactory:
-    def __init__(self):
-        self.solver_type = None
-
     def generate_solver(self, config):
         common_section = config.get_section("common")
-        self.solver_type = common_section.get_value("solver")
-        if self.solver_type == 'z3':
+        solver_type = common_section.get_value("solver")
+        if solver_type == 'z3':
             try:
                 from ..solver.z3 import Z3Solver
             except (ImportError, OSError) as error:
                 raise SolverUnavailableError(
                     "Z3 is unavailable. Run: stlmc-install-solvers z3"
                 ) from error
-            return Z3Solver()
-        elif self.solver_type == 'dreal':
+            return Z3Solver(config)
+        elif solver_type == 'dreal':
             dreal_section = config.get_section("dreal")
             executable = dreal_section.get_value("executable-path")
             if executable == "dReal":
@@ -35,15 +32,15 @@ class SolverFactory:
                 )
             dreal_section.set_value("executable-path", executable)
             from ..solver.dreal import dRealSolver
-            return dRealSolver()
-        elif self.solver_type == 'yices':
+            return dRealSolver(config)
+        elif solver_type == 'yices':
             try:
                 from ..solver.yices import YicesSolver
             except Exception as error:
                 raise SolverUnavailableError(
                     "Yices is unavailable. Run: stlmc-install-solvers yices"
                 ) from error
-            return YicesSolver()
+            return YicesSolver(config)
         raise SolverUnavailableError(
-            "unknown solver: {}".format(self.solver_type)
+            "unknown solver: {}".format(solver_type)
         )
