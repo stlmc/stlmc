@@ -7,21 +7,25 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all test test-quick test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark benchmark-quick
+.PHONY: all test test-quick test-parser test-solution-functions test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark benchmark-quick
 .NOTPARALLEL: test
 
 all:
 	@echo "Use 'make test' or 'make test-quick' to validate STLmc."
 
-test: test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
+test: test-parser test-solution-functions test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
 
 # Short release checks plus benchmark cases that completed within 50 seconds
 # in the reference artifact logs. Each selected case gets a 200-second limit.
-test-quick: test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick
+test-quick: test-parser test-solution-functions test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick
 
 test-parser:
 	$(info test Lark parsers against all input formats ...)
 	@$(PYTHON) -u $(TEST_DIR)/parser_inputs.py
+
+test-solution-functions:
+	$(info test closed-form solution function semantics ...)
+	@$(PYTHON) -u $(TEST_DIR)/solution_functions.py
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)

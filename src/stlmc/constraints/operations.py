@@ -521,6 +521,14 @@ def _(const):
 def diff(exp: Expr, integral: Integral):
     alpha = make_diff_mapping(integral)
     new_exp = substitution(exp, alpha)
+    if isinstance(integral.dynamics, Function):
+        # Closed-form flows use local elapsed time (tau_end - tau_start).
+        # Differentiate with respect to tau_end while holding tau_start fixed.
+        end_id = integral.end_vector[0].id
+        bound = end_id[end_id.find("_") + 1:end_id.rfind("_")]
+        new_exp = substitution(
+            new_exp, {Real("tau_" + bound): RealVal("0")}
+        )
 
     return diff_aux(new_exp)
 

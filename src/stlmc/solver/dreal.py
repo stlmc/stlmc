@@ -8,7 +8,11 @@ from functools import singledispatch
 from typing import Dict, List
 
 from ..constraints.constraints import *
-from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
+from ..constraints.operations import (
+    clause, get_max_bound, get_vars, reduce_not, reverse_inequality,
+    substitution, substitution_zero2t,
+)
+from ..constraints.translation import make_dynamics_consts, make_forall_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
     JobSolver, SolveResult, SolverJob,
@@ -127,6 +131,10 @@ class dRealSolver(JobSolver):
             elif isinstance(i, Real) and "time_" in i.id:
                 pass
             elif isinstance(i, Integral):
+                if isinstance(i.dynamics, Function):
+                    # Closed-form dynamics are algebraic endpoint equations,
+                    # not ODE right-hand sides.
+                    continue
                 if not i.current_mode_number in consider_mode:
                     consider_mode.add(i.current_mode_number)
                     arb_end = i.end_vector[0].id
@@ -616,6 +624,9 @@ def _(const):
 
 @drealObj.register(Integral)
 def _(const: Integral):
+    if isinstance(const.dynamics, Function):
+        return drealObj(make_dynamics_consts(const.dynamics))
+
     s = const.end_vector[0].id.find("_")
     e = const.end_vector[0].id.rfind("_")
 
@@ -638,6 +649,53 @@ def _(const: Integral):
 
 @drealObj.register(Forall)
 def _(const: Forall):
+    if isinstance(const.integral.dynamics, Function):
+        bound_str = str(int(const.end_tau.id[4:]) - 1)
+        if len(get_vars(const.const)) == 0 or isinstance(const.const, Bool):
+            return drealObj(const.const)
+        if isinstance(const.const, Not):
+            if isinstance(const.const.child, Bool):
+                return drealObj(const.const)
+            reduced = reduce_not(const.const)
+            return drealObj(Forall(
+                const.current_mode_number, const.end_tau, const.start_tau,
+                reduced, const.integral,
+            ))
+        if isinstance(const.const, Implies):
+            left = Forall(
+                const.current_mode_number, const.end_tau, const.start_tau,
+                reduce_not(Not(const.const.left)), const.integral,
+            )
+            right = Forall(
+                const.current_mode_number, const.end_tau, const.start_tau,
+                const.const.right, const.integral,
+            )
+            return drealObj(Or([left, right]))
+        if isinstance(const.const, (And, Or)):
+            children = [
+                child if isinstance(child, Bool) else Forall(
+                    const.current_mode_number, const.end_tau,
+                    const.start_tau, child, const.integral,
+                )
+                for child in const.const.children
+            ]
+            return drealObj(const.const.__class__(children))
+
+        op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
+        expression = Sub(const.const.left, const.const.right)
+        normalized = reverse_inequality(
+            op_dict[type(const.const)](expression, RealVal("0"))
+        )
+        algebraic = make_forall_consts(Forall(
+            const.current_mode_number, const.end_tau, const.start_tau,
+            normalized, const.integral,
+        ))
+        return drealObj(And([
+            Eq(Real("currentMode_" + bound_str),
+               RealVal(str(const.current_mode_number))),
+            algebraic,
+        ]))
+
     cur_inv = substitution_zero2t(const.const)
     # all bounds are same
     bound = get_max_bound(const.const)
