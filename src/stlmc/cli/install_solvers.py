@@ -16,10 +16,17 @@ from ..solver.availability import find_dreal, user_dreal_path
 
 _DREAL_VERSION = "3.16.06.02"
 _Z3_PACKAGE = "z3-solver==4.13.2.0"
+_CVC5_PACKAGE = "cvc5"
 
 
 def _status():
     result = {}
+    try:
+        importlib.import_module("cvc5")
+        result["cvc5"] = (True, "Python package available")
+    except (ImportError, OSError) as error:
+        result["cvc5"] = (False, str(error))
+
     try:
         importlib.import_module("z3")
         result["z3"] = (True, "Python package available")
@@ -117,7 +124,8 @@ def build_parser():
         ),
         epilog=(
             "Solvers:\n"
-            "  all    Check or install Z3, Yices, and dReal (default).\n"
+            "  all    Check or install CVC5, Z3, Yices, and dReal (default).\n"
+            "  cvc5   Install the cvc5 Python package.\n"
             "  z3     Install the z3-solver Python package.\n"
             "  yices  Install the Python binding and native Yices library.\n"
             "  dreal  Install the dReal 3 executable in the user solver directory.\n"
@@ -153,7 +161,7 @@ def build_parser():
     )
     parser.add_argument(
         "solver", nargs="?", default="all",
-        choices=("all", "z3", "yices", "dreal"),
+        choices=("all", "cvc5", "z3", "yices", "dreal"),
         help="solver to install or check (default: all)",
     )
     parser.add_argument(
@@ -168,9 +176,12 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
 
-    selected = ("z3", "yices", "dreal") if args.solver == "all" else (args.solver,)
+    selected = (("cvc5", "z3", "yices", "dreal")
+                if args.solver == "all" else (args.solver,))
     before = _status()
     if not args.check:
+        if "cvc5" in selected and not before["cvc5"][0]:
+            _install_python_package(_CVC5_PACKAGE)
         if "z3" in selected and not before["z3"][0]:
             _install_python_package(_Z3_PACKAGE)
         if "yices" in selected and not before["yices"][0]:

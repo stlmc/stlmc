@@ -1,23 +1,23 @@
 # Solver formula support
 
 STLMC encodes temporal operators before invoking an SMT solver. Therefore
-`[]`, `<>`, `U`, and `R` have the same front-end support for Z3, Yices, and
-dReal. Solver-specific restrictions apply to the arithmetic expressions in
+`[]`, `<>`, `U`, and `R` have the same front-end support for CVC5, Z3, Yices,
+and dReal. Solver-specific restrictions apply to the arithmetic expressions in
 flows, invariants, jump conditions, initial conditions, propositions, and STL
 atomic predicates.
 
 ## Support matrix
 
-| Formula feature | Z3 | Yices | dReal 3 |
-| --- | --- | --- | --- |
-| Boolean operators and comparisons | Supported | Supported | Supported |
-| `+`, `-`, `*`, `/`, unary `-` | Supported | Supported | Supported |
-| `x ** n`, non-negative integer constant `n` | Supported | Supported | Supported |
-| Fractional, negative, or symbolic exponent | Rejected | Rejected | Supported |
-| `sqrt` | Rejected | Rejected | Supported |
-| `sin`, `cos`, `tan` | Rejected | Rejected | Supported |
-| `arcsin`, `arccos`, `arctan` | Rejected | Rejected | Supported |
-| STL `[]`, `<>`, `U`, `R` | Encoded by STLMC | Encoded by STLMC | Encoded by STLMC |
+| Formula feature | CVC5 | Z3 | Yices | dReal 3 |
+| --- | --- | --- | --- | --- |
+| Boolean operators and comparisons | Supported | Supported | Supported | Supported |
+| `+`, `-`, `*`, `/`, unary `-` | Supported | Supported | Supported | Supported |
+| `x ** n`, non-negative integer constant `n` | Supported | Supported | Supported | Supported |
+| Fractional, negative, or symbolic exponent | Rejected | Rejected | Rejected | Supported |
+| `sqrt` | Rejected | Rejected | Rejected | Supported |
+| `sin`, `cos`, `tan` | Rejected | Rejected | Rejected | Supported |
+| `arcsin`, `arccos`, `arctan` | Rejected | Rejected | Rejected | Supported |
+| STL `[]`, `<>`, `U`, `R` | Encoded by STLMC | Encoded by STLMC | Encoded by STLMC | Encoded by STLMC |
 
 “Supported” means that STLMC has an intentional solver translation for the
 operator. It does not guarantee that every resulting nonlinear problem will
@@ -37,7 +37,7 @@ conversion error: solver 'z3' does not support sqrt in expression (sqrt x) (use 
 This is distinct from `unknown`: `unknown` means that a supported formula was
 sent to a solver but the solver could not establish `sat` or `unsat`.
 
-Z3 and Yices intentionally accept only non-negative integer constant powers.
+CVC5, Z3, and Yices intentionally accept only non-negative integer constant powers.
 This prevents symbolic Yices exponents from being assigned an unrelated model
 value and keeps polynomial configurations within their intended arithmetic
 fragment.

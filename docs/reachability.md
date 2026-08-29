@@ -42,7 +42,7 @@ relaxation. For example, with threshold `0.1`, `x >= 5` is checked as
 model checking.
 
 Reachability uses the regular one-step or two-step BMC engine selected by
-`two-step`. It supports Z3, Yices, and dReal subject to each solver's formula
+`two-step`. It supports CVC5, Z3, Yices, and dReal subject to each solver's formula
 capabilities described in [Solver formula support](solver-formula-support.md).
 
 The `path-strategy` option is independent of `two-step`. `symbolic` keeps all
