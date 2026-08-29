@@ -68,12 +68,6 @@ class Multinary:
             tmp.add(hash(child))
         self._hash = hash((hash_root, frozenset(tmp)))
 
-    def at(self, i):
-        if i < len(self.children):
-            return self.children[i]
-        else:
-            raise ElementNotFoundError(self, "not in the list")
-
     def __repr__(self):
         # return self._str
         _str = ""

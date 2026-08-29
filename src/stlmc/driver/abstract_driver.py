@@ -62,7 +62,3 @@ class CmdParser:
     @abc.abstractmethod
     def parse(self):
         pass
-
-    @abc.abstractmethod
-    def get_config(self):
-        pass

@@ -76,9 +76,6 @@ class BaseCmdParser(CmdParser):
         self.arg_value_dict = dict()
         self.file = ""
 
-    def get_config(self) -> Configuration:
-        return self.config
-
     def update_solver_config(self, underlying_solver):
         common_section = self.config.get_section(underlying_solver)
         for arg_name in self.config_visitor.section_argument_dict[underlying_solver]:

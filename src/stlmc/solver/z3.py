@@ -175,12 +175,6 @@ class Z3Assignment(Assignment):
             return RealVal(str(value).replace("?", ""))
         raise NotSupportedError("cannot translate Z3 model value {}".format(value))
 
-    def z3eval(self, const):
-        if self._z3_model is None:
-            raise NotSupportedError("Z3 has no model")
-        return self._z3_model.eval(const)
-
-
 def _parallel_z3_solve(const, logic, result_queue):
     """Solve in an isolated process because Z3's global context is not thread-safe."""
     try:

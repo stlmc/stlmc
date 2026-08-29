@@ -276,14 +276,6 @@ class dRealSolver(JobSolver):
 
         return declare_list, max_bound
 
-    @staticmethod
-    def enqueue_out(out, queue):
-        msg = list()
-        for line in iter(out.readline, b''):
-            msg.append(line.decode())
-        queue.put(msg)
-        out.close()
-
     def set_file_name(self, name):
         self.file_name = name
 

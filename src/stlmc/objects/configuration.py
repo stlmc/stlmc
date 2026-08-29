@@ -71,9 +71,6 @@ class Configuration:
             raise ElementNotFoundError("there is no section named \"{}\"".format(section_name))
         return self.sections_by_name[section_name]
 
-    def is_section_in(self, section_name: str):
-        return section_name in self.sections_by_name
-
     @property
     def sections(self) -> Set[Section]:
         return set(self.sections_by_name.values())
@@ -90,12 +87,3 @@ class Configuration:
             section_strings.append(str(section))
 
         return "\n".join(section_strings)
-
-    def update_dependencies(self, ordering: List[str]):
-        for name in ordering:
-            assert name in self.sections_by_name
-            section = self.sections_by_name[name]
-            if section.has_parents():
-                for p_name in section.parent_names:
-                    parent = self.sections_by_name[p_name]
-                    section.arguments.update(parent.arguments)

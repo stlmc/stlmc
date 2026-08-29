@@ -138,7 +138,6 @@ class ThreadWorker:
 
     def __init__(self):
         self._done = threading.Event()
-        self._cancelled = threading.Event()
         self._thread = None
         self._stlmc_thread_worker = True
 
@@ -149,10 +148,6 @@ class ThreadWorker:
     def finish(self):
         self._done.set()
 
-    @property
-    def cancelled(self):
-        return self._cancelled.is_set()
-
     def poll(self):
         return 0 if self._done.is_set() else None
 
@@ -160,7 +155,9 @@ class ThreadWorker:
         return not self._done.is_set()
 
     def terminate(self):
-        self._cancelled.set()
+        # Python threads cannot be forcefully stopped; retain this process-like
+        # method so SolverJob can handle thread and process workers uniformly.
+        pass
 
     def kill(self):
         self.terminate()
