@@ -71,7 +71,10 @@ goal: true;
         ):
             self.parse("[0, 10] x; [0, 10] y;", "x(t) = t + x(0);")
 
-    def test_z3_yices_and_dreal_use_endpoint_equalities(self):
+    def test_solvers_use_endpoint_equalities(self):
+        import cvc5
+
+        from stlmc.solver.cvc5 import cvc5Obj
         from stlmc.solver.dreal import drealObj
         from stlmc.solver.yices import yicesObj
         from stlmc.solver.z3 import z3Obj
@@ -79,6 +82,7 @@ goal: true;
         model = self.parse("[0, 10] x;", "x(t) = t + x(0);")
         _, integrals = model.make_flow_consts(0)
         integral = integrals[0]
+        self.assertIn("(= x_0_t", str(cvc5Obj(integral, cvc5.Solver())))
         self.assertIn("x_0_t ==", str(z3Obj(integral)))
         self.assertIn("(= x_0_t", yicesObj(integral))
         dreal = drealObj(integral)

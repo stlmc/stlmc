@@ -1,5 +1,5 @@
 # logging: poly
-# @benchmark.expected(f1=violated:3, f2=violated:3, f3=satisfied:10)
+# @benchmark.expected(f1=violated:4, f2=violated:4, f3=violated:3)
 # @benchmark.fast(f1, f2)
 # @benchmark.z3-slow(f1, f2)
 # model description:
