@@ -1307,25 +1307,28 @@ def _(f: UntilFormula):
     if f.local_time == universeInterval:
         return f
 
-    left_interval = f.local_time.left_end
-    left_time = f.local_time.left
-    right_interval = f.local_time.right_end
-    right_time = f.local_time.right
-
     right = remove_binary(f.right)
     left = remove_binary(f.left)
+    lower = f.local_time.left
 
-    right_formula = FinallyFormula(Interval(left_interval, left_time, right_interval, right_time), f.global_time, right)
+    # Paper semantics requires ``left`` on the closed prefix [t, witness].
+    # At the lower-bound split, an open bound therefore needs a strictly
+    # future witness, while a closed bound permits the current split point.
+    continuation_interval = Interval(
+        f.local_time.left_end, RealVal("0.0"), False, RealVal("inf")
+    )
+    prefix_interval = Interval(True, RealVal("0.0"), True, lower)
+    split_interval = Interval(True, lower, True, lower)
 
-    if left_interval:
-        left_formula_1 = GloballyFormula(Interval(False, RealVal("0"), False, left_time), f.global_time, left)
-        subFormula = Or([right, And([left, UntilFormula(universeInterval, f.global_time, left, right)])])
-        left_formula_2 = GloballyFormula(Interval(False, RealVal("0"), True, left_time), f.global_time, subFormula)
-        return And([left_formula_1, left_formula_2, right_formula])
-    else:
-        subFormula = And([left, UntilFormula(universeInterval, f.global_time, left, right)])
-        final_left = GloballyFormula(Interval(False, RealVal("0"), True, left_time), f.global_time, subFormula)
-        return And([final_left, right_formula])
+    return And([
+        GloballyFormula(prefix_interval, f.global_time, left),
+        FinallyFormula(f.local_time, f.global_time, right),
+        FinallyFormula(
+            split_interval,
+            f.global_time,
+            UntilFormula(continuation_interval, f.global_time, left, right),
+        ),
+    ])
 
 
 @remove_binary.register(ReleaseFormula)
@@ -1334,23 +1337,22 @@ def _(f: ReleaseFormula):
     if f.local_time == universeInterval:
         return f
 
-    left_interval = f.local_time.left_end
-    left_time = f.local_time.left
-    right_interval = f.local_time.right_end
-    right_time = f.local_time.right
-
     right = remove_binary(f.right)
     left = remove_binary(f.left)
+    lower = f.local_time.left
+    continuation_interval = Interval(
+        f.local_time.left_end, RealVal("0.0"), False, RealVal("inf")
+    )
+    prefix_interval = Interval(True, RealVal("0.0"), True, lower)
+    split_interval = Interval(True, lower, True, lower)
 
-    right_formula = GloballyFormula(Interval(left_interval, left_time, right_interval, right_time), f.global_time,
-                                    right)
-
-    if left_interval:
-        left_formula_1 = FinallyFormula(Interval(False, RealVal("0"), False, left_time), f.global_time, left)
-        subFormula = And([right, Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])])
-        left_formula_2 = FinallyFormula(Interval(False, RealVal("0"), True, left_time), f.global_time, subFormula)
-        return Or([left_formula_1, left_formula_2, right_formula])
-    else:
-        subFormula = Or([left, ReleaseFormula(universeInterval, f.global_time, left, right)])
-        final_left = FinallyFormula(Interval(False, RealVal("0"), True, left_time), f.global_time, subFormula)
-        return Or([final_left, right_formula])
+    # Boolean dual of the bounded-until reduction above.
+    return Or([
+        FinallyFormula(prefix_interval, f.global_time, left),
+        GloballyFormula(f.local_time, f.global_time, right),
+        GloballyFormula(
+            split_interval,
+            f.global_time,
+            ReleaseFormula(continuation_interval, f.global_time, left, right),
+        ),
+    ])
