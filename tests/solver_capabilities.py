@@ -9,7 +9,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from stlmc.constraints.constraints import (
     Arccos, Arcsin, Arctan, Cos, Pow, Real, RealVal, Sin, Sqrt, Tan,
 )
-from stlmc.exception.exception import NotSupportedError
+from stlmc.exceptions import NotSupportedError
 from stlmc.solver.capability import (
     expression_requires_dreal,
     validate_formula_solver_support,
