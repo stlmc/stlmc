@@ -36,6 +36,7 @@ tests/*
 !tests/install_solvers.py
 !tests/process_cleanup.py
 !tests/parser_inputs.py
+!tests/solution_functions.py
 !tests/smoke_solvers.py
 !tests/README.md
 !tests/benchmarks/
