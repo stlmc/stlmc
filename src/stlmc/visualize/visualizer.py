@@ -867,12 +867,20 @@ def _(const: UntilFormula, point_samples: Dict[Variable, List[List[float]]],
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
 
-    robust_value = max([min(robustness(const.left, point_samples, discrete_samples, t_prime, times, time_max, dp_table),
-                            min(
-                                [robustness(const.right, point_samples, discrete_samples, t_prime_prime, times,
-                                            time_max, dp_table)
-                                 for t_prime_prime in get_sub_time_samples(times, time, t_prime, time_max)])
-                            ) for t_prime in t_primes])
+    robust_value = until_robustness(
+        t_primes,
+        lambda witness: get_sub_time_samples(
+            times, time, witness, time_max
+        ),
+        lambda sample: robustness(
+            const.left, point_samples, discrete_samples, sample,
+            times, time_max, dp_table
+        ),
+        lambda witness: robustness(
+            const.right, point_samples, discrete_samples, witness,
+            times, time_max, dp_table
+        ),
+    )
 
     dp_table[(const, time)] = robust_value
     return robust_value
@@ -888,12 +896,20 @@ def _(const: ReleaseFormula, point_samples: Dict[Variable, List[List[float]]],
     intv_right = float(str(sympy.parse_expr(const.local_time.right.value, evaluate=True)))
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
-    robust_value = min(
-        [max(robustness(const.left, point_samples, discrete_samples, t_prime, times, time_max, dp_table),
-             max(
-                 [robustness(const.right, point_samples, discrete_samples, t_prime_prime, times, time_max, dp_table)
-                  for t_prime_prime in get_sub_time_samples(times, time, t_prime, time_max)])
-             ) for t_prime in t_primes])
+    robust_value = release_robustness(
+        t_primes,
+        lambda witness: get_sub_time_samples(
+            times, time, witness, time_max
+        ),
+        lambda sample: robustness(
+            const.left, point_samples, discrete_samples, sample,
+            times, time_max, dp_table
+        ),
+        lambda witness: robustness(
+            const.right, point_samples, discrete_samples, witness,
+            times, time_max, dp_table
+        ),
+    )
     dp_table[(const, time)] = robust_value
     return robust_value
 
