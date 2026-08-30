@@ -9,7 +9,7 @@ def _raise_keyboard_interrupt(signum, frame):
 
 
 def main():
-    # Help must not load ANTLR, Z3, dReal, or visualization modules.
+    # Help must not load Lark, Z3, dReal, or visualization modules.
     if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         from .parser import print_help
 
