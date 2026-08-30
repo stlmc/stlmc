@@ -3,6 +3,7 @@ import sys
 
 from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
 from ..cli.parser import build_parser
+from ..config_schema import resolve_parallel_core
 from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
@@ -213,6 +214,10 @@ class BaseRunner(Runner):
 
             if time_horizon == "time-bound":
                 common_section.set_value("time-horizon", time_bound)
+            common_section.set_value(
+                "parallel-core",
+                resolve_parallel_core(common_section.get_value("parallel-core")),
+            )
 
             reach_goal_opt = common_section.get_value("reach")
             gen_result = common_section.get_value("visualize")
