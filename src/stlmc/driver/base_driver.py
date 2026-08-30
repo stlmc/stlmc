@@ -164,7 +164,7 @@ class BaseCmdParser(CmdParser):
 
         # update solver specific section
         underlying_solver = common_section.get_value("solver")
-        valid_solver = ["yices", "z3", "dreal", "auto"]
+        valid_solver = ["cvc5", "yices", "z3", "dreal", "auto"]
         if underlying_solver not in valid_solver:
             raise ValueError("\"{}\" is not a valid SMT solver".format(underlying_solver))
 

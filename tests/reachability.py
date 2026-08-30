@@ -170,7 +170,7 @@ dreal {{
                 self.assertIn("status      : satisfied up to bound 0", completed.stdout)
 
     def test_supported_solvers_agree_on_reachable_target(self):
-        for solver in ("z3", "yices", "dreal"):
+        for solver in ("cvc5", "z3", "yices", "dreal"):
             with self.subTest(solver=solver):
                 completed, _ = self.run_model(
                     "reach (and (x >= 4) (x <= 6))", solver=solver

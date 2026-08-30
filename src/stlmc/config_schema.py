@@ -1,4 +1,4 @@
-SECTION_NAMES = ("common", "z3", "yices", "dreal")
+SECTION_NAMES = ("common", "z3", "yices", "cvc5", "dreal")
 
 SECTION_VALUE_OPTIONS = {
     "common": (
@@ -8,6 +8,7 @@ SECTION_VALUE_OPTIONS = {
     ),
     "z3": ("logic",),
     "yices": ("logic",),
+    "cvc5": ("logic",),
     "dreal": ("precision", "ode-order", "ode-step", "executable-path"),
 }
 
@@ -18,6 +19,7 @@ SECTION_BOOLEAN_OPTIONS = {
     ),
     "z3": (),
     "yices": (),
+    "cvc5": (),
     "dreal": (),
 }
 
@@ -26,7 +28,7 @@ SECTION_TYPE_RULES = {
         ("threshold", "float"),
         ("bound", "integer"),
         ("time-bound", "float"),
-        ("solver", frozenset({"z3", "yices", "dreal"})),
+        ("solver", frozenset({"auto", "z3", "yices", "cvc5", "dreal"})),
         ("goal", "string"),
         ("path-strategy", frozenset({"symbolic", "explicit"})),
         ("time-horizon", "float"),
@@ -37,6 +39,7 @@ SECTION_TYPE_RULES = {
     },
     "z3": {("logic", frozenset({"QF_NRA", "QF_LRA"}))},
     "yices": {("logic", frozenset({"QF_NRA", "QF_LRA"}))},
+    "cvc5": {("logic", frozenset({"QF_NRA", "QF_LRA"}))},
     "dreal": {
         ("precision", "float"),
         ("ode-order", "float"),
@@ -49,6 +52,7 @@ SECTION_MANDATORY_OPTIONS = {
     "common": {"bound", "time-bound"},
     "z3": set(),
     "yices": set(),
+    "cvc5": set(),
     "dreal": {"ode-order", "executable-path"},
 }
 
@@ -59,7 +63,7 @@ OPTION_HELP = {
     "model-specific-cfg": "path to the goal-specific configuration file",
     "goal": "goal name to check, or 'all'",
     "path-strategy": "discrete path handling: symbolic or explicit",
-    "solver": "underlying solver: auto, dreal, z3, or yices",
+    "solver": "underlying solver: auto, cvc5, dreal, z3, or yices",
     "bound": "maximum mode changes and variable points (reach: jumps)",
     "time-bound": "maximum global trace time",
     "time-horizon": "maximum duration of each continuous segment, or 'time-bound'",
@@ -68,7 +72,7 @@ OPTION_HELP = {
     "solver-batch-size": "maximum candidates combined in one solver OR query",
     "core-minimize-attempts": "number of minimized unsat cores tried per scenario",
     "smt2-dir": "directory used for generated SMT2 files",
-    "logic": "SMT logic used by Z3 or Yices, such as QF_LRA or QF_NRA",
+    "logic": "SMT logic used by CVC5, Z3, or Yices, such as QF_LRA or QF_NRA",
     "precision": "dReal delta precision",
     "ode-order": "dReal ODE integration order",
     "ode-step": "dReal ODE integration step; omit for automatic control",

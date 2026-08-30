@@ -51,6 +51,14 @@ class SolverFactory:
                     "Yices is unavailable. Run: stlmc-install-solvers yices"
                 ) from error
             return YicesSolver(config)
+        elif solver_type == 'cvc5':
+            try:
+                from ..solver.cvc5 import CVC5Solver
+            except (ImportError, OSError) as error:
+                raise SolverUnavailableError(
+                    "CVC5 is unavailable. Run: stlmc-install-solvers cvc5"
+                ) from error
+            return CVC5Solver(config)
         raise SolverUnavailableError(
             "unknown solver: {}".format(solver_type)
         )

@@ -16,11 +16,13 @@ from stlmc.solver import availability
 
 
 AVAILABLE = {
+    "cvc5": (True, "ok"),
     "z3": (True, "ok"),
     "yices": (True, "ok"),
     "dreal": (True, "/solver/dReal"),
 }
 MISSING = {
+    "cvc5": (False, "missing"),
     "z3": (False, "missing"),
     "yices": (False, "missing"),
     "dreal": (False, "missing"),
@@ -33,7 +35,7 @@ class InstallerCliTest(unittest.TestCase):
         normalized_help = " ".join(help_text.split())
 
         for expected in (
-            "Z3, Yices, and dReal (default)",
+            "CVC5, Z3, Yices, and dReal (default)",
             "without downloading or installing anything",
             "dReal lookup order",
             "Application Support/stlmc/solvers/dReal3/dReal",
@@ -73,7 +75,8 @@ class InstallerCliTest(unittest.TestCase):
 
         self.assertEqual(
             pip.call_args_list,
-            [mock.call("z3-solver==4.13.2.0"), mock.call("yices")],
+            [mock.call("cvc5"), mock.call("z3-solver==4.13.2.0"),
+             mock.call("yices")],
         )
         yices.assert_called_once_with()
         dreal.assert_called_once_with()

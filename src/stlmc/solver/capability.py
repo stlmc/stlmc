@@ -34,12 +34,12 @@ def _is_nonnegative_integer_constant(expression):
 
 
 def _validate_expression(solver, expression):
-    if solver in {"z3", "yices"} and isinstance(expression, TRANSCENDENTAL):
+    if solver in {"cvc5", "z3", "yices"} and isinstance(expression, TRANSCENDENTAL):
         _conversion_error(
             solver, TRANSCENDENTAL_NAMES[type(expression)], expression,
             "use dReal for transcendental arithmetic",
         )
-    if solver in {"z3", "yices"} and isinstance(expression, Pow):
+    if solver in {"cvc5", "z3", "yices"} and isinstance(expression, Pow):
         if not _is_nonnegative_integer_constant(expression.right):
             _conversion_error(
                 solver, "non-integer or symbolic exponentiation", expression,

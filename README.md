@@ -2,7 +2,7 @@
 
 STLmc is an SMT-based bounded model checker for signal temporal logic (STL)
 properties of hybrid systems. It supports linear, polynomial, and ODE dynamics
-through Z3, Yices2, and dReal.
+through CVC5, Z3, Yices2, and dReal.
 
 For the project website, publications, and full manual, visit
 [stlmc.github.io](https://stlmc.github.io/).
@@ -41,7 +41,7 @@ The model, configuration, and visualization languages use Lark grammars under
 `src/stlmc/parser/grammars/`. Parser development requires only Python; there
 is no generated parser source or Java build step.
 
-STLMC installs the Python interfaces for Z3 and Yices by default. Check all
+STLMC installs the Python interfaces for CVC5, Z3, and Yices by default. Check all
 solver prerequisites after installation with:
 
 ```sh
@@ -54,11 +54,12 @@ Install all missing solver prerequisites where supported with:
 stlmc-install-solvers
 ```
 
-The default target is `all`; an individual solver can be selected with `z3`,
-`yices`, or `dreal`, for example:
+The default target is `all`; an individual solver can be selected with `cvc5`,
+`z3`, `yices`, or `dreal`, for example:
 
 ```sh
 stlmc-install-solvers dreal
+stlmc-install-solvers cvc5
 stlmc-install-solvers yices
 ```
 

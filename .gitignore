@@ -32,6 +32,7 @@ tests/*
 !tests/robustness_operations.py
 !tests/scenario_minimization.py
 !tests/cli_help.py
+!tests/cvc5_solver.py
 !tests/install_solvers.py
 !tests/process_cleanup.py
 !tests/parser_inputs.py

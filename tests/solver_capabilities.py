@@ -9,7 +9,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from stlmc.constraints.constraints import (
     Arccos, Arcsin, Arctan, Cos, Pow, Real, RealVal, Sin, Sqrt, Tan,
 )
-from stlmc.exception.exception import NotSupportedError
+from stlmc.exceptions import NotSupportedError
 from stlmc.solver.capability import (
     expression_requires_dreal,
     validate_formula_solver_support,
@@ -18,13 +18,13 @@ from stlmc.solver.dreal import drealObj
 
 
 class SolverCapabilityTest(unittest.TestCase):
-    def test_z3_and_yices_reject_transcendental_arithmetic(self):
+    def test_discrete_solvers_reject_transcendental_arithmetic(self):
         x = Real("x")
         expressions = (
             Sqrt(x), Sin(x), Cos(x), Tan(x),
             Arcsin(x), Arccos(x), Arctan(x),
         )
-        for solver in ("z3", "yices"):
+        for solver in ("cvc5", "z3", "yices"):
             for expression in expressions:
                 with self.subTest(solver=solver, expression=expression):
                     with self.assertRaisesRegex(
@@ -32,9 +32,9 @@ class SolverCapabilityTest(unittest.TestCase):
                     ):
                         validate_formula_solver_support(solver, expression)
 
-    def test_z3_and_yices_accept_only_integer_constant_powers(self):
+    def test_discrete_solvers_accept_only_integer_constant_powers(self):
         x = Real("x")
-        for solver in ("z3", "yices"):
+        for solver in ("cvc5", "z3", "yices"):
             validate_formula_solver_support(
                 solver, Pow(x, RealVal("2"))
             )
