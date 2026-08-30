@@ -5,13 +5,13 @@ from yices import *
 from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
     JobSolver, SolveResult, SolverJob, ThreadWorker,
 )
 from ..solver.assignment import Assignment
-from ..util.smt2_output import is_enabled, write_smt2
-from ..tree.operations import size_of_tree
+from ..utils.smt2_output import is_enabled, write_smt2
+from ..constraints.operations import size_of_tree
 
 
 class YicesAssignment(Assignment):

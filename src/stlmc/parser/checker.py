@@ -6,7 +6,7 @@ from ..constraints.constraints import *
 from ..constraints.operations import get_vars
 from ..objects.configuration import Configuration
 from ..objects.model import StlMC
-from ..exception.exception import SolverUnavailableError
+from ..exceptions import SolverUnavailableError
 
 
 def is_dynamics_constant(flows: Dynamics):

@@ -9,14 +9,14 @@ from typing import Dict, List
 
 from ..constraints.constraints import *
 from ..constraints.operations import get_vars, substitution_zero2t, substitution, clause, get_max_bound
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
     JobSolver, SolveResult, SolverJob,
 )
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
-from ..util.smt2_output import is_enabled, write_smt2
-from ..tree.operations import size_of_tree
+from ..utils.smt2_output import is_enabled, write_smt2
+from ..constraints.operations import size_of_tree
 
 
 class DrealAssignment(Assignment):

@@ -1,7 +1,19 @@
 # start of base_objects
 
-from ..tree.tree import Leaf, NonLeaf
-from ..exception.exception import ElementNotFoundError
+from ..exceptions import ElementNotFoundError
+
+
+class Tree:
+    pass
+
+
+class Leaf(Tree):
+    pass
+
+
+class NonLeaf(Tree):
+    def __init__(self, children):
+        self.children = children
 
 
 class Interval:

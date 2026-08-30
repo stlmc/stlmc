@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from ..exception.exception import SolverUnavailableError
+from ..exceptions import SolverUnavailableError
 from .availability import find_dreal
 
 

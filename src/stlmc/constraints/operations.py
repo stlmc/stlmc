@@ -1,8 +1,37 @@
 from functools import singledispatch
 
 from .constraints import *
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 from itertools import combinations
+
+
+def size_of_tree(tree: Tree):
+    if tree is None:
+        return 0
+    size = 0
+    waiting = [tree]
+    while waiting:
+        node = waiting.pop()
+        if isinstance(node, Leaf):
+            size += 1
+        elif isinstance(node, NonLeaf):
+            size += 1
+            waiting.extend(node.children)
+        else:
+            raise NotSupportedError("cannot calculate size of {}".format(node))
+    return size
+
+
+def elements_of_tree(tree: Tree) -> set:
+    elements = set()
+    waiting = [] if tree is None else [tree]
+    while waiting:
+        node = waiting.pop()
+        if isinstance(node, Leaf):
+            elements.add(node)
+        elif isinstance(node, NonLeaf):
+            waiting.extend(node.children)
+    return elements
 
 
 @singledispatch

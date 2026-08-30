@@ -6,7 +6,7 @@ from ..cli.parser import build_parser
 from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
-from ..exception.exception import *
+from ..exceptions import *
 from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import (
@@ -27,7 +27,7 @@ from ..solver.capability import (
     validate_model_solver_support,
 )
 from ..solver.z3 import z3Obj
-from ..util.print import *
+from ..utils.print import *
 from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
 

@@ -7,7 +7,7 @@ from antlr4.error.ErrorListener import ErrorListener
 from .error_listener import StlmcErrorListener
 from ..constraints.constraints import *
 from ..constraints.operations import substitution
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 from ..objects.goal import ReachGoal
 from ..objects.model import StlMC
 from ..syntax.model.modelLexer import modelLexer

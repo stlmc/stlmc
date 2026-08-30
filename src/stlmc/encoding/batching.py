@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 from ..constraints.constraints import And, Formula, Or
-from ..exception.exception import IllegalArgumentError
+from ..exceptions import IllegalArgumentError
 
 
 Candidate = Tuple[Formula, Formula]

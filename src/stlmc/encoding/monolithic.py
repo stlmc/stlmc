@@ -13,8 +13,8 @@ from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
 from ..solver.abstract_solver import JobSolver
-from ..util.print import Printer
-from ..util.interrupt import raise_if_interrupted
+from ..utils.print import Printer
+from ..utils.interrupt import raise_if_interrupted
 
 
 class OneStepAlgorithm(Algorithm):

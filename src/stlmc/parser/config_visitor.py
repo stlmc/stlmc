@@ -12,8 +12,7 @@ from ..config_schema import (
     all_boolean_options,
     all_value_options,
 )
-from ..exception.exception import IllegalArgumentError
-from ..exception.exception import NotSupportedError
+from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.configuration import *
 from ..syntax.config.configLexer import configLexer
 from ..syntax.config.configParser import configParser

@@ -2,7 +2,7 @@ import sys
 
 
 def _raise_keyboard_interrupt(signum, frame):
-    from ..util.interrupt import StlmcInterrupted, request_interrupt
+    from ..utils.interrupt import StlmcInterrupted, request_interrupt
 
     request_interrupt()
     raise StlmcInterrupted
@@ -18,13 +18,13 @@ def main():
     import signal
     import traceback
 
-    from ..exception.exception import (
+    from ..exceptions import (
         IllegalArgumentError, NotSupportedError, OperationError, ParsingError,
         SolverUnavailableError,
     )
     from ..update_check import notify_if_outdated
-    from ..util.interrupt import StlmcInterrupted, clear_interrupt, is_interrupted
-    from ..util.print import ExceptionPrinter
+    from ..utils.interrupt import StlmcInterrupted, clear_interrupt, is_interrupted
+    from ..utils.print import ExceptionPrinter
 
     clear_interrupt()
     notify_if_outdated()

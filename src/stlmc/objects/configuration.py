@@ -1,6 +1,6 @@
 from typing import Dict, Set, List, Tuple, Union
 
-from ..exception.exception import ElementNotFoundError, NotSupportedError
+from ..exceptions import ElementNotFoundError, NotSupportedError
 
 
 class Section:
