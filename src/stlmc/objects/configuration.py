@@ -7,6 +7,7 @@ class Section:
     def __init__(self):
         self.name = ""
         self.arguments: Dict[str, str] = dict()
+        self.argument_locations = {}
         self.mandatory: List[str] = list()
         self.parent_names: List[str] = list()
 
@@ -78,6 +79,9 @@ class Configuration:
     def add_section(self, section: Section):
         if section.name in self.sections_by_name:
             self.sections_by_name[section.name].arguments.update(section.arguments)
+            self.sections_by_name[section.name].argument_locations.update(
+                section.argument_locations
+            )
         else:
             self.sections_by_name[section.name] = section
 
