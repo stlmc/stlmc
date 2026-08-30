@@ -1,6 +1,14 @@
 # Tests
 
-The test suite has ten parts:
+The test suite has fourteen parts:
+
+- `parser_inputs.py` parses every benchmark model and configuration through
+  the public Lark parser APIs and checks the visualization configuration format.
+- `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
+  rejects incomplete or undeclared closed-form flows, and verifies endpoint
+  and invariant encodings for CVC5, Z3, Yices, and dReal.
+- `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
+  results through the STLmc solver adapter.
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
@@ -8,6 +16,9 @@ The test suite has ten parts:
   dReal inverse-trigonometric translations.
 - `robustness_operations.py` checks STL weakening, strengthening, negation,
   and implication polarity transformations.
+- `temporal_reduction.py` checks that bounded Until and Release normalization
+  preserves the paper's closed-prefix semantics and distinguishes strict from
+  non-strict continuation at singular partition intervals.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger
@@ -24,10 +35,10 @@ The test suite has ten parts:
   their respective units, including batches containing multiple scenarios.
 - `reachability.py` checks zero-jump reachability, unreachable results,
   threshold relaxation, symbolic/explicit path strategies with one-step and
-  two-step solving, Z3/Yices/dReal agreement, temporal-target validation, and
+  two-step solving, CVC5/Z3/Yices/dReal agreement, temporal-target validation, and
   witness generation.
-- `compare_solvers.py` reruns every Yices benchmark case with Z3, then checks
-  that both solvers produce the same status and finishing bound. It reuses the
+- `compare_solvers.py` reruns every Yices benchmark case with CVC5 and Z3, then
+  checks that all three solvers produce the same status and finishing bound. It reuses the
   Yices logs from the preceding benchmark run instead of running Yices twice.
 - `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
   compares each result and finishing bound with the annotation in its model.
@@ -65,30 +76,32 @@ code being tested:
 python -m pip install -e .
 ```
 
-Run all ten test parts in order: solver smoke tests, formula capability tests,
-robustness transformations, scenario minimization, CLI help/schema checks,
-solver installer/discovery tests, process cleanup, reachability semantics,
-every annotated benchmark, and the Z3/Yices comparison:
+Run all twelve test parts in order: parser corpus tests, closed-form solution
+function tests, solver smoke tests, formula capability tests, robustness
+transformations, scenario minimization, CLI help/schema checks, solver
+installer/discovery tests, process cleanup, reachability semantics, every
+annotated benchmark, and the CVC5/Z3/Yices comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all ten test parts. Unit and integration tests are
+Run the fast selection of all twelve test parts. Unit and integration tests are
 still run in full; the benchmark stages are reduced to 33 FAST benchmark cases
-and 20 Z3/Yices comparisons:
+and 40 CVC5/Z3/Yices comparisons (20 cases for each additional solver):
 
 ```sh
 make test FAST=1
 ```
 
-Run the release workflow selection: all short unit/integration checks plus the
+Run the release workflow selection: all short unit/integration checks, the
+CVC5 adapter test, a three-case CVC5/Z3/Yices equivalence sample, plus the
 23 artifact benchmark cases selected from those that completed within 50
 seconds in the reference `logs/artifact-logs` results, excluding `car-ode` and
 `bat-poly`, and `car-poly`.
 Quick benchmark cases run four at a time with a
-200-second timeout per case. The full benchmark suite and Z3/Yices benchmark
-comparison remain local pre-release checks:
+200-second timeout per case. The full benchmark suite and full CVC5/Z3/Yices
+benchmark comparison remain local pre-release checks:
 
 ```sh
 make test-quick
@@ -104,6 +117,12 @@ Run only the SMT solver smoke tests:
 
 ```sh
 make test-smoke
+```
+
+Run the standalone CVC5 adapter test:
+
+```sh
+make test-cvc5-solver
 ```
 
 Run the solver installer and executable-discovery tests without downloading or
@@ -123,6 +142,12 @@ Run only the STL robustness transformation tests:
 
 ```sh
 make test-robustness
+```
+
+Run only the bounded temporal reduction tests:
+
+```sh
+make test-temporal-reduction
 ```
 
 Run only the scenario minimization and literal-polarity tests:
@@ -150,7 +175,8 @@ Run only the reachability semantics tests:
 make test-reachability
 ```
 
-Compare Z3 with the existing Yices benchmark logs for every Yices model case:
+Compare CVC5 and Z3 with the existing Yices benchmark logs for every Yices
+model case:
 
 ```sh
 make test-solver-equivalence
@@ -159,8 +185,9 @@ make test-solver-equivalence
 With `FAST=1`, the comparison includes every Yices case marked with
 `@benchmark.fast` except cases marked with `@benchmark.z3-slow`; without it,
 all Yices benchmark cases are compared. The current fast comparison contains
-20 cases. Z3 outputs are stored beside the normal logs with a `.z3.log`
-suffix. Any unexpected timeout is a test failure. The full run uses the longer
+20 cases, producing 40 solver comparisons. Outputs are stored beside the normal
+logs with `.cvc5.log` and `.z3.log` suffixes. Any unexpected timeout is a test
+failure. The full run uses the longer
 default timeout and includes all `z3-slow` cases.
 
 Run `make benchmark` first if the matching Yices logs do not exist. `make test`
