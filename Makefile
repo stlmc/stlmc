@@ -1,6 +1,4 @@
-ANTLR_DIR := $(shell pwd)/src/stlmc/syntax
 TEST_DIR := $(shell pwd)/tests
-DREAL_DIR := $(shell pwd)/stlmc/3rd_party/dreal
 PYTHON ?= python3
 FAST ?= 0
 
@@ -9,33 +7,21 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all antlr perm clean test test-quick test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark benchmark-quick
+.PHONY: all test test-quick test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence benchmark benchmark-quick
 .NOTPARALLEL: test
 
-all:    antlr perm
+all:
+	@echo "Use 'make test' or 'make test-quick' to validate STLmc."
 
-antlr:
-	$(info make files for antlr in $(ANTLR_DIR))
-	@cd $(ANTLR_DIR)/model && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 model.g4 -no-listener -visitor
-	@cd $(ANTLR_DIR)/config && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 config.g4 -no-listener -visitor
-	@cd $(ANTLR_DIR)/visualize && java -jar ../antlr-4.9.1-complete.jar -Dlanguage=Python3 visualize.g4 -no-listener -visitor
-
-perm:
-	$(info set permission)
-	@sudo chmod +x ./scripts/run-exp ./scripts/gen-report ./scripts/gen-table
-	@sudo chmod +x $(DREAL_DIR)/dReal $(DREAL_DIR)/dReal-darwin ./stlmc/src/stlmc ./stlmc/src/stlmc-vis
-
-clean:
-	$(info erase redundant in $(PWD))
-	@cd $(ANTLR_DIR)/model && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
-	@cd $(ANTLR_DIR)/config && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
-	@cd $(ANTLR_DIR)/visualize && rm -rf *.interp *.tokens *Lexer* *Parser* *Visitor*
-
-test: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
+test: test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
 
 # Short release checks plus benchmark cases that completed within 50 seconds
 # in the reference artifact logs. Each selected case gets a 200-second limit.
-test-quick: test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick
+test-quick: test-parser test-smoke test-capabilities test-robustness test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick
+
+test-parser:
+	$(info test Lark parsers against all input formats ...)
+	@$(PYTHON) -u $(TEST_DIR)/parser_inputs.py
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)

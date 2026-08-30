@@ -37,6 +37,10 @@ For development, use an editable installation:
 python -m pip install -e .
 ```
 
+The model, configuration, and visualization languages use Lark grammars under
+`src/stlmc/parser/grammars/`. Parser development requires only Python; there
+is no generated parser source or Java build step.
+
 STLMC installs the Python interfaces for Z3 and Yices by default. Check all
 solver prerequisites after installation with:
 
@@ -179,7 +183,8 @@ stlmc system.model -two-step -solver-batch-size 8
 
 With `-two-step -parallel`, scenario generation and unsat-core minimization
 remain sequential, while completed refinement batches are checked concurrently
-by solver workers. `parallel-core` limits those workers. Batching and
+by solver workers. `parallel-core` limits those workers and defaults to `auto`,
+which uses all logical CPUs reported by the host. Batching and
 parallelism therefore have different effects: a larger batch reduces the
 number of solver jobs and can reduce available parallelism. Start with batch
 size `1` when solver utilization is the priority, then try `2` or `4` to trade

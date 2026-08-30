@@ -21,6 +21,7 @@ reports/
 *.jl
 *.egg-info
 dist/
+build/
 tests/
 !tests/
 tests/*
@@ -33,6 +34,7 @@ tests/*
 !tests/cli_help.py
 !tests/install_solvers.py
 !tests/process_cleanup.py
+!tests/parser_inputs.py
 !tests/smoke_solvers.py
 !tests/README.md
 !tests/benchmarks/
@@ -48,7 +50,6 @@ venv/
 # config file
 .idea/
 
-!build.sh
 !./tests/
 
 # log

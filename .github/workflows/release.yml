@@ -89,9 +89,6 @@ jobs:
         build
         --user
 
-    - name: Generate ANTLR parsers
-      run: ./build.sh antlr
-
     - name: Ensure Rosetta is available
       if: matrix.os == 'macos-15'
       run: |
@@ -114,7 +111,7 @@ jobs:
       run: |
         python3 -m pip install --force-reinstall dist/*.whl
         python3 -m pip check
-        python3 -c "from stlmc.parser.config_visitor import ConfigVisitor; print('ANTLR parser loaded')"
+        python3 -c "from stlmc.parser.config_visitor import ConfigVisitor; print('Lark parser loaded')"
 
     - name: Trust Yices formulae on the temporary macOS runner
       if: matrix.os == 'macos-15'
