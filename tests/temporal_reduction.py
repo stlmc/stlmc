@@ -15,6 +15,8 @@ from stlmc.constraints.constraints import (
 )
 from stlmc.constraints.interval import Interval, universeInterval
 from stlmc.constraints.operations import remove_binary
+import stlmc.encoding.enumerate as enumerate_encoding
+import stlmc.encoding.monolithic as monolithic_encoding
 from stlmc.encoding.enumerate import (
     calc_sub_formulas, chi, k_depth_stl_consts, partition_obligations, rho,
     symbolic_goal, time_ordering,
@@ -30,6 +32,16 @@ class BoundedTemporalReductionTest(unittest.TestCase):
     def _interval(self, left_closed):
         return Interval(
             left_closed, RealVal("1"), False, RealVal("3")
+        )
+
+    def test_one_step_uses_shared_fully_stable_formula_builder(self):
+        self.assertIs(
+            monolithic_encoding.fully_stable_stl_formula,
+            enumerate_encoding.k_size_stl_formula,
+        )
+        self.assertIn(
+            "fully_stable_stl_formula",
+            monolithic_encoding.OneStepAlgorithm.run.__code__.co_names,
         )
 
     def test_until_prefix_includes_current_time(self):

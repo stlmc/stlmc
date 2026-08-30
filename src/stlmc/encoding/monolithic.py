@@ -3,6 +3,7 @@ import time
 from typing import *
 
 from .enumerate import *
+from .enumerate import k_size_stl_formula as fully_stable_stl_formula
 from .batching import candidate_batch_formula
 from .path import PathProvider, SymbolicPathProvider
 from .static_learning import StaticLearner
@@ -74,7 +75,9 @@ class OneStepAlgorithm(Algorithm):
                 time_order_const = reach_time_ordering(2 * b + 2, float(time_bound))
                 stl_const = And([k_step_goal, time_order_const])
             else:
-                stl_const = k_size_stl_formula(model, goal, goal_prop_dict, b, delta, float(time_bound))
+                stl_const = fully_stable_stl_formula(
+                    model, goal, goal_prop_dict, b, delta, float(time_bound)
+                )
 
             boolean_abstract = dict()
             boolean_abstract.update(model.boolean_abstract)
@@ -150,55 +153,6 @@ class OneStepAlgorithm(Algorithm):
         if had_unknown:
             return "Unknown", total_time, finished_bound, None
         return final_result, total_time, finished_bound, None
-
-
-def k_size_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int, delta: float, tau_max):
-    raw_stl_formula = substitution(goal.get_formula(), goal_prop_dict)
-    neg_formula = reduce_not(Not(raw_stl_formula))
-    reduced_formula = remove_binary(neg_formula)
-    stl_formula = relaxing(reduced_formula, delta)
-
-    sub_formulas = calc_sub_formulas(stl_formula)
-
-    initial_stl_f = chi(1, 1, stl_formula)
-    total_stl_children = [initial_stl_f]
-    total_time_children = list()
-
-    final_f_k = None
-
-    # depth = 2 * (bound + 1)
-    max_depth = 2 * (bound + 1)
-    for d in range(1, max_depth + 1):
-        stl_f_d, time_f_d, final_f_d = k_depth_stl_consts(sub_formulas, d, tau_max)
-
-        total_stl_children.append(stl_f_d)
-        total_time_children.append(time_f_d)
-        final_f_k = final_f_d
-
-    assert final_f_k is not None
-    time_order_const = time_ordering(max_depth, tau_max)
-
-    path_const_children = list()
-    path_const_children.extend(total_stl_children)
-    path_const_children.extend(total_time_children)
-    path_const_children.append(time_order_const)
-
-    path_const = And(path_const_children)
-
-    bools = get_bools(path_const)
-    p_bools = {b.id for b in bools}
-    extra_prop_path, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
-
-    # p_chi = (or currentMode = ... (forall ...) ...)
-    extra_prop_path_const = path2const(extra_prop_path, model)
-    extra_time_path_const = time_path2const(extra_time_path)
-
-    total_const_children = list()
-    total_const_children.extend(path_const_children)
-    total_const_children.extend([final_f_k, extra_prop_path_const])
-
-    return And(total_const_children)
-
 
 @singledispatch
 def clause(const: Constraint):
