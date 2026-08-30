@@ -80,7 +80,7 @@ def build_parser(prog=None):
     )
 
     optimizations = parser.add_argument_group("optimizations")
-    for name in ("concrete",):
+    for name in ("concrete", "smt-preprocess"):
         optimizations.add_argument(
             "-{}".format(name), action="store_true", help=argument_help(name)
         )

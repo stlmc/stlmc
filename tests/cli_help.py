@@ -54,7 +54,7 @@ class CliHelpTest(unittest.TestCase):
             "solver options:", 1
         )[0]
 
-        for option in ("-concrete", "-solver-batch-size"):
+        for option in ("-concrete", "-solver-batch-size", "-smt-preprocess"):
             self.assertIn(option, scenario_section)
 
         model_section = help_text.split("model checking:", 1)[1].split(

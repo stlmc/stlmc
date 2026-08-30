@@ -40,6 +40,61 @@ def evaluated_arithmetic_literals(clauses: Set[Formula], real_set: Set[Variable]
     return literals
 
 
+def relevant_boolean_abstract_links(boolean_abstract: Dict[Bool, Formula],
+                                    roots: Formula,
+                                    assignments=None) -> Formula:
+    """Keep the dependency closure of abstraction definitions used by roots.
+
+    A definition ``b <-> F`` outside this closure is existentially removable:
+    neither ``b`` nor anything depending on it occurs in the refinement.
+    """
+    abstract_variables = set(boolean_abstract)
+    pending = list(get_vars(roots).intersection(abstract_variables))
+    relevant = set(pending)
+    while pending:
+        variable = pending.pop()
+        dependencies = get_vars(boolean_abstract[variable]).intersection(
+            abstract_variables
+        )
+        for dependency in dependencies.difference(relevant):
+            relevant.add(dependency)
+            pending.append(dependency)
+    assignments = assignments or {}
+    links = []
+    for variable in boolean_abstract:
+        if variable not in relevant:
+            continue
+        definition = substitution(boolean_abstract[variable], assignments)
+        if variable in assignments:
+            if assignments[variable] == BoolVal("True"):
+                links.append(definition)
+            else:
+                # Keep logical negation explicit. reduce_not() rewrites a
+                # negated Bool dependency to a distinct complement symbol.
+                links.append(Not(definition))
+        else:
+            links.append(Eq(variable, definition))
+    return And(links)
+
+
+def boolean_core_assignments(formula: Formula) -> Dict[Bool, BoolVal]:
+    """Collect explicit Boolean equalities retained in a scenario core."""
+    assignments = {}
+    pending = [formula]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, And):
+            pending.extend(current.children)
+            continue
+        if not isinstance(current, Eq):
+            continue
+        if isinstance(current.left, Bool) and isinstance(current.right, BoolVal):
+            assignments[current.left] = current.right
+        elif isinstance(current.right, Bool) and isinstance(current.left, BoolVal):
+            assignments[current.right] = current.left
+    return assignments
+
+
 class TwoStepAlgorithm(Algorithm):
     """Enumerate abstract scenarios and check their continuous refinements."""
     def __init__(self, path_provider: PathProvider = None,
@@ -79,6 +134,7 @@ class TwoStepAlgorithm(Algorithm):
         if solver_batch_size < 1:
             raise IllegalArgumentError("solver-batch-size must be at least 1")
         is_generalized = common_section.get_value("concrete") != "true"
+        smt_preprocess = common_section.get_value("smt-preprocess") == "true"
         if self.runner is not None:
             self.runner.kill_all()
 
@@ -205,6 +261,7 @@ class TwoStepAlgorithm(Algorithm):
                     explicit_path=path_candidate.constraint,
                     finalize_bound=is_last_path,
                     is_generalized=is_generalized,
+                    smt_preprocess=smt_preprocess,
                 )
                 total_time += scenario_time
                 bound_scenarios += self.last_scenario_count
@@ -260,7 +317,8 @@ class TwoStepAlgorithm(Algorithm):
                        solver_batch_size: int,
                        explicit_path: Formula = BoolVal("True"),
                        finalize_bound=True,
-                       is_generalized=True):
+                       is_generalized=True,
+                       smt_preprocess=False):
         total_time = 0.0
 
         k_model_f = acc_model[bound]
@@ -441,10 +499,21 @@ class TwoStepAlgorithm(Algorithm):
                     extra_prop_path_const = path2const(extra_prop_path, model)
                     extra_time_path_const = time_path2const(extra_time_path)
 
-                    model_abstract_const = And([
-                        Eq(v, model.boolean_abstract[v])
-                        for v in model.boolean_abstract
-                    ])
+                    if smt_preprocess:
+                        model_abstract_const = relevant_boolean_abstract_links(
+                            model.boolean_abstract,
+                            And([
+                                path_const, stl_final,
+                                extra_prop_path_const, extra_time_path_const,
+                                explicit_path,
+                            ]),
+                            boolean_core_assignments(path_const),
+                        )
+                    else:
+                        model_abstract_const = And([
+                            Eq(v, model.boolean_abstract[v])
+                            for v in model.boolean_abstract
+                        ])
 
                     # to avoid omitting range consts due to unsat core
                     range_consts = list(map(lambda t: t[0], [model.make_range_consts(d) for d in range(0, bound + 1)]))
@@ -452,7 +521,7 @@ class TwoStepAlgorithm(Algorithm):
 
                     # Split scenario-specific and shared constraints so an OR
                     # batch does not duplicate the full flow/invariant model.
-                    if model.is_gen_reach_condition():
+                    if model.is_gen_reach_condition() and not smt_preprocess:
                         reduction_dict = dict()
                         for mac in model_abstract_const.children:
                             assert isinstance(mac, Eq)
@@ -519,15 +588,26 @@ class TwoStepAlgorithm(Algorithm):
                     extra_prop_path, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
                     extra_prop_path_const = path2const(extra_prop_path, model)
                     extra_time_path_const = time_path2const(extra_time_path)
-                    model_abstract_const = And(
-                        [Eq(v, model.boolean_abstract[v])
-                         for v in model.boolean_abstract]
-                    )
+                    if smt_preprocess:
+                        model_abstract_const = relevant_boolean_abstract_links(
+                            model.boolean_abstract,
+                            And([
+                                concrete_path, stl_final,
+                                extra_prop_path_const, extra_time_path_const,
+                                explicit_path,
+                            ]),
+                            boolean_core_assignments(concrete_path),
+                        )
+                    else:
+                        model_abstract_const = And(
+                            [Eq(v, model.boolean_abstract[v])
+                             for v in model.boolean_abstract]
+                        )
                     range_const = And(
                         [model.make_range_consts(depth)[0] for depth in range(0, bound + 1)]
                     )
 
-                    if model.is_gen_reach_condition():
+                    if model.is_gen_reach_condition() and not smt_preprocess:
                         reduction_dict = {
                             mac.left: mac.right for mac in model_abstract_const.children
                             if isinstance(mac, Eq)
