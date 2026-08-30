@@ -20,7 +20,8 @@ from stlmc.constraints.operations import remove_binary
 import stlmc.encoding.enumerate as enumerate_encoding
 import stlmc.encoding.monolithic as monolithic_encoding
 from stlmc.encoding.enumerate import (
-    calc_sub_formulas, chi, k_depth_stl_consts, partition_obligations, rho,
+    calc_sub_formulas, chi, fully_stable_partition_const,
+    k_depth_stl_consts, partition_obligations, rho, stl_depth_components,
     symbolic_goal, time_ordering,
 )
 from stlmc.solver.z3 import z3Obj
@@ -58,6 +59,46 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         self.assertIn(
             "fully_stable_stl_formula",
             monolithic_encoding.OneStepAlgorithm.run.__code__.co_names,
+        )
+
+    def test_one_and_two_step_share_temporal_component_builders(self):
+        two_step_names = enumerate_encoding.TwoStepAlgorithm.run.__code__.co_names
+        one_step_names = (
+            enumerate_encoding.k_size_stl_formula_from_threshold
+            .__code__.co_names
+        )
+        self.assertIn("prepare_fully_stable_stl_formula", two_step_names)
+        self.assertIn(
+            "prepare_fully_stable_stl_formula",
+            enumerate_encoding.k_size_stl_formula.__code__.co_names,
+        )
+        self.assertIn("stl_depth_components", two_step_names)
+        self.assertIn("stl_depth_components", one_step_names)
+        self.assertIn(
+            "fully_stable_partition_const",
+            enumerate_encoding.TwoStepAlgorithm.scenario_check.__code__.co_names,
+        )
+        self.assertIn("fully_stable_partition_const", one_step_names)
+
+    def test_shared_depth_and_partition_components_match_primitives(self):
+        formula = UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        )
+        sub_formulas = calc_sub_formulas(formula)
+        stl_children, time_children, terminal = stl_depth_components(
+            sub_formulas, range(1, 5), 4.0
+        )
+        expected_stl, expected_time, expected_terminal = (
+            k_depth_stl_consts(sub_formulas, 4, 4.0)
+        )
+        self.assertEqual(4, len(stl_children))
+        self.assertEqual(4, len(time_children))
+        self.assertEqual(str(expected_stl), str(stl_children[-1]))
+        self.assertEqual(str(expected_time), str(time_children[-1]))
+        self.assertEqual(str(expected_terminal), str(terminal))
+        self.assertEqual(
+            str(And(partition_obligations(sub_formulas, 4))),
+            str(fully_stable_partition_const(sub_formulas, 4)),
         )
 
     def test_until_prefix_includes_current_time(self):

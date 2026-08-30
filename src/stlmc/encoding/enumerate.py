@@ -162,13 +162,9 @@ class TwoStepAlgorithm(Algorithm):
             model.gen_stl_condition()
 
         if not is_reach:
-            raw_stl_formula = substitution(goal.get_formula(), goal_prop_dict)
-            neg_formula = reduce_not(Not(raw_stl_formula))
-            # Definition 4.2 handles the original bounded temporal operators
-            # directly. Rewriting them into additional F/G/U/R subformulas
-            # preserves STL semantics, but not the size of a fully-stable
-            # partition at a fixed BMC bound.
-            stl_formula = relaxing(neg_formula, float(delta))
+            stl_formula = prepare_fully_stable_stl_formula(
+                goal, goal_prop_dict, float(delta)
+            )
 
             sub_formulas = calc_sub_formulas(stl_formula)
 
@@ -211,19 +207,13 @@ class TwoStepAlgorithm(Algorithm):
             model_track_consts.append(track_f_k)
 
             if not is_reach:
-                stl_f_k_children = list()
-                stl_f_k_time_children = list()
-                final_f_k = None
-
                 # corresponding stl depth
                 # b -> 2 * b + 1 and 2 * b + 2
-                for d in range(2 * b + 1, 2 * b + 3):
-                    # print("bound: {}, depth: [ {} ]".format(b, d))
-                    stl_f_d, time_f_d, final_f_d = k_depth_stl_consts(sub_formulas, d, tau_max)
-
-                    stl_f_k_children.append(stl_f_d)
-                    stl_f_k_time_children.append(time_f_d)
-                    final_f_k = final_f_d
+                stl_f_k_children, stl_f_k_time_children, final_f_k = (
+                    stl_depth_components(
+                        sub_formulas, range(2 * b + 1, 2 * b + 3), tau_max
+                    )
+                )
 
                 time_order_const = time_ordering(2 * b + 2, tau_max)
 
@@ -367,9 +357,9 @@ class TwoStepAlgorithm(Algorithm):
         self.scenario_solver.add(contra_v_inv)
         true = BoolVal("True")
         false = BoolVal("False")
-        concrete_partition_const = And(partition_obligations(
+        concrete_partition_const = fully_stable_partition_const(
             sub_formulas, 2 * (bound + 1)
-        ))
+        )
         counter = 0
         submitted = 0
         pending_candidates: List[Tuple[Formula, Formula]] = []
@@ -694,14 +684,45 @@ def k_depth_stl_consts(sub_formulas: Set[Formula], depth: int, tau_max: float) -
     return goal_const, time_const, final_const
 
 
+def prepare_fully_stable_stl_formula(
+        goal: Goal, goal_prop_dict, delta: float) -> Formula:
+    """Substitute and negate an STL goal without changing its syntax tree."""
+    raw_stl_formula = substitution(goal.get_formula(), goal_prop_dict)
+    neg_formula = reduce_not(Not(raw_stl_formula))
+    # Definition 4.2 handles the original bounded temporal operators directly.
+    # A semantics-preserving rewrite can introduce extra temporal subformulas
+    # and therefore change the required partition size at a fixed BMC bound.
+    return relaxing(neg_formula, delta)
+
+
+def stl_depth_components(sub_formulas: Set[Formula], depths,
+                         tau_max: float):
+    """Build recurrence components for the requested fully-stable depths."""
+    stl_children = []
+    time_children = []
+    final_const = None
+    for depth in depths:
+        stl_const, time_const, final_const = k_depth_stl_consts(
+            sub_formulas, depth, tau_max
+        )
+        stl_children.append(stl_const)
+        time_children.append(time_const)
+    if final_const is None:
+        raise IllegalArgumentError("at least one STL depth is required")
+    return stl_children, time_children, final_const
+
+
+def fully_stable_partition_const(sub_formulas: Set[Formula], depth: int):
+    """Build the Psi_PAR conjunct required at a concrete solver boundary."""
+    return And(partition_obligations(sub_formulas, depth))
+
+
 def k_size_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
                        delta: float, tau_max):
     """Build the complete bounded STL formula used by one-step solving."""
-    raw_stl_formula = substitution(goal.get_formula(), goal_prop_dict)
-    neg_formula = reduce_not(Not(raw_stl_formula))
-    # Keep the original temporal subformula set. A semantics-preserving STL
-    # rewrite need not preserve fully-stable partition size at the same bound.
-    stl_formula = relaxing(neg_formula, delta)
+    stl_formula = prepare_fully_stable_stl_formula(
+        goal, goal_prop_dict, delta
+    )
 
     return k_size_stl_formula_from_threshold(
         model, stl_formula, bound, tau_max
@@ -715,19 +736,11 @@ def k_size_stl_formula_from_threshold(
     sub_formulas = calc_sub_formulas(stl_formula)
     initial_stl_f = chi(1, 1, stl_formula)
     total_stl_children = [initial_stl_f]
-    total_time_children = []
-    final_f_k = None
-
     max_depth = 2 * (bound + 1)
-    for depth in range(1, max_depth + 1):
-        stl_f_d, time_f_d, final_f_d = k_depth_stl_consts(
-            sub_formulas, depth, tau_max
-        )
-        total_stl_children.append(stl_f_d)
-        total_time_children.append(time_f_d)
-        final_f_k = final_f_d
-
-    assert final_f_k is not None
+    depth_stl_children, total_time_children, final_f_k = (
+        stl_depth_components(sub_formulas, range(1, max_depth + 1), tau_max)
+    )
+    total_stl_children.extend(depth_stl_children)
     time_order_const = time_ordering(max_depth, tau_max)
     path_const_children = (
         total_stl_children + total_time_children + [time_order_const]
@@ -739,7 +752,7 @@ def k_size_stl_formula_from_threshold(
     extra_prop_path, _ = assn2path(p_bools, sub_formulas, tau_max)
     extra_prop_path_const = path2const(extra_prop_path, model)
 
-    partition_const = And(partition_obligations(sub_formulas, max_depth))
+    partition_const = fully_stable_partition_const(sub_formulas, max_depth)
     return And(path_const_children + [
         final_f_k, partition_const, extra_prop_path_const,
     ])
