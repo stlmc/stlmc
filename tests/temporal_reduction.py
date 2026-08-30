@@ -192,6 +192,7 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         return solver.check() == z3.sat
 
     def test_binary_rewrite_does_not_preserve_same_partition_bound(self):
+        """Guard the reason remove_binary is excluded from BMC preprocessing."""
         direct = UntilFormula(
             Interval(True, RealVal("0"), True, RealVal("1")),
             universeInterval, self.left, self.right,

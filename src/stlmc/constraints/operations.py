@@ -1268,6 +1268,14 @@ def subformula(formula: Formula) -> set:
 
 @singledispatch
 def remove_binary(f: Formula):
+    """Eliminate bounded U/R operators by an STL-semantic rewrite.
+
+    This transformation preserves the continuous-time STL meaning of the
+    formula.  It does *not* preserve STLmc's fully-stable partition bound:
+    the result introduces additional temporal subformulas, and each of those
+    subformulas adds its own partition obligations.  Consequently this helper
+    must not be used as preprocessing for a fixed-bound STLmc encoding.
+    """
     return f
 
 
