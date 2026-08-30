@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.cli.parser import BUILTIN_DEFAULTS, argument_help, build_parser
-from stlmc.config_schema import OPTION_HELP
+from stlmc.config_schema import OPTION_HELP, resolve_parallel_core
 from stlmc.parser.config_visitor import ConfigVisitor
 
 
@@ -45,7 +45,41 @@ class CliHelpTest(unittest.TestCase):
 
         for name in OPTION_HELP:
             with self.subTest(option=name):
-                self.assertIn(argument_help(name), help_text)
+                for line in argument_help(name).splitlines():
+                    self.assertIn(line.strip(), help_text)
+
+    def test_help_groups_optimizations_separately(self):
+        help_text = build_parser(prog="stlmc").format_help()
+        scenario_section = help_text.split("optimizations:", 1)[1].split(
+            "solver options:", 1
+        )[0]
+
+        for option in ("-concrete", "-solver-batch-size"):
+            self.assertIn(option, scenario_section)
+
+        model_section = help_text.split("model checking:", 1)[1].split(
+            "optimizations:", 1
+        )[0]
+        for option in ("-two-step", "-parallel", "-parallel-core"):
+            self.assertIn(option, model_section)
+
+        output_section = help_text.split("output and debugging:", 1)[1]
+        for option in ("-verbose", "-visualize", "-save-smt2", "-smt2-dir"):
+            self.assertIn(option, output_section)
+
+    def test_help_shows_every_finite_option_choice(self):
+        help_text = build_parser(prog="stlmc").format_help()
+
+        for choices in (
+            "choices: auto, cvc5, dreal, z3, yices",
+            "choices: symbolic, explicit",
+            "choices: QF_LRA, QF_NRA",
+        ):
+            self.assertIn(choices, help_text)
+
+        self.assertIn("-solver SOLVER", help_text)
+        self.assertIn("-path-strategy STRATEGY", help_text)
+        self.assertIn("-logic LOGIC", help_text)
 
     def test_help_defaults_match_default_configuration(self):
         visitor = ConfigVisitor()
@@ -61,6 +95,11 @@ class CliHelpTest(unittest.TestCase):
                 config_defaults[name] = value
 
         self.assertEqual(BUILTIN_DEFAULTS, config_defaults)
+
+    def test_parallel_core_auto_uses_available_logical_cpus(self):
+        self.assertEqual(resolve_parallel_core("auto", cpu_count=12), "12")
+        self.assertEqual(resolve_parallel_core("auto", cpu_count=0), "1")
+        self.assertEqual(resolve_parallel_core("7", cpu_count=12), "7")
 
     def test_visualization_cli_import_does_not_load_heavy_dependencies(self):
         code = (

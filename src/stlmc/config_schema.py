@@ -1,10 +1,13 @@
+import os
+
+
 SECTION_NAMES = ("common", "z3", "yices", "cvc5", "dreal")
 
 SECTION_VALUE_OPTIONS = {
     "common": (
         "threshold", "bound", "time-bound", "solver", "goal", "path-strategy",
         "time-horizon", "parallel-core", "solver-batch-size",
-        "core-minimize-attempts", "smt2-dir",
+        "smt2-dir",
     ),
     "z3": ("logic",),
     "yices": ("logic",),
@@ -34,7 +37,6 @@ SECTION_TYPE_RULES = {
         ("time-horizon", "float"),
         ("parallel-core", "integer"),
         ("solver-batch-size", "integer"),
-        ("core-minimize-attempts", "integer"),
         ("smt2-dir", "string"),
     },
     "z3": {("logic", frozenset({"QF_NRA", "QF_LRA"}))},
@@ -62,17 +64,25 @@ OPTION_HELP = {
     "model-cfg": "path to the model configuration file",
     "model-specific-cfg": "path to the goal-specific configuration file",
     "goal": "goal name to check, or 'all'",
-    "path-strategy": "discrete path handling: symbolic or explicit",
-    "solver": "underlying solver: auto, cvc5, dreal, z3, or yices",
+    "path-strategy": (
+        "discrete path handling\n"
+        "choices: symbolic, explicit"
+    ),
+    "solver": (
+        "underlying solver\n"
+        "choices: auto, cvc5, dreal, z3, yices"
+    ),
     "bound": "maximum mode changes and variable points (reach: jumps)",
     "time-bound": "maximum global trace time",
     "time-horizon": "maximum duration of each continuous segment, or 'time-bound'",
     "threshold": "robustness threshold used to relax the negated goal",
     "parallel-core": "maximum number of parallel solver workers",
     "solver-batch-size": "maximum candidates combined in one solver OR query",
-    "core-minimize-attempts": "number of minimized unsat cores tried per scenario",
     "smt2-dir": "directory used for generated SMT2 files",
-    "logic": "SMT logic used by CVC5, Z3, or Yices, such as QF_LRA or QF_NRA",
+    "logic": (
+        "SMT logic used by CVC5, Z3, or Yices\n"
+        "choices: QF_LRA, QF_NRA"
+    ),
     "precision": "dReal delta precision",
     "ode-order": "dReal ODE integration order",
     "ode-step": "dReal ODE integration step; omit for automatic control",
@@ -84,6 +94,12 @@ OPTION_HELP = {
     "verbose": "print detailed progress information",
     "reach": "treat an ordinary state goal as a reachability query",
     "save-smt2": "save generated SMT2 queries",
+}
+
+OPTION_CHOICES = {
+    "solver": ("auto", "cvc5", "dreal", "z3", "yices"),
+    "path-strategy": ("symbolic", "explicit"),
+    "logic": ("QF_LRA", "QF_NRA"),
 }
 
 
@@ -101,3 +117,10 @@ def all_boolean_options():
         for section in SECTION_NAMES
         for option in SECTION_BOOLEAN_OPTIONS[section]
     }
+
+
+def resolve_parallel_core(value, cpu_count=None):
+    if str(value).lower() != "auto":
+        return str(value)
+    available = os.cpu_count() if cpu_count is None else cpu_count
+    return str(max(1, available or 1))

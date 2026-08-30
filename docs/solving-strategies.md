@@ -88,7 +88,8 @@ stlmc system.model -two-step -solver-batch-size 8
 ## Parallelism
 
 `-parallel` runs two-step refinement checks concurrently. `parallel-core`
-limits the number of solver workers. Parallelism controls simultaneous jobs,
+limits the number of solver workers. Its default `auto` value uses all logical
+CPUs reported by the host; an explicit integer overrides it. Parallelism controls simultaneous jobs,
 whereas batching controls how many candidate branches are combined inside one
 job.
 
@@ -116,7 +117,8 @@ This is an upper bound, not a guaranteed utilization level. Batches are
 submitted incrementally as scenarios are generated. If scenario generation is
 slower than the final solver checks, workers may finish before the next batch
 is ready and only one or two cores may be active. For example, 70 scenarios
-with batch size 5 produce 14 solver jobs, so `parallel-core = 25` can use at
+with batch size 5 produce 14 solver jobs, so `parallel-core = 25` on a 25-CPU
+host can use at
 most 14 workers; it may use fewer when the scenario producer is the bottleneck.
 
 Recommended starting points are:
