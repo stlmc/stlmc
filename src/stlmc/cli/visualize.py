@@ -212,8 +212,8 @@ def main():
             raise ValueError("\'{}\' is not a file".format(args.file))
 
         # Visualization dependencies are intentionally loaded after argparse,
-        # so `stlmc-vis -h` does not initialize Bokeh, ANTLR, or STLmc solvers.
-        from ..parser.visualize_visitor import VisualizeConfigPaser
+        # so `stlmc-vis -h` does not initialize Bokeh, Lark, or STLmc solvers.
+        from ..parser.visualize_visitor import VisualizeConfigParser
         from ..visualize.visualizer import Visualizer
 
         import pickle
@@ -249,7 +249,7 @@ def main():
             raise ValueError("\'{}\' is not a file".format(args.cfg))
 
         print("read configuration file \'{}\' ... ".format(args.cfg))
-        config_parser = VisualizeConfigPaser()
+        config_parser = VisualizeConfigParser()
         config_parser.read(args.cfg)
 
         output = config_parser.output

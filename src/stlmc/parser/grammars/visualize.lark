@@ -1,0 +1,11 @@
+start: "{" output? group? "}"
+     | "{" group? output? "}"
+output: "output" "=" NAME
+group: "group" "{" group_list? "}"
+group_list: variable_group ("," variable_group)*
+variable_group: "(" [NAME ("," NAME)*] ")"
+NAME: /[a-zA-Z0-9_-]+/
+%import common.WS
+%ignore WS
+%ignore /#[^\r\n]*/
+%ignore /(?s:\'\'\'.*?\'\'\')/
