@@ -275,8 +275,11 @@ class BaseRunner(Runner):
             underlying_solver = common_section.get_value("solver")
             validate_model_solver_support(underlying_solver, model)
 
-            solver = SolverFactory().generate_solver(config)
-            algorithm = AlgorithmFactory(config).generate()
+            solver_factory = SolverFactory()
+            solver = solver_factory.generate_solver(config)
+            algorithm = AlgorithmFactory(
+                config, solver_factory.generate_formula_solver_factory()
+            ).generate()
 
             for goal in goals:
                 if len(f_labels) > 0:

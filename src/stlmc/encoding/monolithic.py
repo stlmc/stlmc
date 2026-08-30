@@ -19,9 +19,13 @@ from ..utils.interrupt import raise_if_interrupted
 
 class OneStepAlgorithm(Algorithm):
     """Solve the complete encoding directly, without two-step abstraction."""
-    def __init__(self, path_provider: PathProvider = None):
+    def __init__(self, path_provider: PathProvider = None,
+                 formula_solver_factory=None):
         self.debug_name = ""
         self.path_provider = path_provider or SymbolicPathProvider()
+        if formula_solver_factory is None:
+            raise ValueError("formula_solver_factory is required")
+        self.formula_solver_factory = formula_solver_factory
 
     def set_debug(self, msg: str):
         self.debug_name = msg
@@ -52,7 +56,9 @@ class OneStepAlgorithm(Algorithm):
         else:
             model.gen_stl_condition()
 
-        static_learner = StaticLearner(model, goal_f)
+        static_learner = StaticLearner(
+            model, goal_f, self.formula_solver_factory
+        )
         static_learner.generate_learned_clause(bound, delta)
 
         # The STL bound covers mode changes and proposition variable points.

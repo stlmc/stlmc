@@ -6,6 +6,16 @@ from .availability import find_dreal
 
 
 class SolverFactory:
+    def generate_formula_solver_factory(self):
+        """Return the internal exact-theory solver adapter factory."""
+        try:
+            from ..solver.z3 import Z3FormulaSolver
+        except (ImportError, OSError) as error:
+            raise SolverUnavailableError(
+                "Z3 is unavailable. Run: stlmc-install-solvers z3"
+            ) from error
+        return Z3FormulaSolver
+
     def generate_solver(self, config):
         common_section = config.get_section("common")
         solver_type = common_section.get_value("solver")
