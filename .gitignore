@@ -30,6 +30,7 @@ tests/*
 !tests/solver_capabilities.py
 !tests/reachability.py
 !tests/robustness_operations.py
+!tests/temporal_reduction.py
 !tests/scenario_minimization.py
 !tests/cli_help.py
 !tests/cvc5_solver.py
