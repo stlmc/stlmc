@@ -9,90 +9,35 @@ import z3
 
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
-from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import ParallelSMTSolver
+from ..exceptions import NotSupportedError
+from ..solver.abstract_solver import (
+    IncrementalFormulaSolver, JobSolver, SolveResult, SolverJob,
+    SolverStatus,
+)
 from ..solver.assignment import Assignment
-from ..util.smt2_output import is_enabled, write_smt2
-from ..tree.operations import size_of_tree
+from ..utils.smt2_output import is_enabled, write_smt2
+from ..constraints.operations import size_of_tree
 
 
-class Z3Solver(ParallelSMTSolver):
-    def __init__(self):
-        ParallelSMTSolver.__init__(self)
-        self._z3_model = None
-        self._cache = list()
-        self._cache_raw = list()
+class Z3Solver(JobSolver):
+    def __init__(self, config=None):
+        JobSolver.__init__(self, config)
         self._logic_dict = dict()
         self._logic_dict["QF_NRA"] = "NRA"
         self._logic_dict["QF_LRA"] = "LRA"
         self._logic = "NRA"
 
-        self.solver = None
-        self.file_name = ""
-        self.set_time("solving timer", 0)
 
-    def set_logic(self, logic_name: str):
+    def _set_logic(self, logic_name: str):
         self._logic = (self._logic_dict[logic_name.upper()] if logic_name.upper() in self._logic_dict else "NRA")
 
-    def z3checkSat(self, consts, logic):
-        assert self.logger is not None
-        logger = self.logger
-
-        logger.reset_timer()
-        logger.start_timer("solving timer")
-        self.solver.add(consts)
-
-        if is_enabled(self.config):
-            write_smt2(self.config, "z3", self.file_name, self.solver.to_smt2())
-
-        result = self.solver.check()
-        logger.stop_timer("solving timer")
-        self.reset_time("solving timer")
-        self.set_time("solving timer", logger.get_duration_time("solving timer"))
-        str_result = str(result)
-
-        if str_result == "sat":
-            m = self.solver.model()
-            result = "False"
-        else:
-            m = None
-            result = "True" if str_result == "unsat" else "Unknown"
-
-        return result, m
-
-    def solve(self, all_consts=None, info_dict=None, boolean_abstract=None):
-        z3_section = self.config.get_section("z3")
-        logic = z3_section.get_value("logic")
-        self.set_logic(logic)
-
-        if self.solver is None:
-            self.solver = z3.SolverFor(self._logic)
-
-        if all_consts is not None:
-            self._cache_raw.append(all_consts)
-        else:
-            all_consts = BoolVal("True")
-        size = size_of_tree(And(self._cache_raw))
-        result, self._z3_model = self.z3checkSat(z3Obj(all_consts), self._logic)
-        return result, size
-
-    def clear(self):
-        self._cache = list()
-        self._cache_raw = list()
-        self.solver = None
-
-    def set_time_bound(self, time_bound: str):
-        pass
-
-    def set_file_name(self, name):
-        self.file_name = name
-
-    def process(self, main_queue: Queue, sema: threading.Semaphore, const):
-        self.set_logic(self.config.get_section("z3").get_value("logic"))
+    def submit(self, const, on_complete=None, query_name=""):
+        job = SolverJob(on_complete)
+        self._set_logic(self.config.get_section("z3").get_value("logic"))
         if is_enabled(self.config):
             dump_solver = z3.SolverFor(self._logic)
             dump_solver.add(z3Obj(const))
-            write_smt2(self.config, "z3", self.file_name, dump_solver.to_smt2())
+            write_smt2(self.config, "z3", query_name, dump_solver.to_smt2())
         result_queue = multiprocessing.Queue()
         start_time = time.monotonic()
         proc = multiprocessing.Process(
@@ -117,74 +62,67 @@ class Z3Solver(ParallelSMTSolver):
                 assignments = dict()
                 error_message = "parallel Z3 worker exited with {}".format(proc.exitcode)
             elapsed = time.monotonic() - start_time
-            main_queue.put((result, Z3Assignment(assignments=assignments), id(proc),
-                            elapsed, error_message))
-            sema.release()
+            job.complete(SolveResult(
+                result, Z3Assignment(assignments=assignments),
+                elapsed, error_message, size_of_tree(const),
+            ))
             result_queue.close()
 
         collector = threading.Thread(target=collect_result, daemon=True)
-        proc._stlmc_worker = collector
+        job.set_worker(proc, completion_worker=collector)
         collector.start()
-        return proc
+        return job
 
-    def result_simplify(self):
-        return z3.simplify(z3.And(self._cache))
+class Z3FormulaSolver(IncrementalFormulaSolver):
+    """Incremental Z3 adapter whose public API only accepts STLmc formulas."""
 
-    def simplify(self, consts):
-        return z3.simplify(consts)
+    def __init__(self, logic="QF_LRA"):
+        self.logic = logic
+        self._solver = z3.SolverFor(logic)
+        self._assertions = []
+        self._tracked = {}
+        self._scopes = []
 
-    def cache(self):
-        return self._cache
+    def add(self, formula):
+        self._assertions.append(formula)
+        self._solver.add(z3Obj(formula))
 
-    def add(self, const):
-        self._cache_raw.append(const)
-        self.solver.add(z3Obj(const))
-        self.solver.push()
+    def push(self):
+        self._scopes.append((len(self._assertions), set(self._tracked)))
+        self._solver.push()
 
-    def raw_add(self, const):
-        self.solver.add(z3Obj(const))
+    def pop(self):
+        assertion_size, track_ids = self._scopes.pop()
+        del self._assertions[assertion_size:]
+        self._tracked = {
+            key: value for key, value in self._tracked.items()
+            if key in track_ids
+        }
+        self._solver.pop()
 
-    def raw_push(self):
-        self.solver.push()
+    def check(self):
+        result = self._solver.check()
+        if result == z3.sat:
+            return SolverStatus.SAT
+        if result == z3.unsat:
+            return SolverStatus.UNSAT
+        return SolverStatus.UNKNOWN
 
-    def raw_pop(self):
-        self.solver.pop()
+    def model(self):
+        return Z3Assignment(self._solver.model())
 
-    def raw_check(self):
-        return self.solver.check()
+    def track(self, formula, track_id):
+        self._tracked[track_id] = formula
+        self._solver.assert_and_track(z3Obj(formula), track_id)
 
-    def raw_model(self):
-        return Z3Assignment(self.solver.model())
+    def unsat_core(self):
+        return {str(item) for item in self._solver.unsat_core()}
 
-    def substitution(self, const, *dicts):
-        total_dict = dict()
-        for i in range(len(dicts)):
-            total_dict.update(dicts[i])
-        substitute_list = [(z3Obj(v), z3Obj(total_dict[v])) for v in total_dict]
-        return z3.substitute(z3Obj(const), substitute_list)
-
-    def make_assignment(self):
-        return Z3Assignment(self._z3_model)
-
-    def unsat_core(self, psi, assertion_and_trace):
-        trace_dict = dict()
-        for (assertion, trace) in assertion_and_trace:
-            # trace should be boolean var
-            trace_dict[str(trace.id)] = assertion
-            self.solver.assert_and_track(z3Obj(assertion), z3Obj(trace))
-        # self.add(Not(psi))
-        self.solver.add(z3.Not(z3.And(psi)))
-        self.solver.set(':core.minimize', True)
-        self.solver.check()
-        unsat_cores = self.solver.unsat_core()
-        result = set()
-        for unsat_core in unsat_cores:
-            result.add(trace_dict[str(unsat_core)])
+    def fork(self):
+        result = Z3FormulaSolver(self.logic)
+        for formula in self._assertions:
+            result.add(formula)
         return result
-
-    def add_contradict_consts(self):
-        pass
-
 
 class Z3Assignment(Assignment):
     def __init__(self, z3_model=None, assignments=None):
@@ -210,13 +148,16 @@ class Z3Assignment(Assignment):
     def eval(self, const):
         if self._z3_model is None:
             raise NotSupportedError("Z3 has no model")
-        return self._z3_model.eval(z3Obj(const))
-
-    def z3eval(self, const):
-        if self._z3_model is None:
-            raise NotSupportedError("Z3 has no model")
-        return self._z3_model.eval(const)
-
+        value = self._z3_model.eval(z3Obj(const), model_completion=True)
+        if z3.is_true(value):
+            return BoolVal("True")
+        if z3.is_false(value):
+            return BoolVal("False")
+        if z3.is_int_value(value):
+            return IntVal(str(value))
+        if z3.is_rational_value(value):
+            return RealVal(str(value).replace("?", ""))
+        raise NotSupportedError("cannot translate Z3 model value {}".format(value))
 
 def _parallel_z3_solve(const, logic, result_queue):
     """Solve in an isolated process because Z3's global context is not thread-safe."""

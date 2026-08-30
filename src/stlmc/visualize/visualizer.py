@@ -16,7 +16,8 @@ from scipy.integrate import odeint
 
 from ..constraints.constraints import *
 from ..constraints.operations import *
-from ..exception.exception import *
+from ..constraints.robustness import release_robustness, until_robustness
+from ..exceptions import *
 from bokeh.plotting import figure, show
 
 

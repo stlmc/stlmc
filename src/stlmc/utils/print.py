@@ -1,6 +1,6 @@
-from importlib.metadata import PackageNotFoundError, version
 import sys
 import time
+from importlib.metadata import PackageNotFoundError, version
 
 
 def _installed_version():

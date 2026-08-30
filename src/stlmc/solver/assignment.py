@@ -1,6 +1,6 @@
 import abc
 
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 
 
 def get_integral(integrals_list, i, k):
@@ -18,8 +18,4 @@ def remove_prefix(src_str, prefix):
 class Assignment:
     @abc.abstractmethod
     def get_assignments(self):
-        pass
-
-    @abc.abstractmethod
-    def eval(self, const):
         pass

@@ -1,7 +1,19 @@
 # start of base_objects
 
-from ..tree.tree import Leaf, NonLeaf
-from ..exception.exception import ElementNotFoundError
+from ..exceptions import ElementNotFoundError
+
+
+class Tree:
+    pass
+
+
+class Leaf(Tree):
+    pass
+
+
+class NonLeaf(Tree):
+    def __init__(self, children):
+        self.children = children
 
 
 class Interval:
@@ -67,12 +79,6 @@ class Multinary:
         for child in self.children:
             tmp.add(hash(child))
         self._hash = hash((hash_root, frozenset(tmp)))
-
-    def at(self, i):
-        if i < len(self.children):
-            return self.children[i]
-        else:
-            raise ElementNotFoundError(self, "not in the list")
 
     def __repr__(self):
         # return self._str

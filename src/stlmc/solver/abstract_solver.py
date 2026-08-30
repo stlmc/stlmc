@@ -1,24 +1,147 @@
 import abc
 import subprocess
 import threading
+from dataclasses import dataclass
+from enum import Enum
 from abc import ABC
-from queue import Queue
-from threading import Semaphore
 
-from ..util.logger import Logger
-
-# all solver have logger
 from ..objects.configuration import Configuration
 
+
+class SolverStatus(Enum):
+    SAT = "sat"
+    UNSAT = "unsat"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class SolveResult:
+    """Backend-neutral result produced by a submitted solver job."""
+
+    result: str
+    assignment: object
+    elapsed: float = 0.0
+    error: str = None
+    size: int = 0
+
+
+class SolverJob:
+    """A cancellable solver submission shared by sequential and parallel use."""
+
+    def __init__(self, on_complete=None):
+        self._done = threading.Event()
+        self._result = None
+        self._worker = None
+        self._on_complete = on_complete
+        self.worker_kind = "process"
+        self.process_group = False
+        self.completion_worker = None
+        self.scenario = None
+        self.scenario_count = 1
+
+    def set_worker(self, worker, *, kind="process", process_group=False,
+                   completion_worker=None):
+        self._worker = worker
+        self.worker_kind = kind
+        self.process_group = process_group
+        self.completion_worker = completion_worker
+
+    @property
+    def pid(self):
+        return getattr(self._worker, "pid", None)
+
+    def complete(self, result: SolveResult):
+        if self._done.is_set():
+            return
+        self._result = result
+        self._done.set()
+        if self._on_complete is not None:
+            self._on_complete(result, self)
+
+    def done(self):
+        return self._done.is_set()
+
+    def result(self, timeout=None):
+        if not self._done.wait(timeout):
+            raise TimeoutError("solver job timed out")
+        return self._result
+
+    def poll(self):
+        if self._worker is None:
+            return None
+        if hasattr(self._worker, "poll"):
+            return self._worker.poll()
+        if hasattr(self._worker, "is_alive"):
+            return None if self._worker.is_alive() else getattr(
+                self._worker, "exitcode", 0
+            )
+        return 0 if self._done.is_set() else None
+
+    def terminate(self):
+        if self._worker is not None and hasattr(self._worker, "terminate"):
+            self._worker.terminate()
+
+    def kill(self):
+        if self._worker is None:
+            return
+        if hasattr(self._worker, "kill"):
+            self._worker.kill()
+        elif hasattr(self._worker, "terminate"):
+            self._worker.terminate()
+
+    def wait(self, timeout=None):
+        if self._worker is None:
+            return 0
+        if hasattr(self._worker, "wait"):
+            return self._worker.wait(timeout=timeout)
+        if hasattr(self._worker, "join"):
+            self._worker.join(timeout=timeout)
+            if self._worker.is_alive():
+                raise subprocess.TimeoutExpired("solver worker", timeout)
+            return getattr(self._worker, "exitcode", 0)
+        return 0
+
+class IncrementalFormulaSolver(ABC):
+    """Backend-neutral incremental solver over STLmc Formula objects."""
+
+    @abc.abstractmethod
+    def add(self, formula):
+        pass
+
+    @abc.abstractmethod
+    def push(self):
+        pass
+
+    @abc.abstractmethod
+    def pop(self):
+        pass
+
+    @abc.abstractmethod
+    def check(self) -> SolverStatus:
+        pass
+
+    @abc.abstractmethod
+    def model(self):
+        pass
+
+    @abc.abstractmethod
+    def track(self, formula, track_id: str):
+        pass
+
+    @abc.abstractmethod
+    def unsat_core(self):
+        pass
+
+    @abc.abstractmethod
+    def fork(self):
+        pass
 
 class ThreadWorker:
     """Small process-like wrapper used by in-process parallel SMT workers."""
 
     def __init__(self):
         self._done = threading.Event()
-        self._cancelled = threading.Event()
         self._thread = None
-        self._stlmc_thread_worker = True
 
     def start(self, target):
         self._thread = threading.Thread(target=target, daemon=True)
@@ -27,15 +150,16 @@ class ThreadWorker:
     def finish(self):
         self._done.set()
 
-    @property
-    def cancelled(self):
-        return self._cancelled.is_set()
-
     def poll(self):
         return 0 if self._done.is_set() else None
 
+    def is_alive(self):
+        return not self._done.is_set()
+
     def terminate(self):
-        self._cancelled.set()
+        # Python threads cannot be forcefully stopped; retain this process-like
+        # method so SolverJob can handle thread and process workers uniformly.
+        pass
 
     def kill(self):
         self.terminate()
@@ -46,78 +170,26 @@ class ThreadWorker:
         return 0
 
 
-class BaseSolver:
-    def __init__(self):
-        self.logger = None
-        self._optimize_dict = dict()
-        self.config = Configuration()
-        self.time_dict = dict()
+class JobSolver(ABC):
+    """Solver whose single execution primitive is a cancellable job."""
 
-    def set_optimize_flag(self, name: str, value: bool):
-        assert isinstance(value, bool)
-        self._optimize_dict[name] = value
+    def __init__(self, config=None):
+        self.config = config if config is not None else Configuration()
 
-    def get_optimize_flag(self, name: str):
-        if name in self._optimize_dict:
-            return self._optimize_dict[name]
-        return False
-
-    def append_logger(self, logger: Logger):
-        self.logger = logger
-
-    @abc.abstractmethod
-    def solve(self, all_consts=None, cont_vars_dict=None, boolean_abstract_dict=None):
-        pass
+    def solve(self, all_consts=None, timeout=None, query_name=""):
+        if all_consts is None:
+            raise ValueError("solve requires a formula")
+        job = self.submit(all_consts, query_name=query_name)
+        try:
+            solve_result = job.result(timeout)
+        except TimeoutError:
+            job.kill()
+            solve_result = SolveResult(
+                "Unknown", None, error="solver job timed out"
+            )
+        return solve_result
 
     @abc.abstractmethod
-    def make_assignment(self):
+    def submit(self, const, on_complete=None, query_name=""):
+        """Start a solve and call ``on_complete(result, worker)`` exactly once."""
         pass
-
-    def set_config(self, config: Configuration):
-        self.config = config
-
-    def set_time(self, keyword: str, value):
-        if keyword in self.time_dict:
-            self.time_dict[keyword] += value
-        else:
-            self.time_dict[keyword] = value
-
-    def get_time(self, keyword: str):
-        assert keyword in self.time_dict
-        return self.time_dict[keyword]
-
-    def reset_time(self, keyword: str):
-        if keyword in self.time_dict:
-            self.time_dict[keyword] = 0
-
-
-class SMTSolver(BaseSolver):
-    @abc.abstractmethod
-    def simplify(self, consts):
-        pass
-
-    @abc.abstractmethod
-    def substitution(self, const, *dicts):
-        pass
-
-    @abc.abstractmethod
-    def add(self, const):
-        pass
-
-    @abc.abstractmethod
-    def set_logic(self, logic_name: str):
-        pass
-
-    @abc.abstractmethod
-    def set_time_bound(self, time_bound: str):
-        pass
-
-
-class ParallelSMTSolver(SMTSolver):
-    @abc.abstractmethod
-    def process(self, main_queue: Queue, sema: Semaphore, const):
-        pass
-
-
-class OdeSolver(BaseSolver, ABC):
-    pass

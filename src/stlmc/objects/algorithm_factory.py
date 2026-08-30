@@ -6,8 +6,9 @@ from ..objects.configuration import Configuration
 
 
 class AlgorithmFactory:
-    def __init__(self, config: Configuration):
+    def __init__(self, config: Configuration, formula_solver_factory):
         self.config = config
+        self.formula_solver_factory = formula_solver_factory
 
     def generate(self):
         common_section = self.config.get_section("common")
@@ -18,5 +19,7 @@ class AlgorithmFactory:
         if is_two_step == "true":
             continuous_solving = TwoStepAlgorithm(path_provider)
         else:
-            continuous_solving = OneStepAlgorithm(path_provider)
+            continuous_solving = OneStepAlgorithm(
+                path_provider, self.formula_solver_factory
+            )
         return ModelCheckingAlgorithm(continuous_solving)

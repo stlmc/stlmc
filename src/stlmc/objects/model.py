@@ -82,20 +82,6 @@ class StlMC(Model):
         return self.is_stl_reach
 
     @staticmethod
-    def make_additional_mode_consts(bound, current_mode_num, total_mode_num):
-        additional_mode_const_children = list()
-        for otherModeID in range(0, current_mode_num):
-            additional_mode_const_children.append(Neq(Real('currentMode_' + str(bound)), IntVal(str(otherModeID))))
-        for otherModeID in range(current_mode_num + 1, total_mode_num):
-            additional_mode_const_children.append(Neq(Real('currentMode_' + str(bound)), IntVal(str(otherModeID))))
-
-        additional_mode_const_children.append(Eq(Real('currentMode_' + str(bound)), IntVal(str(current_mode_num))))
-        additional_mode_const_children.append(Lt(Real('currentMode_' + str(bound)), IntVal(str(total_mode_num))))
-        additional_mode_const_children.append(Geq(Real('currentMode_' + str(bound)), IntVal("0")))
-
-        return additional_mode_const_children
-
-    @staticmethod
     def aux_make_range_const(var: Real, range):
         consts = list()
         (left_end, left, right, right_end) = range
@@ -304,14 +290,6 @@ class StlMC(Model):
             all_jumps.append(Or(jumps))
             index += 1
         return all_jumps, track_dict
-
-    # assignment specific function
-    def get_flow_for_assignment(self, bound):
-        flows = list()
-        for k in range(bound + 1):
-            flow_consts = self.make_flow_consts(k)
-            flows.append(flow_consts.children)
-        return flows
 
     def make_consts(self, bound):
         result_child = list()

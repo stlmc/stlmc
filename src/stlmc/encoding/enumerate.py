@@ -9,10 +9,10 @@ from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
 from ..solver.dreal import dRealSolver, DrealAssignment
 from ..solver.z3 import *
-from ..util.logger import Logger
-from ..util.print import Printer
-from ..util.interrupt import raise_if_interrupted
-from ..exception.exception import IllegalArgumentError
+from ..constraints.operations import size_of_tree
+from ..utils.print import Printer
+from ..utils.interrupt import raise_if_interrupted
+from ..exceptions import IllegalArgumentError
 from .batching import candidate_batch_formula
 from .path import PathProvider, SymbolicPathProvider
 

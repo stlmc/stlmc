@@ -1,0 +1,119 @@
+start: declaration+ mode_module+ init_decl props? goal_decl
+
+?declaration: const_decl | typed_decl | ranged_decl
+const_decl: "const" NAME "=" (SIGNED_NUMBER | TRUE | FALSE) ";"
+typed_decl: TYPE NAME ";"
+ranged_decl: var_range NAME ";"
+
+TYPE.3: "bool"i | "int"i | "real"i
+TRUE.3: "true"i
+FALSE.3: "false"i
+INF.3: "inf"
+
+?expression: sum
+?sum: product
+    | sum ADD_OP product -> binary_expression
+?product: power
+        | product MUL_OP power -> binary_expression
+?power: unary
+      | unary POWER power -> binary_expression
+?unary: ADD_OP unary -> unary_expression
+      | FUNC_OP unary -> unary_expression
+      | expression_atom
+?expression_atom: NUMBER -> number_expression
+                | "t" -> time_expression
+                | NAME "(0)" -> initial_expression
+                | NAME -> variable_expression
+                | "(" expression ")"
+
+ADD_OP: "+" | "-"
+MUL_OP: "*" | "/"
+POWER: "**"
+FUNC_OP.3: "sin" | "cos" | "tan" | "arcsin" | "arccos" | "arctan" | "sqrt"
+COMPARE_OP: "<=" | ">=" | "<" | ">" | "=" | "!="
+NOT.3: "not"i | "~"
+bool_operator: AND | OR
+
+?condition: "(" condition ")"
+          | TRUE -> true_condition
+          | FALSE -> false_condition
+          | bool_operator condition condition+ -> multi_condition
+          | NOT condition -> not_condition
+          | condition_value COMPARE_OP condition_value -> compare_condition
+          | expression -> expression_condition
+?condition_value: TRUE -> true_value
+                | FALSE -> false_value
+                | expression
+
+?jump_update: "(" jump_update ")"
+            | bool_operator jump_update jump_update+ -> multi_jump
+            | NOT jump_update -> not_jump
+            | NEXT_NAME COMPARE_OP jump_value -> assign_jump
+            | NEXT_NAME -> variable_jump
+?jump_value: TRUE -> true_value
+           | FALSE -> false_value
+           | expression
+
+var_range: "[" SIGNED_NUMBER bracket_range_tail -> bracket_range
+         | "(" (NEG_INF | SIGNED_NUMBER) "," (SIGNED_NUMBER | INF) RANGE_RIGHT -> open_range
+bracket_range_tail: "]" -> exact_range_tail
+                  | "," (SIGNED_NUMBER | INF) RANGE_RIGHT -> bounded_range_tail
+RANGE_LEFT: "[" | "("
+RANGE_RIGHT: "]" | ")"
+NEG_INF: "-inf"
+
+diff_eq: DIFF "[" NAME "]" "=" expression ";"
+sol_eq: NAME "(" "t" ")" "=" expression ";"
+mode_module: "{" mode_decl inv_decl flow_decl jump_decl "}"
+mode_decl: "mode" ":" (condition ";")+
+inv_decl: "inv" ":" (condition ";")*
+flow_decl: "flow" ":" (diff_eq+ | sol_eq+)
+jump_rule: condition ARROW jump_update ";"
+jump_decl: "jump" ":" jump_rule*
+init_decl: "init" ":" (condition ";")+
+
+interval: "=" NUMBER -> exact_interval
+        | RANGE_LEFT NUMBER "," (NUMBER | INF) RANGE_RIGHT -> bounded_interval
+
+?formula: implication
+?implication: disjunction
+            | disjunction "->" implication -> implies_formula
+?disjunction: conjunction
+            | disjunction OR conjunction -> binary_formula
+?conjunction: temporal
+            | conjunction AND temporal -> binary_formula
+?temporal: unary_formula
+         | temporal TEMPORAL_OP interval unary_formula -> temporal_formula
+?unary_formula: NOT unary_formula -> not_formula
+              | UNARY_TEMPORAL interval unary_formula -> unary_temporal_formula
+              | bool_operator unary_formula unary_formula+ -> multi_formula
+              | formula_atom
+?formula_atom: TRUE -> true_formula
+             | FALSE -> false_formula
+             | expression COMPARE_OP expression -> direct_condition
+             | expression -> expression_formula
+             | "(" formula ")"
+
+AND.3: "and"i
+OR.3: "or"i
+TEMPORAL_OP.3: "U" | "R"
+UNARY_TEMPORAL: "[]" | "<>"
+
+props: "proposition" ":" prop*
+prop: "[" NAME "]" ":" condition ";"
+?goal: "[" NAME "]" ":" formula -> labeled_goal
+     | "reach" condition -> reach_goal
+     | formula -> unlabeled_goal
+goal_decl: "goal" ":" (goal ";")*
+
+NEXT_NAME: /[a-zA-Z][a-zA-Z0-9]*'/
+DIFF.2: "d/dt"
+ARROW.3: "=>"
+NAME: /[a-zA-Z][a-zA-Z0-9]*/
+SIGNED_NUMBER: /-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?/
+NUMBER: /[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?/
+
+%import common.WS
+%ignore WS
+%ignore /#[^\r\n]*/
+%ignore /(?s:\'\'\'.*?\'\'\')/

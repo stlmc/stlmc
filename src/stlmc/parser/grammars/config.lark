@@ -1,0 +1,15 @@
+start: section*
+section: NAME "extends" name_list "{" assignment* "}" -> extended_section
+       | NAME "{" assignment* "}"                     -> basic_section
+name_list: NAME ("," NAME)*
+assignment: NAME "=" value?
+?value: ESCAPED_STRING -> quoted_value
+      | SIGNED_NUMBER  -> scalar_value
+      | NAME           -> scalar_value
+NAME: /[a-zA-Z0-9_.\/-]+/
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.WS
+%ignore WS
+%ignore /#[^\r\n]*/
+%ignore /(?s:\'\'\'.*?\'\'\')/

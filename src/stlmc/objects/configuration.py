@@ -1,12 +1,13 @@
 from typing import Dict, Set, List, Tuple, Union
 
-from ..exception.exception import ElementNotFoundError, NotSupportedError
+from ..exceptions import ElementNotFoundError, NotSupportedError
 
 
 class Section:
     def __init__(self):
         self.name = ""
         self.arguments: Dict[str, str] = dict()
+        self.argument_locations = {}
         self.mandatory: List[str] = list()
         self.parent_names: List[str] = list()
 
@@ -71,9 +72,6 @@ class Configuration:
             raise ElementNotFoundError("there is no section named \"{}\"".format(section_name))
         return self.sections_by_name[section_name]
 
-    def is_section_in(self, section_name: str):
-        return section_name in self.sections_by_name
-
     @property
     def sections(self) -> Set[Section]:
         return set(self.sections_by_name.values())
@@ -81,6 +79,9 @@ class Configuration:
     def add_section(self, section: Section):
         if section.name in self.sections_by_name:
             self.sections_by_name[section.name].arguments.update(section.arguments)
+            self.sections_by_name[section.name].argument_locations.update(
+                section.argument_locations
+            )
         else:
             self.sections_by_name[section.name] = section
 
@@ -90,12 +91,3 @@ class Configuration:
             section_strings.append(str(section))
 
         return "\n".join(section_strings)
-
-    def update_dependencies(self, ordering: List[str]):
-        for name in ordering:
-            assert name in self.sections_by_name
-            section = self.sections_by_name[name]
-            if section.has_parents():
-                for p_name in section.parent_names:
-                    parent = self.sections_by_name[p_name]
-                    section.arguments.update(parent.arguments)

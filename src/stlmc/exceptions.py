@@ -1,3 +1,6 @@
+"""Exceptions raised by STLmc."""
+
+
 class ElementNotFoundError(Exception):
     pass
 

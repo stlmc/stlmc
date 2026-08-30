@@ -4,7 +4,7 @@ from ..constraints.constraints import (
     Arccos, Arcsin, Arctan, Binary, Constraint, Cos, Dynamics, IntVal,
     Multinary, Pow, RealVal, Sin, Sqrt, Tan, Unary,
 )
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 
 
 TRANSCENDENTAL = (Sqrt, Sin, Cos, Tan, Arcsin, Arccos, Arctan)

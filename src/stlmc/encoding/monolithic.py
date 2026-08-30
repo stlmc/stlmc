@@ -12,23 +12,26 @@ from ..objects.algorithm import Algorithm
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
-from ..solver.abstract_solver import SMTSolver
-from ..util.logger import Logger
-from ..util.print import Printer
-from ..util.interrupt import raise_if_interrupted
+from ..solver.abstract_solver import JobSolver
+from ..utils.print import Printer
+from ..utils.interrupt import raise_if_interrupted
 
 
 class OneStepAlgorithm(Algorithm):
     """Solve the complete encoding directly, without two-step abstraction."""
-    def __init__(self, path_provider: PathProvider = None):
+    def __init__(self, path_provider: PathProvider = None,
+                 formula_solver_factory=None):
         self.debug_name = ""
         self.path_provider = path_provider or SymbolicPathProvider()
+        if formula_solver_factory is None:
+            raise ValueError("formula_solver_factory is required")
+        self.formula_solver_factory = formula_solver_factory
 
     def set_debug(self, msg: str):
         self.debug_name = msg
 
     def run(self, model: Model, goal: Goal, goal_prop_dict: Dict, config: Configuration,
-            solver: SMTSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, printer: Printer):
         common_section = config.get_section("common")
         bound = common_section.get_value("bound")
         time_bound = common_section.get_value("time-bound")
@@ -53,19 +56,19 @@ class OneStepAlgorithm(Algorithm):
         else:
             model.gen_stl_condition()
 
-        static_learner = StaticLearner(model, goal_f)
+        static_learner = StaticLearner(
+            model, goal_f, self.formula_solver_factory
+        )
         static_learner.generate_learned_clause(bound, delta)
 
         # The STL bound covers mode changes and proposition variable points.
         # Bound 0 still contains one continuous segment.
         for b in range(0, int(bound) + 1):
             raise_if_interrupted()
-            # start logging
             bound_started = time.monotonic()
-            logger.reset_timer()
 
             model_const = model.make_consts(b)
-            logger.start_timer("goal timer")
+            goal_started = time.monotonic()
             if is_reach:
                 k_step_goal = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
                 time_order_const = reach_time_ordering(2 * b + 2, float(time_bound))
@@ -76,8 +79,7 @@ class OneStepAlgorithm(Algorithm):
             boolean_abstract = dict()
             boolean_abstract.update(model.boolean_abstract)
             boolean_abstract_consts = make_boolean_abstract_consts(boolean_abstract)
-            logger.stop_timer("goal timer")
-            goal_time = logger.get_duration_time("goal timer")
+            goal_time = time.monotonic() - goal_started
 
             clause_in_consts = clause(And([model_const, stl_const, boolean_abstract_consts]))
             contradiction_const = static_learner.get_contradiction_upto(b, clause_in_consts)
@@ -102,26 +104,21 @@ class OneStepAlgorithm(Algorithm):
                 batch_formula = candidate_batch_formula([
                     (total_consts, candidate.constraint) for candidate in batch
                 ])
-                solver.set_time_bound(time_bound)
-                if hasattr(solver, "set_file_name"):
-                    solver.set_file_name(
-                        "{}_b{:03d}_p{}-{}".format(
-                            self.debug_name, b, batch[0].index, batch[-1].index
-                        )
-                    )
-                result, _ = solver.solve(
-                    batch_formula, model.range_dict, boolean_abstract
+                query_name = "{}_b{:03d}_p{}-{}".format(
+                    self.debug_name, b, batch[0].index, batch[-1].index
                 )
-                total_time += logger.get_duration_time("solving timer")
-                final_result = result
-                if result == "False":
-                    bound_result = result
-                    found_assignment = solver.make_assignment()
+                solve_result = solver.solve(
+                    batch_formula, query_name=query_name
+                )
+                total_time += solve_result.elapsed
+                final_result = solve_result.result
+                if solve_result.result == "False":
+                    bound_result = solve_result.result
+                    found_assignment = solve_result.assignment
                     break
-                if result == "Unknown":
+                if solve_result.result == "Unknown":
                     had_unknown = True
                     bound_result = "Unknown"
-                solver.clear()
 
             total_time += goal_time
             solver_result = {
@@ -145,7 +142,6 @@ class OneStepAlgorithm(Algorithm):
 
             model.clear()
             goal.clear()
-            solver.clear()
         # for reach case, we should translate the result in the opposite way
         if is_reach:
             if had_unknown:

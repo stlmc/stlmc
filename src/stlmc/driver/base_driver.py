@@ -6,7 +6,7 @@ from ..cli.parser import build_parser
 from ..encoding.enumerate import *
 from ..encoding.monolithic import clause as monolithic_clause
 from ..encoding.static_learning import StaticLearner
-from ..exception.exception import *
+from ..exceptions import *
 from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import (
@@ -17,7 +17,6 @@ from ..objects.object_factory import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
-from ..solver.abstract_solver import SMTSolver
 from ..solver.availability import find_dreal
 from ..solver.dreal import dRealSolver
 from ..solver.solver_factory import SolverFactory
@@ -28,8 +27,7 @@ from ..solver.capability import (
     validate_model_solver_support,
 )
 from ..solver.z3 import z3Obj
-from ..util.logger import *
-from ..util.print import *
+from ..utils.print import *
 from ..visualize.visualizer import Visualizer
 from ..visualize.visualizer import sub_formula as vis_sub_formula
 
@@ -64,9 +62,6 @@ class BaseDriverFactory(DriverFactory):
     def make_runner(self) -> Runner:
         return BaseRunner()
 
-    def make_logger(self) -> Logger:
-        return Logger()
-
     def make_printer(self) -> Printer:
         return Printer()
 
@@ -80,9 +75,6 @@ class BaseCmdParser(CmdParser):
         self.parser = build_parser()
         self.arg_value_dict = dict()
         self.file = ""
-
-    def get_config(self) -> Configuration:
-        return self.config
 
     def update_solver_config(self, underlying_solver):
         common_section = self.config.get_section(underlying_solver)
@@ -207,7 +199,7 @@ class BaseCmdParser(CmdParser):
 
 class BaseRunner(Runner):
     def run(self, config_parser: ConfigVisitor, model_parser: ModelVisitor,
-            cmd_parser: CmdParser, logger: Logger, printer: Printer):
+            cmd_parser: CmdParser, printer: Printer):
         try:
             sys.setrecursionlimit(1000000)
 
@@ -283,10 +275,11 @@ class BaseRunner(Runner):
             underlying_solver = common_section.get_value("solver")
             validate_model_solver_support(underlying_solver, model)
 
-            solver = SolverFactory().generate_solver(config)
-            algorithm = AlgorithmFactory(config).generate()
-            solver.append_logger(logger)
-            solver.set_config(config)
+            solver_factory = SolverFactory()
+            solver = solver_factory.generate_solver(config)
+            algorithm = AlgorithmFactory(
+                config, solver_factory.generate_formula_solver_factory()
+            ).generate()
 
             for goal in goals:
                 if len(f_labels) > 0:
@@ -345,7 +338,7 @@ class BaseRunner(Runner):
                 algorithm.set_debug("{}_{}_{}".format(os.path.basename(file_name), label, underlying_solver))
                 try:
                     final_result, total_time, finished_bound, assn_dict = algorithm.run(
-                        model, goal, PD, config, solver, logger, printer
+                        model, goal, PD, config, solver, printer
                     )
                 except BaseException:
                     printer.clear_progress()

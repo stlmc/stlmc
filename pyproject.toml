@@ -1,6 +1,6 @@
 [build-system]
-requires = ["scikit-build-core"]
-build-backend = "scikit_build_core.build"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "stlmc"
@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
   "yices",
   "z3-solver==4.13.2.0",
-  "antlr4-python3-runtime==4.13.2",
+  "lark==1.3.1",
   "sympy",
   "numpy",
   "bokeh==3.1.1",
@@ -47,9 +47,12 @@ stlmc-install-solvers = "stlmc.cli.install_solvers:main"
 "Documentation" = "https://stlmc.github.io/assets/files/stlmc-manual.pdf"
 "Source Code"   = "https://github.com/stlmc/stlmc/"
 
-[tool.scikit-build]
-sdist.include = ["src/"]
-sdist.exclude = ["tests/**", "3rd_party/antlr4/**"]
-wheel.cmake = false
-wheel.platlib = false
-wheel.py-api = "py3"
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+stlmc = ["default.cfg", "parser/grammars/*.lark"]

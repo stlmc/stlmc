@@ -1,17 +1,16 @@
 from typing import *
 
-import z3
-from ..solver.z3 import z3Obj
-
 from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..objects.model import Model
+from ..solver.abstract_solver import IncrementalFormulaSolver, SolverStatus
 
 
 class StaticLearner:
-    def __init__(self, model: Model, formula: Formula):
+    def __init__(self, model: Model, formula: Formula, solver_factory):
         self.model = model
         self.formula = formula
+        self.solver_factory = solver_factory
 
         self.continuous_vars = {v for v in self.model.range_dict}
         self.mode_vars = {self.model.mode_var_dict[v] for v in self.model.mode_var_dict}
@@ -88,7 +87,7 @@ class StaticLearner:
             assert i not in mode_rename_dict
             mode_rename_dict[i] = mode_rename_dict_at
 
-        contra_solver = z3.SolverFor("QF_LRA")
+        contra_solver: IncrementalFormulaSolver = self.solver_factory("QF_LRA")
         for i in range(0, int(bound) + 1):
             assert i in cont_rename_dict_0
             assert i in cont_rename_dict_t
@@ -112,14 +111,13 @@ class StaticLearner:
             contradiction_pairs = set()
             for (c1, c2) in potentials:
                 contra_solver.push()
-                contra_solver.add(z3Obj(And([c1, c2])))
+                contra_solver.add(And([c1, c2]))
                 result = contra_solver.check()
 
                 # contradiction
-                if result.r == z3.Z3_L_FALSE:
+                if result == SolverStatus.UNSAT:
                     child = And([c1, c2])
                     contradiction_pairs.add(Not(child))
 
                 contra_solver.pop()
             self.contradiction_dict[i] = contradiction_pairs
-

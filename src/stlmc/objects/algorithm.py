@@ -1,4 +1,3 @@
-import asyncio
 import os
 import signal
 import subprocess
@@ -12,16 +11,15 @@ from ..constraints.constraints import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal
 from ..objects.model import Model
-from ..solver.abstract_solver import SMTSolver, ParallelSMTSolver
-from ..util.logger import Logger
-from ..util.interrupt import raise_if_interrupted
-from ..util.print import Printer
+from ..solver.abstract_solver import JobSolver, SolveResult
+from ..utils.interrupt import raise_if_interrupted
+from ..utils.print import Printer
 
 
 class Algorithm:
     @abstractmethod
     def run(self, model: Model, goal: Goal, prop_dict: Dict, config: Configuration,
-            solver: SMTSolver, logger: Logger, printer: Printer):
+            solver: JobSolver, printer: Printer):
         pass
 
     @abstractmethod
@@ -31,7 +29,7 @@ class Algorithm:
 
 class AlgorithmRunner:
     @abstractmethod
-    def run(self, solver: SMTSolver, const: Formula):
+    def run(self, solver: JobSolver, const: Formula):
         pass
 
     @abstractmethod
@@ -69,33 +67,29 @@ class AlgorithmRunner:
         }
 
 
-async def solve(solver: SMTSolver, const: Formula):
-    return await asyncio.wait_for(solver.solve(const), timeout=100000000.0)
-
-
-def call_back(p):
-    print(p)
-    if p[0] == "False":
-        print("not done!")
-    else:
-        print("done!")
-
-
 class ParallelAlgRunner(AlgorithmRunner):
     def _scenario_for_process(self, proc_id):
         for proc in self.procs:
             if id(proc) == proc_id:
-                return getattr(proc, "_stlmc_scenario", None)
+                return proc.scenario
         return None
 
     def _scenario_count_for_process(self, proc_id):
         for proc in self.procs:
             if id(proc) == proc_id:
-                return getattr(proc, "_stlmc_scenario_count", 1)
+                return proc.scenario_count
         return 1
 
     def _unpack_result(self, message):
-        result, model, proc_id, *metadata = message
+        if len(message) == 2 and isinstance(message[0], SolveResult):
+            solve_result, worker = message
+            result = solve_result.result
+            model = solve_result.assignment
+            proc_id = id(worker)
+            metadata = [solve_result.elapsed, solve_result.error]
+        else:
+            # Compatibility with queued results from older/custom workers.
+            result, model, proc_id, *metadata = message
         self.completed_jobs += 1
         self.completed_scenarios += self._scenario_count_for_process(proc_id)
         if len(metadata) > 0:
@@ -103,22 +97,6 @@ class ParallelAlgRunner(AlgorithmRunner):
         if len(metadata) > 1 and metadata[1]:
             self.unknown_errors.append(metadata[1])
         return result, model, proc_id
-
-    def _check_sat(self):
-        while True:
-            try:
-                result, model, proc_id = self._unpack_result(self.main_queue.get_nowait())
-            except Empty:
-                # no counterexample or unknown
-                pass
-            else:
-                self.result = result
-                if result == "False":
-                    self.model = model
-                else:
-                    self.model = None
-                self.kill_all()
-                break
 
     def check_sat(self):
         try:
@@ -172,21 +150,13 @@ class ParallelAlgRunner(AlgorithmRunner):
         self.current_scenario_count = scenario_count
 
     def active_workers(self):
-        active = 0
-        for proc in self.procs:
-            if getattr(proc, "_stlmc_thread_worker", False):
-                active += int(proc.is_alive())
-            else:
-                active += int(proc.poll() is None)
-        return active
+        return sum(proc.poll() is None for proc in self.procs)
 
     def increase_counter(self):
         self.number += 1
 
-    def run(self, solver: ParallelSMTSolver, const: Formula):
-        assert isinstance(solver, ParallelSMTSolver)
-
-        solver.set_file_name(self.debug_name)
+    def run(self, solver: JobSolver, const: Formula):
+        assert isinstance(solver, JobSolver)
 
         while not self.sema.acquire(timeout=0.1):
             raise_if_interrupted()
@@ -205,12 +175,20 @@ class ParallelAlgRunner(AlgorithmRunner):
             previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked_signals)
         try:
             try:
-                proc = solver.process(self.main_queue, self.sema, const)
+                def completed(solve_result, job):
+                    try:
+                        self.main_queue.put((solve_result, job))
+                    finally:
+                        self.sema.release()
+
+                proc = solver.submit(
+                    const, on_complete=completed, query_name=self.debug_name
+                )
             except Exception:
                 self.sema.release()
                 raise
-            proc._stlmc_scenario = self.current_scenario
-            proc._stlmc_scenario_count = self.current_scenario_count
+            proc.scenario = self.current_scenario
+            proc.scenario_count = self.current_scenario_count
             self.procs.add(proc)
             self.submitted_jobs += 1
             self.submitted_scenarios += self.current_scenario_count
@@ -222,8 +200,8 @@ class ParallelAlgRunner(AlgorithmRunner):
     def kill_all(self):
         procs = list(self.procs)
 
-        thread_workers = [proc for proc in procs if getattr(proc, "_stlmc_thread_worker", False)]
-        process_workers = [proc for proc in procs if not getattr(proc, "_stlmc_thread_worker", False)]
+        thread_workers = [proc for proc in procs if proc.worker_kind == "thread"]
+        process_workers = [proc for proc in procs if proc.worker_kind == "process"]
 
         for worker in thread_workers:
             worker.terminate()
@@ -235,7 +213,7 @@ class ParallelAlgRunner(AlgorithmRunner):
 
         def signal_process(proc, sig):
             try:
-                if getattr(proc, "_stlmc_process_group", False):
+                if proc.process_group:
                     os.killpg(proc.pid, sig)
                 elif sig == signal.SIGTERM:
                     proc.terminate()
@@ -290,7 +268,7 @@ class ParallelAlgRunner(AlgorithmRunner):
                 proc.join(timeout=1)
 
         for proc in process_workers:
-            worker = getattr(proc, "_stlmc_worker", None)
+            worker = proc.completion_worker
             if worker is not None and worker is not threading.current_thread():
                 worker.join(timeout=1)
 
@@ -337,16 +315,17 @@ class ParallelAlgRunner(AlgorithmRunner):
 class NormalRunner(AlgorithmRunner):
     def check_sat(self):
         assert self.solver is not None and self.const is not None
-        self.solver.clear()
-        result, size = self.solver.solve(self.const)
-        is_true = result == "False"
-        self.had_unknown = self.had_unknown or result == "Unknown"
+        solve_result = self.solver.solve(
+            self.const, query_name=self.debug_name
+        )
+        is_true = solve_result.result == "False"
+        self.had_unknown = self.had_unknown or solve_result.result == "Unknown"
 
         model = None
         if is_true:
-            model = self.solver.make_assignment()
+            model = solve_result.assignment
             self.winning_scenario = self.current_scenario
-        self.time = self.solver.logger.get_duration_time("solving timer")
+        self.time = solve_result.elapsed
         self.solver = None
         self.const = None
         self.number = 0
@@ -380,11 +359,8 @@ class NormalRunner(AlgorithmRunner):
     def increase_counter(self):
         self.number += 1
 
-    def run(self, solver: SMTSolver, const: Formula):
-        assert isinstance(solver, SMTSolver)
-
-        if hasattr(solver, "set_file_name"):
-            solver.set_file_name(self.debug_name)
+    def run(self, solver: JobSolver, const: Formula):
+        assert isinstance(solver, JobSolver)
 
         self.solver = solver
         self.const = const

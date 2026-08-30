@@ -7,7 +7,7 @@ from ..constraints import partition as PART
 from ..constraints import separation as SEP
 from ..constraints.operations import *
 from ..encoding.time import make_zeno_time_const, make_non_zeno_time_const
-from ..exception.exception import NotSupportedError
+from ..exceptions import NotSupportedError
 
 
 class Goal:

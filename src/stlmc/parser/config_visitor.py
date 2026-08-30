@@ -1,30 +1,52 @@
-from typing import Union
+from difflib import get_close_matches
+from pathlib import Path
+from typing import Dict, List, Set, Union
 
-from antlr4 import FileStream, CommonTokenStream
+from lark import Lark, Transformer
+from lark.exceptions import VisitError
 
-from .error_listener import StlmcErrorListener
 from ..config_schema import (
-    SECTION_BOOLEAN_OPTIONS,
-    SECTION_MANDATORY_OPTIONS,
-    SECTION_NAMES,
-    SECTION_TYPE_RULES,
-    SECTION_VALUE_OPTIONS,
-    all_boolean_options,
+    SECTION_BOOLEAN_OPTIONS, SECTION_MANDATORY_OPTIONS, SECTION_NAMES,
+    SECTION_TYPE_RULES, SECTION_VALUE_OPTIONS, all_boolean_options,
     all_value_options,
 )
-from ..exception.exception import IllegalArgumentError
-from ..exception.exception import NotSupportedError
-from ..objects.configuration import *
-from ..syntax.config.configLexer import configLexer
-from ..syntax.config.configParser import configParser
-from ..syntax.config.configVisitor import configVisitor
+from ..exceptions import IllegalArgumentError, NotSupportedError
+from ..objects.configuration import Configuration, Section
+from .syntax_error import parse_file
 
 
-class ConfigVisitor(configVisitor):
+_PARSER = Lark.open(
+    str(Path(__file__).with_name("grammars") / "config.lark"),
+    parser="lalr", start="start", propagate_positions=True,
+)
 
+
+class _ConfigTransformer(Transformer):
+    def quoted_value(self, children):
+        return str(children[0])
+
+    def scalar_value(self, children):
+        return str(children[0])
+
+    def assignment(self, children):
+        return children[0], children[1] if len(children) > 1 else ""
+
+    def name_list(self, children):
+        return children
+
+    def basic_section(self, children):
+        return children[0], [], children[1:]
+
+    def extended_section(self, children):
+        return children[0], children[1], children[2:]
+
+    def start(self, children):
+        return children
+
+
+class ConfigVisitor:
     def __init__(self):
-        # reference
-        self.config: Configuration = Configuration()
+        self.config = Configuration()
         self.section_argument_dict = {
             section: set(SECTION_VALUE_OPTIONS[section]) for section in SECTION_NAMES
         }
@@ -38,164 +60,116 @@ class ConfigVisitor(configVisitor):
         self.section_mandatory_dict = {
             section: set(SECTION_MANDATORY_OPTIONS[section]) for section in SECTION_NAMES
         }
-
-        self.section_selectable_dict: Dict[str, List[Set[str]]] = dict()
-        self.section_selectable_dict["common"] = list()
-        self.section_selectable_dict["z3"] = list()
-        self.section_selectable_dict["yices"] = list()
-        self.section_selectable_dict["dreal"] = list()
+        self.section_selectable_dict: Dict[str, List[Set[str]]] = {
+            section: [] for section in SECTION_NAMES
+        }
 
     def get_missing_arguments(self, config: Configuration) -> Dict[str, Set[str]]:
-        missing_dict = dict()
+        missing_dict = {}
         for section in config.sections:
             if section.name not in self.section_names:
-                raise IllegalArgumentError("\"{}\" is not a valid section name".format(section.name))
-
-            mandatory = self.section_mandatory_dict[section.name]
-
-            is_skip = False
+                raise IllegalArgumentError(
+                    '"{}" is not a valid section name'.format(section.name)
+                )
             choices = self.section_selectable_dict[section.name]
-            for choice in choices:
-                if choice.issubset(set(section.arguments.keys())):
-                    is_skip = True
-                    break
-
-            if is_skip:
+            if any(choice.issubset(section.arguments) for choice in choices):
                 continue
-
-            missing = mandatory.difference(set(section.arguments.keys()))
-            if len(missing) > 0:
+            missing = self.section_mandatory_dict[section.name].difference(
+                section.arguments
+            )
+            if missing:
                 missing_dict[section.name] = missing
         return missing_dict
 
     def generate_cmd_args(self):
         return all_value_options(), all_boolean_options()
 
-    def parse_from_file(self, file_name: str, base: Union[Configuration, None] = None) -> Configuration:
-        self.config = Configuration()
-        if base is not None:
-            self.config = base
+    def parse_from_file(
+        self, file_name: str, base: Union[Configuration, None] = None
+    ) -> Configuration:
+        self.config = base if base is not None else Configuration()
+        tree = parse_file(
+            _PARSER, file_name, description="configuration",
+            keywords=self.section_names,
+        )
 
-        raw_model = FileStream(file_name)
-        lexer = configLexer(raw_model)
-        stream = CommonTokenStream(lexer)
-        parser = configParser(stream)
-        parser.removeErrorListeners()
-        cfg_err_listener = StlmcErrorListener()
-        cfg_err_listener.name = file_name
-        parser.addErrorListener(cfg_err_listener)
-        tree = parser.config()
-        self.visit(tree)
+        try:
+            sections = _ConfigTransformer().transform(tree)
+        except VisitError as error:
+            raise error.orig_exc from error
 
-        # discard an empty string as a value
-        for section in self.config.sections:
-            for arg_name in section.arguments:
-                if section.arguments[arg_name] == "":
-                    del section.arguments[arg_name]
+        for name_token, parent_tokens, assignments in sections:
+            name = str(name_token)
+            if name not in self.section_names:
+                close = get_close_matches(name, self.section_names, n=1, cutoff=0.8)
+                suggestion = "; did you mean {!r}?".format(close[0]) if close else ""
+                raise NotSupportedError(
+                    "{}:{}:{}: unknown configuration section {!r}{}".format(
+                        file_name, name_token.line, name_token.column, name, suggestion
+                    )
+                )
+            parent_names = [str(token) for token in parent_tokens]
+            allowed_arguments = (
+                self.section_argument_dict[name]
+                | self.section_boolean_argument_dict[name]
+            )
+            arguments = {}
+            argument_locations = {}
+            for argument_token, value in assignments:
+                argument = str(argument_token)
+                if argument not in allowed_arguments:
+                    close = get_close_matches(
+                        argument, allowed_arguments, n=1, cutoff=0.75
+                    )
+                    suggestion = (
+                        "; did you mean {!r}?".format(close[0]) if close else ""
+                    )
+                    raise NotSupportedError(
+                        "{}:{}:{}: unknown option {!r} in section {!r}{}".format(
+                            file_name, argument_token.line, argument_token.column,
+                            argument, name, suggestion,
+                        )
+                    )
+                arguments[argument] = value
+                argument_locations[argument] = (
+                    file_name, argument_token.line, argument_token.column
+                )
+                if argument in self.section_boolean_argument_dict[name]:
+                    normalized = str(value).strip('"').lower()
+                    if normalized not in {"true", "false"}:
+                        raise ValueError(
+                            "{}:{}:{}: invalid value {!r} for boolean option {!r}; "
+                            "choose one of: false, true".format(
+                                file_name, argument_token.line,
+                                argument_token.column, str(value), argument,
+                            )
+                        )
+            section = Section()
+            section.name = name
+            section.parent_names.extend(parent_names)
+            section.mandatory.extend(self.section_mandatory_dict[name])
+            for parent_token, parent_name in zip(parent_tokens, parent_names):
+                parent = self.config.sections_by_name.get(parent_name)
+                if parent is None:
+                    raise NotSupportedError(
+                        "{}:{}:{}: parent section {!r} is not defined".format(
+                            file_name, parent_token.line, parent_token.column,
+                            parent_name,
+                        )
+                    )
+                section.arguments.update(parent.arguments)
+                section.argument_locations.update(parent.argument_locations)
+            section.arguments.update(arguments)
+            section.argument_locations.update(argument_locations)
+            section.arguments = {
+                key: value for key, value in section.arguments.items() if value != ""
+            }
+            section.argument_locations = {
+                key: location for key, location in section.argument_locations.items()
+                if key in section.arguments
+            }
+            self.config.add_section(section)
 
-        # set mandatory information
         self.config.set_section_mandatory_dict(self.section_mandatory_dict)
-        # set type check information
         self.config.set_type_check_dict(self.type_check_dict)
         return self.config
-
-    def find_parent(self, name: str):
-        if name in self.config.sections_by_name:
-            return self.config.sections_by_name[name]
-        return None
-
-    # Visit a parse tree produced by configParser#config.
-    def visitConfig(self, ctx: configParser.ConfigContext):
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by configParser#basic_section.
-    def visitBasic_section(self, ctx: configParser.Basic_sectionContext):
-        name = ctx.VALUE().getText()
-        if name not in self.section_names:
-            raise NotSupportedError("\"{}\" is not a valid section name".format(name))
-
-        section = Section()
-        section.name = name
-        section.arguments = self.visit(ctx.args())
-
-        if section.name in self.section_mandatory_dict:
-            section.mandatory.extend(self.section_mandatory_dict[section.name])
-
-        self.config.add_section(section)
-
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by configParser#extend_section.
-    def visitExtend_section(self, ctx: configParser.Extend_sectionContext):
-        name = ctx.VALUE().getText()
-        if name not in self.section_names:
-            raise NotSupportedError("\"{}\" is not a valid section name".format(name))
-
-        parents: List[Section] = list()
-        parent_names = self.visit(ctx.names())
-        for parent_name in parent_names:
-            parent_section = self.find_parent(parent_name)
-            if parent_section is None:
-                raise NotSupportedError("cannot find definition of a parent {}".format(parent_name))
-            parents.append(parent_section)
-
-        section = Section()
-        section.name = name
-        section.parent_names.extend(parent_names)
-
-        if section.name in self.section_mandatory_dict:
-            section.mandatory.extend(self.section_mandatory_dict[section.name])
-
-        for parent in parents:
-            section.arguments.update(parent.arguments)
-
-        section.arguments.update(self.visit(ctx.args()))
-        self.config.add_section(section)
-
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by configParser#list_of_name.
-    def visitList_of_name(self, ctx: configParser.List_of_nameContext):
-        names = [ctx.VALUE().getText()]
-        names.extend(self.visit(ctx.names()))
-        return names
-
-    # Visit a parse tree produced by configParser#single_names.
-    def visitSingle_names(self, ctx: configParser.Single_namesContext):
-        return [ctx.VALUE().getText()]
-
-    # Visit a parse tree produced by configParser#args.
-    def visitArgs(self, ctx: configParser.ArgsContext):
-        args_dict = dict()
-        for arg_assn_ctx in ctx.arg_assn():
-            arg, value = self.visit(arg_assn_ctx)
-            args_dict[arg] = value
-        return args_dict
-
-    # Visit a parse tree produced by configParser#arg_assn.
-    def visitArg_assn(self, ctx: configParser.Arg_assnContext):
-        return self.visit(ctx.arg()), self.visit(ctx.value())
-
-    # Visit a parse tree produced by configParser#arg.
-    def visitArg(self, ctx: configParser.ArgContext):
-        return ctx.VALUE().getText()
-
-    # Visit a parse tree produced by configParser#string_val.
-    def visitString_val(self, ctx: configParser.String_valContext):
-        return ctx.STRING().getText()
-
-    # Visit a parse tree produced by configParser#runall_val.
-    def visitRunall_val(self, ctx: configParser.Runall_valContext):
-        return ctx.RUNALL().getText()
-
-    # Visit a parse tree produced by configParser#runlabeled_only.
-    def visitRunlabeled_only(self, ctx: configParser.Runlabeled_onlyContext):
-        return ctx.RUNLABELED().getText()
-
-    # Visit a parse tree produced by configParser#number_val.
-    def visitNumber_val(self, ctx: configParser.Number_valContext):
-        return ctx.NUMBER().getText()
-
-    # Visit a parse tree produced by configParser#empty_val.
-    def visitEmpty_val(self, ctx: configParser.Empty_valContext):
-        return ""
