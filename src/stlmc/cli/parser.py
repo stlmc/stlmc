@@ -2,7 +2,7 @@ import argparse
 import re
 from pathlib import Path
 
-from ..config_schema import OPTION_HELP
+from ..config_schema import OPTION_CHOICES, OPTION_HELP
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "default.cfg"
@@ -37,6 +37,20 @@ def argument_help(name):
     return description
 
 
+def add_value_argument(group, name):
+    metavars = {
+        "solver": "SOLVER",
+        "path-strategy": "STRATEGY",
+        "logic": "LOGIC",
+    }
+    group.add_argument(
+        "-{}".format(name),
+        choices=OPTION_CHOICES.get(name),
+        metavar=metavars.get(name),
+        help=argument_help(name),
+    )
+
+
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog,
@@ -52,21 +66,36 @@ def build_parser(prog=None):
     common = parser.add_argument_group("model checking")
     for name in (
         "goal", "solver", "path-strategy", "bound", "time-bound", "time-horizon", "threshold",
-        "parallel-core", "solver-batch-size",
-        "core-minimize-attempts", "smt2-dir",
     ):
-        common.add_argument("-{}".format(name), help=argument_help(name))
+        add_value_argument(common, name)
+    common.add_argument(
+        "-two-step", action="store_true", help=argument_help("two-step")
+    )
+    common.add_argument(
+        "-parallel", action="store_true", help=argument_help("parallel")
+    )
+    add_value_argument(common, "parallel-core")
+    common.add_argument(
+        "-reach", action="store_true", help=argument_help("reach")
+    )
+
+    optimizations = parser.add_argument_group("optimizations")
+    for name in ("concrete",):
+        optimizations.add_argument(
+            "-{}".format(name), action="store_true", help=argument_help(name)
+        )
+    add_value_argument(optimizations, "solver-batch-size")
 
     solver = parser.add_argument_group("solver options")
     for name in ("logic", "precision", "ode-order", "ode-step", "executable-path"):
-        solver.add_argument("-{}".format(name), help=argument_help(name))
+        add_value_argument(solver, name)
 
-    flags = parser.add_argument_group("feature flags")
-    for name in (
-        "two-step", "concrete", "parallel", "visualize", "verbose", "reach",
-        "save-smt2",
-    ):
-        flags.add_argument("-{}".format(name), action="store_true", help=argument_help(name))
+    output = parser.add_argument_group("output and debugging")
+    for name in ("verbose", "visualize", "save-smt2"):
+        output.add_argument(
+            "-{}".format(name), action="store_true", help=argument_help(name)
+        )
+    add_value_argument(output, "smt2-dir")
     return parser
 
 
