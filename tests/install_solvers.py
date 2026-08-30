@@ -30,6 +30,16 @@ MISSING = {
 
 
 class InstallerCliTest(unittest.TestCase):
+    def test_python_solver_version_mismatch_is_unavailable(self):
+        with mock.patch.object(install_solvers.importlib, "import_module"), \
+                mock.patch.object(install_solvers, "version", return_value="9.9"):
+            available, detail = install_solvers._python_package_status(
+                "cvc5", "cvc5", "cvc5==1.3.4", "available"
+            )
+
+        self.assertFalse(available)
+        self.assertEqual(detail, "installed 9.9, expected 1.3.4")
+
     def test_help_explains_targets_locations_and_check_mode(self):
         help_text = install_solvers.build_parser().format_help()
         normalized_help = " ".join(help_text.split())
@@ -75,8 +85,8 @@ class InstallerCliTest(unittest.TestCase):
 
         self.assertEqual(
             pip.call_args_list,
-            [mock.call("cvc5"), mock.call("z3-solver==4.13.2.0"),
-             mock.call("yices")],
+            [mock.call("cvc5==1.3.4"), mock.call("z3-solver==4.15.4.0"),
+             mock.call("yices==1.1.6")],
         )
         yices.assert_called_once_with()
         dreal.assert_called_once_with()

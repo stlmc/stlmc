@@ -10,32 +10,48 @@ import tarfile
 import tempfile
 import urllib.request
 import zipfile
+from importlib.metadata import PackageNotFoundError, version
 
 from ..solver.availability import find_dreal, user_dreal_path
 
 
 _DREAL_VERSION = "3.16.06.02"
-_Z3_PACKAGE = "z3-solver==4.13.2.0"
-_CVC5_PACKAGE = "cvc5"
+_Z3_PACKAGE = "z3-solver==4.15.4.0"
+_CVC5_PACKAGE = "cvc5==1.3.4"
+_YICES_PACKAGE = "yices==1.1.6"
+
+
+def _python_package_status(module_name, distribution_name, package_spec, detail):
+    expected = package_spec.rsplit("==", 1)[1]
+    try:
+        importlib.import_module(module_name)
+        installed = version(distribution_name)
+    except (ImportError, OSError, PackageNotFoundError) as error:
+        return False, str(error)
+    if installed != expected:
+        return False, "installed {}, expected {}".format(installed, expected)
+    return True, "{} ({})".format(detail, installed)
 
 
 def _status():
     result = {}
+    result["cvc5"] = _python_package_status(
+        "cvc5", "cvc5", _CVC5_PACKAGE, "Python package available"
+    )
+    result["z3"] = _python_package_status(
+        "z3", "z3-solver", _Z3_PACKAGE, "Python package available"
+    )
     try:
-        importlib.import_module("cvc5")
-        result["cvc5"] = (True, "Python package available")
-    except (ImportError, OSError) as error:
-        result["cvc5"] = (False, str(error))
-
-    try:
-        importlib.import_module("z3")
-        result["z3"] = (True, "Python package available")
-    except (ImportError, OSError) as error:
-        result["z3"] = (False, str(error))
-
-    try:
-        importlib.import_module("yices")
-        result["yices"] = (True, "Python binding and native library available")
+        yices_module = importlib.import_module("yices")
+        available, detail = _python_package_status(
+            "yices", "yices", _YICES_PACKAGE,
+            "Python binding and native library available",
+        )
+        if available:
+            detail = "{}, native {}".format(
+                detail, yices_module.Yices.version
+            )
+        result["yices"] = available, detail
     except Exception as error:
         result["yices"] = (False, str(error).splitlines()[-1])
 
@@ -185,7 +201,7 @@ def main():
         if "z3" in selected and not before["z3"][0]:
             _install_python_package(_Z3_PACKAGE)
         if "yices" in selected and not before["yices"][0]:
-            _install_python_package("yices")
+            _install_python_package(_YICES_PACKAGE)
             _install_yices()
         if "dreal" in selected and not before["dreal"][0]:
             _install_dreal()
