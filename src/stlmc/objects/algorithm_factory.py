@@ -17,7 +17,9 @@ class AlgorithmFactory:
             common_section.get_value("path-strategy")
         )
         if is_two_step == "true":
-            continuous_solving = TwoStepAlgorithm(path_provider)
+            continuous_solving = TwoStepAlgorithm(
+                path_provider, self.formula_solver_factory
+            )
         else:
             continuous_solving = OneStepAlgorithm(
                 path_provider, self.formula_solver_factory
