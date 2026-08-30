@@ -74,10 +74,7 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         )
         self.assertIn("stl_depth_components", two_step_names)
         self.assertIn("stl_depth_components", one_step_names)
-        self.assertIn(
-            "fully_stable_partition_const",
-            enumerate_encoding.TwoStepAlgorithm.scenario_check.__code__.co_names,
-        )
+        self.assertIn("fully_stable_partition_const", two_step_names)
         self.assertIn("fully_stable_partition_const", one_step_names)
 
     def test_shared_depth_and_partition_components_match_primitives(self):

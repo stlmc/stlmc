@@ -223,6 +223,9 @@ class TwoStepAlgorithm(Algorithm):
 
                 stl_consts.append(stl_f_k)
                 stl_time_consts.append(time_f_k)
+                partition_const = fully_stable_partition_const(
+                    sub_formulas, 2 * (b + 1)
+                )
             else:
                 stl_f_k = BoolVal("True")
                 time_f_k = BoolVal("True")
@@ -230,6 +233,7 @@ class TwoStepAlgorithm(Algorithm):
                 stl_time_consts.append(BoolVal("True"))
                 time_order_const = reach_time_ordering(2 * b + 2, tau_max)
                 final_f_k = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
+                partition_const = BoolVal("True")
             finished_bound = b
             total_size = acc_size(model_consts)
             total_size += acc_size(stl_consts)
@@ -239,6 +243,7 @@ class TwoStepAlgorithm(Algorithm):
             total_size += size_of_tree(time_f_k)
             total_size += size_of_tree(time_order_const)
             total_size += size_of_tree(final_f_k)
+            total_size += size_of_tree(partition_const)
 
             path_candidates = self.path_provider.candidates(model, b)
             bound_scenarios = 0
@@ -248,6 +253,7 @@ class TwoStepAlgorithm(Algorithm):
                     model, b, tau_max, sub_formulas,
                     model_consts, stl_consts, stl_time_consts,
                     model_f_k_final, final_f_k, time_order_const,
+                    partition_const,
                     solver, printer, solver_batch_size,
                     explicit_path=path_candidate.constraint,
                     finalize_bound=is_last_path,
@@ -304,6 +310,7 @@ class TwoStepAlgorithm(Algorithm):
     def scenario_check(self, model: Model, bound: int, tau_max, sub_formulas: Set[Formula],
                        acc_model: List[Formula], acc_stl: List[Formula], acc_stl_time: List[Formula],
                        model_f_k_final: Formula, stl_final: Formula, stl_time_order: Formula,
+                       partition_const: Formula,
                        smt_solver: JobSolver, printer: Printer,
                        solver_batch_size: int,
                        explicit_path: Formula = BoolVal("True"),
@@ -357,9 +364,6 @@ class TwoStepAlgorithm(Algorithm):
         self.scenario_solver.add(contra_v_inv)
         true = BoolVal("True")
         false = BoolVal("False")
-        concrete_partition_const = fully_stable_partition_const(
-            sub_formulas, 2 * (bound + 1)
-        )
         counter = 0
         submitted = 0
         pending_candidates: List[Tuple[Formula, Formula]] = []
@@ -386,7 +390,7 @@ class TwoStepAlgorithm(Algorithm):
             # enumeration.  Validate it once at the concrete boundary.
             batch_formula = And([
                 candidate_batch_formula(batch_candidates),
-                concrete_partition_const,
+                partition_const,
             ])
             batch_scenario_count = len(pending_candidates)
             self.runner.set_scenario(scenario_label, batch_scenario_count)
