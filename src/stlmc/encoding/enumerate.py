@@ -3,6 +3,7 @@ from functools import reduce, singledispatch
 from typing import *
 
 from ..constraints.operations import *
+from ..constraints.interval import is_positive_infinity
 from ..objects.algorithm import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
@@ -869,7 +870,7 @@ def temporal_candidate(start: int, scan: int, interval: Interval):
     scan_j = _symbolic_interval(scan)
     midpoint = Div(Add(start_j.left, start_j.right), RealVal("2.0"))
     conditions = []
-    if "inf" not in str(interval.right):
+    if not is_positive_infinity(interval.right):
         lower = Sub(scan_j.left, interval.right)
         conditions.append(
             midpoint >= lower
@@ -931,7 +932,7 @@ def temporal_partition_obligations(f: Formula, depth: int):
             Sub(symbolic_sup(m), interval.left),
             Or([left_fall, right_fall]),
         )]
-        if "inf" not in str(interval.right):
+        if not is_positive_infinity(interval.right):
             candidates.append(("R",
                 Sub(symbolic_inf(m), interval.right),
                 Or([left_rise, right_rise]),

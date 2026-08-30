@@ -13,7 +13,9 @@ from stlmc.constraints.constraints import (
     Real, RealVal,
     ReleaseFormula, UntilFormula,
 )
-from stlmc.constraints.interval import Interval, universeInterval
+from stlmc.constraints.interval import (
+    Interval, inInterval, is_positive_infinity, universeInterval,
+)
 from stlmc.constraints.operations import remove_binary
 import stlmc.encoding.enumerate as enumerate_encoding
 import stlmc.encoding.monolithic as monolithic_encoding
@@ -33,6 +35,20 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         return Interval(
             left_closed, RealVal("1"), False, RealVal("3")
         )
+
+    def test_infinite_endpoint_detection_is_structural(self):
+        self.assertTrue(is_positive_infinity(float("inf")))
+        self.assertTrue(is_positive_infinity(RealVal("inf")))
+        self.assertFalse(is_positive_infinity(RealVal("infinite_limit")))
+        self.assertFalse(is_positive_infinity(Real("infinite_limit")))
+
+    def test_interval_variable_named_inf_is_not_an_infinite_endpoint(self):
+        constraint = inInterval(
+            Real("x"),
+            Interval(True, RealVal("0"), True, Real("infinite_limit")),
+        )
+        self.assertIn("infinite_limit", str(constraint))
+        self.assertIsInstance(constraint, And)
 
     def test_one_step_uses_shared_fully_stable_formula_builder(self):
         self.assertIs(
