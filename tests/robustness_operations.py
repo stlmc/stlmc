@@ -6,6 +6,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from stlmc.constraints.robustness import release_robustness, until_robustness
 from stlmc.constraints.constraints import (
     Add, And, Eq, Geq, Gt, Implies, Leq, Lt, Neq, Not, Or, Real, RealVal, Sub,
 )
@@ -59,6 +60,30 @@ class RobustnessOperationsTest(unittest.TestCase):
         self.assertEqual(strengthening(formula, 0.5), Implies(
             relaxing(antecedent, 0.5), strengthening(consequent, 0.5)
         ))
+
+    def test_until_uses_right_operand_at_witness(self):
+        times = [0.0, 1.0, 2.0]
+        left = {0.0: 2.0, 1.0: 2.0, 2.0: 2.0}
+        right = {0.0: -5.0, 1.0: -5.0, 2.0: 3.0}
+
+        value = until_robustness(
+            times, lambda witness: [t for t in times if t <= witness],
+            left.__getitem__, right.__getitem__,
+        )
+
+        self.assertEqual(value, 2.0)
+
+    def test_release_uses_right_operand_at_witness(self):
+        times = [0.0, 1.0, 2.0]
+        left = {0.0: 3.0, 1.0: -5.0, 2.0: -5.0}
+        right = {0.0: -2.0, 1.0: -2.0, 2.0: 4.0}
+
+        value = release_robustness(
+            times, lambda witness: [t for t in times if t <= witness],
+            left.__getitem__, right.__getitem__,
+        )
+
+        self.assertEqual(value, 3.0)
 
 
 if __name__ == "__main__":
