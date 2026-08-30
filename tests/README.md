@@ -16,9 +16,9 @@ The test suite has fourteen parts:
   dReal inverse-trigonometric translations.
 - `robustness_operations.py` checks STL weakening, strengthening, negation,
   and implication polarity transformations.
-- `temporal_reduction.py` checks that bounded Until and Release normalization
-  preserves the paper's closed-prefix semantics and distinguishes strict from
-  non-strict continuation at singular partition intervals.
+- `temporal_reduction.py` checks the fully-stable temporal encoding, including
+  shared one-step/two-step components, partition obligations, strict interval
+  endpoints, and bounded Until/Release recurrence semantics.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger

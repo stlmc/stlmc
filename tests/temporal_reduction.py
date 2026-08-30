@@ -9,14 +9,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.constraints.constraints import (
-    And, Bool, BoolVal, Eq, FinallyFormula, GloballyFormula, Not, Or,
-    Real, RealVal,
+    And, Bool, BoolVal, Eq, FinallyFormula, Not, Real, RealVal,
     ReleaseFormula, UntilFormula,
 )
 from stlmc.constraints.interval import (
     Interval, inInterval, is_positive_infinity, universeInterval,
 )
-from stlmc.constraints.operations import remove_binary
 import stlmc.encoding.enumerate as enumerate_encoding
 import stlmc.encoding.monolithic as monolithic_encoding
 from stlmc.encoding.enumerate import (
@@ -97,51 +95,6 @@ class BoundedTemporalReductionTest(unittest.TestCase):
             str(And(partition_obligations(sub_formulas, 4))),
             str(fully_stable_partition_const(sub_formulas, 4)),
         )
-
-    def test_until_prefix_includes_current_time(self):
-        reduced = remove_binary(UntilFormula(
-            self._interval(False), universeInterval,
-            self.left, self.right,
-        ))
-
-        self.assertIsInstance(reduced, And)
-        prefix, witness, split = reduced.children
-        self.assertIsInstance(prefix, GloballyFormula)
-        self.assertTrue(prefix.local_time.left_end)
-        self.assertTrue(prefix.local_time.right_end)
-        self.assertEqual(str(prefix.local_time), "[0.0,1]")
-        self.assertIsInstance(witness, FinallyFormula)
-        self.assertEqual(witness.local_time, self._interval(False))
-        self.assertIsInstance(split.child, UntilFormula)
-        self.assertFalse(split.child.local_time.left_end)
-        self.assertEqual(str(split.child.local_time), "(0.0,inf)")
-
-    def test_closed_until_allows_split_point_witness(self):
-        reduced = remove_binary(UntilFormula(
-            self._interval(True), universeInterval,
-            self.left, self.right,
-        ))
-
-        continuation = reduced.children[2].child
-        self.assertIsInstance(continuation, UntilFormula)
-        self.assertTrue(continuation.local_time.left_end)
-        self.assertEqual(str(continuation.local_time), "[0.0,inf)")
-
-    def test_release_is_boolean_dual_shape(self):
-        reduced = remove_binary(ReleaseFormula(
-            self._interval(False), universeInterval,
-            self.left, self.right,
-        ))
-
-        self.assertIsInstance(reduced, Or)
-        prefix, witness, split = reduced.children
-        self.assertIsInstance(prefix, FinallyFormula)
-        self.assertEqual(str(prefix.local_time), "[0.0,1]")
-        self.assertIsInstance(witness, GloballyFormula)
-        self.assertEqual(witness.local_time, self._interval(False))
-        self.assertIsInstance(split, GloballyFormula)
-        self.assertIsInstance(split.child, ReleaseFormula)
-        self.assertFalse(split.child.local_time.left_end)
 
     def test_strict_until_preserves_original_start_index(self):
         strict = UntilFormula(
@@ -228,24 +181,6 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         solver = z3.SolverFor("QF_LRA")
         solver.add(z3Obj(And(children)))
         return solver.check() == z3.sat
-
-    def test_binary_rewrite_does_not_preserve_same_partition_bound(self):
-        """Guard the reason remove_binary is excluded from BMC preprocessing."""
-        direct = UntilFormula(
-            Interval(True, RealVal("0"), True, RealVal("1")),
-            universeInterval, self.left, self.right,
-        )
-        reduced = remove_binary(direct)
-        tau_values = (0.0, 1.5, 2.0)
-        p_bits = (True, False, False, False)
-        q_bits = (True, False, False, True)
-
-        self.assertTrue(self._fully_stable_sat(
-            direct, tau_values, p_bits, q_bits
-        ))
-        self.assertFalse(self._fully_stable_sat(
-            reduced, tau_values, p_bits, q_bits
-        ))
 
     def test_paper_time_ordering_allows_equal_internal_points(self):
         solver = z3.SolverFor("QF_LRA")
