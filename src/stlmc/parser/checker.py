@@ -87,6 +87,10 @@ def check_validity(config: Configuration):
         my_check = config.type_check_dict[section_name]
         for arg_name in section.arguments:
             arg_val = section.arguments[arg_name]
+            location = section.argument_locations.get(arg_name)
+            prefix = (
+                "{}:{}:{}: ".format(*location) if location is not None else ""
+            )
             for arg_type, ty in my_check:
                 if arg_type == arg_name:
                     quote_removed_val = arg_val.replace("\"", "")
@@ -99,13 +103,19 @@ def check_validity(config: Configuration):
                             else:
                                 float(quote_removed_val)
                         except ValueError:
-                            raise ValueError("\"{}\" is not a valid parameter for the argument \"{}\", "
-                                             "only {} value is allowed".format(quote_removed_val, arg_name, ty))
+                            raise ValueError(
+                                "{}invalid value {!r} for option {!r}; expected {}"
+                                .format(prefix, quote_removed_val, arg_name, ty)
+                            )
                     elif isinstance(ty, frozenset):
                         if quote_removed_val not in ty:
-                            raise ValueError("\"{}\" is not a valid parameter for the argument \"{}\" "
-                                             "(please provide one of {{{}}})"
-                                             .format(quote_removed_val, arg_name, " , ".join(ty)))
+                            raise ValueError(
+                                "{}invalid value {!r} for option {!r}; choose one of: {}"
+                                .format(
+                                    prefix, quote_removed_val, arg_name,
+                                    ", ".join(sorted(ty)),
+                                )
+                            )
                     elif ty == "path" and underlying_solver == "dreal":
                         if (not os.path.isfile(quote_removed_val)
                                 or not os.access(quote_removed_val, os.X_OK)):
