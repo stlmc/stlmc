@@ -1,6 +1,7 @@
 import abc
 import subprocess
 import threading
+from enum import Enum
 from abc import ABC
 from queue import Queue
 from threading import Semaphore
@@ -10,6 +11,47 @@ from ..util.logger import Logger
 # all solver have logger
 from ..objects.configuration import Configuration
 
+
+class SolverStatus(Enum):
+    SAT = "sat"
+    UNSAT = "unsat"
+    UNKNOWN = "unknown"
+
+
+class IncrementalFormulaSolver(ABC):
+    """Backend-neutral incremental solver over STLmc Formula objects."""
+
+    @abc.abstractmethod
+    def add(self, formula):
+        pass
+
+    @abc.abstractmethod
+    def push(self):
+        pass
+
+    @abc.abstractmethod
+    def pop(self):
+        pass
+
+    @abc.abstractmethod
+    def check(self) -> SolverStatus:
+        pass
+
+    @abc.abstractmethod
+    def model(self):
+        pass
+
+    @abc.abstractmethod
+    def track(self, formula, track_id: str):
+        pass
+
+    @abc.abstractmethod
+    def unsat_core(self):
+        pass
+
+    @abc.abstractmethod
+    def fork(self):
+        pass
 
 class ThreadWorker:
     """Small process-like wrapper used by in-process parallel SMT workers."""

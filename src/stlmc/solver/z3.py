@@ -10,7 +10,9 @@ import z3
 from ..constraints.operations import *
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exception.exception import NotSupportedError
-from ..solver.abstract_solver import ParallelSMTSolver
+from ..solver.abstract_solver import (
+    IncrementalFormulaSolver, ParallelSMTSolver, SolverStatus,
+)
 from ..solver.assignment import Assignment
 from ..util.smt2_output import is_enabled, write_smt2
 from ..tree.operations import size_of_tree
@@ -186,6 +188,57 @@ class Z3Solver(ParallelSMTSolver):
         pass
 
 
+class Z3FormulaSolver(IncrementalFormulaSolver):
+    """Incremental Z3 adapter whose public API only accepts STLmc formulas."""
+
+    def __init__(self, logic="QF_LRA"):
+        self.logic = logic
+        self._solver = z3.SolverFor(logic)
+        self._assertions = []
+        self._tracked = {}
+        self._scopes = []
+
+    def add(self, formula):
+        self._assertions.append(formula)
+        self._solver.add(z3Obj(formula))
+
+    def push(self):
+        self._scopes.append((len(self._assertions), set(self._tracked)))
+        self._solver.push()
+
+    def pop(self):
+        assertion_size, track_ids = self._scopes.pop()
+        del self._assertions[assertion_size:]
+        self._tracked = {
+            key: value for key, value in self._tracked.items()
+            if key in track_ids
+        }
+        self._solver.pop()
+
+    def check(self):
+        result = self._solver.check()
+        if result == z3.sat:
+            return SolverStatus.SAT
+        if result == z3.unsat:
+            return SolverStatus.UNSAT
+        return SolverStatus.UNKNOWN
+
+    def model(self):
+        return Z3Assignment(self._solver.model())
+
+    def track(self, formula, track_id):
+        self._tracked[track_id] = formula
+        self._solver.assert_and_track(z3Obj(formula), track_id)
+
+    def unsat_core(self):
+        return {str(item) for item in self._solver.unsat_core()}
+
+    def fork(self):
+        result = Z3FormulaSolver(self.logic)
+        for formula in self._assertions:
+            result.add(formula)
+        return result
+
 class Z3Assignment(Assignment):
     def __init__(self, z3_model=None, assignments=None):
         self._z3_model = z3_model
@@ -210,7 +263,16 @@ class Z3Assignment(Assignment):
     def eval(self, const):
         if self._z3_model is None:
             raise NotSupportedError("Z3 has no model")
-        return self._z3_model.eval(z3Obj(const))
+        value = self._z3_model.eval(z3Obj(const), model_completion=True)
+        if z3.is_true(value):
+            return BoolVal("True")
+        if z3.is_false(value):
+            return BoolVal("False")
+        if z3.is_int_value(value):
+            return IntVal(str(value))
+        if z3.is_rational_value(value):
+            return RealVal(str(value).replace("?", ""))
+        raise NotSupportedError("cannot translate Z3 model value {}".format(value))
 
     def z3eval(self, const):
         if self._z3_model is None:
