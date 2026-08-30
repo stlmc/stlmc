@@ -18,7 +18,7 @@ SECTION_VALUE_OPTIONS = {
 SECTION_BOOLEAN_OPTIONS = {
     "common": (
         "two-step", "concrete", "parallel", "visualize", "verbose",
-        "reach", "save-smt2",
+        "reach", "save-smt2", "smt-preprocess",
     ),
     "z3": (),
     "yices": (),
@@ -94,6 +94,7 @@ OPTION_HELP = {
     "verbose": "print detailed progress information",
     "reach": "treat an ordinary state goal as a reachability query",
     "save-smt2": "save generated SMT2 queries",
+    "smt-preprocess": "slice and inline scenario-fixed SMT definitions",
 }
 
 OPTION_CHOICES = {
