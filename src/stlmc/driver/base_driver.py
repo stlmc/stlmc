@@ -18,7 +18,6 @@ from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
 from ..solver.availability import find_dreal
-from ..solver.dreal import dRealSolver
 from ..solver.solver_factory import SolverFactory
 from ..solver.capability import (
     expression_requires_dreal,
@@ -26,10 +25,7 @@ from ..solver.capability import (
     validate_formula_solver_support,
     validate_model_solver_support,
 )
-from ..solver.z3 import z3Obj
 from ..utils.print import *
-from ..visualize.visualizer import Visualizer
-from ..visualize.visualizer import sub_formula as vis_sub_formula
 
 
 def validate_requested_goal_labels(requested_labels, goal_labels):
@@ -390,6 +386,9 @@ class BaseRunner(Runner):
                         cfg_string = ["{", "# state variables: {}".format(
                             " , ".join(map(lambda x: x.id, model.range_dict.keys())))]
 
+                        from ..visualize.visualizer import (
+                            sub_formula as vis_sub_formula,
+                        )
                         ff = substitution(goal.get_formula(), PD)
                         subformulas, formula_id_dict = vis_sub_formula(ff)
                         rob_string = list()

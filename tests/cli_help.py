@@ -78,5 +78,98 @@ class CliHelpTest(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 0, completed.stdout)
 
+    def test_missing_model_path_exits_before_heavy_imports(self):
+        code = (
+            "import sys; "
+            "sys.argv = ['stlmc']; "
+            "from stlmc.cli.mc import main; "
+            "result = main(); "
+            "assert result == 2, result; "
+            "assert 'z3' not in sys.modules; "
+            "assert 'bokeh' not in sys.modules; "
+            "assert 'stlmc.parser.model_visitor' not in sys.modules; "
+            "assert 'stlmc.driver.base_driver' not in sys.modules"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=PROJECT_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertEqual(
+            completed.stdout.strip(),
+            "error: should provide an STLmc model file path",
+        )
+
+    def test_model_path_usage_errors_exit_before_heavy_imports(self):
+        # Keep each case in a fresh interpreter so imported-module assertions
+        # cannot be satisfied by an earlier case accidentally.
+        with tempfile.TemporaryDirectory() as directory:
+            cases = (
+                (["missing.model"], "not a valid STLmc model file path"),
+                (["-solver", "z3"], "should provide an STLmc model file path"),
+                ([directory], "is not a file"),
+            )
+            for arguments, expected in cases:
+                case_code = (
+                    "import sys; "
+                    "sys.argv = {!r}; "
+                    "from stlmc.cli.mc import main; "
+                    "result = main(); "
+                    "assert result == 2, result; "
+                    "assert 'z3' not in sys.modules; "
+                    "assert 'bokeh' not in sys.modules; "
+                    "assert 'stlmc.driver.base_driver' not in sys.modules"
+                ).format(["stlmc"] + arguments)
+                completed = subprocess.run(
+                    [sys.executable, "-c", case_code], cwd=PROJECT_ROOT,
+                    text=True, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout)
+                self.assertIn(expected, completed.stdout)
+
+    def test_model_checker_import_does_not_eagerly_load_visualization(self):
+        code = (
+            "import sys; import stlmc.driver.base_driver; "
+            "assert 'bokeh' not in sys.modules; "
+            "assert 'stlmc.visualize.visualizer' not in sys.modules; "
+            "assert 'stlmc.solver.dreal' not in sys.modules"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", code], cwd=PROJECT_ROOT,
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+
+    def test_missing_explicit_config_exits_before_heavy_imports(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".model") as model_file:
+            for option in (
+                "-default-cfg", "-model-cfg", "-model-specific-cfg"
+            ):
+                code = (
+                    "import sys; "
+                    "sys.argv = {!r}; "
+                    "from stlmc.cli.mc import main; "
+                    "result = main(); "
+                    "assert result == 2, result; "
+                    "assert 'z3' not in sys.modules; "
+                    "assert 'bokeh' not in sys.modules; "
+                    "assert 'stlmc.driver.base_driver' not in sys.modules"
+                ).format([
+                    "stlmc", model_file.name, option,
+                    "/definitely/missing/stlmc.cfg",
+                ])
+                completed = subprocess.run(
+                    [sys.executable, "-c", code], cwd=PROJECT_ROOT,
+                    text=True, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout)
+                self.assertIn("configuration file", completed.stdout)
+                self.assertIn("does not exist or is not a file", completed.stdout)
+
 if __name__ == "__main__":
     unittest.main()

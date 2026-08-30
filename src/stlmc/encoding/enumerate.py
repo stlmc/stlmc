@@ -7,7 +7,6 @@ from ..objects.algorithm import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
-from ..solver.dreal import dRealSolver, DrealAssignment
 from ..solver.z3 import *
 from ..constraints.operations import size_of_tree
 from ..utils.print import Printer
