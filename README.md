@@ -63,6 +63,11 @@ stlmc-install-solvers cvc5
 stlmc-install-solvers yices
 ```
 
+Solver packages are pinned to the versions exercised by the test suite. Update
+one pin at a time and run `make test` before releasing a newer solver version;
+solver APIs, model values, heuristics, and reported finishing bounds can change
+between releases.
+
 Yices additionally requires its native library. Automatic Yices installation
 uses the SRI package repository on Ubuntu/Debian and Homebrew on macOS, and may
 request administrator privileges. On other Linux distributions, install the

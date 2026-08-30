@@ -54,6 +54,7 @@ def case_paths(case, output_root):
     return (
         output_dir / "{}.log".format(specific_config.stem),
         output_dir / "{}.z3.log".format(specific_config.stem),
+        output_dir / "{}.cvc5.log".format(specific_config.stem),
     )
 
 
@@ -66,14 +67,14 @@ def read_result(output):
     return match.group(1), int(match.group(2))
 
 
-def run_z3(executable, case, timeout, log_path):
+def run_solver(executable, case, timeout, log_path, solver):
     model_path, model_config, specific_config = case
     command = [
         executable,
         str(model_path),
         "-model-cfg", str(model_config),
         "-model-specific-cfg", str(specific_config),
-        "-solver", "z3",
+        "-solver", solver,
         "-logic", yices_logic(case),
     ]
     started = time.monotonic()
@@ -137,7 +138,8 @@ def main():
         raise SystemExit("no Yices benchmark cases found under {}".format(args.scope))
 
     print(
-        "comparing Z3 with Yices for {} benchmark cases with {} job(s)".format(
+        "comparing CVC5 and Z3 with Yices for {} benchmark cases "
+        "with {} job(s)".format(
             len(cases), args.jobs
         )
     )
@@ -147,7 +149,7 @@ def main():
     futures = {}
     try:
         for case in cases:
-            yices_log, z3_log = case_paths(case, args.output)
+            yices_log, z3_log, cvc5_log = case_paths(case, args.output)
             if not yices_log.exists():
                 raise SystemExit(
                     "Yices benchmark log is missing: {}; run benchmark first".format(
@@ -156,18 +158,22 @@ def main():
                 )
             yices_result = read_result(yices_log.read_text(encoding="utf-8"))
             future = executor.submit(
-                run_z3, executable, case, args.timeout, z3_log
+                run_solver, executable, case, args.timeout, z3_log, "z3"
             )
-            futures[future] = (case, yices_result)
+            futures[future] = (case, yices_result, "z3")
+            future = executor.submit(
+                run_solver, executable, case, args.timeout, cvc5_log, "cvc5"
+            )
+            futures[future] = (case, yices_result, "cvc5")
 
         for index, future in enumerate(as_completed(futures), start=1):
-            case, yices_result = futures[future]
+            case, yices_result, solver = futures[future]
             model_path, _, specific_config = case
             name = "{}/{}".format(model_path.parent.name, specific_config.stem)
-            z3_result, elapsed, returncode = future.result()
+            solver_result, elapsed, returncode = future.result()
             passed = (
                 yices_result is not None
-                and z3_result == yices_result
+                and solver_result == yices_result
                 and returncode == 0
             )
             if passed:
@@ -176,13 +182,14 @@ def main():
                 failures += 1
                 outcome = "FAIL"
             print(
-                "[{}/{}] {}: {} yices={} z3={} ({:.2f}s, exit={})".format(
+                "[{}/{}] {}: {} yices={} {}={} ({:.2f}s, exit={})".format(
                     str(index).zfill(2),
-                    str(len(cases)).zfill(2),
+                    str(2 * len(cases)).zfill(2),
                     name,
                     outcome,
                     yices_result,
-                    z3_result,
+                    solver,
+                    solver_result,
                     elapsed,
                     returncode,
                 )
@@ -191,7 +198,7 @@ def main():
         interrupted = True
         benchmarks.STOP_REQUESTED.set()
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        print("\ninterrupted; terminating active Z3 processes...", flush=True)
+        print("\ninterrupted; terminating active solver processes...", flush=True)
         for future in futures:
             future.cancel()
         benchmarks.terminate_active_processes()
@@ -202,7 +209,9 @@ def main():
         return 130
     if failures:
         raise SystemExit(
-            "{} of {} Z3/Yices comparisons failed".format(failures, len(cases))
+            "{} of {} CVC5/Z3/Yices comparisons failed".format(
+                failures, 2 * len(cases)
+            )
         )
     return 0
 
