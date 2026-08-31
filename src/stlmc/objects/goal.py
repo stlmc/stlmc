@@ -5,24 +5,30 @@ from ..encoding.time import make_zeno_time_const, make_non_zeno_time_const
 from ..exceptions import NotSupportedError
 
 
-class Goal:
+class Goal(abc.ABC):
     def __init__(self, time_enc_func):
         self.time_encoding_function = time_enc_func
         self.partition_size = 0
-
-    @abc.abstractmethod
-    def make_consts(self, bound, time_bound, delta, model, proposition_dict):
-        pass
-
-    @abc.abstractmethod
-    def k_step_consts(self, k, time_bound, delta, model, proposition_dict, is_final=False):
-        pass
 
     @abc.abstractmethod
     def get_formula(self):
         pass
 
     @abc.abstractmethod
+    def clear(self):
+        pass
+
+
+class StlGoal(Goal):
+    """Formula container encoded by the shared bounded-STL layer."""
+
+    def __init__(self, formula: Formula, time_enc_func=None):
+        super().__init__(time_enc_func or make_zeno_time_const)
+        self.formula = formula
+
+    def get_formula(self):
+        return self.formula
+
     def clear(self):
         pass
 
@@ -117,19 +123,7 @@ class GoalFactory:
     def generate_goal(self, is_reach=False):
         if is_reach:
             return ReachGoal(self.raw_goal, self.time_function)
-        from ..legacy.goals import NewStlGoal
-        return NewStlGoal(self.raw_goal, self.time_function)
-
-
-class OldGoalFactory(GoalFactory):
-    def __init__(self, raw_goal: Formula, is_zeno=True):
-        super().__init__(raw_goal, is_zeno)
-
-    def generate_goal(self, is_reach=False):
-        if is_reach:
-            return ReachGoal(self.raw_goal, self.time_function)
-        from ..legacy.goals import OldStlGoal
-        return OldStlGoal(self.raw_goal, self.time_function)
+        return StlGoal(self.raw_goal, self.time_function)
 
 
 # for reach optimization
@@ -179,12 +173,3 @@ def optimize(formula: Formula) -> Formula:
 
 def reach_goal(goal: Goal) -> Goal:
     return ReachGoal(goal.get_formula(), goal.time_encoding_function)
-
-
-def __getattr__(name):
-    """Lazily preserve imports of the former goal encoding classes."""
-    legacy_names = {"PropHelper", "BaseStlGoal", "OldStlGoal", "NewStlGoal"}
-    if name not in legacy_names:
-        raise AttributeError(name)
-    from ..legacy import goals
-    return getattr(goals, name)

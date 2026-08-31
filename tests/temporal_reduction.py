@@ -1,5 +1,5 @@
 import sys
-import subprocess
+import importlib.util
 import unittest
 from pathlib import Path
 
@@ -32,22 +32,18 @@ from stlmc.solver.z3 import z3Obj
 
 
 class BoundedTemporalReductionTest(unittest.TestCase):
-    def test_goal_import_does_not_load_legacy_partition_encoding(self):
-        source = (
-            "import sys; "
-            "import stlmc.objects.goal; "
-            "legacy = ('stlmc.constraints.encoding', "
-            "'stlmc.constraints.partition', "
-            "'stlmc.constraints.separation', "
-            "'stlmc.constraints.enhanced_partition', "
-            "'stlmc.constraints.enhanced_separation'); "
-            "assert not [name for name in legacy if name in sys.modules]"
+    def test_legacy_partition_encodings_are_removed(self):
+        removed = (
+            "stlmc.constraints.encoding",
+            "stlmc.constraints.partition",
+            "stlmc.constraints.separation",
+            "stlmc.constraints.enhanced_partition",
+            "stlmc.constraints.enhanced_separation",
+            "stlmc.legacy",
         )
-        subprocess.run(
-            [sys.executable, "-c", source],
-            cwd=str(PROJECT_ROOT),
-            check=True,
-        )
+        self.assertFalse([
+            name for name in removed if importlib.util.find_spec(name)
+        ])
 
     def setUp(self):
         self.left = Bool("p")

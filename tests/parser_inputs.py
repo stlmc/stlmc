@@ -267,11 +267,14 @@ goal: true;
         )
         self.assertIsInstance(goals[-1], ReachGoal)
 
-    def test_object_factory_rejects_unknown_encoding(self):
-        from stlmc.application.model_loader import ObjectFactory
+    def test_goal_factory_builds_current_stl_goal(self):
+        from stlmc.constraints.constraints import Bool
+        from stlmc.objects.goal import GoalFactory, StlGoal
 
-        with self.assertRaisesRegex(ValueError, "unknown formula encoding"):
-            ObjectFactory("missing").generate_object_manager()
+        formula = Bool("goal")
+        goal = GoalFactory(formula).generate_goal()
+        self.assertIsInstance(goal, StlGoal)
+        self.assertIs(goal.get_formula(), formula)
 
 
 if __name__ == "__main__":

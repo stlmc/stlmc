@@ -18,7 +18,7 @@ from ..objects.goal import (
     Goal, ReachGoal, optimize, reach_goal, validate_reach_formula,
 )
 from ..objects.model import Model
-from ..application.model_loader import ObjectFactory
+from ..application.model_loader import ObjectManager
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
@@ -209,7 +209,6 @@ class BaseRunner(Runner):
             config = cmd_parser.config
 
             common_section = config.get_section("common")
-            encoding = "model-with-goal-enhanced"
             underlying_solver = common_section.get_value("solver")
             bound = common_section.get_value("bound")
             time_bound = common_section.get_value("time-bound")
@@ -245,7 +244,7 @@ class BaseRunner(Runner):
 
             file_name = cmd_parser.file
 
-            object_manager = ObjectFactory(encoding).generate_object_manager()
+            object_manager = ObjectManager()
 
             if print_type == "true":
                 printer.verbose = True
