@@ -171,6 +171,7 @@ class RobustnessOperationsTest(unittest.TestCase):
         )
 
     def test_assignment_projection_is_independent_from_plotting(self):
+        from stlmc.visualize.projection import continuous_values
         from stlmc.visualize.visualizer import Projector
 
         first, second = Real("currentMode_0"), Real("currentMode_1")
@@ -184,6 +185,12 @@ class RobustnessOperationsTest(unittest.TestCase):
             projector.get_ordered_modules(), [modules[1], modules[0]]
         )
         self.assertEqual(projector.get_max_bound(), 1)
+
+        x = Real("x")
+        self.assertEqual(continuous_values({
+            Real("x_0_0"): RealVal("1/2"),
+            Real("x_0_t"): RealVal("3/2"),
+        }, {x: (True, 0, 2, True)}, 0), {"x": [(0.5, 1.5)]})
 
     def test_plot_grouping_is_independent_from_plotting(self):
         from stlmc.visualize.visualizer import (

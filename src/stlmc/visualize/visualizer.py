@@ -3,7 +3,6 @@ import itertools
 import os
 from typing import List, Dict, Set, Tuple
 
-import sympy
 from bokeh.embed import components
 from bokeh.io import output_file, save
 from bokeh.models import HoverTool, CrosshairTool, Legend, DataRange1d
@@ -16,7 +15,7 @@ from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from .latex import formula2latex, interval_string
 from .grouping import flatten, pairwise_disjoint_check, split_groups
-from .projection import Projector
+from .projection import Projector, continuous_values
 from .robustness import robustness
 from .sampling import (
     DiscreteSampler, OdePointSampler, PointSampler, SolutionPointSampler,
@@ -344,21 +343,4 @@ class Visualizer:
 
     @staticmethod
     def make_cont_values(assignment: dict, cont_var_dict: dict, max_bound):
-        result = dict()
-        for var in cont_var_dict:
-            sub_result = list()
-            for i in range(max_bound + 1):
-                initial_var_id = var.id + "_" + str(i) + "_0"
-                final_var_id = var.id + "_" + str(i) + "_t"
-
-                initial_value_sympy = sympy.parse_expr(assignment[Real(initial_var_id)].value)
-                final_value_sympy = sympy.parse_expr(assignment[Real(final_var_id)].value)
-
-                initial_value = float(initial_value_sympy.evalf())
-                final_value = float(final_value_sympy.evalf())
-
-                sub_result.append((initial_value, final_value))
-
-            result[var.id] = sub_result
-
-        return result
+        return continuous_values(assignment, cont_var_dict, max_bound)

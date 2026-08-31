@@ -2,7 +2,26 @@
 
 from typing import Dict, List, Set
 
-from ..constraints.constraints import Constraint, Variable
+import sympy
+
+from ..constraints.constraints import Constraint, Real, Variable
+
+
+def continuous_values(assignment: dict, continuous_variables: dict,
+                      max_bound: int):
+    """Project indexed endpoint assignments into per-bound value pairs."""
+    result = {}
+    for variable in continuous_variables:
+        values = []
+        for bound in range(max_bound + 1):
+            initial = assignment[Real("{}_{}_0".format(variable.id, bound))]
+            final = assignment[Real("{}_{}_t".format(variable.id, bound))]
+            values.append((
+                float(sympy.parse_expr(initial.value).evalf()),
+                float(sympy.parse_expr(final.value).evalf()),
+            ))
+        result[variable.id] = values
+    return result
 
 
 class Projector:
@@ -46,4 +65,4 @@ class Projector:
         return [self.modules[module_id] for module_id in module_ids]
 
 
-__all__ = ["Projector"]
+__all__ = ["Projector", "continuous_values"]
