@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 
 from ..constraints.operations import substitution
+from .formula_index import index_subformulas
 
 
 def write_verification_artifacts(
@@ -22,14 +23,10 @@ def write_verification_artifacts(
             label, float(threshold), model.init, model.const_dict,
         ), artifact_file)
 
-    # Keep visualization imports lazy: ordinary model checking should not load
-    # NumPy, SciPy, or Bokeh merely because artifact support is installed.
-    from ..visualize.visualizer import sub_formula
-
     expanded_formula = substitution(
         goal.get_formula(), proposition_definitions
     )
-    subformulas, formula_ids = sub_formula(expanded_formula)
+    subformulas, formula_ids = index_subformulas(expanded_formula)
     lines = [
         "{",
         "# state variables: {}".format(

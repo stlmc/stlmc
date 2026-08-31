@@ -12,6 +12,7 @@ from stlmc.constraints.constraints import (
     RealVal, Sub,
 )
 from stlmc.constraints.operations import relaxing, strengthening
+from stlmc.artifacts.formula_index import index_subformulas
 
 
 class RobustnessOperationsTest(unittest.TestCase):
@@ -121,6 +122,16 @@ class RobustnessOperationsTest(unittest.TestCase):
         samples = [[0.0, 0.5, 1.0]]
         self.assertEqual(get_sub_time_samples(samples, 1.1, 2.0, 1.0), [])
         self.assertEqual(get_sub_time_samples(samples, 0.5, 1.0, 1.0), [0.5])
+
+    def test_artifact_formula_index_is_lightweight_and_deterministic(self):
+        formula = Implies(Gt(self.x, self.zero), Leq(self.x, RealVal("2")))
+        first_formulas, first_ids = index_subformulas(formula)
+        second_formulas, second_ids = index_subformulas(formula)
+        self.assertEqual(first_ids[formula], 0)
+        self.assertEqual(
+            sorted((repr(item), first_ids[item]) for item in first_formulas),
+            sorted((repr(item), second_ids[item]) for item in second_formulas),
+        )
 
 
 if __name__ == "__main__":

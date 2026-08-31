@@ -17,6 +17,7 @@ from scipy.integrate import odeint
 from ..constraints.constraints import *
 from ..constraints.operations import *
 from ..constraints.robustness import release_robustness, until_robustness
+from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from bokeh.plotting import figure, show
 
@@ -935,54 +936,6 @@ def interval_string(interval: Interval):
     interval_tmp.append("{},{}".format(interval.left, interval.right))
     interval_tmp.append(interval_right_ends[interval.right_end])
     return "".join(interval_tmp)
-
-
-def sub_formula(formula: Formula) -> Tuple[Set, Dict]:
-    def _id_gen():
-        _id = -1
-        while True:
-            _id += 1
-            yield _id
-
-    assert isinstance(formula, Formula)
-
-    gen_id = _id_gen()
-    formula_id_dict = dict()
-    set_of_formulas = set()
-
-    # first children
-    root = (next(gen_id), formula)
-
-    waiting_queue = set()
-    waiting_queue.add(root)
-    set_of_formulas.add(formula)
-
-    while len(waiting_queue) > 0:
-        f_id, f = waiting_queue.pop()
-        if f in formula_id_dict:
-            continue
-        formula_id_dict[f] = f_id
-
-        if is_proposition(f):
-            set_of_formulas.add(f)
-        elif isinstance(f, UnaryFormula):
-            set_of_formulas.add(f)
-            waiting_queue.add((next(gen_id), f.child))
-        elif isinstance(f, BinaryFormula):
-            set_of_formulas.add(f)
-            if isinstance(f, Implies):
-                waiting_queue.add((next(gen_id), Not(f.left)))
-            else:
-                waiting_queue.add((next(gen_id), f.left))
-            waiting_queue.add((next(gen_id), f.right))
-        elif isinstance(f, MultinaryFormula):
-            set_of_formulas.add(f)
-            for child in f.children:
-                waiting_queue.add((next(gen_id), child))
-        else:
-            del formula_id_dict[f]
-            continue
-    return set_of_formulas, formula_id_dict
 
 
 @singledispatch
