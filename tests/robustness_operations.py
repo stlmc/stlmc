@@ -136,6 +136,9 @@ class RobustnessOperationsTest(unittest.TestCase):
         samples = [[0.0, 0.5, 1.0]]
         self.assertEqual(get_sub_time_samples(samples, 1.1, 2.0, 1.0), [])
         self.assertEqual(get_sub_time_samples(samples, 0.5, 1.0, 1.0), [0.5])
+        self.assertEqual(
+            get_sub_time_samples.__module__, "stlmc.visualize.sampling"
+        )
 
     def test_artifact_formula_index_is_lightweight_and_deterministic(self):
         formula = Implies(Gt(self.x, self.zero), Leq(self.x, RealVal("2")))

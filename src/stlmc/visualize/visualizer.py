@@ -1,18 +1,14 @@
-import abc
 import errno
 import itertools
 import os
 from typing import List, Dict, Set, Tuple
 
-import numpy
-import numpy as np
 import sympy
 from bokeh.embed import components
 from bokeh.io import output_file, save
 from bokeh.models import HoverTool, CrosshairTool, Legend, DataRange1d
 from bokeh.palettes import Dark2_5 as palette
 from bokeh.plotting import column
-from scipy.integrate import odeint
 
 from ..constraints.constraints import *
 from ..constraints.operations import *
@@ -20,7 +16,10 @@ from ..constraints.robustness import release_robustness, until_robustness
 from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from .latex import formula2latex, interval_string
-from .numeric import infix_float
+from .sampling import (
+    DiscreteSampler, OdePointSampler, PointSampler, SolutionPointSampler,
+    TimeSampler, get_sub_time_samples, sample_max,
+)
 from bokeh.plotting import figure, show
 
 
@@ -71,131 +70,6 @@ class Projector:
             result.append(self.modules[module_id])
 
         return result
-
-
-def sample_max(time_list: List[List[float]]):
-    t_max = -1
-    for time_points in time_list:
-        for time_point in time_points:
-            if t_max < time_point:
-                t_max = time_point
-    return t_max
-
-
-class TimeSampler:
-    def __init__(self, projector: Projector):
-        self.projector = projector
-
-    def generate_samples(self, endpoint=True) -> List[List[float]]:
-        np_ndarry_list: List[numpy.ndarray] = list()
-        variable_points = self.projector.get_variable_points()
-        assignment = self.projector.assignment
-        # print(self.taus)
-        for i, _ in enumerate(variable_points):
-            if i < len(variable_points) - 1:
-                tau = assignment[variable_points[i]]
-                next_tau = assignment[variable_points[i + 1]]
-
-                # use sympy for parsing fraction into decimal
-                # if i == 0:
-                #     next_tau_value_sympy = sympy.parse_expr(tau.value)
-                #     # convert sympy object into python object
-                #     cur_tau_value = 0.0
-                #     next_tau_value = float(next_tau_value_sympy.evalf())
-                #     np_ndarry_list.append(np.linspace(cur_tau_value, next_tau_value))
-
-                cur_tau_value_sympy = sympy.parse_expr(tau.value)
-                next_tau_value_sympy = sympy.parse_expr(next_tau.value)
-
-                # convert sympy object into python object
-                cur_tau_value = float(cur_tau_value_sympy.evalf())
-                next_tau_value = float(next_tau_value_sympy.evalf())
-                np_ndarry_list.append(np.linspace(cur_tau_value, next_tau_value, endpoint=endpoint))
-
-        time_list: List[List[float]] = list()
-
-        for np_ndarry in np_ndarry_list:
-            time_points: List[float] = list()
-            for ii in np_ndarry:
-                time_points.append(ii.item())
-            time_list.append(time_points)
-
-        return time_list
-
-
-class DiscreteSampler:
-    def __init__(self, projector: Projector):
-        self.projector = projector
-
-    # generate samples at bound ...
-    def generate_samples_at(self, time_samples: List[float], bound):
-        mode_variables = self.projector.get_mode_vars()
-        assignment = self.projector.assignment
-        type_dict = {'real': Real, 'bool': Bool, 'int': Int}
-        result: Dict[Variable, List[float]] = dict()
-        for v in mode_variables:
-            var_id = "{}_{}".format(v.id, bound)
-            var_type = v.type
-            v_obj = type_dict[var_type](var_id)
-            if v_obj in assignment:
-                v_val = assignment[v_obj]
-
-                if var_type == 'bool':
-                    var_value = 1 if v_val.value == "True" else -1
-                else:
-                    var_value_sympy = sympy.parse_expr(v_val.value)
-                    var_value = float(var_value_sympy)
-
-                result[v] = list()
-                for _ in time_samples:
-                    result[v].append(var_value)
-
-        return result
-
-
-class PointSampler:
-    @abc.abstractmethod
-    def generate_samples(self, time_samples: List[float], dynamic: Dynamics, initial_values: List[float]):
-        # for a given dynamics, and time samples, this generates sample points.
-        pass
-
-
-class SolutionPointSampler(PointSampler):
-    def generate_samples(self, time_samples: List[float], dynamic: Dynamics, initial_values: List[float]):
-        sample_dict: Dict[Variable, List[float]] = dict()
-
-        # normalize
-        base = time_samples[0]
-        time_samples = [time - base for time in time_samples]
-
-        assignment = dict()
-        time = sympy.parse_expr("time")
-        for index, v in enumerate(dynamic.vars):
-            assignment[sympy.parse_expr(str(v.id))] = sympy.parse_expr(str(initial_values[index]))
-
-        for index, v in enumerate(dynamic.vars):
-            v_samples = list()
-            for time_sample in time_samples:
-                assignment[time] = sympy.parse_expr(str(time_sample))
-                dyn = sympy.parse_expr(infix(dynamic.exps[index]))
-                v_samples.append(float(dyn.evalf(10, assignment)))
-            sample_dict[v] = v_samples
-        return sample_dict
-
-
-class OdePointSampler(PointSampler):
-    def generate_samples(self, time_samples: List[float], dynamic: Dynamics, initial_values: List[float]):
-        res = odeint(lambda z, t: [infix_float(dyn, z, dynamic.vars) for dyn in dynamic.exps], initial_values,
-                     time_samples)
-        sample_dict: Dict[Variable, List[float]] = dict()
-
-        for v in dynamic.vars:
-            v_samples = list()
-            for sample in res:
-                v_index = dynamic.vars.index(v)
-                v_samples.append(sample[v_index])
-            sample_dict[v] = v_samples
-        return sample_dict
 
 
 class Visualizer:
@@ -535,17 +409,6 @@ class Visualizer:
             result[var.id] = sub_result
 
         return result
-
-
-def get_sub_time_samples(time_sample_list: List[List[float]], start: float, end: float, time_max: float) -> List[float]:
-    # Bounded STL requires witness times t' < tau. Do not turn an interval
-    # beyond the horizon into a synthetic witness at tau.
-    if start >= time_max or end < start:
-        return []
-    times: List[float] = list()
-    for time_samples in time_sample_list:
-        times.extend(time_samples)
-    return [t for t in times if start <= t <= end and t < time_max]
 
 
 @singledispatch
