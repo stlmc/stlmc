@@ -207,6 +207,15 @@ class RobustnessOperationsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             pairwise_disjoint_check([{"x"}, {"x", "y"}])
 
+    def test_bokeh_plot_construction_is_separate_from_facade(self):
+        from stlmc.visualize.plotting import build_plot
+
+        layout = build_plot(
+            {self.x: [[0.0, 1.0]]}, {}, [[0.0, 1.0]], {}, "f", 0.0, {}
+        )
+        self.assertEqual(build_plot.__module__, "stlmc.visualize.plotting")
+        self.assertEqual(len(layout.children), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
