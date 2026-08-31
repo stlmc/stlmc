@@ -39,6 +39,9 @@ class RobustnessOperationsTest(unittest.TestCase):
     def test_visualizer_boolean_robustness_uses_discrete_truth(self):
         from stlmc.visualize.visualizer import robustness
 
+        self.assertEqual(
+            robustness.__module__, "stlmc.visualize.robustness"
+        )
         proposition = Bool("enabled")
         times = [[0.0, 1.0]]
         self.assertEqual(
