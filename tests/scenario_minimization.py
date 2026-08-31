@@ -15,7 +15,7 @@ from stlmc.encoding.batching import (
     candidate_batch_formula, partitioned_candidate_batch_formula,
 )
 from stlmc.algorithms.two_step import (
-    assert_and_track_assignment, boolean_core_assignments,
+    assert_and_track_assignment, boolean_core_assignments, get_bools,
     evaluated_arithmetic_literals, relevant_boolean_abstract_links,
     rename, scenario_enumeration_finished, type1_index_info,
 )
@@ -47,6 +47,13 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         self.assertIn(Bool("enabled_3"), mapping.values())
         self.assertIn(Real("x_2_t"), mapping.values())
         self.assertIn("x_2_t", repr(renamed))
+
+    def test_scenario_path_decoding_is_a_strategy_subcomponent(self):
+        self.assertEqual(
+            get_bools.__module__, "stlmc.algorithms.scenario_paths"
+        )
+        left, right = Bool("left"), Bool("right")
+        self.assertEqual(get_bools(Eq(left, right)), {left, right})
 
     def test_slicing_keeps_boolean_dependency_closure(self):
         a, b, c, unused = (Bool(name) for name in ("a", "b", "c", "unused"))

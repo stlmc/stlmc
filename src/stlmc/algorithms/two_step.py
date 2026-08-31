@@ -1,5 +1,4 @@
 import time
-from functools import reduce, singledispatch
 from typing import *
 
 from ..constraints.operations import *
@@ -33,6 +32,7 @@ from .symbolic_ids import (
     depth2bound, inv_index_info, rename, type1_index_info, type1_info,
     type2_index_info, type2_info, v_type1_info, v_type2_info,
 )
+from .scenario_paths import assn2path, get_bools, pick_time_and_props
 
 
 class TwoStepAlgorithm(Algorithm):
@@ -665,109 +665,6 @@ def k_size_stl_formula_from_threshold(
     return And(path_const_children + [
         final_f_k, partition_const, extra_prop_path_const,
     ])
-
-
-@singledispatch
-def get_bools(formula: Formula) -> Set[Bool]:
-    return set()
-
-
-@get_bools.register(Bool)
-def _(formula: Bool) -> Set[Bool]:
-    return {formula}
-
-
-@get_bools.register(UnaryFormula)
-def _(const: UnaryFormula):
-    return get_bools(const.child) if isinstance(const, NonLeaf) else set()
-
-
-@get_bools.register(BinaryFormula)
-def _(const: BinaryFormula):
-    if isinstance(const, NonLeaf) or isinstance(const, Eq):
-        return get_bools(const.left).union(get_bools(const.right))
-    return set()
-
-
-@get_bools.register(MultinaryFormula)
-def _(const: MultinaryFormula):
-    result = set()
-    if isinstance(const, NonLeaf):
-        for child in const.children:
-            result.update(get_bools(child))
-    return result
-
-
-def pick_time_and_props(unsat_cores: Set[str], sub_formulas: Set[Formula]) -> Set[str]:
-    picked_set: Set[str] = set()
-
-    time_type1_prefix = ["T1", "T2", "T3"]
-    time_type2_prefix = "T"
-    model_type = ["invAtomicID", "newIntegral"]
-
-    for unsat_core in unsat_cores:
-        is_chi = "chi" in unsat_core
-        # check if v_info is applied to unsat_core id
-        # unsat_core contains at least one of prefix in v_prefixes
-        is_time_type1 = reduce(lambda b, acc: acc or b, [prefix in unsat_core for prefix in time_type1_prefix], False)
-        if is_chi or is_time_type1:
-            formula, f_i, f_k = v_type1_info(unsat_core, sub_formulas)
-            is_formula_prop = is_proposition(formula)
-
-            # if path has an index f_k
-            if is_formula_prop:
-                picked_set.add(unsat_core)
-
-        is_time_type2 = time_type2_prefix in unsat_core and not is_time_type1
-        if is_time_type2:
-            # if path has an index f_k
-            picked_set.add(unsat_core)
-
-        is_model_type = reduce(lambda b, acc: acc or b, [prefix in unsat_core for prefix in model_type], False)
-        if is_model_type:
-            picked_set.add(unsat_core)
-
-    return picked_set
-
-
-def assn2path(unsat_cores: Set[str], sub_formulas: Set[Formula], tau_max: float) -> Tuple[
-    Dict[Tuple[int, Bool], Formula],
-    Dict[Tuple[int, Bool], Formula]
-]:
-    path_dict: Dict[Tuple[int, Bool], Formula] = dict()
-    time_dict: Dict[Tuple[int, Bool], Formula] = dict()
-
-    time_type1_prefix = ["T1", "T2", "T3"]
-    time_type2_prefix = "T"
-
-    for unsat_core in unsat_cores:
-        is_chi = "chi" in unsat_core
-        # check if v_info is applied to unsat_core id
-        # unsat_core contains at least one of prefix in v_prefixes
-        is_time_type1 = reduce(lambda b, acc: acc or b, [prefix in unsat_core for prefix in time_type1_prefix], False)
-        if is_chi or is_time_type1:
-            formula, f_i, f_k = v_type1_info(unsat_core, sub_formulas)
-            is_formula_prop = is_proposition(formula)
-
-            pair = (f_k, Bool(unsat_core))
-            assert pair not in path_dict
-            # if path has an index f_k
-            if is_formula_prop:
-                if is_chi:
-                    path_dict[pair] = formula
-                if is_time_type1:
-                    time_dict[pair] = formula
-
-        is_time_type2 = time_type2_prefix in unsat_core and not is_time_type1
-        if is_time_type2:
-            formula, f_i = v_type2_info(unsat_core, tau_max)
-            pair = (f_i, Bool(unsat_core))
-            assert is_proposition(formula) and pair not in path_dict
-
-            # if path has an index f_k
-            time_dict[pair] = formula
-
-    return path_dict, time_dict
 
 
 def is_mode_variable(b: Bool, model: Model):
