@@ -23,7 +23,8 @@ from stlmc.encoding.enumerate import (
     symbolic_goal, time_ordering,
 )
 from stlmc.encoding.fully_stable_partition import (
-    fully_stable_partition_const, partition_obligations,
+    FullyStablePartitionEncoding, fully_stable_partition_const,
+    partition_obligations,
 )
 from stlmc.encoding.symbolic_discrete import chi as shared_chi, formula_id
 from stlmc.solver.z3 import z3Obj
@@ -76,8 +77,8 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         )
         self.assertIn("stl_depth_components", two_step_names)
         self.assertIn("stl_depth_components", one_step_names)
-        self.assertIn("fully_stable_partition_const", two_step_names)
-        self.assertIn("fully_stable_partition_const", one_step_names)
+        self.assertIn("FullyStablePartitionEncoding", two_step_names)
+        self.assertIn("FullyStablePartitionEncoding", one_step_names)
 
     def test_partition_encoding_is_strategy_independent(self):
         self.assertEqual(
@@ -125,6 +126,19 @@ class BoundedTemporalReductionTest(unittest.TestCase):
             str(And(partition_obligations(sub_formulas, 4))),
             str(fully_stable_partition_const(sub_formulas, 4)),
         )
+
+    def test_incremental_partition_matches_fresh_encoding_at_each_depth(self):
+        formula = UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        )
+        sub_formulas = calc_sub_formulas(formula)
+        incremental = FullyStablePartitionEncoding(sub_formulas)
+        for depth in range(1, 7):
+            incremental.extend_to(depth)
+            self.assertEqual(
+                str(incremental.formula()),
+                str(fully_stable_partition_const(sub_formulas, depth)),
+            )
 
     def test_strict_until_preserves_original_start_index(self):
         strict = UntilFormula(

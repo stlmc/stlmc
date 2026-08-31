@@ -13,7 +13,7 @@ from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
 from ..exceptions import IllegalArgumentError
 from .batching import partitioned_candidate_batch_formula
-from .fully_stable_partition import fully_stable_partition_const
+from .fully_stable_partition import FullyStablePartitionEncoding
 from .fully_stable_stl import (
     calc_sub_formulas, final, is_proposition, k_depth_stl_consts,
     prepare_fully_stable_stl_formula, stl_depth_components, sub_formula,
@@ -181,11 +181,13 @@ class TwoStepAlgorithm(Algorithm):
             )
 
             sub_formulas = calc_sub_formulas(stl_formula)
+            partition_encoding = FullyStablePartitionEncoding(sub_formulas)
 
             initial_stl_f = chi(1, 1, stl_formula)
         else:
             initial_stl_f = BoolVal("True")
             sub_formulas = set()
+            partition_encoding = FullyStablePartitionEncoding(sub_formulas)
 
         initial_model_f, initial_track_const = model.init_consts()
 
@@ -237,9 +239,8 @@ class TwoStepAlgorithm(Algorithm):
 
                 stl_consts.append(stl_f_k)
                 stl_time_consts.append(time_f_k)
-                partition_const = fully_stable_partition_const(
-                    sub_formulas, 2 * (b + 1)
-                )
+                partition_encoding.extend_to(2 * (b + 1))
+                partition_const = partition_encoding.formula()
             else:
                 stl_f_k = BoolVal("True")
                 time_f_k = BoolVal("True")
@@ -733,7 +734,9 @@ def k_size_stl_formula_from_threshold(
     extra_prop_path, _ = assn2path(p_bools, sub_formulas, tau_max)
     extra_prop_path_const = path2const(extra_prop_path, model)
 
-    partition_const = fully_stable_partition_const(sub_formulas, max_depth)
+    partition_encoding = FullyStablePartitionEncoding(sub_formulas)
+    partition_encoding.extend_to(max_depth)
+    partition_const = partition_encoding.formula()
     return And(path_const_children + [
         final_f_k, partition_const, extra_prop_path_const,
     ])
@@ -768,127 +771,6 @@ def _(const: MultinaryFormula):
         for child in const.children:
             result.update(get_bools(child))
     return result
-
-
-def bound_dict(picked_bools: List[Bool], sub_formulas: Set[Formula], model_boolean_abst: Dict) -> Tuple[
-    Set[Bool], Dict[int, Set[Formula]], Dict[int, Set[Formula]]
-]:
-    path_const_children = set()
-    # key: depth
-    prop_dict: Dict[int, Set[Formula]] = dict()
-    # key: bound
-    inv_dict: Dict[int, Set[Formula]] = dict()
-
-    time_type1_prefix = ["T1", "T2", "T3"]
-    time_type2_prefix = "T"
-    integral_prefix = "newIntegral"
-    invariant_prefix = "invAtomicID"
-
-    for picked_bool in picked_bools:
-        is_chi = "chi" in picked_bool.id
-        # check if v_info is applied to unsat_core id
-        # unsat_core contains at least one of prefix in v_prefixes
-        is_time_type1 = reduce(lambda b, acc: acc or b, [prefix in picked_bool.id for prefix in time_type1_prefix],
-                               False)
-        if is_chi or is_time_type1:
-            formula, f_i, f_k = v_type1_info(picked_bool.id, sub_formulas)
-            is_formula_prop = is_proposition(formula)
-
-            # if path has an index f_k
-            if is_formula_prop:
-                if is_time_type1:
-                    path_const_children.add(picked_bool)
-                else:
-                    if f_k in prop_dict:
-                        prop_dict[f_k].add(formula)
-                    else:
-                        prop_dict[f_k] = {formula}
-
-        is_time_type2 = time_type2_prefix in picked_bool.id and not is_time_type1
-        if is_time_type2:
-            # if path has an index f_k
-            path_const_children.add(picked_bool)
-
-        is_integral = integral_prefix in picked_bool.id
-        if is_integral:
-            path_const_children.add(picked_bool)
-
-        is_invariant = invariant_prefix in picked_bool.id
-        if is_invariant:
-            assert picked_bool in model_boolean_abst
-            invariant = model_boolean_abst[picked_bool]
-
-            assert isinstance(invariant, Forall)
-            module_index, bound = inv_index_info(picked_bool.id)
-            if bound in inv_dict:
-                inv_dict[bound].add(invariant.const)
-            else:
-                inv_dict[bound] = {invariant.const}
-
-    # inv_dict key is bound
-    # time_dict key is depth
-    return path_const_children, prop_dict, inv_dict
-
-
-def extra_path_dict(prop_dict: Dict[int, Set[Formula]],
-                    inv_dict: Dict[int, Set[Formula]]) -> Dict[int, Set[Formula]]:
-    # key: depth
-    path_dict: Dict[int, Set[Formula]] = dict()
-    for depth in prop_dict:
-        bound = depth2bound(depth)
-        prop_consts = prop_dict[depth]
-        is_vertex = depth % 2 == 0
-
-        renamed_consts = set(map(lambda f: rename(f, bound, is_vertex)[0], prop_consts))
-        if bound in path_dict:
-            path_dict[bound].update(renamed_consts)
-        else:
-            path_dict[bound] = renamed_consts
-
-    for bound in inv_dict:
-        depth = 2 * (bound + 1)
-        if depth in path_dict:
-            path_dict[depth].update(inv_dict[bound])
-        else:
-            path_dict[depth] = inv_dict[bound]
-
-    return path_dict
-
-
-def extra_path_formula(path_dict: Dict[int, Set[Formula]], module_index_dict: Dict[int, int], model: Model):
-    path_const_children = list()
-    # depth / 2 = bound
-    for depth in path_dict:
-        path_formula_at_depth = And(list(path_dict[depth]))
-        bound = depth2bound(depth)
-        is_vertex = depth % 2 == 0
-        if is_vertex:
-            module_index = module_index_dict[bound]
-            assert module_index < len(model.modules)
-            integral = model.boolean_abstract[Bool("newIntegral_{}_{}".format(module_index, bound))]
-            # renamed_integral = rename_integral(integral, bound, is_vertex)
-            forall = Forall(module_index, symbolic_sup(depth), symbolic_inf(depth),
-                            path_formula_at_depth, integral)
-            path_const_children.append(forall)
-        else:
-            path_const_children.append(path_formula_at_depth)
-    return And(path_const_children)
-
-
-def pick_current_module_dict(real_clause_set: Set[Formula]) -> Dict[int, int]:
-    cur_mode_prefix = "currentMode_"
-    cur_module_dict: Dict[int, int] = dict()
-    for real_clause in real_clause_set:
-        if isinstance(real_clause, Eq):
-            if isinstance(real_clause.left, Real) and isinstance(real_clause.right, RealVal):
-                real_id = real_clause.left.id
-                if cur_mode_prefix in real_id:
-                    bound = int(real_id.split("_")[1])
-                    module_index = int(real_clause.right.value)
-
-                    assert bound not in cur_module_dict
-                    cur_module_dict[bound] = module_index
-    return cur_module_dict
 
 
 def pick_time_and_props(unsat_cores: Set[str], sub_formulas: Set[Formula]) -> Set[str]:
@@ -1015,17 +897,6 @@ def time_path2const(path: Dict[Tuple[int, Bool], Formula]):
             renamed_e_const, _ = rename(formula, bound, False)
             path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_e_const))
     return And(path_const_children)
-
-
-def v_type_model_info(v_id: str):
-    module_id = v_id.split("@")[1]
-    bound_str = v_id.split("@")[2]
-
-    assert "m_" in module_id and "const_" in bound_str
-
-    module_index = module_id.split("_")[1]
-    bound = bound_str.split("_")[1]
-    return int(module_index), int(bound)
 
 
 def v_type1_info(v_id: str, sub_formulas: Set[Formula]) -> Tuple[Formula, int, int]:

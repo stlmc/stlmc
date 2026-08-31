@@ -5,7 +5,7 @@ It builds ``Psi_PAR`` from the symbolic discrete-signal variables shared by
 both algorithms.
 """
 
-from typing import Set
+from typing import Dict, List, Set
 
 from ..constraints.constraints import (
     And, Bool, BoolVal, Eq, FinallyFormula, Formula, GloballyFormula,
@@ -55,10 +55,12 @@ def _endpoint_membership(value, index: int):
     ])
 
 
-def temporal_partition_obligations(formula: Formula, depth: int):
-    """Yield ``cand`` and auxiliary definitions from paper Definition 4.3."""
+def temporal_partition_obligations_at(
+        formula: Formula, depth: int, horizon: int):
+    """Yield Definition 4.3 obligations introduced at one signal depth."""
     interval = formula.local_time
-    for m in range(1, depth + 1):
+    m = depth
+    if m >= 1:
         left_m, right_m = _temporal_operands(formula, m)
         left_prev, right_prev = (
             _temporal_operands(formula, m - 1)
@@ -66,7 +68,7 @@ def temporal_partition_obligations(formula: Formula, depth: int):
         )
         left_next, right_next = (
             _temporal_operands(formula, m + 1)
-            if m < depth else (None, None)
+            if m < horizon else (None, None)
         )
         left_rise, left_fall = _edge(left_m, left_prev, left_next)
         right_rise, right_fall = _edge(right_m, right_prev, right_next)
@@ -109,6 +111,14 @@ def temporal_partition_obligations(formula: Formula, depth: int):
             yield Implies(edge_condition, And(candidate_parts))
 
 
+def temporal_partition_obligations(formula: Formula, depth: int):
+    """Yield ``cand`` and auxiliary definitions through ``depth``."""
+    for current_depth in range(1, depth + 1):
+        yield from temporal_partition_obligations_at(
+            formula, current_depth, depth
+        )
+
+
 def partition_obligations(sub_formulas: Set[Formula], depth: int):
     obligations = []
     for formula in sub_formulas:
@@ -125,3 +135,47 @@ def fully_stable_partition_const(
         sub_formulas: Set[Formula], depth: int):
     """Build the strategy-independent ``Psi_PAR`` conjunction."""
     return And(partition_obligations(sub_formulas, depth))
+
+
+class FullyStablePartitionEncoding:
+    """Incrementally construct the strategy-independent Psi_PAR encoding."""
+
+    def __init__(self, sub_formulas: Set[Formula]):
+        self.sub_formulas = set(sub_formulas)
+        self.depth = 0
+        self.obligations_by_depth: Dict[int, List[Formula]] = {}
+
+    def _obligations_at(self, depth: int, horizon: int) -> List[Formula]:
+        obligations = []
+        for formula in self.sub_formulas:
+            if isinstance(formula, (
+                    UntilFormula, ReleaseFormula,
+                    FinallyFormula, GloballyFormula)):
+                obligations.extend(temporal_partition_obligations_at(
+                    formula, depth, horizon
+                ))
+        return obligations
+
+    def extend_to(self, depth: int) -> Formula:
+        if depth < self.depth:
+            raise ValueError("partition depth cannot decrease")
+        for current_depth in range(self.depth + 1, depth + 1):
+            # The old horizon's final interval gains a following interval, so
+            # only its falling-edge definition must be replaced. Earlier
+            # depths are horizon-independent and remain reusable.
+            if current_depth > 1:
+                self.obligations_by_depth[current_depth - 1] = (
+                    self._obligations_at(current_depth - 1, current_depth)
+                )
+            self.obligations_by_depth[current_depth] = self._obligations_at(
+                current_depth, current_depth
+            )
+        self.depth = depth
+        return self.formula()
+
+    def formula(self) -> Formula:
+        return And([
+            obligation
+            for depth in range(1, self.depth + 1)
+            for obligation in self.obligations_by_depth[depth]
+        ])
