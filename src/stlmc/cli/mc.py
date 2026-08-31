@@ -114,8 +114,10 @@ def main():
         return 2
     except OperationError as E:
         printer.print_normal("operation error: {}".format(E))
+        return 1
     except ParsingError as E:
         printer.print_normal("parsing error: {}".format(E))
+        return 2
     except SolverUnavailableError as E:
         printer.print_normal("solver error: {}".format(E))
         return 3
@@ -125,8 +127,10 @@ def main():
     except Exception as E:
         printer.print_normal("error: {}".format(E))
         printer.print_normal(traceback.format_exc())
+        return 1
     finally:
         if previous_sigint_handler is not None:
             signal.signal(signal.SIGINT, previous_sigint_handler)
         if previous_sigterm_handler is not None:
             signal.signal(signal.SIGTERM, previous_sigterm_handler)
+    return 0

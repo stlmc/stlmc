@@ -424,6 +424,4 @@ class BaseRunner(Runner):
         except (NotSupportedError, IllegalArgumentError, SolverUnavailableError):
             raise
         except SyntaxError as e:
-            print("syntax error: {}".format(e))
-        except Exception as e:
-            print("error: {}".format(e))
+            raise ParsingError(str(e)) from e

@@ -210,5 +210,28 @@ class CliHelpTest(unittest.TestCase):
                 self.assertIn("configuration file", completed.stdout)
                 self.assertIn("does not exist or is not a file", completed.stdout)
 
+    def test_malformed_model_returns_usage_error(self):
+        with tempfile.NamedTemporaryFile(
+                "w", suffix=".model", encoding="utf-8") as model_file:
+            model_file.write("this is not an stlmc model\n")
+            model_file.flush()
+            code = (
+                "import sys; "
+                "sys.argv = {!r}; "
+                "from stlmc.cli.mc import main; "
+                "raise SystemExit(main())"
+            ).format(["stlmc", model_file.name])
+            completed = subprocess.run(
+                [sys.executable, "-c", code], cwd=PROJECT_ROOT,
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            )
+
+        self.assertEqual(completed.returncode, 2, completed.stdout)
+        self.assertTrue(
+            "parsing error:" in completed.stdout
+            or "conversion error:" in completed.stdout,
+            completed.stdout,
+        )
+
 if __name__ == "__main__":
     unittest.main()
