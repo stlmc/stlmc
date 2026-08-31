@@ -16,6 +16,7 @@ from ..constraints.robustness import release_robustness, until_robustness
 from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from .latex import formula2latex, interval_string
+from .grouping import flatten, pairwise_disjoint_check, split_groups
 from .projection import Projector
 from .sampling import (
     DiscreteSampler, OdePointSampler, PointSampler, SolutionPointSampler,
@@ -408,7 +409,6 @@ def _(const: Implies, point_samples: Dict[Variable, List[List[float]]],
     dp_table[(const, time)] = robust_value
     return robust_value
 
-
 @robustness.register(BoolVal)
 def _(const: BoolVal, point_samples: Dict[Variable, List[List[float]]],
       discrete_samples: Dict[Variable, List[List[float]]],
@@ -651,38 +651,3 @@ def _(const: FinallyFormula, point_samples: Dict[Variable, List[List[float]]],
     )
     dp_table[(const, time)] = robust_value
     return robust_value
-
-
-def split_groups(groups: List[Set[str]], state_vars: Set[str], robust_vars: Set[str]):
-    state_groups = list()
-    robust_groups = list()
-
-    waiting_queue = groups.copy()
-    while len(waiting_queue) > 0:
-        group = waiting_queue.pop()
-
-        # state variables
-        if group.issubset(state_vars):
-            state_groups.append(group)
-        elif group.issubset(robust_vars):
-            robust_groups.append(group)
-        else:
-            raise ValueError("group contains wrong variables : {}".format(group))
-    return state_groups, robust_groups
-
-
-def pairwise_disjoint_check(groups: List[Set[str]]):
-    waiting_queue = groups.copy()
-    while len(waiting_queue) > 0:
-        group = waiting_queue.pop()
-        for g in waiting_queue:
-            intersection_vars = g.intersection(group)
-            if len(intersection_vars) > 0:
-                raise ValueError("state variables {} belong to multiple groups".format(intersection_vars))
-
-
-def flatten(groups: List[Set[str]]) -> Set[str]:
-    flat_set = set()
-    for group in groups:
-        flat_set.update(group)
-    return flat_set

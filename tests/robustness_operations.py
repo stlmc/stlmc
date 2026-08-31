@@ -182,6 +182,21 @@ class RobustnessOperationsTest(unittest.TestCase):
         )
         self.assertEqual(projector.get_max_bound(), 1)
 
+    def test_plot_grouping_is_independent_from_plotting(self):
+        from stlmc.visualize.visualizer import (
+            flatten, pairwise_disjoint_check, split_groups,
+        )
+
+        groups = [{"x"}, {"rho"}]
+        self.assertEqual(
+            split_groups(groups, {"x"}, {"rho"}), ([{"x"}], [{"rho"}])
+        )
+        pairwise_disjoint_check(groups)
+        self.assertEqual(flatten(groups), {"x", "rho"})
+        self.assertEqual(flatten.__module__, "stlmc.visualize.grouping")
+        with self.assertRaises(ValueError):
+            pairwise_disjoint_check([{"x"}, {"x", "y"}])
+
 
 if __name__ == "__main__":
     unittest.main()
