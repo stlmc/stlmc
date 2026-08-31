@@ -267,6 +267,12 @@ goal: true;
         )
         self.assertIsInstance(goals[-1], ReachGoal)
 
+    def test_object_factory_rejects_unknown_encoding(self):
+        from stlmc.application.model_loader import ObjectFactory
+
+        with self.assertRaisesRegex(ValueError, "unknown formula encoding"):
+            ObjectFactory("missing").generate_object_manager()
+
 
 if __name__ == "__main__":
     unittest.main()
