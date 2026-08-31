@@ -4,6 +4,18 @@ from functools import singledispatch
 from .constraints import *
 
 
+def is_positive_infinity(value) -> bool:
+    """Return whether ``value`` denotes the positive infinite endpoint.
+
+    Interval endpoints occur both as legacy Python floats and as STLmc
+    constants.  Inspect the endpoint value itself instead of its formatted
+    formula, so identifiers containing ``inf`` cannot change the encoding.
+    """
+    if isinstance(value, float):
+        return math.isinf(value) and value > 0
+    return isinstance(value, RealVal) and value.value == "inf"
+
+
 def inIntervalC(x: float, j: Interval):
     return (x >= j.left if j.left_end else x > j.left) and (x <= j.right if j.right_end else x < j.right)
 
@@ -45,7 +57,7 @@ def aux_inInterval(x: Constraint, j: Interval):
     else:
         right = j.right
     cl = x >= left if j.left_end else x > left
-    if "inf" in str(j.right):
+    if is_positive_infinity(j.right):
         return cl
     return And([cl, x <= right if j.right_end else x < right])
 
