@@ -27,6 +27,12 @@ from stlmc.solver.z3 import Z3FormulaSolver, z3Obj
 class ScenarioMinimizationPolarityTest(unittest.TestCase):
     false = BoolVal("False")
 
+    def test_refinement_helpers_are_strategy_subcomponents(self):
+        self.assertEqual(
+            relevant_boolean_abstract_links.__module__,
+            "stlmc.algorithms.scenario_refinement",
+        )
+
     def test_slicing_keeps_boolean_dependency_closure(self):
         a, b, c, unused = (Bool(name) for name in ("a", "b", "c", "unused"))
         links = relevant_boolean_abstract_links(

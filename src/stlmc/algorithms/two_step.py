@@ -24,90 +24,11 @@ from ..encoding.symbolic_discrete import (
     chi, formula_id, reach_time_ordering, rho, symbolic_inf, symbolic_sup,
     time_ordering,
 )
-def is_temporal_definitional(variable) -> bool:
-    return (isinstance(variable, Bool)
-            and variable.id.startswith(("rho^", "parU^", "parEnd")))
-
-
-def scenario_enumeration_finished(status: SolverStatus) -> bool:
-    """Return whether an incremental abstraction query can make no progress."""
-    return status in (SolverStatus.UNSAT, SolverStatus.UNKNOWN)
-
-
-def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
-                                track_id: str) -> Eq:
-    """Track the exact polarity of a scenario literal and return that literal."""
-    literal = Eq(formula, valuation)
-    solver.track(literal, track_id)
-    return literal
-
-
-def evaluated_arithmetic_literals(clauses: Set[Formula], real_set: Set[Variable],
-                                   model) -> List[Eq]:
-    """Return exact truth assignments for clauses determined by real variables."""
-    true = BoolVal("True")
-    false = BoolVal("False")
-    literals = []
-    for clause_formula in clauses:
-        if get_vars(clause_formula).intersection(real_set):
-            valuation = model.eval(clause_formula)
-            literals.append(Eq(clause_formula, valuation))
-    return literals
-
-
-def relevant_boolean_abstract_links(boolean_abstract: Dict[Bool, Formula],
-                                    roots: Formula,
-                                    assignments=None) -> Formula:
-    """Keep the dependency closure of abstraction definitions used by roots.
-
-    A definition ``b <-> F`` outside this closure is existentially removable:
-    neither ``b`` nor anything depending on it occurs in the refinement.
-    """
-    abstract_variables = set(boolean_abstract)
-    pending = list(get_vars(roots).intersection(abstract_variables))
-    relevant = set(pending)
-    while pending:
-        variable = pending.pop()
-        dependencies = get_vars(boolean_abstract[variable]).intersection(
-            abstract_variables
-        )
-        for dependency in dependencies.difference(relevant):
-            relevant.add(dependency)
-            pending.append(dependency)
-    assignments = assignments or {}
-    links = []
-    for variable in boolean_abstract:
-        if variable not in relevant:
-            continue
-        definition = substitution(boolean_abstract[variable], assignments)
-        if variable in assignments:
-            if assignments[variable] == BoolVal("True"):
-                links.append(definition)
-            else:
-                # Keep logical negation explicit. reduce_not() rewrites a
-                # negated Bool dependency to a distinct complement symbol.
-                links.append(Not(definition))
-        else:
-            links.append(Eq(variable, definition))
-    return And(links)
-
-
-def boolean_core_assignments(formula: Formula) -> Dict[Bool, BoolVal]:
-    """Collect explicit Boolean equalities retained in a scenario core."""
-    assignments = {}
-    pending = [formula]
-    while pending:
-        current = pending.pop()
-        if isinstance(current, And):
-            pending.extend(current.children)
-            continue
-        if not isinstance(current, Eq):
-            continue
-        if isinstance(current.left, Bool) and isinstance(current.right, BoolVal):
-            assignments[current.left] = current.right
-        elif isinstance(current.right, Bool) and isinstance(current.left, BoolVal):
-            assignments[current.right] = current.left
-    return assignments
+from .scenario_refinement import (
+    assert_and_track_assignment, boolean_core_assignments,
+    evaluated_arithmetic_literals, is_temporal_definitional,
+    relevant_boolean_abstract_links, scenario_enumeration_finished,
+)
 
 
 class TwoStepAlgorithm(Algorithm):
