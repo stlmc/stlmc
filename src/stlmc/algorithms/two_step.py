@@ -28,12 +28,12 @@ from .scenario_refinement import (
     evaluated_arithmetic_literals, is_temporal_definitional,
     relevant_boolean_abstract_links, scenario_enumeration_finished,
 )
-from .symbolic_ids import (
+from ..encoding.symbolic_ids import (
     depth2bound, inv_index_info, rename, type1_index_info, type1_info,
     type2_index_info, type2_info, v_type1_info, v_type2_info,
 )
-from .scenario_paths import assn2path, get_bools, pick_time_and_props
-from .scenario_constraints import (
+from ..encoding.path_decoding import assn2path, get_bools, pick_time_and_props
+from ..encoding.model_linking import (
     contradiction_gen, contradiction_gen_inv, is_mode_variable, path2const,
     time_path2const,
 )

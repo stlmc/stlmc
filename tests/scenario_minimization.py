@@ -35,7 +35,7 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
 
     def test_symbolic_identifier_helpers_are_strategy_subcomponents(self):
         self.assertEqual(
-            rename.__module__, "stlmc.algorithms.symbolic_ids"
+            rename.__module__, "stlmc.encoding.symbolic_ids"
         )
         self.assertEqual(type1_index_info("chi^{2,5}_formula"), (2, 5))
 
@@ -50,7 +50,7 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
 
     def test_scenario_path_decoding_is_a_strategy_subcomponent(self):
         self.assertEqual(
-            get_bools.__module__, "stlmc.algorithms.scenario_paths"
+            get_bools.__module__, "stlmc.encoding.path_decoding"
         )
         left, right = Bool("left"), Bool("right")
         self.assertEqual(get_bools(Eq(left, right)), {left, right})
@@ -58,7 +58,7 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
     def test_scenario_constraint_generation_is_a_strategy_subcomponent(self):
         self.assertEqual(
             time_path2const.__module__,
-            "stlmc.algorithms.scenario_constraints",
+            "stlmc.encoding.model_linking",
         )
         constraint = time_path2const({
             (3, Bool("p@clock")): Leq(Real("x"), RealVal("1")),

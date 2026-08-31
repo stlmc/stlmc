@@ -7,10 +7,10 @@ from ..encoding.fully_stable_stl import (
     stl_depth_components,
 )
 from ..encoding.symbolic_discrete import chi, time_ordering
+from ..encoding.model_linking import path2const
+from ..encoding.path_decoding import assn2path, get_bools
 from ..objects.goal import Goal
 from ..objects.model import Model
-from .scenario_constraints import path2const
-from .scenario_paths import assn2path, get_bools
 
 
 def bounded_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
