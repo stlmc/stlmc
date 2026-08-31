@@ -86,6 +86,16 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         )
         self.assertIs(chi, shared_chi)
 
+    def test_stl_encoding_is_strategy_independent(self):
+        self.assertEqual(
+            symbolic_goal.__module__,
+            "stlmc.encoding.fully_stable_stl",
+        )
+        self.assertEqual(
+            k_depth_stl_consts.__module__,
+            "stlmc.encoding.fully_stable_stl",
+        )
+
     def test_shared_depth_and_partition_components_match_primitives(self):
         formula = UntilFormula(
             self._interval(True), universeInterval, self.left, self.right,
