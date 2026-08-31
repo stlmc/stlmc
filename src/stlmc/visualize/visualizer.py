@@ -772,7 +772,7 @@ def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
 
 
 @robustness.register(Lt)
-def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
+def _(const: Lt, point_samples: Dict[Variable, List[List[float]]],
       discrete_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
