@@ -5,7 +5,7 @@ import tempfile
 import threading
 import time
 from functools import singledispatch
-from typing import Dict, List
+from typing import List
 
 from ..constraints.constraints import *
 from ..constraints.operations import (
@@ -23,43 +23,27 @@ from ..utils.smt2_output import is_enabled, write_smt2
 from ..constraints.operations import size_of_tree
 
 
+class DrealInterval(RealVal):
+    """A dReal interval box with a midpoint usable by legacy consumers."""
+
+    def __init__(self, lower: str, upper: str):
+        self.lower = str(lower).strip()
+        self.upper = str(upper).strip()
+        midpoint = (float(self.lower) + float(self.upper)) / 2
+        super().__init__(str(format(midpoint, "f")))
+
+    @property
+    def midpoint(self) -> str:
+        return self.value
+
+
 class DrealAssignment(Assignment):
     def __init__(self, _dreal_model):
         self._dreal_model = _dreal_model
 
-    @staticmethod
-    def _sum(real_values: List[RealVal]):
-        sum_list = list()
-        for i, rv in enumerate(real_values):
-            if i == 0:
-                sum_list.append(rv)
-            else:
-                rv_prev = real_values[i - 1]
-                sum_value = float(rv_prev.value) + float(rv.value)
-                sum_list.append(RealVal(str(sum_value)))
-        return sum_list
-
-    @staticmethod
-    def _duration_dict2_time_dict(duration_dict: Dict[Real, RealVal]):
-        time_str = "time"
-        ordered_duration_keys = sorted(list(duration_dict.keys()), key=lambda v: int(v.id[len(time_str) + 1:]))
-        ordered_duration_values = list()
-
-        for time_var in ordered_duration_keys:
-            ordered_duration_values.append(duration_dict[time_var])
-
-        time_dict: Dict[Real, RealVal] = dict()
-
-        ordered_duration_values = DrealAssignment._sum(ordered_duration_values)
-        for cur_index, time_val in enumerate(ordered_duration_values):
-            time_dict[Real("tau_{}".format(cur_index + 1))] = time_val
-
-        return time_dict
-
     # solver_model_to_generalized_model
     def get_assignments(self):
         new_dict = dict()
-        duration_dict = dict()
         for e in self._dreal_model:
             # filter any messages not related to assignment
             if ":" in e and "=" in e:
@@ -78,13 +62,12 @@ class DrealAssignment(Assignment):
                 else:
                     # assume that dreal only returns real
                     [lower_bound, upper_bound] = str(value).replace("[", "").replace("]", "").split(",")
-                    # we get midpoint
-                    val_float = (float(lower_bound) + float(upper_bound)) / 2
-                    val = str(format(val_float, "f"))
-                    new_dict[Real(var_name)] = RealVal(val)
-
-        time_dict = DrealAssignment._duration_dict2_time_dict(duration_dict)
-        new_dict.update(time_dict)
+                    # Preserve dReal's box.  Existing numerical consumers use
+                    # ``value`` (the midpoint), while validators can inspect
+                    # the original lower/upper bounds.
+                    new_dict[Real(var_name)] = DrealInterval(
+                        lower_bound, upper_bound
+                    )
         return new_dict
 
 class dRealSolver(JobSolver):
