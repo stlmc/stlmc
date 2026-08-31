@@ -250,6 +250,23 @@ goal: true;
         self.assertIn("unsupported visualization output 'png'", message)
         self.assertIn("choose one of: html, pdf", message)
 
+    def test_object_manager_builds_each_goal_group_once(self):
+        from stlmc.constraints.constraints import Bool
+        from stlmc.objects.goal import ReachGoal
+        from stlmc.objects.object_factory import build_goals
+
+        labeled = Bool("labeled")
+        unlabeled = Bool("unlabeled")
+        reach = Bool("reach")
+        goals = build_goals(([labeled], [unlabeled], [reach]))
+
+        self.assertEqual(len(goals), 3)
+        self.assertEqual(
+            [goal.get_formula() for goal in goals],
+            [labeled, unlabeled, reach],
+        )
+        self.assertIsInstance(goals[-1], ReachGoal)
+
 
 if __name__ == "__main__":
     unittest.main()

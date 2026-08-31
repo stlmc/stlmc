@@ -6,6 +6,15 @@ from ..objects.model import Model
 from ..solver.abstract_solver import IncrementalFormulaSolver, SolverStatus
 
 
+def renamed_discrete_variable(variable: Variable, bound: int):
+    """Return the bound-specific numeric variable used by static learning."""
+    if isinstance(variable, Real):
+        return Real("{}_{}".format(variable.id, bound))
+    if isinstance(variable, Int):
+        return Int("{}_{}".format(variable.id, bound))
+    return None
+
+
 class StaticLearner:
     def __init__(self, model: Model, formula: Formula, solver_factory):
         self.model = model
@@ -74,16 +83,9 @@ class StaticLearner:
 
             mode_rename_dict_at = dict()
             for mode_var in self.mode_vars:
-                is_real = isinstance(mode_var, Real)
-                is_int = isinstance(mode_var, Int)
-
-                if not is_real or not is_int:
-                    continue
-
-                if is_real:
-                    mode_rename_dict_at[mode_var] = Real("{}_{}".format(mode_var.id, i))
-                else:
-                    mode_rename_dict_at[mode_var] = Int("{}_{}".format(mode_var.id, i))
+                renamed = renamed_discrete_variable(mode_var, i)
+                if renamed is not None:
+                    mode_rename_dict_at[mode_var] = renamed
             assert i not in mode_rename_dict
             mode_rename_dict[i] = mode_rename_dict_at
 

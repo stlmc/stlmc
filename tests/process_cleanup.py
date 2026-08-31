@@ -8,7 +8,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from stlmc.objects.algorithm import ParallelAlgRunner
+from stlmc.execution.runner import ParallelAlgRunner
 from stlmc.solver.abstract_solver import SolveResult, SolverJob, ThreadWorker
 
 
@@ -140,7 +140,7 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner.procs.update(workers)
 
         with mock.patch(
-            "stlmc.objects.algorithm.time.monotonic",
+            "stlmc.execution.runner.time.monotonic",
             side_effect=clock.monotonic,
         ):
             runner.kill_all()
@@ -158,7 +158,7 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner.procs.add(worker)
 
         with mock.patch(
-            "stlmc.objects.algorithm.os.killpg",
+            "stlmc.execution.runner.os.killpg",
             side_effect=PermissionError(1, "Operation not permitted"),
         ):
             runner.kill_all()

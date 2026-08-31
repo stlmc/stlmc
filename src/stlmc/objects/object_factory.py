@@ -5,21 +5,29 @@ from ..objects.model import EmptyModel
 from ..parser.model_visitor import ModelVisitor
 
 
+def build_goals(raw_goals, labeled_factory=GoalFactory):
+    """Build each parsed goal group exactly once."""
+    labeled_goals, unlabeled_goals, reach_goals = raw_goals
+    goals = [
+        labeled_factory(raw_goal, True).generate_goal()
+        for raw_goal in labeled_goals
+    ]
+    goals.extend(
+        GoalFactory(raw_goal, True).generate_goal()
+        for raw_goal in unlabeled_goals
+    )
+    goals.extend(
+        GoalFactory(raw_goal, True).generate_goal(is_reach=True)
+        for raw_goal in reach_goals
+    )
+    return goals
+
+
 class ObjectManager:
     @abc.abstractmethod
     def generate_objects(self, file_name: str):
         model, original_prop_dict, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
-        (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
-
-        goals = list()
-        for raw_goal in labeled_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in unlabeled_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in reach_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal(is_reach=True))
+        goals = build_goals(raw_goals)
         return model, original_prop_dict, goals, goal_labels
 
 
@@ -27,17 +35,7 @@ class ObjectManager:
 class NewStlObjectManager(ObjectManager):
     def generate_objects(self, file_name: str):
         _, _, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
-        (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
-
-        goals = list()
-        for raw_goal in raw_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in unlabeled_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in reach_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal(is_reach=True))
+        goals = build_goals(raw_goals)
         return EmptyModel(), {}, goals, goal_labels
 
 
@@ -45,17 +43,7 @@ class NewStlObjectManager(ObjectManager):
 class OldStlObjectManager(ObjectManager):
     def generate_objects(self, file_name: str):
         _, _, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
-        (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
-
-        goals = list()
-        for raw_goal in raw_goals:
-            goals.append(OldGoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in unlabeled_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in reach_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal(is_reach=True))
+        goals = build_goals(raw_goals, OldGoalFactory)
         return EmptyModel(), {}, goals, goal_labels
 
 
@@ -63,17 +51,7 @@ class OldObjectManager:
     @abc.abstractmethod
     def generate_objects(self, file_name: str):
         model, original_prop_dict, raw_goals, goal_labels = ModelVisitor().get_parse_tree(file_name)
-        (labeled_goals, unlabeled_goals, reach_goals) = raw_goals
-
-        goals = list()
-        for raw_goal in raw_goals:
-            goals.append(OldGoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in unlabeled_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal())
-
-        for raw_goal in reach_goals:
-            goals.append(GoalFactory(raw_goal, True).generate_goal(is_reach=True))
+        goals = build_goals(raw_goals, OldGoalFactory)
         return model, original_prop_dict, goals, goal_labels
 
 

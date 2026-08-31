@@ -3,7 +3,7 @@ import abc
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
 
-from ..utils.print import *
+from ..utils.print import Printer
 
 
 class StlModelChecker:

@@ -9,16 +9,17 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import z3
 
 from stlmc.constraints.constraints import (
-    And, Bool, BoolVal, Eq, Geq, Gt, Leq, Not, Or, Real, RealVal,
+    And, Bool, BoolVal, Eq, Geq, Gt, Int, Leq, Not, Or, Real, RealVal,
 )
 from stlmc.encoding.batching import (
     candidate_batch_formula, partitioned_candidate_batch_formula,
 )
-from stlmc.encoding.enumerate import (
+from stlmc.algorithms.two_step import (
     assert_and_track_assignment, boolean_core_assignments,
     evaluated_arithmetic_literals, relevant_boolean_abstract_links,
     scenario_enumeration_finished,
 )
+from stlmc.encoding.static_learning import renamed_discrete_variable
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.solver.z3 import Z3FormulaSolver, z3Obj
 
@@ -167,6 +168,15 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         self.assertTrue(scenario_enumeration_finished(SolverStatus.UNKNOWN))
         self.assertTrue(scenario_enumeration_finished(SolverStatus.UNSAT))
         self.assertFalse(scenario_enumeration_finished(SolverStatus.SAT))
+
+    def test_static_learning_renames_numeric_mode_variables(self):
+        self.assertEqual(
+            renamed_discrete_variable(Real("mode"), 3), Real("mode_3")
+        )
+        self.assertEqual(
+            renamed_discrete_variable(Int("mode"), 2), Int("mode_2")
+        )
+        self.assertIsNone(renamed_discrete_variable(Bool("mode"), 1))
 
 
 if __name__ == "__main__":

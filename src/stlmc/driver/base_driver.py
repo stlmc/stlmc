@@ -1,13 +1,16 @@
 import os.path
 import sys
+import time
 
 from ..driver.abstract_driver import DriverFactory, CmdParser, Runner
 from ..cli.parser import build_parser
 from ..config_schema import resolve_parallel_core
-from ..encoding.enumerate import *
-from ..encoding.monolithic import clause as monolithic_clause
-from ..encoding.static_learning import StaticLearner
-from ..exceptions import *
+from ..constraints.operations import substitution
+from ..application.result import interpret_algorithm_result
+from ..exceptions import (
+    IllegalArgumentError, NotSupportedError, ParsingError,
+    SolverUnavailableError,
+)
 from ..objects.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import (
@@ -26,7 +29,7 @@ from ..solver.capability import (
     validate_formula_solver_support,
     validate_model_solver_support,
 )
-from ..utils.print import *
+from ..utils.print import Printer
 
 
 def validate_requested_goal_labels(requested_labels, goal_labels):
@@ -350,25 +353,14 @@ class BaseRunner(Runner):
                 time_end = time.monotonic()
                 total_time = time_end - time_start
 
-                if is_reach_query:
-                    status = {
-                        "False": "unreachable",
-                        "True": "reachable",
-                        "Unknown": "unknown",
-                    }.get(final_result, "unknown")
-                else:
-                    status = {
-                        "False": "violated",
-                        "True": "satisfied",
-                        "Unknown": "unknown",
-                    }.get(final_result, "unknown")
+                outcome = interpret_algorithm_result(
+                    final_result, is_reach_query
+                )
+                status = outcome.status
                 output_name = None
                 counterexample_file = None
                 visual_config_file = None
-                found_witness = (
-                    final_result == "True" if is_reach_query
-                    else final_result == "False"
-                )
+                found_witness = outcome.has_witness
                 if found_witness and gen_result == "true":
                     output_name = "{}_b{}_{}_{}".format(
                         os.path.basename(file_name).split(".")[0], finished_bound,

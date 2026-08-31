@@ -1,4 +1,4 @@
-from ..objects.algorithm import Algorithm
+from ..execution.runner import Algorithm
 
 
 class ModelCheckingAlgorithm(Algorithm):

@@ -38,6 +38,22 @@ goal:
 
 
 class ReachabilityIntegrationTest(unittest.TestCase):
+    def test_application_result_interprets_query_semantics(self):
+        from stlmc.application.result import interpret_algorithm_result
+
+        self.assertEqual(
+            interpret_algorithm_result("True", False).status, "satisfied"
+        )
+        self.assertFalse(
+            interpret_algorithm_result("True", False).has_witness
+        )
+        self.assertEqual(
+            interpret_algorithm_result("True", True).status, "reachable"
+        )
+        self.assertTrue(
+            interpret_algorithm_result("True", True).has_witness
+        )
+
     def run_model(self, goal, *, threshold="0.01", two_step=False,
                   extra_args=(), visualize=False, solver="dreal", bound=0,
                   solver_batch_size=1, path_strategy="symbolic"):

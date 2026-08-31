@@ -15,9 +15,9 @@ from stlmc.constraints.constraints import (
 from stlmc.constraints.interval import (
     Interval, inInterval, is_positive_infinity, universeInterval,
 )
-import stlmc.encoding.enumerate as enumerate_encoding
-import stlmc.encoding.monolithic as monolithic_encoding
-from stlmc.encoding.enumerate import (
+import stlmc.algorithms.two_step as enumerate_encoding
+import stlmc.algorithms.one_step as monolithic_encoding
+from stlmc.algorithms.two_step import (
     calc_sub_formulas, chi,
     k_depth_stl_consts, rho, stl_depth_components,
     symbolic_goal, time_ordering,

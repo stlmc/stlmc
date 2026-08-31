@@ -1,6 +1,6 @@
-from ..encoding.enumerate import TwoStepAlgorithm
+from ..algorithms.two_step import TwoStepAlgorithm
 from ..encoding.model_checking import ModelCheckingAlgorithm
-from ..encoding.monolithic import OneStepAlgorithm
+from ..algorithms.one_step import OneStepAlgorithm
 from ..encoding.path import make_path_provider
 from ..objects.configuration import Configuration
 
