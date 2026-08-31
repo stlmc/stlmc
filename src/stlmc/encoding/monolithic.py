@@ -4,6 +4,7 @@ from typing import *
 
 from .enumerate import *
 from .enumerate import k_size_stl_formula as fully_stable_stl_formula
+from .fully_stable_partition import fully_stable_partition_const
 from .batching import candidate_batch_formula
 from .path import PathProvider, SymbolicPathProvider
 from .static_learning import StaticLearner

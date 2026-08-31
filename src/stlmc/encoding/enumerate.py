@@ -3,7 +3,6 @@ from functools import reduce, singledispatch
 from typing import *
 
 from ..constraints.operations import *
-from ..constraints.interval import is_positive_infinity
 from ..objects.algorithm import *
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
@@ -14,7 +13,12 @@ from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
 from ..exceptions import IllegalArgumentError
 from .batching import candidate_batch_formula
+from .fully_stable_partition import fully_stable_partition_const
 from .path import PathProvider, SymbolicPathProvider
+from .symbolic_discrete import (
+    chi, reach_time_ordering, rho, symbolic_inf, symbolic_sup,
+    temporal_candidate, time_ordering,
+)
 def is_temporal_definitional(variable) -> bool:
     return (isinstance(variable, Bool)
             and variable.id.startswith(("rho^", "parU^", "parEnd")))
@@ -328,7 +332,7 @@ class TwoStepAlgorithm(Algorithm):
 
         current_minimize_info = Eq(cur_minimize_var, And([
             model_f_k_final, k_stl_f, k_stl_time_f, stl_time_order,
-            explicit_path, next_minimize_var,
+            partition_const, explicit_path, next_minimize_var,
         ]))
 
         self.minimize_solver.pop()
@@ -339,6 +343,9 @@ class TwoStepAlgorithm(Algorithm):
         # not belong in scenario cubes.  Keep their horizon/base definitions
         # as untracked context while minimizing primary decisions.
         self.minimize_solver.add(stl_final)
+        # Paper Algorithm 2 abstracts only flow and invariant constraints.
+        # Psi_PAR is QF_LRA and must constrain scenario generation/minimization,
+        # rather than being deferred exclusively to the nonlinear refinement.
 
         # n_symbolic_path: final, n_symbolic_path_next: non-final
         base_symbolic_path = And([
@@ -359,6 +366,7 @@ class TwoStepAlgorithm(Algorithm):
         self.scenario_solver.push()
         self.scenario_solver.add(n_symbolic_path)
         self.scenario_solver.add(stl_final)
+        self.scenario_solver.add(partition_const)
         self.scenario_solver.add(contra_v_const)
         self.scenario_solver.add(contra_e_const)
         self.scenario_solver.add(contra_v_inv)
@@ -385,13 +393,11 @@ class TwoStepAlgorithm(Algorithm):
             # Multinary formulas retain the supplied list, so detach it before
             # clearing the pending batch.
             batch_candidates = list(pending_candidates)
-            # Psi_PAR is required for a returned counterexample, but its
-            # definitional variables need not participate in Boolean scenario
-            # enumeration.  Validate it once at the concrete boundary.
-            batch_formula = And([
-                candidate_batch_formula(batch_candidates),
-                partition_const,
-            ])
+            # Generalized scenarios were minimized against Psi_PAR and retain
+            # that proof's definitional context. Concrete scenarios include
+            # Psi_PAR in their common part. Do not duplicate the entire QF_LRA
+            # partition encoding outside every batched refinement.
+            batch_formula = candidate_batch_formula(batch_candidates)
             batch_scenario_count = len(pending_candidates)
             self.runner.set_scenario(scenario_label, batch_scenario_count)
             pending_candidates.clear()
@@ -422,11 +428,17 @@ class TwoStepAlgorithm(Algorithm):
                     real_set = set()
                     neg_dict: Dict[str, Eq] = dict()
                     bool_assignment_dict: Dict[str, Eq] = dict()
+                    temporal_context_literals = []
                     for v in assn_dict:
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
                             if is_temporal_definitional(v):
-                                self.minimize_solver.add(Eq(v, valuation))
+                                # Definitional values are context for proving
+                                # the scenario, but are never scenario literals
+                                # or concrete path constraints themselves.
+                                literal = Eq(v, valuation)
+                                self.minimize_solver.add(literal)
+                                temporal_context_literals.append(literal)
                                 continue
                             track_id = "p@{}".format(v.id)
                             bool_assignment_dict[track_id] = assert_and_track_assignment(
@@ -441,8 +453,15 @@ class TwoStepAlgorithm(Algorithm):
                             real_set.add(v)
 
                     real_dict = dict()
+                    # Psi_PAR depends on shifted symbolic endpoints. Include
+                    # those evaluated arithmetic atoms in the candidate core,
+                    # without polluting the persistent model clause set used
+                    # for contradiction learning across bounds.
+                    minimization_clauses = self.clause_set.union(
+                        clause(partition_const)
+                    )
                     for literal in evaluated_arithmetic_literals(
-                            self.clause_set, real_set, m):
+                            minimization_clauses, real_set, m):
                         track_id = "p@real_{}".format(id(literal.left))
                         real_dict[track_id] = literal
                         self.minimize_solver.track(literal, track_id)
@@ -526,14 +545,16 @@ class TwoStepAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const, explicit_path]), reduction_dict
+                            And([stl_final, range_const, explicit_path,
+                                 And(temporal_context_literals)]), reduction_dict
                         )
                     else:
                         scenario_part = And(
                             [path_const, extra_prop_path_const, extra_time_path_const]
                         )
                         common_part = And(
-                            [stl_final, range_const, model_abstract_const, explicit_path]
+                            [stl_final, range_const, model_abstract_const,
+                             explicit_path, And(temporal_context_literals)]
                         )
 
                     pending_candidates.append((common_part, scenario_part))
@@ -612,14 +633,16 @@ class TwoStepAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const, explicit_path]), reduction_dict
+                            And([stl_final, partition_const, range_const,
+                                 explicit_path]), reduction_dict
                         )
                     else:
                         scenario_part = And(
                             [concrete_path, extra_prop_path_const, extra_time_path_const]
                         )
                         common_part = And(
-                            [stl_final, range_const, model_abstract_const, explicit_path]
+                            [stl_final, partition_const, range_const,
+                             model_abstract_const, explicit_path]
                         )
 
                     pending_candidates.append((common_part, scenario_part))
@@ -716,11 +739,6 @@ def stl_depth_components(sub_formulas: Set[Formula], depths,
     return stl_children, time_children, final_const
 
 
-def fully_stable_partition_const(sub_formulas: Set[Formula], depth: int):
-    """Build the Psi_PAR conjunct required at a concrete solver boundary."""
-    return And(partition_obligations(sub_formulas, depth))
-
-
 def k_size_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
                        delta: float, tau_max):
     """Build the complete bounded STL formula used by one-step solving."""
@@ -811,10 +829,6 @@ def is_right_time(sub_formulas: Set[Formula]):
     return False
 
 
-def chi(i: int, k: int, f: Formula):
-    return Bool("chi^{{{},{}}}_{}".format(i, k, hash(f)))
-
-
 def t1(i: int, k: int, f: Formula):
     return Bool("T1^{{{},{}}}_{}".format(i, k, hash(f)))
 
@@ -825,39 +839,6 @@ def t2(i: int, k: int, f: Formula):
 
 def t3(i: int, k: int, f: Formula):
     return Bool("T3^{{{},{}}}_{}".format(i, k, hash(f)))
-
-
-def rho(i: int, n: int, f: Formula):
-    """Paper Definition 4.2 recurrence, with fixed evaluation index ``i``."""
-    return Bool("rho^{{{},{}}}_{}".format(i, n, hash(f)))
-
-
-def par_until(n: int, m: int, f: Formula):
-    return Bool("parU^{{{},{}}}_{}".format(n, m, hash(f)))
-
-
-def par_endpoint(kind: str, n: int, m: int, f: Formula):
-    return Bool("parEnd{}^{{{},{}}}_{}".format(kind, n, m, hash(f)))
-
-
-# sup(J_i)
-def symbolic_sup(index: int) -> Real:
-    # odd : [ \tau_{(i - 1) / 2}, \tau_{(i - 1) / 2} ]
-    # even : ( \tau_{i / 2 - 1}, \tau_{i / 2} )
-    tau_index = index / 2
-    if index % 2 == 1:
-        tau_index = (index - 1) / 2
-    return Real("tau_{}".format(int(tau_index)))
-
-
-# inf(J_i)
-def symbolic_inf(index: int) -> Real:
-    # odd : [ \tau_{(i - 1) / 2}, \tau_{(i - 1) / 2} ]
-    # even : ( \tau_{i / 2 - 1}, \tau_{i / 2} )
-    tau_index = index / 2 - 1
-    if index % 2 == 1:
-        tau_index = (index - 1) / 2
-    return Real("tau_{}".format(int(tau_index)))
 
 
 # final const
@@ -874,112 +855,6 @@ def final(f: Formula, depth: int):
             for i in range(1, depth + 1)
         )
     return And(consts)
-
-
-def _symbolic_interval(index: int) -> Interval:
-    point = index % 2 == 1
-    return Interval(point, symbolic_inf(index), point, symbolic_sup(index))
-
-
-def temporal_candidate(start: int, scan: int, interval: Interval):
-    """Encode midpoint(J_start) in J_scan - interval."""
-    start_j = _symbolic_interval(start)
-    scan_j = _symbolic_interval(scan)
-    midpoint = Div(Add(start_j.left, start_j.right), RealVal("2.0"))
-    conditions = []
-    if not is_positive_infinity(interval.right):
-        lower = Sub(scan_j.left, interval.right)
-        conditions.append(
-            midpoint >= lower
-            if scan_j.left_end and interval.right_end else midpoint > lower
-        )
-    upper = Sub(scan_j.right, interval.left)
-    conditions.append(
-        midpoint <= upper
-        if scan_j.right_end and interval.left_end else midpoint < upper
-    )
-    return And(conditions)
-
-
-def _temporal_operands(f: Formula, index: int):
-    if isinstance(f, UntilFormula):
-        return chi(index, index, f.left), chi(index, index, f.right)
-    if isinstance(f, ReleaseFormula):
-        return Not(chi(index, index, f.left)), Not(chi(index, index, f.right))
-    if isinstance(f, FinallyFormula):
-        return BoolVal("True"), chi(index, index, f.child)
-    if isinstance(f, GloballyFormula):
-        return BoolVal("True"), Not(chi(index, index, f.child))
-    raise NotSupportedError("not a temporal formula")
-
-
-def _edge(value, previous=None, following=None):
-    rising = value if previous is None else And([value, Not(previous)])
-    falling = value if following is None else And([value, Not(following)])
-    return rising, falling
-
-
-def _endpoint_membership(value, index: int):
-    return Or([
-        Eq(value, symbolic_inf(index)), Eq(value, symbolic_sup(index))
-    ])
-
-
-def temporal_partition_obligations(f: Formula, depth: int):
-    """Definition 4.3 fully-stable partition conjuncts."""
-    interval = f.local_time
-    for m in range(1, depth + 1):
-        left_m, right_m = _temporal_operands(f, m)
-        left_prev, right_prev = (
-            _temporal_operands(f, m - 1) if m > 1 else (None, None)
-        )
-        left_next, right_next = (
-            _temporal_operands(f, m + 1) if m < depth else (None, None)
-        )
-        left_rise, left_fall = _edge(left_m, left_prev, left_next)
-        right_rise, right_fall = _edge(right_m, right_prev, right_next)
-
-        for n in range(m, 0, -1):
-            chain = And([left_m, right_m]) if n == m else And([
-                _temporal_operands(f, n)[0], par_until(n + 1, m, f)
-            ])
-            yield Eq(par_until(n, m, f), chain)
-
-        candidates = [("F",
-            Sub(symbolic_sup(m), interval.left),
-            Or([left_fall, right_fall]),
-        )]
-        if not is_positive_infinity(interval.right):
-            candidates.append(("R",
-                Sub(symbolic_inf(m), interval.right),
-                Or([left_rise, right_rise]),
-            ))
-
-        for kind, value, edge_condition in candidates:
-            cand_parts = []
-            for n in range(m, 0, -1):
-                endpoint_here = _endpoint_membership(value, n)
-                endpoint_suffix = (
-                    endpoint_here if n == m else Or([
-                        endpoint_here, par_endpoint(kind, n + 1, m, f)
-                    ])
-                )
-                yield Eq(par_endpoint(kind, n, m, f), endpoint_suffix)
-                cand_parts.append(Implies(
-                    And([par_until(n, m, f), symbolic_inf(n) <= value]),
-                    par_endpoint(kind, n, m, f),
-                ))
-            yield Implies(edge_condition, And(cand_parts))
-
-
-def partition_obligations(sub_formulas: Set[Formula], depth: int):
-    obligations = []
-    for f in sub_formulas:
-        if isinstance(f, (
-                UntilFormula, ReleaseFormula,
-                FinallyFormula, GloballyFormula)):
-            obligations.extend(temporal_partition_obligations(f, depth))
-    return obligations
 
 
 def symbolic_goal(f: Formula, i: int, d: int, tau_max):
@@ -1109,37 +984,6 @@ def finally_time_const(depth: int, f: Formula) -> Set[Formula]:
         const = Eq(t_3, time_cond)
         consts.add(const)
     return consts
-
-
-def time_ordering(n: int, tau_max: float) -> And:
-    # n: even
-    # Paper trajectory encoding:
-    # 0 = \tau_0 <= ... <= \tau_{n/2-1} < \tau_{n/2} = \tau_max.
-    time_order: Set[Constraint] = set()
-    time_order.add(Eq(RealVal("0"), Real("tau_0")))
-    time_order.add(Eq(symbolic_sup(n), RealVal(str(tau_max))))
-
-    for i in range(1, n, 2):
-        current = symbolic_sup(i)
-        following = symbolic_sup(i + 1)
-        time_order.add(
-            current < following if i == n - 1 else current <= following
-        )
-
-    return And(list(time_order))
-
-
-def reach_time_ordering(n: int, tau_max: float) -> And:
-    # n: even
-    # 0 = \tau_0 < \tau_1 < ... < \tau_{i / 2} <= \tau_max
-    time_order: Set[Constraint] = set()
-    time_order.add(Eq(RealVal("0"), Real("tau_0")))
-    time_order.add(Leq(symbolic_sup(n), RealVal(str(tau_max))))
-
-    for i in range(1, n, 2):
-        time_order.add(symbolic_sup(i) < symbolic_sup(i + 1))
-
-    return And(list(time_order))
 
 
 def sub_formula(formula: Formula) -> Set[Formula]:

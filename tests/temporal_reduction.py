@@ -18,10 +18,14 @@ from stlmc.constraints.interval import (
 import stlmc.encoding.enumerate as enumerate_encoding
 import stlmc.encoding.monolithic as monolithic_encoding
 from stlmc.encoding.enumerate import (
-    calc_sub_formulas, chi, fully_stable_partition_const,
-    k_depth_stl_consts, partition_obligations, rho, stl_depth_components,
+    calc_sub_formulas, chi,
+    k_depth_stl_consts, rho, stl_depth_components,
     symbolic_goal, time_ordering,
 )
+from stlmc.encoding.fully_stable_partition import (
+    fully_stable_partition_const, partition_obligations,
+)
+from stlmc.encoding.symbolic_discrete import chi as shared_chi
 from stlmc.solver.z3 import z3Obj
 
 
@@ -74,6 +78,13 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         self.assertIn("stl_depth_components", one_step_names)
         self.assertIn("fully_stable_partition_const", two_step_names)
         self.assertIn("fully_stable_partition_const", one_step_names)
+
+    def test_partition_encoding_is_strategy_independent(self):
+        self.assertEqual(
+            fully_stable_partition_const.__module__,
+            "stlmc.encoding.fully_stable_partition",
+        )
+        self.assertIs(chi, shared_chi)
 
     def test_shared_depth_and_partition_components_match_primitives(self):
         formula = UntilFormula(
