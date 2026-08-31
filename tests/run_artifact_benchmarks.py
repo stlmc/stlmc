@@ -1,4 +1,6 @@
 import argparse
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -36,6 +38,27 @@ QUICK_PATTERN = re.compile(r"^# @benchmark\.quick\((.+)\)$", re.MULTILINE)
 ACTIVE_PROCESSES = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
 STOP_REQUESTED = threading.Event()
+
+
+def file_sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def benchmark_fingerprint(case):
+    model_path, model_config, specific_config = case
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True
+    ).strip()
+    return {
+        "git_commit": commit,
+        "model_sha256": file_sha256(model_path),
+        "model_config_sha256": file_sha256(model_config),
+        "specific_config_sha256": file_sha256(specific_config),
+    }
+
+
+def manifest_path(log_path):
+    return log_path.with_suffix(".manifest.json")
 
 
 def discover_cases(scope):
@@ -198,6 +221,19 @@ def run_case(executable, case, timeout, log_path, solver_batch_size=None,
         match.group(1) if match else "ERROR"
     )
     bound = int(match.group(2)) if match else None
+    manifest = benchmark_fingerprint(case)
+    manifest.update({
+        "command": command,
+        "timeout_seconds": timeout,
+        "elapsed_seconds": elapsed,
+        "result": result,
+        "bound": bound,
+        "returncode": process.returncode,
+    })
+    manifest_path(log_path).write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     return result, bound, elapsed, process.returncode
 
 

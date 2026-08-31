@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import re
 import signal
@@ -65,6 +66,28 @@ def read_result(output):
     if match is None:
         return None
     return match.group(1), int(match.group(2))
+
+
+def require_fresh_yices_log(case, log_path):
+    metadata_path = benchmarks.manifest_path(log_path)
+    if not metadata_path.exists():
+        raise SystemExit(
+            "Yices benchmark manifest is missing: {}; rerun benchmark".format(
+                metadata_path
+            )
+        )
+    recorded = json.loads(metadata_path.read_text(encoding="utf-8"))
+    expected = benchmarks.benchmark_fingerprint(case)
+    mismatches = [
+        key for key, value in expected.items()
+        if recorded.get(key) != value
+    ]
+    if mismatches:
+        raise SystemExit(
+            "Yices benchmark log is stale ({}): {}; rerun benchmark".format(
+                ", ".join(mismatches), log_path
+            )
+        )
 
 
 def run_solver(executable, case, timeout, log_path, solver):
@@ -165,6 +188,7 @@ def main():
                         yices_log
                     )
                 )
+            require_fresh_yices_log(case, yices_log)
             yices_result = read_result(yices_log.read_text(encoding="utf-8"))
             future = executor.submit(
                 run_solver, executable, case, args.timeout, z3_log, "z3"

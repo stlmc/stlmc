@@ -9,6 +9,8 @@ The test suite has fourteen parts:
   and invariant encodings for CVC5, Z3, Yices, and dReal.
 - `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
   results through the STLmc solver adapter.
+- `dreal_assignment.py` checks that dReal interval boxes are preserved while
+  their midpoint remains available to legacy visualization consumers.
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
@@ -42,6 +44,8 @@ The test suite has fourteen parts:
   Yices logs from the preceding benchmark run instead of running Yices twice.
 - `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
   compares each result and finishing bound with the annotation in its model.
+  Each log has a JSON manifest containing the git commit, input hashes,
+  command, timeout, and result, so solver comparisons reject stale logs.
   The `tank-ode/tank-f2` case covers bound-zero STL checking of a jump-free
   ODE model, ensuring that its initial continuous segment is not skipped.
 
@@ -65,6 +69,17 @@ Execution logs are written to `artifact-logs/` by default. Violated cases also
 generate their `.counterexample` and visualization `.cfg` files beside the
 corresponding log. Each benchmark model has a separate output directory, so
 cases running in parallel cannot overwrite one another's artifacts.
+
+Numerically reconstruct and check generated counterexamples with:
+
+```sh
+python tests/validate_artifacts.py artifact-logs
+```
+
+This checks the original robust STL condition `rho(phi, 0) <= epsilon` and
+the consistency of stored dReal midpoints with their interval boxes. It is a
+supporting numerical check, not a replacement for an SMT or delta-SAT
+certificate.
 
 ## Make targets
 
@@ -192,8 +207,8 @@ default timeout and includes all `z3-slow` cases.
 
 Run `make benchmark` first if the matching Yices logs do not exist. `make test`
 does this automatically before starting the solver comparison. The comparison
-runner does not check whether an existing Yices log is stale, so regenerate
-the benchmark logs after changing a model, configuration, or STLMC code.
+runner verifies the accompanying manifest and rejects logs generated from a
+different commit, model, or configuration.
 
 Run only benchmarks:
 
