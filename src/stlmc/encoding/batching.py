@@ -34,3 +34,9 @@ def candidate_batch_formula(candidates: List[Candidate]) -> Formula:
         And([candidate_common, candidate_part])
         for candidate_common, candidate_part in candidates
     ])
+
+
+def partitioned_candidate_batch_formula(
+        candidates: List[Candidate], partition: Formula) -> Formula:
+    """Retain the shared fully-stable partition in a refinement batch."""
+    return And([partition, candidate_batch_formula(candidates)])

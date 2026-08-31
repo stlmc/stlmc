@@ -12,7 +12,7 @@ from ..constraints.operations import size_of_tree
 from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
 from ..exceptions import IllegalArgumentError
-from .batching import candidate_batch_formula
+from .batching import partitioned_candidate_batch_formula
 from .fully_stable_partition import fully_stable_partition_const
 from .fully_stable_stl import (
     calc_sub_formulas, final, is_proposition, k_depth_stl_consts,
@@ -27,6 +27,11 @@ from .symbolic_discrete import (
 def is_temporal_definitional(variable) -> bool:
     return (isinstance(variable, Bool)
             and variable.id.startswith(("rho^", "parU^", "parEnd")))
+
+
+def scenario_enumeration_finished(status: SolverStatus) -> bool:
+    """Return whether an incremental abstraction query can make no progress."""
+    return status in (SolverStatus.UNSAT, SolverStatus.UNKNOWN)
 
 
 def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
@@ -398,11 +403,12 @@ class TwoStepAlgorithm(Algorithm):
             # Multinary formulas retain the supplied list, so detach it before
             # clearing the pending batch.
             batch_candidates = list(pending_candidates)
-            # Generalized scenarios were minimized against Psi_PAR and retain
-            # that proof's definitional context. Concrete scenarios include
-            # Psi_PAR in their common part. Do not duplicate the entire QF_LRA
-            # partition encoding outside every batched refinement.
-            batch_formula = candidate_batch_formula(batch_candidates)
+            # Psi_PAR is part of the final encoding. Factor it once around the
+            # candidate disjunction instead of projecting it out after
+            # abstraction-side minimization.
+            batch_formula = partitioned_candidate_batch_formula(
+                batch_candidates, partition_const
+            )
             batch_scenario_count = len(pending_candidates)
             self.runner.set_scenario(scenario_label, batch_scenario_count)
             pending_candidates.clear()
@@ -433,7 +439,6 @@ class TwoStepAlgorithm(Algorithm):
                     real_set = set()
                     neg_dict: Dict[str, Eq] = dict()
                     bool_assignment_dict: Dict[str, Eq] = dict()
-                    temporal_context_literals = []
                     for v in assn_dict:
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
@@ -443,7 +448,6 @@ class TwoStepAlgorithm(Algorithm):
                                 # or concrete path constraints themselves.
                                 literal = Eq(v, valuation)
                                 self.minimize_solver.add(literal)
-                                temporal_context_literals.append(literal)
                                 continue
                             track_id = "p@{}".format(v.id)
                             bool_assignment_dict[track_id] = assert_and_track_assignment(
@@ -550,8 +554,7 @@ class TwoStepAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const, explicit_path,
-                                 And(temporal_context_literals)]), reduction_dict
+                            And([stl_final, range_const, explicit_path]), reduction_dict
                         )
                     else:
                         scenario_part = And(
@@ -559,7 +562,7 @@ class TwoStepAlgorithm(Algorithm):
                         )
                         common_part = And(
                             [stl_final, range_const, model_abstract_const,
-                             explicit_path, And(temporal_context_literals)]
+                             explicit_path]
                         )
 
                     pending_candidates.append((common_part, scenario_part))
@@ -664,7 +667,11 @@ class TwoStepAlgorithm(Algorithm):
                     # Exclude exactly this Boolean/discrete cube.
                     self.scenario_solver.add(Not(concrete_path))
                     counter += 1
-            if result == SolverStatus.UNSAT:
+            if result == SolverStatus.UNKNOWN:
+                # Rechecking an unchanged incremental query cannot make
+                # progress and otherwise spins forever.
+                self.runner.had_unknown = True
+            if scenario_enumeration_finished(result):
                 break
 
         runner_result, runner_model = submit_pending_batch()
