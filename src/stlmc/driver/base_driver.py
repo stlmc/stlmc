@@ -7,17 +7,18 @@ from ..cli.parser import build_parser
 from ..config_schema import resolve_parallel_core
 from ..constraints.operations import substitution
 from ..application.result import interpret_algorithm_result
+from ..artifacts.writer import write_verification_artifacts
 from ..exceptions import (
     IllegalArgumentError, NotSupportedError, ParsingError,
     SolverUnavailableError,
 )
-from ..objects.algorithm_factory import AlgorithmFactory
+from ..application.algorithm_factory import AlgorithmFactory
 from ..objects.configuration import Configuration
 from ..objects.goal import (
     Goal, ReachGoal, optimize, reach_goal, validate_reach_formula,
 )
 from ..objects.model import Model
-from ..objects.object_factory import ObjectFactory
+from ..application.model_loader import ObjectFactory
 from ..parser.checker import check_dynamics, check_validity
 from ..parser.config_visitor import ConfigVisitor
 from ..parser.model_visitor import ModelVisitor
@@ -357,52 +358,20 @@ class BaseRunner(Runner):
                     final_result, is_reach_query
                 )
                 status = outcome.status
-                output_name = None
                 counterexample_file = None
                 visual_config_file = None
                 found_witness = outcome.has_witness
                 if found_witness and gen_result == "true":
-                    output_name = "{}_b{}_{}_{}".format(
-                        os.path.basename(file_name).split(".")[0], finished_bound,
-                        label, underlying_solver,
+                    counterexample_file, visual_config_file = (
+                        write_verification_artifacts(
+                            file_name, finished_bound, label,
+                            underlying_solver, is_reach_query, assn_dict,
+                            model, PD, goal, delta,
+                        )
                     )
-                    artifact_suffix = "witness" if is_reach_query else "counterexample"
-                    counterexample_file = "{}.{}".format(output_name, artifact_suffix)
-                    visual_config_file = "{}.cfg".format(output_name)
                 result_scope = (
                     "at bound {}" if found_witness else "up to bound {}"
                 ).format(finished_bound)
-                if found_witness:
-                    if gen_result == "true":
-                        import pickle
-                        with open(counterexample_file, "wb") as fw:
-                            pickle.dump((assn_dict, model.modules, model.mode_var_dict, model.prop_dict,
-                                         model.range_dict, PD, goal.get_formula(), label, float(delta),
-                                         model.init, model.const_dict), fw)
-
-                        cfg_string = ["{", "# state variables: {}".format(
-                            " , ".join(map(lambda x: x.id, model.range_dict.keys())))]
-
-                        from ..visualize.visualizer import (
-                            sub_formula as vis_sub_formula,
-                        )
-                        ff = substitution(goal.get_formula(), PD)
-                        subformulas, formula_id_dict = vis_sub_formula(ff)
-                        rob_string = list()
-                        for f in subformulas:
-                            rob_string.append("# {}_{} ---> {}".format(label, formula_id_dict[f], f))
-
-                        rob_string = sorted(rob_string)
-                        cfg_string.extend(rob_string)
-
-                        cfg_string.append("output = html # pdf")
-                        cfg_string.append("group {")
-                        cfg_string.append("}")
-                        cfg_string.append("}")
-
-                        f = open("{}.cfg".format(output_name), "w")
-                        f.write("\n".join(cfg_string))
-                        f.close()
                 printer.run_finished(
                     status, finished_bound, total_time, formula_string,
                     result_scope, counterexample_file, visual_config_file,

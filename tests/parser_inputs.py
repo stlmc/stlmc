@@ -253,7 +253,7 @@ goal: true;
     def test_object_manager_builds_each_goal_group_once(self):
         from stlmc.constraints.constraints import Bool
         from stlmc.objects.goal import ReachGoal
-        from stlmc.objects.object_factory import build_goals
+        from stlmc.application.model_loader import build_goals
 
         labeled = Bool("labeled")
         unlabeled = Bool("unlabeled")
