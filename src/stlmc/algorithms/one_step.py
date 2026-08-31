@@ -2,7 +2,7 @@ from functools import singledispatch
 import time
 from typing import Dict, Set
 
-from .two_step import k_size_stl_formula as fully_stable_stl_formula
+from .shared_stl import bounded_stl_formula
 from ..encoding.batching import candidate_batch_formula
 from ..encoding.path import PathProvider, SymbolicPathProvider
 from ..encoding.static_learning import StaticLearner
@@ -17,6 +17,10 @@ from ..solver.abstract_solver import JobSolver
 from ..exceptions import IllegalArgumentError
 from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
+
+
+# Compatibility name formerly imported from the two-step implementation.
+fully_stable_stl_formula = bounded_stl_formula
 
 
 class OneStepAlgorithm(Algorithm):
@@ -76,7 +80,7 @@ class OneStepAlgorithm(Algorithm):
                 time_order_const = reach_time_ordering(2 * b + 2, float(time_bound))
                 stl_const = And([k_step_goal, time_order_const])
             else:
-                stl_const = fully_stable_stl_formula(
+                stl_const = bounded_stl_formula(
                     model, goal, goal_prop_dict, b, delta, float(time_bound)
                 )
 

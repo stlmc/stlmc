@@ -78,8 +78,12 @@ class BoundedTemporalReductionTest(unittest.TestCase):
             enumerate_encoding.k_size_stl_formula,
         )
         self.assertIn(
-            "fully_stable_stl_formula",
+            "bounded_stl_formula",
             monolithic_encoding.OneStepAlgorithm.run.__code__.co_names,
+        )
+        self.assertEqual(
+            enumerate_encoding.k_size_stl_formula.__module__,
+            "stlmc.algorithms.shared_stl",
         )
 
     def test_one_and_two_step_share_temporal_component_builders(self):

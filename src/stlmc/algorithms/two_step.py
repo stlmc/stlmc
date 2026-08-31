@@ -37,6 +37,10 @@ from .scenario_constraints import (
     contradiction_gen, contradiction_gen_inv, is_mode_variable, path2const,
     time_path2const,
 )
+from .shared_stl import (
+    bounded_stl_formula as k_size_stl_formula,
+    bounded_stl_formula_from_threshold as k_size_stl_formula_from_threshold,
+)
 
 
 class TwoStepAlgorithm(Algorithm):
@@ -626,49 +630,6 @@ class TwoStepAlgorithm(Algorithm):
 
         self.last_scenario_count = submitted
         return False, None, self.runner.time
-
-
-def k_size_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
-                       delta: float, tau_max):
-    """Build the complete bounded STL formula used by one-step solving."""
-    stl_formula = prepare_fully_stable_stl_formula(
-        goal, goal_prop_dict, delta
-    )
-
-    return k_size_stl_formula_from_threshold(
-        model, stl_formula, bound, tau_max
-    )
-
-
-def k_size_stl_formula_from_threshold(
-        model: Model, stl_formula: Formula, bound: int, tau_max):
-    """Build one bounded Boolean encoding for an already shifted STL formula."""
-
-    sub_formulas = calc_sub_formulas(stl_formula)
-    initial_stl_f = chi(1, 1, stl_formula)
-    total_stl_children = [initial_stl_f]
-    max_depth = 2 * (bound + 1)
-    depth_stl_children, total_time_children, final_f_k = (
-        stl_depth_components(sub_formulas, range(1, max_depth + 1), tau_max)
-    )
-    total_stl_children.extend(depth_stl_children)
-    time_order_const = time_ordering(max_depth, tau_max)
-    path_const_children = (
-        total_stl_children + total_time_children + [time_order_const]
-    )
-    path_const = And(path_const_children)
-
-    bools = get_bools(path_const)
-    p_bools = {boolean.id for boolean in bools}
-    extra_prop_path, _ = assn2path(p_bools, sub_formulas, tau_max)
-    extra_prop_path_const = path2const(extra_prop_path, model)
-
-    partition_encoding = FullyStablePartitionEncoding(sub_formulas)
-    partition_encoding.extend_to(max_depth)
-    partition_const = partition_encoding.formula()
-    return And(path_const_children + [
-        final_f_k, partition_const, extra_prop_path_const,
-    ])
 
 
 def acc_size(acc: List[Formula]):
