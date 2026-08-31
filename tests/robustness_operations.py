@@ -167,6 +167,21 @@ class RobustnessOperationsTest(unittest.TestCase):
             infix_float.__module__, "stlmc.visualize.numeric"
         )
 
+    def test_assignment_projection_is_independent_from_plotting(self):
+        from stlmc.visualize.visualizer import Projector
+
+        first, second = Real("currentMode_0"), Real("currentMode_1")
+        modules = [{"name": "zero"}, {"name": "one"}]
+        projector = Projector(
+            {second: RealVal("0"), first: RealVal("1")}, {}, {}, modules
+        )
+        self.assertEqual(Projector.__module__, "stlmc.visualize.projection")
+        self.assertEqual(projector.get_ordered_mode_vars(), [first, second])
+        self.assertEqual(
+            projector.get_ordered_modules(), [modules[1], modules[0]]
+        )
+        self.assertEqual(projector.get_max_bound(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

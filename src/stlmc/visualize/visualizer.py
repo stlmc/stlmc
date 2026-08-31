@@ -16,60 +16,12 @@ from ..constraints.robustness import release_robustness, until_robustness
 from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from .latex import formula2latex, interval_string
+from .projection import Projector
 from .sampling import (
     DiscreteSampler, OdePointSampler, PointSampler, SolutionPointSampler,
     TimeSampler, get_sub_time_samples, sample_max,
 )
 from bokeh.plotting import figure, show
-
-
-class Projector:
-    def __init__(self, assignment, mode_var_dict: Dict[str, Variable],
-                 proposition_dict: Dict[Variable, Constraint], modules: Dict):
-        self.assignment = assignment
-        self.mode_var_dict = mode_var_dict
-        self.proposition_dict = proposition_dict
-        self.modules = modules
-
-    def find_all_with_keywords(self, keyword: str) -> List[Variable]:
-        result = list()
-        for v in self.assignment:
-            if keyword in v.id:
-                result.append(v)
-        return result
-
-    # return sorted list of variables
-    def get_variable_points(self) -> List[Variable]:
-        tau_list = self.find_all_with_keywords("tau")
-        return sorted(tau_list, key=lambda v: int(v.id[4:]))
-
-    def get_mode_vars(self) -> Set[Variable]:
-        return set(self.proposition_dict.keys()).union(self.mode_var_dict.values())
-
-    def get_ordered_mode_vars(self):
-        mode_vars = self.find_all_with_keywords("currentMode_")
-        ordered_mode_vars = sorted(mode_vars, key=lambda v: int(v.id[len("currentMode_"):]))
-        return ordered_mode_vars
-
-    def get_max_bound(self):
-        ordered_mode_vars = self.get_ordered_mode_vars()
-        last = ordered_mode_vars[len(ordered_mode_vars) - 1]
-        last_id = int(last.id[len("currentMode_"):])
-        return last_id
-
-    # get module ordering
-    def get_ordered_modules(self) -> List[Dict]:
-        # find module ids
-        ordered_mode_vars = self.get_ordered_mode_vars()
-        ordered_module_ids = list()
-        for v in ordered_mode_vars:
-            ordered_module_ids.append(int(float(self.assignment[v].value)))
-        #
-        result = list()
-        for module_id in ordered_module_ids:
-            result.append(self.modules[module_id])
-
-        return result
 
 
 class Visualizer:
