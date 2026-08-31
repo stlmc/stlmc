@@ -116,7 +116,7 @@ class BasePrinter:
             self._progress_active = False
 
     def run_finished(self, status, bound, elapsed, formula, scope,
-                     counterexample=None, visual_config=None):
+                     counterexample=None, visual_config=None, guarantee=None):
         self.clear_progress()
         lines = [
             "",
@@ -125,6 +125,8 @@ class BasePrinter:
             "  time        : {:.3f}s".format(elapsed),
             "  formula     : {}".format(formula),
         ]
+        if guarantee is not None:
+            lines.append("  guarantee   : {}".format(guarantee))
         if counterexample is not None:
             lines.append("  artifacts   : {}".format(counterexample))
         if visual_config is not None:

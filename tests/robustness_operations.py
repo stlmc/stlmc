@@ -8,7 +8,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.constraints.robustness import release_robustness, until_robustness
 from stlmc.constraints.constraints import (
-    Add, And, Eq, Geq, Gt, Implies, Leq, Lt, Neq, Not, Or, Real, RealVal, Sub,
+    Add, And, Bool, Eq, Geq, Gt, Implies, Leq, Lt, Neq, Not, Or, Real,
+    RealVal, Sub,
 )
 from stlmc.constraints.operations import relaxing, strengthening
 
@@ -33,6 +34,25 @@ class RobustnessOperationsTest(unittest.TestCase):
             Gt(self.x, Sub(self.zero, self.epsilon)),
         ]))
 
+    def test_visualizer_boolean_robustness_uses_discrete_truth(self):
+        from stlmc.visualize.visualizer import robustness
+
+        proposition = Bool("enabled")
+        times = [[0.0, 1.0]]
+        self.assertEqual(
+            robustness(
+                proposition, {}, {proposition: [[1, -1]]},
+                0.0, times, 1.0, {},
+            ),
+            float("inf"),
+        )
+        self.assertEqual(
+            robustness(
+                proposition, {}, {proposition: [[1, -1]]},
+                1.0, times, 1.0, {},
+            ),
+            float("-inf"),
+        )
     def test_atomic_strengthening_matches_maude_rules(self):
         self.assertEqual(strengthening(Gt(self.x, self.zero), 0.5),
                          Gt(self.x, Add(self.zero, self.epsilon)))

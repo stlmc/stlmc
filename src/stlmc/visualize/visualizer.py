@@ -672,29 +672,29 @@ def robustness(const: Constraint, point_samples: Dict[Variable, List[List[float]
 
 
 @robustness.register(Bool)
-def _(const: Implies, point_samples: Dict[Variable, List[List[float]]],
+def _(const: Bool, point_samples: Dict[Variable, List[List[float]]],
       discrete_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
         return dp_table[(const, time)]
 
+    if const not in discrete_samples:
+        raise NotSupportedError(
+            "cannot find discrete samples for a Boolean proposition \"{}\""
+            .format(const)
+        )
     for interval_index, time_samples in enumerate(times):
-        for index, t in enumerate(time_samples):
-            if t == time:
-                substitute_dict: Dict[Bool, RealVal] = dict()
-                for v in discrete_samples:
-                    v_val_str = str(discrete_samples[v][interval_index][index])
-                    # this is not right implementation
-                    if v_val_str == "1":
-                        substitute_dict[v] = RealVal("oo")
-                    if v_val_str == "-1":
-                        substitute_dict[v] = RealVal("-oo")
-                    if v_val_str == "0":
-                        substitute_dict[v] = RealVal("0")
-                expr = substitution(const, substitute_dict)
-                robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
-                dp_table[(const, t)] = robust_value
-                return robust_value
+        for index, sample_time in enumerate(time_samples):
+            if sample_time != time:
+                continue
+            truth_value = discrete_samples[const][interval_index][index]
+            robust_value = (
+                float("inf") if truth_value > 0
+                else float("-inf") if truth_value < 0
+                else 0.0
+            )
+            dp_table[(const, time)] = robust_value
+            return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
 
 

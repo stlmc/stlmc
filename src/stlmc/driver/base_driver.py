@@ -414,6 +414,12 @@ class BaseRunner(Runner):
                 printer.run_finished(
                     status, finished_bound, total_time, formula_string,
                     result_scope, counterexample_file, visual_config_file,
+                    (
+                        "no counterexample in the bounded search; "
+                        "rho >= {}, with strict robustness guaranteed below "
+                        "that threshold".format(delta)
+                        if status == "satisfied" else None
+                    ),
                 )
         except (NotSupportedError, IllegalArgumentError, SolverUnavailableError):
             raise
