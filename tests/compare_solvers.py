@@ -113,6 +113,10 @@ def main():
     benchmarks.STOP_REQUESTED.clear()
     parser = argparse.ArgumentParser()
     parser.add_argument("--scope", default=".")
+    parser.add_argument(
+        "--formula",
+        help="compare only one formula/config label, e.g. f2",
+    )
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--fast", action="store_true")
@@ -129,6 +133,11 @@ def main():
         case for case in benchmarks.discover_cases(args.scope)
         if model_uses_yices(case)
     ]
+    if args.formula:
+        cases = [
+            case for case in cases
+            if case[2].stem.rsplit("-", 1)[1] == args.formula
+        ]
     if args.fast:
         cases = [
             case for case in cases

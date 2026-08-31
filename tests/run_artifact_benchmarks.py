@@ -30,6 +30,7 @@ EXPECTED_ITEM_PATTERN = re.compile(
     r"([A-Za-z][A-Za-z0-9_-]*)="
     r"(satisfied|violated|reachable|unreachable|unknown):(\d+)"
 )
+SOLVER_PATTERN = re.compile(r'\bsolver\s*=\s*"([^"]+)"')
 FAST_PATTERN = re.compile(r"^# @benchmark\.fast\((.+)\)$", re.MULTILINE)
 QUICK_PATTERN = re.compile(r"^# @benchmark\.quick\((.+)\)$", re.MULTILINE)
 ACTIVE_PROCESSES = set()
@@ -68,6 +69,12 @@ def load_expected_result(case):
         )
     }
     return expected.get(label)
+
+
+def configured_solver(case):
+    _, model_config, _ = case
+    match = SOLVER_PATTERN.search(model_config.read_text(encoding="utf-8"))
+    return match.group(1) if match is not None else None
 
 
 def has_label_annotation(case, pattern):
@@ -141,7 +148,8 @@ def terminate_active_processes():
             pass
 
 
-def run_case(executable, case, timeout, log_path, solver_batch_size=None):
+def run_case(executable, case, timeout, log_path, solver_batch_size=None,
+             parallel_core=None):
     model_path, model_config, specific_config = case
     command = [
         executable,
@@ -153,6 +161,8 @@ def run_case(executable, case, timeout, log_path, solver_batch_size=None):
     ]
     if solver_batch_size is not None:
         command.extend(["-solver-batch-size", str(solver_batch_size)])
+    if parallel_core is not None:
+        command.extend(["-parallel-core", str(parallel_core)])
     case_output_dir = log_path.parent.resolve()
     case_output_dir.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -206,6 +216,10 @@ def main():
         "--formula",
         help="run one formula/config label, e.g. f3 or reach (requires --model)",
     )
+    parser.add_argument(
+        "--solver", choices=("yices", "dreal"),
+        help="run only benchmarks configured for this solver",
+    )
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument(
         "--solver-batch-size", type=int,
@@ -224,6 +238,13 @@ def main():
         "--jobs", type=int, default=1,
         help="number of benchmark cases to run concurrently",
     )
+    parser.add_argument(
+        "--parallel-core", type=int,
+        help=(
+            "workers available to each two-step case; by default the host "
+            "CPU count is divided fairly between concurrent cases"
+        ),
+    )
     parser.add_argument("--output", type=Path, default=Path("artifact-logs"))
     args = parser.parse_args()
 
@@ -233,6 +254,8 @@ def main():
         parser.error("--timeout must be at least 1 second")
     if args.solver_batch_size is not None and args.solver_batch_size < 1:
         parser.error("--solver-batch-size must be at least 1")
+    if args.parallel_core is not None and args.parallel_core < 1:
+        parser.error("--parallel-core must be at least 1")
     if args.formula and not args.model:
         parser.error("--formula requires --model")
 
@@ -255,6 +278,8 @@ def main():
             case for case in cases
             if case[2].stem.rsplit("-", 1)[1] == args.formula
         ]
+    if args.solver:
+        cases = [case for case in cases if configured_solver(case) == args.solver]
     if args.fast:
         cases = [case for case in cases if is_fast_case(case)]
     if args.quick:
@@ -266,10 +291,13 @@ def main():
         raise SystemExit(f"no benchmark cases found for: {selection}")
 
     output_root = args.output
+    parallel_core = args.parallel_core
+    if parallel_core is None:
+        parallel_core = max(1, (os.cpu_count() or 1) // args.jobs)
     failures = 0
     print(
         f"running {len(cases)} artifact benchmark cases from {args.scope} "
-        f"with {args.jobs} job(s)"
+        f"with {args.jobs} job(s), {parallel_core} solver worker(s) per case"
     )
 
     jobs = []
@@ -288,6 +316,7 @@ def main():
             executor.submit(
                 run_case, executable, case, args.timeout, log_path,
                 args.solver_batch_size,
+                parallel_core,
             ): (case, case_name)
             for case, case_name, log_path in jobs
         }
