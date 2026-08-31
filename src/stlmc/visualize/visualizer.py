@@ -20,6 +20,7 @@ from ..constraints.robustness import release_robustness, until_robustness
 from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
 from .latex import formula2latex, interval_string
+from .numeric import infix_float
 from bokeh.plotting import figure, show
 
 
@@ -534,96 +535,6 @@ class Visualizer:
             result[var.id] = sub_result
 
         return result
-
-
-@singledispatch
-def infix_float(const: Constraint, vec, var_list: list):
-    raise NotSupportedError("cannot convert this: {}".format(const))
-
-
-@infix_float.register(Neg)
-def _(const: Neg, vec, var_list: list):
-    return - infix_float(const.child, vec, var_list)
-
-
-@infix_float.register(IntVal)
-def _(const: IntVal, vec, var_list: list):
-    return int(const.value)
-
-
-@infix_float.register(RealVal)
-def _(const: RealVal, vec, var_list: list):
-    return float(const.value)
-
-
-@infix_float.register(Int)
-def _(const: Int, vec, var_list: list):
-    return vec[var_list.index(const)]
-
-
-@infix_float.register(Real)
-def _(const: Real, vec, var_list: list):
-    return vec[var_list.index(const)]
-
-
-@infix_float.register(Add)
-def _(const: Add, vec, var_list: list):
-    return infix_float(const.left, vec, var_list) + infix_float(const.right, vec, var_list)
-
-
-@infix_float.register(Sub)
-def _(const: Sub, vec, var_list: list):
-    return infix_float(const.left, vec, var_list) - infix_float(const.right, vec, var_list)
-
-
-@infix_float.register(Mul)
-def _(const: Mul, vec, var_list: list):
-    return infix_float(const.left, vec, var_list) * infix_float(const.right, vec, var_list)
-
-
-@infix_float.register(Div)
-def _(const: Div, vec, var_list: list):
-    return infix_float(const.left, vec, var_list) / infix_float(const.right, vec, var_list)
-
-
-@infix_float.register(Pow)
-def _(const: Pow, vec, var_list: list):
-    return infix_float(const.left, vec, var_list) ** infix_float(const.right, vec, var_list)
-
-
-@infix_float.register(Sqrt)
-def _(const: Sqrt, vec, var_list: list):
-    return np.sqrt(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Sin)
-def _(const: Sin, vec, var_list: list):
-    return np.sin(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Cos)
-def _(const: Cos, vec, var_list: list):
-    return np.cos(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Tan)
-def _(const: Tan, vec, var_list: list):
-    return np.tan(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Arcsin)
-def _(const: Arcsin, vec, var_list: list):
-    return np.arcsin(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Arccos)
-def _(const: Arccos, vec, var_list: list):
-    return np.arccos(infix_float(const.child, vec, var_list))
-
-
-@infix_float.register(Arctan)
-def _(const: Arctan, vec, var_list: list):
-    return np.arctan(infix_float(const.child, vec, var_list))
 
 
 def get_sub_time_samples(time_sample_list: List[List[float]], start: float, end: float, time_max: float) -> List[float]:

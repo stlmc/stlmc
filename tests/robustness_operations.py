@@ -155,6 +155,15 @@ class RobustnessOperationsTest(unittest.TestCase):
             formula2latex.__module__, "stlmc.visualize.latex"
         )
 
+    def test_numeric_evaluator_is_independent_from_plotting(self):
+        from stlmc.visualize.numeric import infix_float
+
+        expression = Div(Add(self.x, RealVal("2")), RealVal("2"))
+        self.assertEqual(infix_float(expression, [4.0], [self.x]), 3.0)
+        self.assertEqual(
+            infix_float.__module__, "stlmc.visualize.numeric"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
