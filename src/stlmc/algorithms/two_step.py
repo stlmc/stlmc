@@ -33,6 +33,10 @@ from .symbolic_ids import (
     type2_index_info, type2_info, v_type1_info, v_type2_info,
 )
 from .scenario_paths import assn2path, get_bools, pick_time_and_props
+from .scenario_constraints import (
+    contradiction_gen, contradiction_gen_inv, is_mode_variable, path2const,
+    time_path2const,
+)
 
 
 class TwoStepAlgorithm(Algorithm):
@@ -665,98 +669,6 @@ def k_size_stl_formula_from_threshold(
     return And(path_const_children + [
         final_f_k, partition_const, extra_prop_path_const,
     ])
-
-
-def is_mode_variable(b: Bool, model: Model):
-    if b.id in model.mode_var_dict:
-        return True
-    return False
-
-
-def path2const(path: Dict[Tuple[int, Bool], Formula], model: Model):
-    path_const_children = list()
-    # depth / 2 = bound
-    for (depth, v) in path:
-        bound = int((depth - 1) / 2)
-        is_vertex = depth % 2 == 0
-        formula = path[(depth, v)]
-        renamed_const, rename_dict = rename(formula, bound, is_vertex)
-        if is_vertex:
-            #  if mode variable, do not add
-            if is_mode_variable(v, model):
-                renamed_e_const, _ = rename(formula, bound, False)
-                path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_e_const))
-                continue
-
-            chi_prop_children = list()
-            for module_index, module in enumerate(model.modules):
-                integrals = module["flow"]
-                # renamed_integrals = substitution(integrals, rename_dict)
-                forall = Forall(module_index, symbolic_sup(depth), symbolic_inf(depth),
-                                renamed_const,
-                                model.boolean_abstract[Bool("newIntegral_{}_{}".format(module_index, bound))])
-                matching = Eq(Real("currentMode_{}".format(bound)), RealVal(str(module_index)))
-                chi_prop_children.append(And([matching, renamed_const, forall]))
-            path_const_children.append(Eq(Bool(v.id.replace("p@", "")), Or(chi_prop_children)))
-        else:
-            renamed_e_const, _ = rename(formula, bound, False)
-            path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_e_const))
-    return And(path_const_children)
-
-
-def time_path2const(path: Dict[Tuple[int, Bool], Formula]):
-    path_const_children = list()
-    # depth / 2 = bound
-    for (depth, v) in path:
-        bound = int((depth - 1) / 2)
-        is_vertex = depth % 2 == 0
-        formula = path[(depth, v)]
-        renamed_const, _ = rename(formula, bound, is_vertex)
-
-        if is_vertex:
-            path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_const))
-        else:
-            renamed_e_const, _ = rename(formula, bound, False)
-            path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_e_const))
-    return And(path_const_children)
-
-
-# vertex, edge
-def contradiction_gen(clause_set, sub_formulas):
-    const_edge_children = list()
-    const_vertex_children = list()
-    for c in clause_set:
-        if isinstance(c, Bool):
-            is_chi = "chi" in c.id
-            if is_chi:
-                formula, f_i, f_k = v_type1_info(c.id, sub_formulas)
-                is_formula_prop = is_proposition(formula)
-                is_edge = f_k % 2 == 1
-                is_vertex = f_k % 2 == 0
-
-                bound = depth2bound(f_k)
-
-                # if path has an index f_k
-                if is_formula_prop and is_edge:
-                    renamed_f, _ = rename(formula, bound, is_vertex=False)
-                    const_edge_children.append(Eq(c, renamed_f))
-
-                if is_formula_prop and is_vertex:
-                    renamed_f_v, _ = rename(formula, bound, is_vertex=True)
-                    renamed_f_e, _ = rename(formula, bound + 1, is_vertex=False)
-                    const_vertex_children.append(Eq(c, And([renamed_f_v, renamed_f_e])))
-    return And(const_vertex_children), And(const_edge_children)
-
-
-def contradiction_gen_inv(boolean_dict):
-    inv_eq = list()
-    for b in boolean_dict:
-        is_inv = "invAtomicID" in b.id
-        if is_inv:
-            forall = boolean_dict[b]
-            assert isinstance(forall, Forall)
-            inv_eq.append(Eq(b, forall.const))
-    return And(inv_eq)
 
 
 def acc_size(acc: List[Formula]):

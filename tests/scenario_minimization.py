@@ -17,7 +17,7 @@ from stlmc.encoding.batching import (
 from stlmc.algorithms.two_step import (
     assert_and_track_assignment, boolean_core_assignments, get_bools,
     evaluated_arithmetic_literals, relevant_boolean_abstract_links,
-    rename, scenario_enumeration_finished, type1_index_info,
+    rename, scenario_enumeration_finished, time_path2const, type1_index_info,
 )
 from stlmc.encoding.static_learning import renamed_discrete_variable
 from stlmc.solver.abstract_solver import SolverStatus
@@ -54,6 +54,17 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         )
         left, right = Bool("left"), Bool("right")
         self.assertEqual(get_bools(Eq(left, right)), {left, right})
+
+    def test_scenario_constraint_generation_is_a_strategy_subcomponent(self):
+        self.assertEqual(
+            time_path2const.__module__,
+            "stlmc.algorithms.scenario_constraints",
+        )
+        constraint = time_path2const({
+            (3, Bool("p@clock")): Leq(Real("x"), RealVal("1")),
+        })
+        self.assertIn("clock", repr(constraint))
+        self.assertIn("x_0_t", repr(constraint))
 
     def test_slicing_keeps_boolean_dependency_closure(self):
         a, b, c, unused = (Bool(name) for name in ("a", "b", "c", "unused"))
