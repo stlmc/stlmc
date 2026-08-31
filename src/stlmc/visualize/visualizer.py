@@ -19,6 +19,7 @@ from ..constraints.operations import *
 from ..constraints.robustness import release_robustness, until_robustness
 from ..artifacts.formula_index import index_subformulas as sub_formula
 from ..exceptions import *
+from .latex import formula2latex, interval_string
 from bokeh.plotting import figure, show
 
 
@@ -924,135 +925,6 @@ def _(const: FinallyFormula, point_samples: Dict[Variable, List[List[float]]],
     )
     dp_table[(const, time)] = robust_value
     return robust_value
-
-
-def interval_string(interval: Interval):
-    interval_left_ends = {True: "[", False: "("}
-    interval_right_ends = {True: "]", False: ")"}
-
-    interval_tmp = list()
-
-    interval_tmp.append(interval_left_ends[interval.left_end])
-    interval_tmp.append("{},{}".format(interval.left, interval.right))
-    interval_tmp.append(interval_right_ends[interval.right_end])
-    return "".join(interval_tmp)
-
-
-@singledispatch
-def formula2latex(formula: Formula):
-    raise NotSupportedError("cannot translate formula to latex")
-
-
-# assume binary
-@formula2latex.register(And)
-def _(formula: And):
-    assert len(formula.children) == 2
-    return "({} and {})".format(formula2latex(formula.children[0]), formula2latex(formula.children[1]))
-
-
-@formula2latex.register(Or)
-def _(formula: Or):
-    assert len(formula.children) == 2
-    return "({} or {})".format(formula2latex(formula.children[0]), formula2latex(formula.children[1]))
-
-
-@formula2latex.register(Implies)
-def _(formula: Implies):
-    return "({} \\rightarrow {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Lt)
-def _(formula: Lt):
-    return "({} < {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Leq)
-def _(formula: Leq):
-    return "({} \\leq {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Gt)
-def _(formula: Gt):
-    return "({} > {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Geq)
-def _(formula: Geq):
-    return "({} \\geq {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Eq)
-def _(formula: Eq):
-    return "({} = {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Neq)
-def _(formula: Neq):
-    return "({} \\neq {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Not)
-def _(formula: Not):
-    return "(\\neg {})".format(formula2latex(formula.child))
-
-
-@formula2latex.register(Add)
-def _(formula: Add):
-    return "({} + {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Sub)
-def _(formula: Sub):
-    return "({} - {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Mul)
-def _(formula: Mul):
-    return "({} * {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Div)
-def _(formula: Add):
-    return "({} / {})".format(formula2latex(formula.left), formula2latex(formula.right))
-
-
-@formula2latex.register(Sqrt)
-def _(formula: Sqrt):
-    return "(\\sqrt{{{}}})".format(formula2latex(formula.child))
-
-
-@formula2latex.register(Variable)
-def _(formula: Variable):
-    return "{}".format(formula.id)
-
-
-@formula2latex.register(Constant)
-def _(formula: Constant):
-    return "{}".format(str(formula.value).lower())
-
-
-@formula2latex.register(UntilFormula)
-def _(formula: UntilFormula):
-    return "{} \\mathbf{{U}}_{{{}}} {}".format(formula2latex(formula.left), interval_string(formula.local_time),
-                                               formula2latex(formula.right))
-
-
-@formula2latex.register(ReleaseFormula)
-def _(formula: ReleaseFormula):
-    return "{} \\mathbf{{R}}_{{{}}} {}".format(formula2latex(formula.left), interval_string(formula.local_time),
-                                               formula2latex(formula.right))
-
-
-@formula2latex.register(GloballyFormula)
-def _(formula: GloballyFormula):
-    return "\\square_{{{}}} {}".format(interval_string(formula.local_time),
-                                       formula2latex(formula.child))
-
-
-@formula2latex.register(FinallyFormula)
-def _(formula: FinallyFormula):
-    return "\\lozenge_{{{}}} {}".format(interval_string(formula.local_time),
-                                        formula2latex(formula.child))
 
 
 def split_groups(groups: List[Set[str]], state_vars: Set[str], robust_vars: Set[str]):

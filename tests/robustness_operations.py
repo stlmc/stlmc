@@ -8,7 +8,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.constraints.robustness import release_robustness, until_robustness
 from stlmc.constraints.constraints import (
-    Add, And, Bool, Eq, Geq, Gt, Implies, Leq, Lt, Neq, Not, Or, Real,
+    Add, And, Bool, Div, Eq, Geq, Gt, Implies, Leq, Lt, Neq, Not, Or, Real,
     RealVal, Sub,
 )
 from stlmc.constraints.operations import relaxing, strengthening
@@ -131,6 +131,14 @@ class RobustnessOperationsTest(unittest.TestCase):
         self.assertEqual(
             sorted((repr(item), first_ids[item]) for item in first_formulas),
             sorted((repr(item), second_ids[item]) for item in second_formulas),
+        )
+
+    def test_latex_rendering_is_lightweight_and_handles_division(self):
+        from stlmc.visualize.latex import formula2latex
+
+        self.assertEqual(formula2latex(Div(self.x, RealVal("2"))), "(x / 2)")
+        self.assertEqual(
+            formula2latex.__module__, "stlmc.visualize.latex"
         )
 
 
