@@ -29,6 +29,10 @@ from .scenario_refinement import (
     evaluated_arithmetic_literals, is_temporal_definitional,
     relevant_boolean_abstract_links, scenario_enumeration_finished,
 )
+from .symbolic_ids import (
+    depth2bound, inv_index_info, rename, type1_index_info, type1_info,
+    type2_index_info, type2_info, v_type1_info, v_type2_info,
+)
 
 
 class TwoStepAlgorithm(Algorithm):
@@ -818,119 +822,6 @@ def time_path2const(path: Dict[Tuple[int, Bool], Formula]):
             renamed_e_const, _ = rename(formula, bound, False)
             path_const_children.append(Eq(Bool(v.id.replace("p@", "")), renamed_e_const))
     return And(path_const_children)
-
-
-def v_type1_info(v_id: str, sub_formulas: Set[Formula]) -> Tuple[Formula, int, int]:
-    is_chi = "chi" in v_id
-    is_t1 = "T1" in v_id
-    is_t2 = "T2" in v_id
-    is_t3 = "T3" in v_id
-
-    if is_chi:
-        return type1_info(v_id, sub_formulas)
-
-    # T1, T2, T3
-    f, f_i, f_k = type1_info(v_id, sub_formulas)
-
-    assert isinstance(f, GloballyFormula) or isinstance(f, FinallyFormula)
-    sup_formula = f.local_time.right
-    inf_formula = f.local_time.left
-
-    sup_k = symbolic_sup(f_k)
-    inf_k = symbolic_inf(f_k)
-
-    sup_i = symbolic_sup(f_i)
-    inf_i = symbolic_inf(f_i)
-
-    if is_t1:
-        return Leq(sup_k, Add(inf_i, inf_formula)), f_i, f_k
-
-    if is_t2:
-        return Leq(Add(sup_i, sup_formula), inf_k), f_i, f_k
-
-    if is_t3:
-        return Leq(Sub(inf_k, sup_formula), inf_i), f_i, f_k
-
-    raise NotSupportedError("unknown time type")
-
-
-def v_type2_info(v_id: str, tau_max: float) -> Tuple[Formula, int]:
-    return type2_info(v_id, tau_max)
-
-
-# type1: v_id^{i, k}_{hash}
-def type1_info(v_id: str, sub_formulas: Set[Formula]) -> Tuple[Formula, int, int]:
-    structural_id = v_id.split("_", 1)[1]
-    i, k = type1_index_info(v_id)
-
-    for f in sub_formulas:
-        if formula_id(f) == structural_id:
-            return f, i, k
-
-    raise NotSupportedError("cannot find corresponding formula")
-
-
-# type2: v_id^{i}_{l} or v_id^{i}_{r}
-def type2_info(v_id: str, tau_max) -> Tuple[Formula, int]:
-    left_or_right = v_id.split("_")[1]
-    is_left = left_or_right == "l"
-    is_right = left_or_right == "r"
-
-    i = type2_index_info(v_id)
-
-    if is_left:
-        return symbolic_sup(i) <= RealVal(str(tau_max)), i
-
-    if is_right:
-        return Eq(symbolic_sup(i), RealVal(str(tau_max))), i
-
-    raise NotSupportedError("cannot find corresponding formula")
-
-
-def type1_index_info(v_id: str) -> Tuple[int, int]:
-    # {i, k}
-    ik_encoded_str = v_id.split("_")[0].split("^")[1][1:-1]
-    ik = ik_encoded_str.split(",")
-
-    assert len(ik) == 2
-    i = int(ik[0])
-    k = int(ik[1])
-    return i, k
-
-
-def type2_index_info(v_id: str):
-    # {i}
-    return int(v_id.split("_")[0].split("^")[1])
-
-
-def inv_index_info(v_id: str):
-    # bound
-    bound = int(v_id.split("_")[2])
-    module_index = int(v_id.split("_")[1][0])
-    return module_index, bound
-
-
-def rename(f: Formula, bound: int, is_vertex=True):
-    variables = get_vars(f)
-    rename_dict = dict()
-    for v in variables:
-        if isinstance(v, Bool):
-            indexed_v = Bool("{}_{}".format(v.id, bound))
-            rename_dict[v] = indexed_v
-        if isinstance(v, Real) and "tau_" not in v.id:
-            if is_vertex:
-                indexed_v = Real("{}_{}_0".format(v.id, bound))
-            else:
-                if bound > 0:
-                    indexed_v = Real("{}_{}_t".format(v.id, bound - 1))
-                else:
-                    indexed_v = Real("{}_{}_0".format(v.id, bound))
-            rename_dict[v] = indexed_v
-    return substitution(f, rename_dict), rename_dict
-
-
-def depth2bound(depth: int):
-    return int((depth - 1) / 2)
 
 
 # vertex, edge

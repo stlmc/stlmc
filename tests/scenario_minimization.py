@@ -17,7 +17,7 @@ from stlmc.encoding.batching import (
 from stlmc.algorithms.two_step import (
     assert_and_track_assignment, boolean_core_assignments,
     evaluated_arithmetic_literals, relevant_boolean_abstract_links,
-    scenario_enumeration_finished,
+    rename, scenario_enumeration_finished, type1_index_info,
 )
 from stlmc.encoding.static_learning import renamed_discrete_variable
 from stlmc.solver.abstract_solver import SolverStatus
@@ -32,6 +32,21 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
             relevant_boolean_abstract_links.__module__,
             "stlmc.algorithms.scenario_refinement",
         )
+
+    def test_symbolic_identifier_helpers_are_strategy_subcomponents(self):
+        self.assertEqual(
+            rename.__module__, "stlmc.algorithms.symbolic_ids"
+        )
+        self.assertEqual(type1_index_info("chi^{2,5}_formula"), (2, 5))
+
+        renamed, mapping = rename(
+            And([Bool("enabled"), Gt(Real("x"), RealVal("0"))]),
+            3,
+            is_vertex=False,
+        )
+        self.assertIn(Bool("enabled_3"), mapping.values())
+        self.assertIn(Real("x_2_t"), mapping.values())
+        self.assertIn("x_2_t", repr(renamed))
 
     def test_slicing_keeps_boolean_dependency_closure(self):
         a, b, c, unused = (Bool(name) for name in ("a", "b", "c", "unused"))
