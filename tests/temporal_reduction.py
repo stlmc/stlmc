@@ -25,7 +25,7 @@ from stlmc.encoding.enumerate import (
 from stlmc.encoding.fully_stable_partition import (
     fully_stable_partition_const, partition_obligations,
 )
-from stlmc.encoding.symbolic_discrete import chi as shared_chi
+from stlmc.encoding.symbolic_discrete import chi as shared_chi, formula_id
 from stlmc.solver.z3 import z3Obj
 
 
@@ -95,6 +95,15 @@ class BoundedTemporalReductionTest(unittest.TestCase):
             k_depth_stl_consts.__module__,
             "stlmc.encoding.fully_stable_stl",
         )
+
+    def test_structural_formula_identifier_is_cached(self):
+        formula = UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        )
+        identifier = formula_id(formula)
+        self.assertEqual(identifier, formula_id(formula))
+        self.assertEqual(identifier, formula._stlmc_structural_id)
+        self.assertEqual(len(identifier), 64)
 
     def test_shared_depth_and_partition_components_match_primitives(self):
         formula = UntilFormula(

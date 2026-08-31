@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from ..constraints.constraints import And, Formula, Or
 from ..exceptions import IllegalArgumentError
+from .symbolic_discrete import formula_id
 
 
 Candidate = Tuple[Formula, Formula]
@@ -10,7 +11,7 @@ Candidate = Tuple[Formula, Formula]
 def _same_formula(left: Formula, right: Formula) -> bool:
     # Constraint.__eq__ constructs an Eq formula, so it cannot be used as a
     # Python structural-equality predicate.
-    return hash(left) == hash(right) and repr(left) == repr(right)
+    return left is right or formula_id(left) == formula_id(right)
 
 
 def candidate_batch_formula(candidates: List[Candidate]) -> Formula:

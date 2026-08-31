@@ -20,10 +20,18 @@ def formula_id(formula: Formula) -> str:
     operator, interval, variable, and constant in these immutable trees; the
     node type prefix also separates formula classes with similar rendering.
     """
+    cached = getattr(formula, "_stlmc_structural_id", None)
+    if cached is not None:
+        return cached
     structural_text = "{}:{}".format(
         type(formula).__qualname__, repr(formula)
     ).encode("utf-8")
-    return hashlib.sha256(structural_text).hexdigest()
+    identifier = hashlib.sha256(structural_text).hexdigest()
+    # Formula trees are treated as immutable throughout the encoders. Keeping
+    # the digest on the root avoids repeatedly rendering large nested STL
+    # formulas while constructing chi/rho/Psi_PAR at every depth.
+    formula._stlmc_structural_id = identifier
+    return identifier
 
 
 def chi(i: int, k: int, formula: Formula) -> Bool:
