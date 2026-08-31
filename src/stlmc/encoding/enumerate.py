@@ -16,7 +16,7 @@ from .batching import candidate_batch_formula
 from .fully_stable_partition import fully_stable_partition_const
 from .path import PathProvider, SymbolicPathProvider
 from .symbolic_discrete import (
-    chi, reach_time_ordering, rho, symbolic_inf, symbolic_sup,
+    chi, formula_id, reach_time_ordering, rho, symbolic_inf, symbolic_sup,
     temporal_candidate, time_ordering,
 )
 def is_temporal_definitional(variable) -> bool:
@@ -830,15 +830,15 @@ def is_right_time(sub_formulas: Set[Formula]):
 
 
 def t1(i: int, k: int, f: Formula):
-    return Bool("T1^{{{},{}}}_{}".format(i, k, hash(f)))
+    return Bool("T1^{{{},{}}}_{}".format(i, k, formula_id(f)))
 
 
 def t2(i: int, k: int, f: Formula):
-    return Bool("T2^{{{},{}}}_{}".format(i, k, hash(f)))
+    return Bool("T2^{{{},{}}}_{}".format(i, k, formula_id(f)))
 
 
 def t3(i: int, k: int, f: Formula):
-    return Bool("T3^{{{},{}}}_{}".format(i, k, hash(f)))
+    return Bool("T3^{{{},{}}}_{}".format(i, k, formula_id(f)))
 
 
 # final const
@@ -1327,11 +1327,11 @@ def v_type2_info(v_id: str, tau_max: float) -> Tuple[Formula, int]:
 
 # type1: v_id^{i, k}_{hash}
 def type1_info(v_id: str, sub_formulas: Set[Formula]) -> Tuple[Formula, int, int]:
-    hash_id = int(v_id.split("_")[1])
+    structural_id = v_id.split("_", 1)[1]
     i, k = type1_index_info(v_id)
 
     for f in sub_formulas:
-        if hash(f) == hash_id:
+        if formula_id(f) == structural_id:
             return f, i, k
 
     raise NotSupportedError("cannot find corresponding formula")

@@ -12,16 +12,16 @@ from ..constraints.constraints import (
     Implies, Not, Or, ReleaseFormula, Sub, UntilFormula,
 )
 from ..constraints.interval import is_positive_infinity
-from .symbolic_discrete import chi, symbolic_inf, symbolic_sup
+from .symbolic_discrete import chi, formula_id, symbolic_inf, symbolic_sup
 
 
 def par_until(n: int, m: int, formula: Formula) -> Bool:
-    return Bool("parU^{{{},{}}}_{}".format(n, m, hash(formula)))
+    return Bool("parU^{{{},{}}}_{}".format(n, m, formula_id(formula)))
 
 
 def par_endpoint(kind: str, n: int, m: int, formula: Formula) -> Bool:
     return Bool("parEnd{}^{{{},{}}}_{}".format(
-        kind, n, m, hash(formula)
+        kind, n, m, formula_id(formula)
     ))
 
 

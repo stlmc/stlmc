@@ -4,18 +4,34 @@ The paper's ``varsigma_(phi,n)`` representation is shared by Psi_STL,
 Psi_PAR, one-step solving, and two-step solving.
 """
 
+import hashlib
+
 from ..constraints.constraints import (
     And, Bool, Eq, Formula, Interval, Real, RealVal,
 )
 from ..constraints.interval import is_positive_infinity
 
 
+def formula_id(formula: Formula) -> str:
+    """Return a deterministic identifier for an immutable formula tree.
+
+    Python's :func:`hash` is process-randomized and collisions used to merge
+    unrelated temporal auxiliaries.  The concrete syntax includes every
+    operator, interval, variable, and constant in these immutable trees; the
+    node type prefix also separates formula classes with similar rendering.
+    """
+    structural_text = "{}:{}".format(
+        type(formula).__qualname__, repr(formula)
+    ).encode("utf-8")
+    return hashlib.sha256(structural_text).hexdigest()
+
+
 def chi(i: int, k: int, formula: Formula) -> Bool:
-    return Bool("chi^{{{},{}}}_{}".format(i, k, hash(formula)))
+    return Bool("chi^{{{},{}}}_{}".format(i, k, formula_id(formula)))
 
 
 def rho(i: int, n: int, formula: Formula) -> Bool:
-    return Bool("rho^{{{},{}}}_{}".format(i, n, hash(formula)))
+    return Bool("rho^{{{},{}}}_{}".format(i, n, formula_id(formula)))
 
 
 def symbolic_sup(index: int) -> Real:
