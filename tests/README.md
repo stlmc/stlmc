@@ -102,7 +102,7 @@ make test
 ```
 
 Run the fast selection of all twelve test parts. Unit and integration tests are
-still run in full; the benchmark stages are reduced to 33 FAST benchmark cases
+still run in full; the benchmark stages are reduced to 32 FAST benchmark cases
 and 40 CVC5/Z3/Yices comparisons (20 cases for each additional solver):
 
 ```sh
@@ -111,7 +111,7 @@ make test FAST=1
 
 Run the release workflow selection: all short unit/integration checks, the
 CVC5 adapter test, a three-case CVC5/Z3/Yices equivalence sample, plus the
-23 artifact benchmark cases selected from those that completed within 50
+22 artifact benchmark cases selected from those that completed within 50
 seconds in the reference `logs/artifact-logs` results, excluding `car-ode` and
 `bat-poly`, and `car-poly`.
 Quick benchmark cases run four at a time with a
@@ -216,7 +216,7 @@ Run only benchmarks:
 make benchmark
 ```
 
-Run only the 23 quick release benchmark cases with their fixed 200-second
+Run only the 22 quick release benchmark cases with their fixed 200-second
 per-case timeout:
 
 ```sh
@@ -242,11 +242,11 @@ Make variables can be combined on the command line:
 
 - `FAST=1`: selects all cases marked with `@benchmark.fast`, a 300-second
   timeout, and four concurrent jobs unless those values are explicitly
-  overridden. The current fast set contains 33 cases. Cases that timed out or
+  overridden. The current fast set contains 32 cases. Cases that timed out or
   had unstable runtimes during parallel execution are not marked as fast, but
   remain part of the full benchmark run without `FAST=1`. Currently these are
   all `bat-ode` cases, `car-ode/f3`, `rail-ode/f1`, `space-ode/f2`, and
-  `wat-ode/f1`.
+  `wat-ode/f1`, and `wat-poly/f2`.
 - `ARTIFACT_SCOPE=<directory>`: runs only a model directory below
   `tests/benchmarks`; the default is `.` for every model.
 - `ARTIFACT_JOBS=<count>`: number of benchmark cases executed concurrently;
