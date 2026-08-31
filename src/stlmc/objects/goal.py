@@ -1,10 +1,5 @@
 import abc
 
-from ..constraints import encoding as ENC
-from ..constraints import enhanced_partition as ENHANCED_PART
-from ..constraints import enhanced_separation as ENHANCED_SEP
-from ..constraints import partition as PART
-from ..constraints import separation as SEP
 from ..constraints.operations import *
 from ..encoding.time import make_zeno_time_const, make_non_zeno_time_const
 from ..exceptions import NotSupportedError
@@ -201,28 +196,42 @@ class BaseStlGoal(Goal):
 
 class OldStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound, time_bound):
-        baseP = PART.baseCase(bound)
+        # The original partition/separation encoding is retained only for the
+        # explicit legacy factory options.  Keep it out of the normal goal
+        # import path so the current one-step and two-step algorithms depend
+        # only on ``encoding.fully_stable_partition``.
+        from ..constraints import encoding
+        from ..constraints import partition
+        from ..constraints import separation
+
+        baseP = partition.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
         negFormula = bound_tau_max(negFormula, time_bound)
 
         # partition constraint
-        (partition, sepMap, partitionConsts) = PART.guessPartition(negFormula, baseP)
+        (partition_map, sepMap, partitionConsts) = partition.guessPartition(
+            negFormula, baseP
+        )
         empty = set()
-        for pt in partition.keys():
-            empty = empty.union(partition[pt])
+        for pt in partition_map.keys():
+            empty = empty.union(partition_map[pt])
 
         self.partition_size = len(empty)
 
         # full separation
-        fs = SEP.fullSeparation(negFormula, sepMap)
+        fs = separation.fullSeparation(negFormula, sepMap)
 
         # set enc flags
-        ENC.ENC_TYPES = "old"
+        encoding.ENC_TYPES = "old"
         # FOL translation
 
-        baseV = ENC.baseEncoding(partition, baseP, time_bound)
+        baseV = encoding.baseEncoding(partition_map, baseP, time_bound)
 
-        formulaConst = ENC.valuation(fs[0], fs[1], Interval(True, RealVal("0.0"), True, RealVal("0.0")), baseV)[0]
+        formulaConst = encoding.valuation(
+            fs[0], fs[1],
+            Interval(True, RealVal("0.0"), True, RealVal("0.0")),
+            baseV,
+        )[0]
 
         total_children = list()
         total_children.extend(formulaConst)
@@ -236,10 +245,17 @@ class OldStlGoal(BaseStlGoal):
 
 class NewStlGoal(BaseStlGoal):
     def make_stl_consts(self, bound, time_bound):
-        baseP = ENHANCED_PART.baseCase(bound)
+        # This pre-fully-stable encoding remains available for compatibility,
+        # but it is not part of either current solving strategy.
+        from ..constraints import enhanced_partition
+        from ..constraints import enhanced_separation
+
+        baseP = enhanced_partition.baseCase(bound)
         negFormula = reduce_not(Not(self.formula))
 
-        (partition, sepMap) = ENHANCED_PART.guessPartition(negFormula, baseP)
+        (partition, sepMap) = enhanced_partition.guessPartition(
+            negFormula, baseP
+        )
 
         empty = set()
         for pt in partition.keys():
@@ -251,7 +267,7 @@ class NewStlGoal(BaseStlGoal):
 
         consts = list()
 
-        (var_point, var_interval) = ENHANCED_SEP.make_time_list(bound)
+        (var_point, var_interval) = enhanced_separation.make_time_list(bound)
         id_match_dict = dict()
         for s in range(len(sub_list)):
             id_match_dict[sub_list[s]] = Bool("chi_" + str(s))
@@ -261,10 +277,14 @@ class NewStlGoal(BaseStlGoal):
                 sub_const = lower_encoding(id_match_dict[sub].id, bound, 2)
 
         for s in range(len(sub_list)):
-            constraints, ba = ENHANCED_SEP.fullSeparation(s, sub_list[s], var_point, var_interval, id_match_dict)
+            constraints, ba = enhanced_separation.fullSeparation(
+                s, sub_list[s], var_point, var_interval, id_match_dict
+            )
             consts.extend(constraints)
             self.boolean_abstract.update(ba)
-            constraints, ba = ENHANCED_PART.genPartition(sub_list[s], sub_list, bound)
+            constraints, ba = enhanced_partition.genPartition(
+                sub_list[s], sub_list, bound
+            )
             consts.extend(constraints)
             self.boolean_abstract.update(ba)
 
