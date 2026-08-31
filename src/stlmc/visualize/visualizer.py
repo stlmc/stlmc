@@ -625,43 +625,14 @@ def _(const: Arctan, vec, var_list: list):
 
 
 def get_sub_time_samples(time_sample_list: List[List[float]], start: float, end: float, time_max: float) -> List[float]:
-    # ignore time points beyond time bound
-    if start > time_max:
-        start = time_max
-
-    if end > time_max:
-        end = time_max
-
+    # Bounded STL requires witness times t' < tau. Do not turn an interval
+    # beyond the horizon into a synthetic witness at tau.
+    if start >= time_max or end < start:
+        return []
     times: List[float] = list()
     for time_samples in time_sample_list:
         times.extend(time_samples)
-
-    s_index = -1
-    # find the first matching time point
-    for index, t in enumerate(times):
-        if t >= start:
-            s_index = index
-            break
-
-    e_index = -1
-    rev_times = reversed(times)
-    for index, t in enumerate(rev_times):
-        if t <= end:
-            e_index = len(times) - index - 1
-            break
-
-    if s_index == -1 or e_index == -1:
-        # print(time_sample_list)
-        # print("from {} to {}".format(start, end))
-        raise NotSupportedError("cannot find sub time samples")
-
-    sub_time_samples: List[float] = list()
-
-    for index, t in enumerate(times):
-        if s_index <= index <= e_index:
-            sub_time_samples.append(t)
-
-    return sub_time_samples
+    return [t for t in times if start <= t <= end and t < time_max]
 
 
 @singledispatch
@@ -926,8 +897,10 @@ def _(const: GloballyFormula, point_samples: Dict[Variable, List[List[float]]],
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
     robust_value = min(
-        [robustness(const.child, point_samples, discrete_samples, t_prime, times, time_max, dp_table) for t_prime in
-         t_primes])
+        (robustness(const.child, point_samples, discrete_samples, t_prime,
+                    times, time_max, dp_table) for t_prime in t_primes),
+        default=float("inf"),
+    )
     dp_table[(const, time)] = robust_value
     return robust_value
 
@@ -944,8 +917,10 @@ def _(const: FinallyFormula, point_samples: Dict[Variable, List[List[float]]],
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
     robust_value = max(
-        [robustness(const.child, point_samples, discrete_samples, t_prime, times, time_max, dp_table) for t_prime in
-         t_primes])
+        (robustness(const.child, point_samples, discrete_samples, t_prime,
+                    times, time_max, dp_table) for t_prime in t_primes),
+        default=float("-inf"),
+    )
     dp_table[(const, time)] = robust_value
     return robust_value
 

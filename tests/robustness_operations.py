@@ -105,6 +105,23 @@ class RobustnessOperationsTest(unittest.TestCase):
 
         self.assertEqual(value, 3.0)
 
+    def test_empty_bounded_future_uses_temporal_identities(self):
+        self.assertEqual(
+            until_robustness([], lambda _: [], lambda _: 0, lambda _: 0),
+            float("-inf"),
+        )
+        self.assertEqual(
+            release_robustness([], lambda _: [], lambda _: 0, lambda _: 0),
+            float("inf"),
+        )
+
+    def test_horizon_is_not_synthesized_as_a_future_sample(self):
+        from stlmc.visualize.visualizer import get_sub_time_samples
+
+        samples = [[0.0, 0.5, 1.0]]
+        self.assertEqual(get_sub_time_samples(samples, 1.1, 2.0, 1.0), [])
+        self.assertEqual(get_sub_time_samples(samples, 0.5, 1.0, 1.0), [0.5])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,13 +7,13 @@ def until_robustness(
         left_value: Callable[[float], float],
         right_value: Callable[[float], float]) -> float:
     """Discrete-sample robustness of ``left U right``."""
-    return max(
+    return max((
         min(
             right_value(witness),
             min(left_value(t) for t in prefix_times(witness)),
         )
         for witness in witness_times
-    )
+    ), default=float("-inf"))
 
 
 def release_robustness(
@@ -22,10 +22,10 @@ def release_robustness(
         left_value: Callable[[float], float],
         right_value: Callable[[float], float]) -> float:
     """Discrete-sample robustness of ``left R right``."""
-    return min(
+    return min((
         max(
             right_value(witness),
             max(left_value(t) for t in prefix_times(witness)),
         )
         for witness in witness_times
-    )
+    ), default=float("inf"))
