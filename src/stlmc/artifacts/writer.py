@@ -1,7 +1,7 @@
 import pickle
 from pathlib import Path
 
-from ..constraints.operations import substitution
+from ..constraints.substitution import substitution
 from .formula_index import index_subformulas
 
 

@@ -5,7 +5,8 @@ from typing import Dict, List, Set
 from ..constraints.constraints import (
     And, Bool, BoolVal, Eq, Formula, Not, Variable,
 )
-from ..constraints.operations import get_vars, substitution
+from ..constraints.analysis import get_vars
+from ..constraints.substitution import substitution
 from ..solver.abstract_solver import SolverStatus
 
 

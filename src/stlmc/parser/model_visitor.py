@@ -10,7 +10,8 @@ from ..constraints.constraints import (
     ReleaseFormula, Sin, Sqrt, Sub, Tan, UntilFormula, Variable,
     universeInterval,
 )
-from ..constraints.operations import get_vars, substitution
+from ..constraints.analysis import get_vars
+from ..constraints.substitution import substitution
 from ..exceptions import NotSupportedError
 from ..objects.model import StlMC
 from .syntax_error import parse_file

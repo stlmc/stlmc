@@ -10,7 +10,9 @@ from ..constraints.constraints import (
     GloballyFormula, Gt, Implies, Leq, Lt, Not, Or, Real, RealVal,
     ReleaseFormula, UntilFormula, Variable,
 )
-from ..constraints.operations import get_vars, infix, substitution
+from ..constraints.analysis import get_vars
+from ..constraints.formatting import infix
+from ..constraints.substitution import substitution
 from ..constraints.robustness import release_robustness, until_robustness
 from ..exceptions import NotSupportedError
 from .sampling import get_sub_time_samples

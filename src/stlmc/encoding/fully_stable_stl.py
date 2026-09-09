@@ -7,7 +7,9 @@ from ..constraints.constraints import (
     GloballyFormula, Leaf, MultinaryFormula, Not, Or, ReleaseFormula,
     UnaryFormula, UntilFormula, Variable,
 )
-from ..constraints.operations import reduce_not, relaxing, substitution
+from ..constraints.logical_normalization import reduce_not
+from ..constraints.robustness_transform import relaxing
+from ..constraints.substitution import substitution
 from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.goal import Goal
 from .symbolic_discrete import chi, rho, temporal_candidate

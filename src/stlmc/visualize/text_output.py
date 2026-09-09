@@ -1,7 +1,7 @@
 """Human-readable witness and counterexample artifact output."""
 
 from ..constraints.constraints import Ode
-from ..constraints.operations import substitution
+from ..constraints.substitution import substitution
 from .projection import Projector, continuous_values
 
 

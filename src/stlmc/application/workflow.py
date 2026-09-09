@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 
 from ..artifacts.writer import write_verification_artifacts
-from ..constraints.operations import substitution
+from ..constraints.substitution import substitution
 from ..exceptions import IllegalArgumentError, NotSupportedError, ParsingError
 from ..objects.goal import ReachGoal, reach_goal, validate_reach_formula
 from ..parser.checker import check_dynamics, check_validity

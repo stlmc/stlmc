@@ -4,7 +4,9 @@ from typing import Dict, List, Set, Tuple
 from ..constraints.constraints import (
     And, Bool, BoolVal, Eq, Formula, Int, Not, Real,
 )
-from ..constraints.operations import clause, size_of_tree, substitution
+from ..constraints.analysis import size_of_tree
+from ..constraints.encoding_helpers import clause
+from ..constraints.substitution import substitution
 from ..execution.runner import Algorithm, NormalRunner, ParallelAlgRunner
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal

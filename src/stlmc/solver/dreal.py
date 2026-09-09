@@ -14,9 +14,12 @@ from ..constraints.constraints import (
     Variable,
 )
 from ..constraints.operations import (
-    clause, get_max_bound, get_vars, reduce_not, reverse_inequality,
-    size_of_tree, substitution, substitution_zero2t,
+    get_max_bound, get_vars, size_of_tree,
 )
+from ..constraints.encoding_helpers import clause
+from ..constraints.logical_normalization import reduce_not
+from ..constraints.normalization import reverse_inequality, substitution_zero2t
+from ..constraints.substitution import substitution
 from ..constraints.translation import make_dynamics_consts, make_forall_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (

@@ -8,7 +8,7 @@ import sympy
 from scipy.integrate import odeint
 
 from ..constraints.constraints import Bool, Dynamics, Int, Real, Variable
-from ..constraints.operations import infix
+from ..constraints.formatting import infix
 from .numeric import infix_float
 
 

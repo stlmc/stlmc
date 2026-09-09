@@ -12,9 +12,9 @@ from ..constraints.constraints import (
     Implies, Integral, Leq, Lt, MultinaryFormula, Neq, NonLeaf, Not, Or,
     UnaryFormula,
 )
-from ..constraints.operations import (
-    make_boolean_abstract_consts, size_of_tree, substitution,
-)
+from ..constraints.boolean_abstraction import make_boolean_abstract_consts
+from ..constraints.operations import size_of_tree
+from ..constraints.substitution import substitution
 from ..execution.runner import Algorithm
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal

@@ -14,8 +14,10 @@ from ..constraints.constraints import (
     Real, RealVal, Sub, Variable,
 )
 from ..constraints.operations import (
-    get_vars, reduce_not, reverse_inequality, size_of_tree,
+    get_vars, size_of_tree,
 )
+from ..constraints.logical_normalization import reduce_not
+from ..constraints.normalization import reverse_inequality
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (

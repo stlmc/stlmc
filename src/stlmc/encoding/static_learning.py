@@ -2,7 +2,10 @@ from itertools import combinations
 from typing import Dict, Set
 
 from ..constraints.constraints import And, Formula, Int, Not, Real, Variable
-from ..constraints.operations import clause, reduce_not, relaxing, substitution
+from ..constraints.logical_normalization import reduce_not
+from ..constraints.encoding_helpers import clause
+from ..constraints.robustness_transform import relaxing
+from ..constraints.substitution import substitution
 from ..objects.model import Model
 from ..solver.abstract_solver import IncrementalFormulaSolver, SolverStatus
 

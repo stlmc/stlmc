@@ -4,7 +4,9 @@ from .constraints import (
     Add, And, Bool, Eq, Forall, Function, Geq, Gt, Mul, Neq, Ode, Or, Real,
     RealVal, Sub,
 )
-from .operations import substitution_zero2t, diff, get_vars
+from .analysis import get_vars
+from .differentiation import diff
+from .normalization import substitution_zero2t
 
 
 def make_forall_consts_aux(forall: Forall):

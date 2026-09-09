@@ -6,7 +6,8 @@ from ..constraints.constraints import (
     Add, Bool, Eq, FinallyFormula, Formula, GloballyFormula, Leq, Real,
     RealVal, Sub,
 )
-from ..constraints.operations import get_vars, substitution
+from ..constraints.analysis import get_vars
+from ..constraints.substitution import substitution
 from .symbolic_discrete import (
     formula_id, symbolic_inf, symbolic_sup,
 )
@@ -104,4 +105,3 @@ __all__ = [
     "type1_info", "type2_index_info", "type2_info", "v_type1_info",
     "v_type2_info",
 ]
-

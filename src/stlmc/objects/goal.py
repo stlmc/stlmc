@@ -5,7 +5,10 @@ from ..constraints.constraints import (
     Interval, Leaf, Leq, Lt, NonLeaf, Not, Or, Real, RealVal,
     UnaryTemporalFormula,
 )
-from ..constraints.operations import make_dict, reduce_not, relaxing, substitution
+from ..constraints.logical_normalization import reduce_not
+from ..constraints.model_transform import make_dict
+from ..constraints.robustness_transform import relaxing
+from ..constraints.substitution import substitution
 from ..encoding.time import make_zeno_time_const, make_non_zeno_time_const
 from ..exceptions import NotSupportedError
 
