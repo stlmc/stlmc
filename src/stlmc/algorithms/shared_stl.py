@@ -14,10 +14,11 @@ from ..objects.model import Model
 
 
 def bounded_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
-                        delta: float, tau_max: float) -> Formula:
+                        delta: float, tau_max: float,
+                        use_unary_bounded_temporal_form: bool = True) -> Formula:
     """Build the complete bounded STL formula used by either strategy."""
     shifted_formula = prepare_fully_stable_stl_formula(
-        goal, goal_prop_dict, delta
+        goal, goal_prop_dict, delta, use_unary_bounded_temporal_form
     )
     return bounded_stl_formula_from_threshold(
         model, shifted_formula, bound, tau_max

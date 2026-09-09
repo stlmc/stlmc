@@ -112,7 +112,8 @@ class TwoStepAlgorithm(Algorithm):
 
         if not is_reach:
             stl_formula = prepare_fully_stable_stl_formula(
-                goal, goal_prop_dict, float(delta)
+                goal, goal_prop_dict, float(delta),
+                options.use_unary_bounded_temporal_form,
             )
 
             sub_formulas = calc_sub_formulas(stl_formula)

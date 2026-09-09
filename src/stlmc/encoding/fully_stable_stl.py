@@ -8,8 +8,9 @@ from ..constraints.constraints import (
     UnaryFormula, UntilFormula, Variable,
 )
 from ..constraints.logical_normalization import reduce_not
-from ..constraints.robustness_transform import relaxing
+from ..constraints.robustness_transform import strengthening
 from ..constraints.substitution import substitution
+from ..constraints.temporal_rewrite import to_unary_bounded_temporal_form
 from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.goal import Goal
 from .symbolic_discrete import chi, rho, temporal_candidate
@@ -149,9 +150,15 @@ def k_depth_stl_consts(
 
 
 def prepare_fully_stable_stl_formula(
-        goal: Goal, goal_prop_dict, delta: float) -> Formula:
+        goal: Goal, goal_prop_dict, delta: float,
+        use_unary_bounded_temporal_form: bool = True) -> Formula:
+    """Build ``not(phi^+epsilon)`` for the common Boolean STL encoding."""
     raw_formula = substitution(goal.get_formula(), goal_prop_dict)
-    return relaxing(reduce_not(Not(raw_formula)), delta)
+    strengthened_formula = strengthening(raw_formula, delta)
+    counterexample_formula = reduce_not(Not(strengthened_formula))
+    if use_unary_bounded_temporal_form:
+        return to_unary_bounded_temporal_form(counterexample_formula)
+    return counterexample_formula
 
 
 def stl_depth_components(sub_formulas: Set[Formula], depths, tau_max: float):

@@ -1,5 +1,6 @@
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 
@@ -56,6 +57,12 @@ class ApplicationBoundaryTest(unittest.TestCase):
         self.assertEqual(options.time_horizon, 10.0)
         self.assertTrue(options.parallel)
         self.assertEqual(options.goal_labels, ())
+        self.assertTrue(options.use_unary_bounded_temporal_form)
+
+    def test_direct_binary_encoding_can_be_selected(self):
+        options = RunOptions.from_configuration(configuration())
+        direct = replace(options, use_unary_bounded_temporal_form=False)
+        self.assertFalse(direct.use_unary_bounded_temporal_form)
 
     def test_search_result_has_property_independent_meaning(self):
         result = AlgorithmResult(

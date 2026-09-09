@@ -10,12 +10,15 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.constraints.constraints import (
-    And, Bool, BoolVal, Eq, FinallyFormula, Not, Real, RealVal,
-    ReleaseFormula, UntilFormula,
+    And, Bool, BoolVal, Eq, FinallyFormula, GloballyFormula, Not, Or, Real,
+    RealVal, ReleaseFormula, UntilFormula,
 )
 from stlmc.constraints.interval import (
     Interval, inInterval, is_positive_infinity, universeInterval,
 )
+from stlmc.constraints.temporal_rewrite import to_unary_bounded_temporal_form
+from stlmc.constraints.logical_normalization import reduce_not
+from stlmc.constraints.robustness_transform import relaxing, strengthening
 import stlmc.algorithms.two_step as enumerate_encoding
 import stlmc.algorithms.one_step as monolithic_encoding
 from stlmc.algorithms.two_step import (
@@ -27,7 +30,9 @@ from stlmc.encoding.fully_stable_partition import (
     FullyStablePartitionEncoding, fully_stable_partition_const,
     partition_obligations,
 )
+from stlmc.encoding.fully_stable_stl import prepare_fully_stable_stl_formula
 from stlmc.encoding.symbolic_discrete import chi as shared_chi, formula_id
+from stlmc.objects.goal import StlGoal
 from stlmc.solver.z3 import z3Obj
 
 
@@ -59,6 +64,87 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         self.assertTrue(is_positive_infinity(RealVal("inf")))
         self.assertFalse(is_positive_infinity(RealVal("infinite_limit")))
         self.assertFalse(is_positive_infinity(Real("infinite_limit")))
+
+    def test_unary_bounded_form_rewrites_bounded_until(self):
+        rewritten = to_unary_bounded_temporal_form(UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        ))
+        self.assertIsInstance(rewritten, And)
+        self.assertEqual(3, len(rewritten.children))
+        prefix, witness, continuation = rewritten.children
+        self.assertIsInstance(prefix, GloballyFormula)
+        self.assertIsInstance(witness, FinallyFormula)
+        self.assertIsInstance(continuation, FinallyFormula)
+        self.assertIsInstance(continuation.child, UntilFormula)
+        self.assertEqual(universeInterval, continuation.child.local_time)
+
+    def test_unary_bounded_form_rewrites_release_as_boolean_dual(self):
+        rewritten = to_unary_bounded_temporal_form(ReleaseFormula(
+            self._interval(False), universeInterval, self.left, self.right,
+        ))
+        self.assertIsInstance(rewritten, Or)
+        self.assertEqual(3, len(rewritten.children))
+        prefix, invariant, continuation = rewritten.children
+        self.assertIsInstance(prefix, FinallyFormula)
+        self.assertIsInstance(invariant, GloballyFormula)
+        self.assertIsInstance(continuation, GloballyFormula)
+        self.assertIsInstance(continuation.child, ReleaseFormula)
+        self.assertFalse(continuation.child.local_time.left_end)
+
+    def test_unary_bounded_form_recurses_below_unbounded_binary(self):
+        nested = UntilFormula(
+            universeInterval,
+            universeInterval,
+            self.left,
+            UntilFormula(
+                self._interval(True), universeInterval, self.left, self.right,
+            ),
+        )
+        rewritten = to_unary_bounded_temporal_form(nested)
+        self.assertIsInstance(rewritten, UntilFormula)
+        self.assertIsInstance(rewritten.right, And)
+
+    def test_formula_preparation_defaults_to_unary_bounded_temporal_form(self):
+        goal = StlGoal(UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        ))
+        rewritten = prepare_fully_stable_stl_formula(goal, {}, 0.0)
+        direct = prepare_fully_stable_stl_formula(goal, {}, 0.0, False)
+        self.assertIsInstance(rewritten, Or)
+        self.assertIsInstance(direct, ReleaseFormula)
+
+    def test_paper_counterexample_reduction_precedes_formula_form_choice(self):
+        formula = UntilFormula(
+            self._interval(True), universeInterval, self.left, self.right,
+        )
+        paper_order = to_unary_bounded_temporal_form(
+            reduce_not(Not(strengthening(formula, 0.1)))
+        )
+        legacy_order = relaxing(
+            to_unary_bounded_temporal_form(reduce_not(Not(formula))), 0.1
+        )
+        self.assertEqual(paper_order, legacy_order)
+        prepared = prepare_fully_stable_stl_formula(
+            StlGoal(formula), {}, 0.1
+        )
+        self.assertEqual(paper_order, prepared)
+
+    def test_equivalent_form_does_not_preserve_partition_bound(self):
+        direct = UntilFormula(
+            Interval(True, RealVal("0"), True, RealVal("1")),
+            universeInterval, self.left, self.right,
+        )
+        unary_bounded = to_unary_bounded_temporal_form(direct)
+        tau_values = (0.0, 1.5, 2.0)
+        p_bits = (True, False, False, False)
+        q_bits = (True, False, False, True)
+
+        self.assertTrue(self._fully_stable_sat(
+            direct, tau_values, p_bits, q_bits
+        ))
+        self.assertFalse(self._fully_stable_sat(
+            unary_bounded, tau_values, p_bits, q_bits
+        ))
 
     def test_interval_variable_named_inf_is_not_an_infinite_endpoint(self):
         constraint = inInterval(

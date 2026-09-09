@@ -229,7 +229,7 @@ For a faster development check:
 make test FAST=1
 ```
 
-Run the release selection of short checks and the 22 reference benchmark cases
+Run the release selection of short checks and the 21 reference benchmark cases
 that previously completed within 50 seconds. These benchmarks run four at a
 time with a 200-second per-case timeout:
 

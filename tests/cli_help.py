@@ -14,6 +14,13 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_development_temporal_form_option_is_hidden(self):
+        help_text = build_parser(prog="stlmc").format_help()
+        self.assertNotIn("unary-bounded-temporal", help_text)
+        value_options, boolean_options = ConfigVisitor().generate_cmd_args()
+        all_options = set(value_options).union(boolean_options)
+        self.assertNotIn("use-unary-bounded-temporal-form", all_options)
+
     def test_quoted_config_value_preserves_spaces(self):
         with tempfile.TemporaryDirectory() as directory:
             config_path = Path(directory) / "space-path.cfg"

@@ -84,7 +84,8 @@ class OneStepAlgorithm(Algorithm):
                 stl_const = And([k_step_goal, time_order_const])
             else:
                 stl_const = bounded_stl_formula(
-                    model, goal, goal_prop_dict, b, delta, float(time_bound)
+                    model, goal, goal_prop_dict, b, delta, float(time_bound),
+                    options.use_unary_bounded_temporal_form,
                 )
 
             boolean_abstract = dict()

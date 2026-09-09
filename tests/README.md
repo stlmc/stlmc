@@ -115,7 +115,7 @@ make test FAST=1
 
 Run the release workflow selection: all short unit/integration checks, the
 CVC5 adapter test, a three-case CVC5/Z3/Yices equivalence sample, plus the
-22 artifact benchmark cases selected from those that completed within 50
+21 artifact benchmark cases selected from those that completed within 50
 seconds in the reference `logs/artifact-logs` results, excluding `car-ode` and
 `bat-poly`, and `car-poly`.
 Quick benchmark cases run four at a time with a
@@ -220,7 +220,7 @@ Run only benchmarks:
 make benchmark
 ```
 
-Run only the 22 quick release benchmark cases with their fixed 200-second
+Run only the 21 quick release benchmark cases with their fixed 200-second
 per-case timeout:
 
 ```sh

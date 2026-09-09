@@ -32,7 +32,17 @@ Infrastructure
 `RunOptions` is the immutable, typed view of the parser's layered
 `Configuration`. Parsing and backward-compatible string storage stop at this
 boundary. Algorithms consume typed bounds, thresholds, flags, and worker
-counts.
+counts. The hidden development flag `use_unary_bounded_temporal_form` defaults
+to `True`: after the paper's `not(phi^+epsilon)` robust-to-Boolean reduction,
+the counterexample formula is converted to an equivalent form whose bounded
+temporal operators are unary before it enters the
+fully-stable encoding. Setting it to `False` supplies the direct binary-temporal
+form instead. This input-form
+selection is the only branch; subformula collection, partition construction,
+STL/model encoding, solving, and counterexample reporting remain shared. Both
+forms describe the same continuous-time counterexample set, but they need not
+find a witness at the same fully-stable partition bound, and an SMT solver may
+select different trajectories from that set.
 
 `SolverStatus` represents `SAT`, `UNSAT`, and `UNKNOWN`. Solver adapters retain
 their historical `SolveResult.result` string for external compatibility, while

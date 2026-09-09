@@ -25,6 +25,8 @@ class RunOptions:
     verbose: bool
     reach: bool
     smt_preprocess: bool
+    # Hidden development switch. It is intentionally absent from config/CLI.
+    use_unary_bounded_temporal_form: bool = True
 
     @classmethod
     def from_configuration(cls, configuration):
@@ -68,6 +70,7 @@ class RunOptions:
             verbose=enabled("verbose"),
             reach=enabled("reach"),
             smt_preprocess=enabled("smt-preprocess"),
+            use_unary_bounded_temporal_form=True,
         )
 
     def with_solver(self, solver):
