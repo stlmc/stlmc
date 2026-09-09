@@ -2,12 +2,20 @@ import threading
 import time
 import multiprocessing
 import signal
+from functools import singledispatch
 from queue import Empty
 from queue import Queue
 
 import z3
 
-from ..constraints.operations import *
+from ..constraints.constraints import (
+    Add, And, Bool, BoolVal, Constraint, Div, Eq, Forall, Geq, Gt,
+    Implies, Int, IntVal, Integral, Leq, Lt, Mul, Neg, Neq, Not, Or, Pow,
+    Real, RealVal, Sub, Variable,
+)
+from ..constraints.operations import (
+    get_vars, reduce_not, reverse_inequality, size_of_tree,
+)
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
@@ -16,7 +24,6 @@ from ..solver.abstract_solver import (
 )
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
-from ..constraints.operations import size_of_tree
 
 
 class Z3Solver(JobSolver):
@@ -58,7 +65,7 @@ class Z3Solver(JobSolver):
             try:
                 result, assignments, error_message = result_queue.get(timeout=0.2)
             except Empty:
-                result = "Unknown"
+                result = SolverStatus.UNKNOWN
                 assignments = dict()
                 error_message = "parallel Z3 worker exited with {}".format(proc.exitcode)
             elapsed = time.monotonic() - start_time
@@ -166,14 +173,20 @@ def _parallel_z3_solve(const, logic, result_queue):
         solver.add(z3Obj(const))
         status = solver.check()
         if status == z3.sat:
-            result_queue.put(("False", Z3Assignment(solver.model()).get_assignments(), None))
+            result_queue.put((
+                SolverStatus.SAT,
+                Z3Assignment(solver.model()).get_assignments(), None,
+            ))
         elif status == z3.unsat:
-            result_queue.put(("True", dict(), None))
+            result_queue.put((SolverStatus.UNSAT, dict(), None))
         else:
-            result_queue.put(("Unknown", dict(),
+            result_queue.put((SolverStatus.UNKNOWN, dict(),
                               "Z3 returned unknown: {}".format(solver.reason_unknown())))
     except Exception as error:
-        result_queue.put(("Unknown", dict(), "parallel Z3 worker error: {}".format(error)))
+        result_queue.put((
+            SolverStatus.UNKNOWN, dict(),
+            "parallel Z3 worker error: {}".format(error),
+        ))
 
 
 @singledispatch

@@ -5,7 +5,7 @@ import re
 import argparse
 import subprocess
 from functools import reduce
-from typing import *
+from typing import Dict, List, Set
 
 def svg_out(main_figure: figure, rob_figure: figure):
     from bokeh.io import export_svg

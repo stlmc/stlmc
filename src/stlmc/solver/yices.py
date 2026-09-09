@@ -1,17 +1,23 @@
 import time
+from functools import singledispatch
 
-from yices import *
+from yices import Config, Context, Model, Status, Terms, Types
 
-from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.constraints import (
+    Add, And, Bool, BoolVal, Constraint, Div, Eq, Forall, Geq, Gt,
+    Implies, Int, IntVal, Integral, Leq, Lt, Mul, Neg, Neq, Not, Or, Pow,
+    Real, RealVal, Sub, Variable,
+)
+from ..constraints.operations import (
+    get_vars, reduce_not, reverse_inequality, size_of_tree,
+)
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
-    JobSolver, SolveResult, SolverJob, ThreadWorker,
+    JobSolver, SolveResult, SolverJob, SolverStatus, ThreadWorker,
 )
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
-from ..constraints.operations import size_of_tree
 
 
 class YicesAssignment(Assignment):
@@ -78,19 +84,19 @@ class YicesSolver(JobSolver):
                 ctx.assert_formulas([Terms.parse_term(yicesObj(const))])
                 status = ctx.check_context()
                 if status == Status.SAT:
-                    result = "False"
+                    result = SolverStatus.SAT
                     assignment = YicesAssignment(Model.from_context(ctx, 1))
                 elif status == Status.UNSAT:
-                    result = "True"
+                    result = SolverStatus.UNSAT
                     assignment = YicesAssignment(None)
                 else:
-                    result = "Unknown"
+                    result = SolverStatus.UNKNOWN
                     assignment = YicesAssignment(None)
                     error_message = "Yices returned {}".format(status)
                 ctx.dispose()
                 cfg.dispose()
             except Exception as error:
-                result = "Unknown"
+                result = SolverStatus.UNKNOWN
                 assignment = YicesAssignment(None)
                 error_message = "parallel Yices worker error: {}".format(error)
             finally:

@@ -7,14 +7,19 @@ from queue import Empty
 import cvc5
 from cvc5 import Kind
 
-from ..constraints.constraints import *
-from ..constraints.operations import get_vars, reduce_not, reverse_inequality
+from ..constraints.constraints import (
+    Add, And, Bool, BoolVal, Div, Eq, Forall, Geq, Gt, Implies, IntVal,
+    Integral, Leq, Lt, Mul, Neg, Neq, Not, Or, Pow, Real, RealVal, Sub,
+    Variable,
+)
+from ..constraints.operations import (
+    get_vars, reduce_not, reverse_inequality, size_of_tree,
+)
 from ..constraints.translation import make_dynamics_consts, make_forall_consts
 from ..exceptions import NotSupportedError
-from ..solver.abstract_solver import JobSolver, SolveResult, SolverJob
+from ..solver.abstract_solver import JobSolver, SolveResult, SolverJob, SolverStatus
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
-from ..constraints.operations import size_of_tree
 
 
 class CVC5Assignment(Assignment):
@@ -179,17 +184,19 @@ def _solve(const, logic):
             variable: _assignment_value(term, solver.getValue(term))
             for variable, term in translator.variables.items()
         }
-        return "False", assignments, None
+        return SolverStatus.SAT, assignments, None
     if status.isUnsat():
-        return "True", {}, None
-    return "Unknown", {}, "CVC5 returned unknown"
+        return SolverStatus.UNSAT, {}, None
+    return SolverStatus.UNKNOWN, {}, "CVC5 returned unknown"
 
 
 def _parallel_cvc5_solve(const, logic, result_queue):
     try:
         result_queue.put(_solve(const, logic))
     except Exception as error:
-        result_queue.put(("Unknown", {}, "CVC5 worker error: {}".format(error)))
+        result_queue.put((
+            SolverStatus.UNKNOWN, {}, "CVC5 worker error: {}".format(error)
+        ))
 
 
 class CVC5Solver(JobSolver):
@@ -230,7 +237,7 @@ class CVC5Solver(JobSolver):
             try:
                 result, assignments, error = result_queue.get(timeout=0.2)
             except Empty:
-                result, assignments = "Unknown", {}
+                result, assignments = SolverStatus.UNKNOWN, {}
                 error = "CVC5 worker exited with {}".format(process.exitcode)
             job.complete(SolveResult(
                 result, CVC5Assignment(assignments),

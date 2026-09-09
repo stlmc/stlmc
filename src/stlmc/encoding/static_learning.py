@@ -1,7 +1,8 @@
-from typing import *
+from itertools import combinations
+from typing import Dict, Set
 
-from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.constraints import And, Formula, Int, Not, Real, Variable
+from ..constraints.operations import clause, reduce_not, relaxing, substitution
 from ..objects.model import Model
 from ..solver.abstract_solver import IncrementalFormulaSolver, SolverStatus
 

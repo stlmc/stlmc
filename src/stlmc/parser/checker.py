@@ -2,7 +2,10 @@ import os.path
 from functools import reduce
 from typing import List
 
-from ..constraints.constraints import *
+from ..constraints.constraints import (
+    Arccos, Arcsin, Arctan, Constant, Cos, Dynamics, Function, Sin, Sqrt,
+    Tan,
+)
 from ..constraints.operations import get_vars
 from ..objects.configuration import Configuration
 from ..objects.model import StlMC

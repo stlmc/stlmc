@@ -1,13 +1,15 @@
 import time
-from typing import *
+from typing import Dict, List, Set, Tuple
 
-from ..constraints.operations import *
+from ..constraints.constraints import (
+    And, Bool, BoolVal, Eq, Formula, Int, Not, Real,
+)
+from ..constraints.operations import clause, size_of_tree, substitution
 from ..execution.runner import Algorithm, NormalRunner, ParallelAlgRunner
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
 from ..solver.abstract_solver import JobSolver, SolverStatus
-from ..constraints.operations import size_of_tree
 from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
 from ..application.result import AlgorithmResult, SearchStatus

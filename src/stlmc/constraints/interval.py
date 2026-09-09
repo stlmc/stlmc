@@ -1,7 +1,10 @@
 import math
 from functools import singledispatch
 
-from .constraints import *
+from .constraints import (
+    And, BoolVal, Constraint, Expr, Int, IntVal, Interval, Real, RealVal,
+    universeInterval,
+)
 
 
 def is_positive_infinity(value) -> bool:

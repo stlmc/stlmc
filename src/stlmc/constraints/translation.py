@@ -1,6 +1,9 @@
 from functools import singledispatch
 
-from .constraints import *
+from .constraints import (
+    Add, And, Bool, Eq, Forall, Function, Geq, Gt, Mul, Neq, Ode, Or, Real,
+    RealVal, Sub,
+)
 from .operations import substitution_zero2t, diff, get_vars
 
 

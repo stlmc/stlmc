@@ -27,20 +27,35 @@ class SolverStatus(Enum):
         }.get(value, cls.UNKNOWN)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class SolveResult:
-    """Backend-neutral result produced by a submitted solver job."""
+    """Backend-neutral result produced by a submitted solver job.
 
-    result: str
+    ``status`` is canonical. The constructor accepts historical truth-valued
+    strings and ``result`` exposes them for integrations using the old API.
+    """
+
+    status: SolverStatus
     assignment: object
     elapsed: float = 0.0
     error: str = None
     size: int = 0
 
+    def __init__(self, status, assignment, elapsed=0.0, error=None, size=0):
+        object.__setattr__(self, "status", SolverStatus.from_legacy(status))
+        object.__setattr__(self, "assignment", assignment)
+        object.__setattr__(self, "elapsed", elapsed)
+        object.__setattr__(self, "error", error)
+        object.__setattr__(self, "size", size)
+
     @property
-    def status(self):
-        """Typed status; ``result`` remains for backend/API compatibility."""
-        return SolverStatus.from_legacy(self.result)
+    def result(self):
+        """Historical truth-valued result retained as a compatibility view."""
+        return {
+            SolverStatus.SAT: "False",
+            SolverStatus.UNSAT: "True",
+            SolverStatus.UNKNOWN: "Unknown",
+        }[self.status]
 
 
 class SolverJob:

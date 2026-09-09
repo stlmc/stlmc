@@ -7,20 +7,24 @@ import time
 from functools import singledispatch
 from typing import List
 
-from ..constraints.constraints import *
+from ..constraints.constraints import (
+    Add, And, Arccos, Arcsin, Arctan, Bool, BoolVal, Constraint, Cos, Div,
+    Eq, Forall, Function, Geq, Gt, Implies, Int, IntVal, Integral, Leq, Lt,
+    Mul, Neg, Neq, Not, Ode, Or, Pow, Real, RealVal, Sin, Sqrt, Sub, Tan,
+    Variable,
+)
 from ..constraints.operations import (
     clause, get_max_bound, get_vars, reduce_not, reverse_inequality,
-    substitution, substitution_zero2t,
+    size_of_tree, substitution, substitution_zero2t,
 )
 from ..constraints.translation import make_dynamics_consts, make_forall_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import (
-    JobSolver, SolveResult, SolverJob,
+    JobSolver, SolveResult, SolverJob, SolverStatus,
 )
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
 from ..utils.smt2_output import is_enabled, write_smt2
-from ..constraints.operations import size_of_tree
 
 
 class DrealInterval(RealVal):
@@ -304,16 +308,16 @@ class dRealSolver(JobSolver):
         stderr_text = stderr.decode(errors="replace")
         error_message = None
         if returncode != 0:
-            result = "Unknown"
+            result = SolverStatus.UNKNOWN
             error_message = "dReal exited with {}: {}".format(
                 returncode, stderr_text.strip()
             )
         elif stdout_text.startswith("Solution:\n"):
-            result = "False"
+            result = SolverStatus.SAT
         elif "unsat" in stdout_text:
-            result = "True"
+            result = SolverStatus.UNSAT
         else:
-            result = "Unknown"
+            result = SolverStatus.UNKNOWN
             error_message = "unrecognized dReal output: {}".format(
                 (stdout_text + "\n" + stderr_text).strip()
             )
@@ -375,13 +379,13 @@ class dRealSolver(JobSolver):
         except Exception as error:
             error_message = "parallel worker error: {}".format(error)
             solve_result = SolveResult(
-                "Unknown", DrealAssignment([]), error=error_message
+                SolverStatus.UNKNOWN, DrealAssignment([]), error=error_message
             )
         finally:
             self._cleanup_solver_input(cleanup_path)
             elapsed = time.monotonic() - start_time
             solve_result = SolveResult(
-                solve_result.result, solve_result.assignment,
+                solve_result.status, solve_result.assignment,
                 elapsed, solve_result.error, formula_size,
             )
             job.complete(solve_result)

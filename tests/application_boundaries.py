@@ -57,6 +57,8 @@ class ApplicationBoundaryTest(unittest.TestCase):
         self.assertIs(SolveResult("False", None).status, SolverStatus.SAT)
         self.assertIs(SolveResult("True", None).status, SolverStatus.UNSAT)
         self.assertIs(SolveResult("Unknown", None).status, SolverStatus.UNKNOWN)
+        typed = SolveResult(SolverStatus.SAT, None)
+        self.assertEqual(typed.result, "False")
 
 
 if __name__ == "__main__":

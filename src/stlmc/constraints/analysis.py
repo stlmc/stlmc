@@ -2,7 +2,10 @@
 
 from functools import singledispatch
 
-from .constraints import *
+from .constraints import (
+    Binary, BinaryFormula, Bool, Constraint, Forall, Formula, Integral, Leaf,
+    Multinary, MultinaryFormula, NonLeaf, Tree, Unary, UnaryFormula, Variable,
+)
 from ..exceptions import NotSupportedError
 
 def size_of_tree(tree: Tree):
@@ -180,4 +183,3 @@ __all__ = [
     "elements_of_tree", "fresh_new_var", "get_max_bound", "get_max_depth",
     "get_vars", "is_proposition", "size_of_tree", "subformula",
 ]
-

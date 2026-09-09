@@ -4,10 +4,10 @@ from typing import List, Dict, Set, Tuple
 
 from bokeh.io import output_file, save
 
-from ..constraints.constraints import *
-from ..constraints.operations import *
+from ..constraints.constraints import Constraint, Formula, Ode, Variable
+from ..constraints.operations import substitution
 from ..artifacts.formula_index import index_subformulas as sub_formula
-from ..exceptions import *
+from ..exceptions import NotSupportedError
 from .latex import formula2latex, interval_string
 from .grouping import flatten, pairwise_disjoint_check, split_groups
 from .projection import Projector, continuous_values
