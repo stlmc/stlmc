@@ -1,22 +1,21 @@
-import os
 import signal
-import subprocess
 import threading
-import time
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from queue import Empty, Queue
 from typing import Dict, Set
 
-from ..constraints.constraints import *
+from ..constraints.constraints import Formula
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal
 from ..objects.model import Model
-from ..solver.abstract_solver import JobSolver, SolveResult
+from ..solver.abstract_solver import JobSolver, SolveResult, SolverStatus
 from ..utils.interrupt import raise_if_interrupted
 from ..utils.print import Printer
+from .cleanup import terminate_workers
+from .progress import ProgressTracker
 
 
-class Algorithm:
+class Algorithm(ABC):
     @abstractmethod
     def run(self, model: Model, goal: Goal, prop_dict: Dict, config: Configuration,
             solver: JobSolver, printer: Printer):
@@ -27,7 +26,10 @@ class Algorithm:
         pass
 
 
-class AlgorithmRunner:
+class AlgorithmRunner(ABC):
+    def __init__(self):
+        self.progress = ProgressTracker()
+
     @abstractmethod
     def run(self, solver: JobSolver, const: Formula):
         pass
@@ -45,26 +47,53 @@ class AlgorithmRunner:
         pass
 
     def reset_progress(self):
-        self.generated_scenarios = 0
-        self.submitted_scenarios = 0
-        self.completed_scenarios = 0
-        self.submitted_jobs = 0
-        self.completed_jobs = 0
+        self.progress.reset()
 
     def record_scenario_generated(self):
-        self.generated_scenarios += 1
+        self.progress.scenario_generated()
 
     def progress_snapshot(self):
-        pending = max(self.submitted_scenarios - self.completed_scenarios, 0)
-        return {
-            "generated": self.generated_scenarios,
-            "submitted": self.submitted_scenarios,
-            "completed": self.completed_scenarios,
-            "pending": pending,
-            "submitted_jobs": self.submitted_jobs,
-            "completed_jobs": self.completed_jobs,
-            "active_workers": self.active_workers(),
-        }
+        return self.progress.snapshot(self.active_workers())
+
+    @property
+    def generated_scenarios(self):
+        return self.progress.generated_scenarios
+
+    @generated_scenarios.setter
+    def generated_scenarios(self, value):
+        self.progress.generated_scenarios = value
+
+    @property
+    def submitted_scenarios(self):
+        return self.progress.submitted_scenarios
+
+    @submitted_scenarios.setter
+    def submitted_scenarios(self, value):
+        self.progress.submitted_scenarios = value
+
+    @property
+    def completed_scenarios(self):
+        return self.progress.completed_scenarios
+
+    @completed_scenarios.setter
+    def completed_scenarios(self, value):
+        self.progress.completed_scenarios = value
+
+    @property
+    def submitted_jobs(self):
+        return self.progress.submitted_jobs
+
+    @submitted_jobs.setter
+    def submitted_jobs(self, value):
+        self.progress.submitted_jobs = value
+
+    @property
+    def completed_jobs(self):
+        return self.progress.completed_jobs
+
+    @completed_jobs.setter
+    def completed_jobs(self, value):
+        self.progress.completed_jobs = value
 
 
 class ParallelAlgRunner(AlgorithmRunner):
@@ -83,15 +112,17 @@ class ParallelAlgRunner(AlgorithmRunner):
     def _unpack_result(self, message):
         if len(message) == 2 and isinstance(message[0], SolveResult):
             solve_result, worker = message
-            result = solve_result.result
+            result = solve_result.status
             model = solve_result.assignment
             proc_id = id(worker)
             metadata = [solve_result.elapsed, solve_result.error]
         else:
             # Compatibility with queued results from older/custom workers.
             result, model, proc_id, *metadata = message
-        self.completed_jobs += 1
-        self.completed_scenarios += self._scenario_count_for_process(proc_id)
+            result = SolverStatus.from_legacy(result)
+        self.progress.job_completed(
+            self._scenario_count_for_process(proc_id)
+        )
         if len(metadata) > 0:
             self.time += metadata[0]
         if len(metadata) > 1 and metadata[1]:
@@ -108,12 +139,12 @@ class ParallelAlgRunner(AlgorithmRunner):
             self.increase_counter()
             scenario = self._scenario_for_process(proc_id)
             # print(result)
-            if result == "False":
+            if result == SolverStatus.SAT:
                 self.winning_scenario = scenario
                 self.kill_all()
                 return True, model
             else:
-                if result == "Unknown":
+                if result == SolverStatus.UNKNOWN:
                     self.had_unknown = True
                 procs = self.procs.copy()
                 for proc in procs:
@@ -124,7 +155,7 @@ class ParallelAlgRunner(AlgorithmRunner):
     def __init__(self, max_procs: int):
         super().__init__()
         assert max_procs > 0
-        self.procs: Set[subprocess.Popen] = set()
+        self.procs: Set[object] = set()
         self.sema = threading.Semaphore(max_procs)
         self.time = 0.0
         self.main_queue: Queue = Queue()
@@ -190,98 +221,21 @@ class ParallelAlgRunner(AlgorithmRunner):
             proc.scenario = self.current_scenario
             proc.scenario_count = self.current_scenario_count
             self.procs.add(proc)
-            self.submitted_jobs += 1
-            self.submitted_scenarios += self.current_scenario_count
+            self.progress.job_submitted(self.current_scenario_count)
         finally:
             if previous_mask is not None:
                 signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
 
 
     def kill_all(self):
-        procs = list(self.procs)
-
-        thread_workers = [proc for proc in procs if proc.worker_kind == "thread"]
-        process_workers = [proc for proc in procs if proc.worker_kind == "process"]
-
-        for worker in thread_workers:
-            worker.terminate()
-
-        def is_running(proc):
-            if hasattr(proc, "poll"):
-                return proc.poll() is None
-            return proc.is_alive()
-
-        def signal_process(proc, sig):
-            try:
-                if proc.process_group:
-                    os.killpg(proc.pid, sig)
-                elif sig == signal.SIGTERM:
-                    proc.terminate()
-                else:
-                    proc.kill()
-            except ProcessLookupError:
-                pass
-            except PermissionError:
-                # A process group can disappear or become inaccessible between
-                # poll() and killpg() on macOS.  The child process handle is
-                # still safe to terminate directly.
-                try:
-                    if sig == signal.SIGTERM:
-                        proc.terminate()
-                    else:
-                        proc.kill()
-                except ProcessLookupError:
-                    pass
-
-        for proc in process_workers:
-            if is_running(proc):
-                signal_process(proc, signal.SIGTERM)
-
-        # Use one deadline for the whole worker set.  Waiting one second per
-        # worker can exceed the outer benchmark runner's five-second grace
-        # period and let it kill STLMC before child cleanup has finished.
-        deadline = time.monotonic() + self.cleanup_timeout
-        for proc in process_workers:
-            remaining = max(0.0, deadline - time.monotonic())
-            if not is_running(proc):
-                continue
-            if hasattr(proc, "wait"):
-                try:
-                    proc.wait(timeout=remaining)
-                except subprocess.TimeoutExpired:
-                    pass
-            else:
-                proc.join(timeout=remaining)
-
-        for proc in process_workers:
-            if not is_running(proc):
-                continue
-            signal_process(proc, signal.SIGKILL)
-
-        for proc in process_workers:
-            if hasattr(proc, "wait"):
-                try:
-                    proc.wait(timeout=1)
-                except subprocess.TimeoutExpired:
-                    pass
-            else:
-                proc.join(timeout=1)
-
-        for proc in process_workers:
-            worker = proc.completion_worker
-            if worker is not None and worker is not threading.current_thread():
-                worker.join(timeout=1)
+        stopped_workers = terminate_workers(self.procs, self.cleanup_timeout)
 
         while True:
             try:
                 self.main_queue.get_nowait()
             except Empty:
                 break
-        finished_processes = {
-            proc for proc in process_workers if not is_running(proc)
-        }
-        self.procs.difference_update(thread_workers)
-        self.procs.difference_update(finished_processes)
+        self.procs.difference_update(stopped_workers)
 
     def wait_and_check_sat(self, progress=None):
         while len(self.procs) > 0:
@@ -294,14 +248,14 @@ class ParallelAlgRunner(AlgorithmRunner):
                 result, model, proc_id = self._unpack_result(message)
                 self.increase_counter()
                 scenario = self._scenario_for_process(proc_id)
-                if result == "False":
+                if result == SolverStatus.SAT:
                     self.winning_scenario = scenario
                     if progress is not None:
                         progress(self.number)
                     self.kill_all()
                     return True, model
                 else:
-                    if result == "Unknown":
+                    if result == SolverStatus.UNKNOWN:
                         self.had_unknown = True
                     procs = self.procs.copy()
                     for proc in procs:
@@ -318,8 +272,8 @@ class NormalRunner(AlgorithmRunner):
         solve_result = self.solver.solve(
             self.const, query_name=self.debug_name
         )
-        is_true = solve_result.result == "False"
-        self.had_unknown = self.had_unknown or solve_result.result == "Unknown"
+        is_true = solve_result.status is SolverStatus.SAT
+        self.had_unknown = self.had_unknown or solve_result.status is SolverStatus.UNKNOWN
 
         model = None
         if is_true:
@@ -329,8 +283,7 @@ class NormalRunner(AlgorithmRunner):
         self.solver = None
         self.const = None
         self.number = 0
-        self.completed_jobs += 1
-        self.completed_scenarios += self.current_scenario_count
+        self.progress.job_completed(self.current_scenario_count)
         return is_true, model
 
     def __init__(self):
@@ -364,8 +317,7 @@ class NormalRunner(AlgorithmRunner):
 
         self.solver = solver
         self.const = const
-        self.submitted_jobs += 1
-        self.submitted_scenarios += self.current_scenario_count
+        self.progress.job_submitted(self.current_scenario_count)
 
     def kill_all(self):
         pass

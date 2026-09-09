@@ -1,7 +1,11 @@
 # Tests
 
-The test suite has fourteen parts:
+The test suite has sixteen parts:
 
+- `application_boundaries.py` checks typed run options, property-independent
+  bounded-search results, legacy tuple compatibility, and typed solver status.
+- `application_workflow.py` checks parser-error translation, per-goal model
+  state isolation, and cleanup when an algorithm fails.
 - `parser_inputs.py` parses every benchmark model and configuration through
   the public Lark parser APIs and checks the visualization configuration format.
 - `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,

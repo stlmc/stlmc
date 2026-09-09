@@ -199,6 +199,9 @@ some parallelism for fewer solver invocations.
 See [Solving strategies](docs/solving-strategies.md) for the abstraction, path,
 batching, parallelism, and live progress fields.
 
+The internal package boundaries and extension points are described in
+[Architecture](docs/architecture.md).
+
 Pressing `Ctrl+C` stops scenario generation, terminates active solver process
 groups, reaps their worker threads, and exits.
 

@@ -87,8 +87,9 @@ def main():
         )
         return 3
 
-    from ..driver.abstract_driver import StlModelChecker
-    from ..driver.base_driver import BaseDriverFactory
+    from ..application.workflow import VerificationWorkflow
+    from .command import CliCommand
+    from ..utils.print import Printer
     previous_sigint_handler = None
     previous_sigterm_handler = None
     if hasattr(signal, "SIGINT"):
@@ -98,12 +99,10 @@ def main():
         previous_sigterm_handler = signal.getsignal(signal.SIGTERM)
         signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
     try:
-        # default driver factory
-        driver_factory = BaseDriverFactory()
-
-        stlmc = StlModelChecker()
-        stlmc.create_env(driver_factory)
-        stlmc.run()
+        # Constraint encodings may contain deeply nested formula trees. Keep
+        # the historical CLI allowance until all traversals are iterative.
+        sys.setrecursionlimit(1000000)
+        VerificationWorkflow().run(CliCommand(), Printer())
         if is_interrupted():
             raise StlmcInterrupted
     except NotSupportedError as E:

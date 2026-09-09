@@ -36,6 +36,8 @@ tests/*
 !tests/cvc5_solver.py
 !tests/install_solvers.py
 !tests/process_cleanup.py
+!tests/application_boundaries.py
+!tests/application_workflow.py
 !tests/parser_inputs.py
 !tests/solution_functions.py
 !tests/smoke_solvers.py
@@ -44,7 +46,7 @@ tests/*
 !tests/benchmarks/**
 !tests/smt2/
 !tests/smt2/**
-artifact-logs/
+artifact-logs*/
 smt2-logs/
 
 # Virtual Env for python

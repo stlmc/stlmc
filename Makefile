@@ -7,17 +7,25 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all test test-quick test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence test-solver-equivalence-quick benchmark benchmark-quick
+.PHONY: all test test-quick test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence test-solver-equivalence-quick benchmark benchmark-quick
 .NOTPARALLEL: test
 
 all:
 	@echo "Use 'make test' or 'make test-quick' to validate STLmc."
 
-test: test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
+test: test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
 
 # Short release checks plus benchmark cases that completed within 50 seconds
 # in the reference artifact logs. Each selected case gets a 200-second limit.
-test-quick: test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick test-solver-equivalence-quick
+test-quick: test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick test-solver-equivalence-quick
+
+test-application-boundaries:
+	$(info test typed application and solver boundaries ...)
+	@$(PYTHON) -u $(TEST_DIR)/application_boundaries.py
+
+test-application-workflow:
+	$(info test application workflow state and error boundaries ...)
+	@$(PYTHON) -u $(TEST_DIR)/application_workflow.py
 
 test-parser:
 	$(info test Lark parsers against all input formats ...)

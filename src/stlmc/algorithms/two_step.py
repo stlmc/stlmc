@@ -10,7 +10,8 @@ from ..solver.abstract_solver import JobSolver, SolverStatus
 from ..constraints.operations import size_of_tree
 from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
-from ..exceptions import IllegalArgumentError
+from ..application.result import AlgorithmResult, SearchStatus
+from ..application.options import RunOptions
 from ..encoding.batching import partitioned_candidate_batch_formula
 from ..encoding.fully_stable_partition import FullyStablePartitionEncoding
 from ..encoding.fully_stable_stl import (
@@ -46,7 +47,7 @@ from .shared_stl import (
 class TwoStepAlgorithm(Algorithm):
     """Enumerate abstract scenarios and check their continuous refinements."""
     def __init__(self, path_provider: PathProvider = None,
-                 scenario_solver_factory=None):
+                 scenario_solver_factory=None, options=None):
         if scenario_solver_factory is None:
             raise ValueError("scenario_solver_factory is required")
         self.scenario_solver_factory = scenario_solver_factory
@@ -59,6 +60,7 @@ class TwoStepAlgorithm(Algorithm):
         self.debug_name = ""
         self.last_scenario_count = 0
         self.path_provider = path_provider or SymbolicPathProvider()
+        self.options = options
 
     def clear(self):
         self.scenario_solver = self.scenario_solver_factory("QF_LRA")
@@ -72,21 +74,18 @@ class TwoStepAlgorithm(Algorithm):
             solver: JobSolver, printer: Printer):
         total_time = 0.0
         total_size = 0
-        common_section = config.get_section("common")
-        bound = common_section.get_value("bound")
-        time_bound = common_section.get_value("time-bound")
-        delta = common_section.get_value("threshold")
-        parallel = common_section.get_value("parallel")
-        core = int(common_section.get_value("parallel-core"))
-        solver_batch_size = int(common_section.get_value("solver-batch-size"))
-        if solver_batch_size < 1:
-            raise IllegalArgumentError("solver-batch-size must be at least 1")
-        is_generalized = common_section.get_value("concrete") != "true"
-        smt_preprocess = common_section.get_value("smt-preprocess") == "true"
+        options = self.options or RunOptions.from_configuration(config)
+        bound = options.bound
+        time_bound = options.time_bound
+        delta = options.threshold
+        core = options.parallel_core
+        solver_batch_size = options.solver_batch_size
+        is_generalized = not options.concrete
+        smt_preprocess = options.smt_preprocess
         if self.runner is not None:
             self.runner.kill_all()
 
-        if parallel == "true":
+        if options.parallel:
             self.runner = ParallelAlgRunner(core)
         else:
             self.runner = NormalRunner()
@@ -96,7 +95,6 @@ class TwoStepAlgorithm(Algorithm):
         self.clear()
         model.boolean_abstract.clear()
 
-        final_result = "Unknown"
         finished_bound = bound
 
         # depth = int(bound) * 2
@@ -218,9 +216,11 @@ class TwoStepAlgorithm(Algorithm):
                         found_scenario=self.runner.winning_scenario,
                         witness_label="witness" if is_reach else "counterexample",
                     )
-                    if is_reach:
-                        return "True", total_time, finished_bound, result_model.get_assignments()
-                    return "False", total_time, finished_bound, result_model.get_assignments()
+                    return AlgorithmResult(
+                        SearchStatus.WITNESS_FOUND, total_time, finished_bound,
+                        result_model.get_assignments(),
+                        "True" if is_reach else "False",
+                    )
 
                 runner_result, runner_model = self.runner.wait_and_check_sat(
                     lambda completed: printer.scenario_progress(
@@ -235,9 +235,11 @@ class TwoStepAlgorithm(Algorithm):
                         found_scenario=self.runner.winning_scenario,
                         witness_label="witness" if is_reach else "counterexample",
                     )
-                    if is_reach:
-                        return "True", self.runner.time, finished_bound, runner_model.get_assignments()
-                    return "False", self.runner.time, finished_bound, runner_model.get_assignments()
+                    return AlgorithmResult(
+                        SearchStatus.WITNESS_FOUND, self.runner.time,
+                        finished_bound, runner_model.get_assignments(),
+                        "True" if is_reach else "False",
+                    )
             printer.bound_finished(
                 b, "unknown" if self.runner.had_unknown else "unsat",
                 time.monotonic() - bound_started,
@@ -249,10 +251,14 @@ class TwoStepAlgorithm(Algorithm):
                 # exact jump bound after its frontier becomes empty.
                 break
         if self.runner.had_unknown:
-            return "Unknown", total_time, finished_bound, None
-        if is_reach:
-            return "False", total_time, finished_bound, None
-        return "True", total_time, finished_bound, None
+            return AlgorithmResult(
+                SearchStatus.UNKNOWN, total_time, finished_bound,
+                legacy_status="Unknown",
+            )
+        return AlgorithmResult(
+            SearchStatus.EXHAUSTED, total_time, finished_bound,
+            legacy_status="False" if is_reach else "True",
+        )
 
     # accumulated
     def scenario_check(self, model: Model, bound: int, tau_max, sub_formulas: Set[Formula],

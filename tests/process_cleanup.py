@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.execution.runner import ParallelAlgRunner
+from stlmc.execution.progress import ProgressTracker
 from stlmc.solver.abstract_solver import SolveResult, SolverJob, ThreadWorker
 
 
@@ -80,6 +81,22 @@ class JoinWorker:
 
 
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_progress_tracker_keeps_scenario_and_job_units_separate(self):
+        progress = ProgressTracker()
+        progress.scenario_generated(5)
+        progress.job_submitted(5)
+        progress.job_completed(5)
+
+        self.assertEqual(progress.snapshot(active_workers=2), {
+            "generated": 5,
+            "submitted": 5,
+            "completed": 5,
+            "pending": 0,
+            "submitted_jobs": 1,
+            "completed_jobs": 1,
+            "active_workers": 2,
+        })
+
     def test_solver_job_result_honors_timeout(self):
         job = SolverJob()
         with self.assertRaises(TimeoutError):
@@ -140,7 +157,7 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner.procs.update(workers)
 
         with mock.patch(
-            "stlmc.execution.runner.time.monotonic",
+            "stlmc.execution.cleanup.time.monotonic",
             side_effect=clock.monotonic,
         ):
             runner.kill_all()
@@ -158,7 +175,7 @@ class ParallelRunnerCleanupTest(unittest.TestCase):
         runner.procs.add(worker)
 
         with mock.patch(
-            "stlmc.execution.runner.os.killpg",
+            "stlmc.execution.cleanup.os.killpg",
             side_effect=PermissionError(1, "Operation not permitted"),
         ):
             runner.kill_all()

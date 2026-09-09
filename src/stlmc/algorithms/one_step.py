@@ -13,10 +13,11 @@ from ..execution.runner import Algorithm
 from ..objects.configuration import Configuration
 from ..objects.goal import Goal, ReachGoal
 from ..objects.model import Model
-from ..solver.abstract_solver import JobSolver
-from ..exceptions import IllegalArgumentError
+from ..solver.abstract_solver import JobSolver, SolverStatus
 from ..utils.print import Printer
 from ..utils.interrupt import raise_if_interrupted
+from ..application.result import AlgorithmResult, SearchStatus
+from ..application.options import RunOptions
 
 
 # Compatibility name formerly imported from the two-step implementation.
@@ -26,33 +27,29 @@ fully_stable_stl_formula = bounded_stl_formula
 class OneStepAlgorithm(Algorithm):
     """Solve the complete encoding directly, without two-step abstraction."""
     def __init__(self, path_provider: PathProvider = None,
-                 formula_solver_factory=None):
+                 formula_solver_factory=None, options=None):
         self.debug_name = ""
         self.path_provider = path_provider or SymbolicPathProvider()
         if formula_solver_factory is None:
             raise ValueError("formula_solver_factory is required")
         self.formula_solver_factory = formula_solver_factory
+        self.options = options
 
     def set_debug(self, msg: str):
         self.debug_name = msg
 
     def run(self, model: Model, goal: Goal, goal_prop_dict: Dict, config: Configuration,
             solver: JobSolver, printer: Printer):
-        common_section = config.get_section("common")
-        bound = common_section.get_value("bound")
-        time_bound = common_section.get_value("time-bound")
-        delta_str = common_section.get_value("threshold")
-        underlying_solver = common_section.get_value("solver")
-        solver_batch_size = int(common_section.get_value("solver-batch-size"))
-        if solver_batch_size < 1:
-            raise IllegalArgumentError("solver-batch-size must be at least 1")
+        options = self.options or RunOptions.from_configuration(config)
+        bound = options.bound
+        time_bound = options.time_bound
+        solver_batch_size = options.solver_batch_size
 
         total_time = 0.0
         total_size = 0
-        final_result = "Unknown"
         had_unknown = False
         finished_bound = bound
-        delta = float(delta_str)
+        delta = options.threshold
 
         goal_f = substitution(goal.get_formula(), goal_prop_dict)
 
@@ -119,12 +116,11 @@ class OneStepAlgorithm(Algorithm):
                     batch_formula, query_name=query_name
                 )
                 total_time += solve_result.elapsed
-                final_result = solve_result.result
-                if solve_result.result == "False":
-                    bound_result = solve_result.result
+                if solve_result.status is SolverStatus.SAT:
+                    bound_result = "False"
                     found_assignment = solve_result.assignment
                     break
-                if solve_result.result == "Unknown":
+                if solve_result.status is SolverStatus.UNKNOWN:
                     had_unknown = True
                     bound_result = "Unknown"
 
@@ -141,9 +137,11 @@ class OneStepAlgorithm(Algorithm):
             # stop when find false
             if bound_result == "False":
                 # for reach case, we should translate the result in the opposite way
-                if is_reach:
-                    return "True", total_time, finished_bound, found_assignment.get_assignments()
-                return "False", total_time, finished_bound, found_assignment.get_assignments()
+                return AlgorithmResult(
+                    SearchStatus.WITNESS_FOUND, total_time, finished_bound,
+                    found_assignment.get_assignments(),
+                    "True" if is_reach else "False",
+                )
 
             if len(path_candidates) == 0:
                 break
@@ -153,11 +151,23 @@ class OneStepAlgorithm(Algorithm):
         # for reach case, we should translate the result in the opposite way
         if is_reach:
             if had_unknown:
-                return "Unknown", total_time, finished_bound, None
-            return "False", total_time, finished_bound, None
+                return AlgorithmResult(
+                    SearchStatus.UNKNOWN, total_time, finished_bound,
+                    legacy_status="Unknown",
+                )
+            return AlgorithmResult(
+                SearchStatus.EXHAUSTED, total_time, finished_bound,
+                legacy_status="False",
+            )
         if had_unknown:
-            return "Unknown", total_time, finished_bound, None
-        return final_result, total_time, finished_bound, None
+            return AlgorithmResult(
+                SearchStatus.UNKNOWN, total_time, finished_bound,
+                legacy_status="Unknown",
+            )
+        return AlgorithmResult(
+            SearchStatus.EXHAUSTED, total_time, finished_bound,
+            legacy_status="True",
+        )
 
 @singledispatch
 def clause(const: Constraint):

@@ -13,6 +13,19 @@ class SolverStatus(Enum):
     UNSAT = "unsat"
     UNKNOWN = "unknown"
 
+    @classmethod
+    def from_legacy(cls, value):
+        if isinstance(value, cls):
+            return value
+        return {
+            "False": cls.SAT,
+            "True": cls.UNSAT,
+            "Unknown": cls.UNKNOWN,
+            "sat": cls.SAT,
+            "unsat": cls.UNSAT,
+            "unknown": cls.UNKNOWN,
+        }.get(value, cls.UNKNOWN)
+
 
 @dataclass(frozen=True)
 class SolveResult:
@@ -23,6 +36,11 @@ class SolveResult:
     elapsed: float = 0.0
     error: str = None
     size: int = 0
+
+    @property
+    def status(self):
+        """Typed status; ``result`` remains for backend/API compatibility."""
+        return SolverStatus.from_legacy(self.result)
 
 
 class SolverJob:
