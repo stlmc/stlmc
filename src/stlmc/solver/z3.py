@@ -13,9 +13,7 @@ from ..constraints.constraints import (
     Implies, Int, IntVal, Integral, Leq, Lt, Mul, Neg, Neq, Not, Or, Pow,
     Real, RealVal, Sub, Variable,
 )
-from ..constraints.operations import (
-    get_vars, size_of_tree,
-)
+from ..constraints.analysis import get_vars, size_of_tree
 from ..constraints.logical_normalization import reduce_not
 from ..constraints.normalization import reverse_inequality
 from ..constraints.translation import make_forall_consts, make_dynamics_consts

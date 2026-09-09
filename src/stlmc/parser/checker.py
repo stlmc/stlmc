@@ -6,7 +6,7 @@ from ..constraints.constraints import (
     Arccos, Arcsin, Arctan, Constant, Cos, Dynamics, Function, Sin, Sqrt,
     Tan,
 )
-from ..constraints.operations import get_vars
+from ..constraints.analysis import get_vars
 from ..objects.configuration import Configuration
 from ..objects.model import StlMC
 from ..exceptions import SolverUnavailableError

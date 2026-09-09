@@ -13,6 +13,7 @@ from stlmc.constraints.constraints import (
     RealVal, Sub,
 )
 from stlmc.constraints.operations import relaxing, strengthening
+from stlmc.constraints.formatting import infix
 from stlmc.artifacts.formula_index import index_subformulas
 
 
@@ -35,6 +36,14 @@ class RobustnessOperationsTest(unittest.TestCase):
             Lt(self.x, Add(self.zero, self.epsilon)),
             Gt(self.x, Sub(self.zero, self.epsilon)),
         ]))
+
+    def test_infix_preserves_comparison_operators(self):
+        self.assertEqual(infix(Gt(self.x, self.zero)), "x > 0")
+        self.assertEqual(infix(Geq(self.x, self.zero)), "x >= 0")
+        self.assertEqual(infix(Lt(self.x, self.zero)), "x < 0")
+        self.assertEqual(infix(Leq(self.x, self.zero)), "x <= 0")
+        self.assertEqual(infix(Eq(self.x, self.zero)), "x == 0")
+        self.assertEqual(infix(Neq(self.x, self.zero)), "x != 0")
 
     def test_visualizer_boolean_robustness_uses_discrete_truth(self):
         from stlmc.visualize.visualizer import robustness
@@ -87,6 +96,14 @@ class RobustnessOperationsTest(unittest.TestCase):
                          Not(strengthening(atom, 0.5)))
         self.assertEqual(strengthening(Not(atom), 0.5),
                          Not(relaxing(atom, 0.5)))
+
+    def test_double_negation_continues_normalizing_children(self):
+        from stlmc.constraints.logical_normalization import reduce_not
+
+        formula = Not(Not(And([Not(Lt(self.x, self.zero))])))
+        self.assertEqual(
+            reduce_not(formula), And([Geq(self.x, self.zero)])
+        )
 
     def test_implication_antecedent_is_contravariant(self):
         antecedent = Lt(self.x, self.zero)

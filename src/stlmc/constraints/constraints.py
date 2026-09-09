@@ -221,10 +221,14 @@ class Constant(Leaf, Expr):
         self._str = str(self.value)
 
     def __hash__(self):
-        return hash(self._str)
+        return hash((type(self), self.__type, self.__value))
 
     def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+        return (
+            type(self) is type(other)
+            and self.__type == other.__type
+            and self.__value == other.__value
+        )
 
     @property
     def value(self):
@@ -247,10 +251,14 @@ class Variable(Leaf, Expr):
         self._str = str(self.__id)
 
     def __hash__(self):
-        return hash(self._str)
+        return hash((type(self), self.__type, self._str))
 
     def __eq__(self, other):
-        return self.__hash__() == other.__hash__()
+        return (
+            type(self) is type(other)
+            and self.__type == other.__type
+            and self._str == other._str
+        )
 
     @property
     def type(self):

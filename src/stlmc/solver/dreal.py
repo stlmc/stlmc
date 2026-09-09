@@ -13,9 +13,7 @@ from ..constraints.constraints import (
     Mul, Neg, Neq, Not, Ode, Or, Pow, Real, RealVal, Sin, Sqrt, Sub, Tan,
     Variable,
 )
-from ..constraints.operations import (
-    get_max_bound, get_vars, size_of_tree,
-)
+from ..constraints.analysis import get_max_bound, get_vars, size_of_tree
 from ..constraints.encoding_helpers import clause
 from ..constraints.logical_normalization import reduce_not
 from ..constraints.normalization import reverse_inequality, substitution_zero2t

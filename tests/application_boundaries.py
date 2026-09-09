@@ -10,6 +10,10 @@ from stlmc.application.options import RunOptions
 from stlmc.application.result import (
     AlgorithmResult, SearchStatus, interpret_algorithm_result,
 )
+from stlmc.constraints.constraints import (
+    Bool, Int, IntVal, Real, RealVal,
+)
+from stlmc.constraints.substitution import substitution
 from stlmc.objects.configuration import Configuration, Section
 from stlmc.solver.abstract_solver import SolveResult, SolverStatus
 
@@ -35,6 +39,17 @@ def configuration(**overrides):
 
 
 class ApplicationBoundaryTest(unittest.TestCase):
+    def test_ast_leaf_identity_includes_declared_type(self):
+        real = Real("value")
+        integer = Int("value")
+        boolean = Bool("value")
+
+        self.assertNotEqual(real, integer)
+        self.assertNotEqual(real, boolean)
+        self.assertEqual(len({real, integer, boolean}), 3)
+        self.assertNotEqual(RealVal("1"), IntVal("1"))
+        self.assertIs(substitution(integer, {real: RealVal("2")}), integer)
+
     def test_configuration_is_typed_once_at_application_boundary(self):
         options = RunOptions.from_configuration(configuration())
         self.assertEqual(options.bound, 3)

@@ -12,19 +12,39 @@ from .normalization import substitution_zero2t
 def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
-    op_dict = {Gt: Gt, Geq: Geq}
     mn = forall.current_mode_number
     end = forall.end_tau
     start = forall.start_tau
     integral = forall.integral
-    monotone_cond = Or([Forall(mn, end, start, Geq(diff(start_forall_exp, forall.integral), RealVal('0')), integral),
-                        Forall(mn, end, start,
-                               Geq(RealVal("0") - diff(start_forall_exp, forall.integral), RealVal('0')), integral)])
+    zero = RealVal("0")
+    derivative = diff(start_forall_exp, integral)
+    non_decreasing = Forall(
+        mn, end, start, Geq(derivative, zero), integral
+    )
+    non_increasing = Forall(
+        mn, end, start, Geq(zero - derivative, zero), integral
+    )
 
-    res = And([op_dict[type(forall.const)](start_forall_exp, RealVal("0")),
-               Geq(end_forall_exp, RealVal("0")),
-               monotone_cond])
-    return res
+    if isinstance(forall.const, Geq):
+        return Or([
+            And([non_decreasing, Geq(start_forall_exp, zero)]),
+            And([non_increasing, Geq(end_forall_exp, zero)]),
+        ])
+
+    # Lemma 6.2(2): on an open interval a strict invariant may be zero at
+    # the excluded endpoint when it is strictly positive at the other end.
+    increasing_endpoint = Or([
+        Gt(start_forall_exp, zero),
+        And([Eq(start_forall_exp, zero), Gt(end_forall_exp, zero)]),
+    ])
+    decreasing_endpoint = Or([
+        Gt(end_forall_exp, zero),
+        And([Eq(end_forall_exp, zero), Gt(start_forall_exp, zero)]),
+    ])
+    return Or([
+        And([non_decreasing, increasing_endpoint]),
+        And([non_increasing, decreasing_endpoint]),
+    ])
 
 
 def make_forall_consts(forall: Forall):

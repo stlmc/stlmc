@@ -3,8 +3,9 @@
 from functools import singledispatch
 
 from .constraints import (
-    Add, And, Binary, Bool, Constraint, Div, Eq, Geq, Gt, Int, Leq, Lt, Mul,
-    Neg, Neq, Not, Or, Pow, Real, Sub, Variable,
+    Add, And, Binary, BinaryTemporalFormula, Bool, Constraint, Div, Eq, Geq,
+    Gt, Implies, Int, Leq, Lt, Mul, Neg, Neq, Not, Or, Pow, Real, Sub,
+    TimeBoundConst, UnaryTemporalFormula, Variable,
 )
 
 
@@ -43,8 +44,26 @@ def _(const: Binary):
     operator = {
         Geq: Geq, Gt: Gt, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq,
         Add: Add, Sub: Sub, Div: Div, Mul: Mul, Pow: Pow,
+        Implies: Implies, TimeBoundConst: TimeBoundConst,
     }[type(const)]
     return operator(
+        substitution_zero2t(const.left),
+        substitution_zero2t(const.right),
+    )
+
+
+@substitution_zero2t.register(UnaryTemporalFormula)
+def _(const: UnaryTemporalFormula):
+    return type(const)(
+        const.local_time, const.global_time,
+        substitution_zero2t(const.child),
+    )
+
+
+@substitution_zero2t.register(BinaryTemporalFormula)
+def _(const: BinaryTemporalFormula):
+    return type(const)(
+        const.local_time, const.global_time,
         substitution_zero2t(const.left),
         substitution_zero2t(const.right),
     )
@@ -62,7 +81,9 @@ def _(const: Or):
 
 @substitution_zero2t.register(Variable)
 def _(const: Variable):
-    variable_type = {Bool: Bool, Real: Real, Int: Int}[type(const)]
+    variable_type = Bool if isinstance(const, Bool) else (
+        Int if isinstance(const, Int) else Real
+    )
     if const.id.find("_") != const.id.rfind("_") and const.id.endswith("_0"):
         return variable_type(const.id[:-2] + "_t")
     return const

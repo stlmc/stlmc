@@ -111,7 +111,7 @@ goal: true;
         _, integrals = model.make_flow_consts(0)
         integral = integrals[0]
         derivative = str(diff(Real("x_0_0"), integral))
-        self.assertIn("1 - 0", derivative)
+        self.assertIn("1", derivative)
         self.assertNotIn("1 - 1", derivative)
 
         model.make_invariant_consts(0, integrals)
@@ -122,6 +122,81 @@ goal: true;
         translated = drealObj(forall)
         self.assertNotIn("forall_t", translated)
         self.assertIn("currentMode_0", translated)
+
+    def test_strict_open_invariant_allows_zero_at_excluded_endpoint(self):
+        from stlmc.constraints.constraints import (
+            And, Eq, Forall, Function, Gt, Integral, Or, Real, RealVal,
+        )
+        from stlmc.constraints.translation import make_forall_consts
+
+        start_value = Real("x_0_0")
+        end_value = Real("x_0_t")
+        integral = Integral(
+            0, [end_value], [start_value],
+            Function([start_value], [Real("tau_1")]),
+        )
+        translated = make_forall_consts(Forall(
+            0, Real("tau_1"), RealVal("0"),
+            Gt(start_value, RealVal("0")), integral,
+        ))
+
+        self.assertIsInstance(translated, Or)
+        increasing_case = translated.children[0]
+        self.assertIsInstance(increasing_case, And)
+        endpoint_case = increasing_case.children[1]
+        self.assertIsInstance(endpoint_case, Or)
+        zero_then_positive = endpoint_case.children[1]
+        self.assertIsInstance(zero_then_positive, And)
+        self.assertIsInstance(zero_then_positive.children[0], Eq)
+        self.assertEqual(zero_then_positive.children[0].left, start_value)
+        self.assertIsInstance(zero_then_positive.children[1], Gt)
+        self.assertEqual(zero_then_positive.children[1].left, end_value)
+
+    def test_symbolic_derivative_evaluates_constant_exponent_without_eval(self):
+        from stlmc.constraints.constraints import Pow, Real, RealVal, Sub
+        from stlmc.constraints.differentiation import diff_aux
+
+        exponent = Sub(RealVal("1"), RealVal("1"))
+        self.assertEqual(
+            diff_aux(Pow(Real("tau_1"), exponent)), RealVal("0")
+        )
+
+    def test_symbolic_derivative_capability_rejects_unsupported_functions(self):
+        from stlmc.constraints.constraints import Function, Integral, Real, Sin
+        from stlmc.constraints.differentiation import (
+            diff, diff_aux, supports_symbolic_differentiation,
+        )
+        from stlmc.exceptions import NotSupportedError
+
+        expression = Sin(Real("tau_1"))
+        self.assertFalse(supports_symbolic_differentiation(expression))
+        with self.assertRaisesRegex(
+            NotSupportedError, "unsupported expression.*Sin"
+        ):
+            diff_aux(expression)
+
+        start = Real("x_0_0")
+        integral = Integral(
+            0, [Real("x_0_t")], [start], Function([start], [expression])
+        )
+        with self.assertRaisesRegex(
+            NotSupportedError, "polynomial invariant simplification"
+        ):
+            diff(start, integral)
+
+    def test_zero_to_t_substitution_handles_logical_and_temporal_nodes(self):
+        from stlmc.constraints.constraints import (
+            Gt, Implies, Interval, Real, RealVal, UntilFormula,
+        )
+        from stlmc.constraints.normalization import substitution_zero2t
+
+        interval = Interval(True, RealVal("0"), True, RealVal("1"))
+        atom = Gt(Real("x_0_0"), RealVal("0"))
+        logical = substitution_zero2t(Implies(atom, atom))
+        temporal = substitution_zero2t(UntilFormula(interval, interval, atom, atom))
+
+        self.assertIn("x_0_t", str(logical))
+        self.assertIn("x_0_t", str(temporal))
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ def _(const: Not):
             reduce_not(Not(child.left)), reduce_not(Not(child.right)),
         )
     if isinstance(child, Not):
-        return child.child
+        return reduce_not(child.child)
     if isinstance(child, Bool):
         return Bool("not@" + child.id)
     return const

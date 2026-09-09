@@ -3,7 +3,7 @@ from typing import Dict, Set, Tuple
 from ..constraints.constraints import (
     BinaryFormula, Formula, Implies, MultinaryFormula, Not, UnaryFormula,
 )
-from ..constraints.operations import is_proposition
+from ..constraints.analysis import is_proposition
 
 
 def index_subformulas(formula: Formula) -> Tuple[Set[Formula], Dict]:

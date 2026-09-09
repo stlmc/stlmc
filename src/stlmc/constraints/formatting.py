@@ -30,7 +30,7 @@ def _(const: Geq):
 
 @infix.register(Gt)
 def _(const: Gt):
-    return infix(const.left) + " >= " + infix(const.right)
+    return infix(const.left) + " > " + infix(const.right)
 
 
 @infix.register(Leq)
@@ -40,19 +40,17 @@ def _(const: Leq):
 
 @infix.register(Lt)
 def _(const: Lt):
-    return infix(const.left) + " <= " + infix(const.right)
+    return infix(const.left) + " < " + infix(const.right)
 
 
 @infix.register(Eq)
 def _(const: Eq):
-    return (infix(const.left) + " >= " + infix(const.right) + " & "
-            + infix(const.left) + " <= " + infix(const.right))
+    return infix(const.left) + " == " + infix(const.right)
 
 
 @infix.register(Neq)
 def _(const: Neq):
-    return (infix(const.left) + " >= " + infix(const.right) + " & "
-            + infix(const.left) + " < " + infix(const.right))
+    return infix(const.left) + " != " + infix(const.right)
 
 
 @infix.register(Add)

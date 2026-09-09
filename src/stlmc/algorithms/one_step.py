@@ -13,7 +13,7 @@ from ..constraints.constraints import (
     UnaryFormula,
 )
 from ..constraints.boolean_abstraction import make_boolean_abstract_consts
-from ..constraints.operations import size_of_tree
+from ..constraints.analysis import size_of_tree
 from ..constraints.substitution import substitution
 from ..execution.runner import Algorithm
 from ..objects.configuration import Configuration
