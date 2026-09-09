@@ -30,8 +30,8 @@ from ..encoding.symbolic_discrete import (
 )
 from .scenario_refinement import (
     assert_and_track_assignment, boolean_core_assignments,
-    evaluated_arithmetic_literals, is_temporal_definitional,
-    relevant_boolean_abstract_links, scenario_enumeration_finished,
+    evaluated_arithmetic_literals, relevant_boolean_abstract_links,
+    scenario_enumeration_finished,
 )
 from ..encoding.symbolic_ids import (
     depth2bound, inv_index_info, rename, type1_index_info, type1_info,
@@ -124,17 +124,23 @@ class TwoStepAlgorithm(Algorithm):
             sub_formulas = set()
             partition_encoding = FullyStablePartitionEncoding(sub_formulas)
 
-        initial_model_f, initial_track_const = model.init_consts()
+        # Algorithm 2 abstracts only flow and invariant constraints.  The
+        # legacy tracking equality for init is metadata, not part of Psi.
+        initial_model_f, _ = model.init_consts()
 
         self.scenario_solver.add(initial_stl_f)
         self.scenario_solver.add(initial_model_f)
-        self.scenario_solver.add(initial_track_const)
         self.minimize_solver.add(
-            Not(And([initial_model_f, initial_stl_f, initial_track_const, Bool("unsat@0")])))
+            Not(And([
+                initial_model_f, initial_stl_f, Bool("unsat@0")
+            ]))
+        )
         self.minimize_solver.push()
         self.minimize_solver.add(Bool("unsat@0"))
 
-        self.clause_set.update(clause(And([initial_model_f, initial_stl_f, initial_track_const])))
+        self.clause_set.update(clause(And([
+            initial_model_f, initial_stl_f
+        ])))
 
         # stl
         stl_consts = []
@@ -142,8 +148,6 @@ class TwoStepAlgorithm(Algorithm):
 
         # model
         model_consts = []
-        model_track_consts = []
-
         # For STL, the bound covers mode changes and variable points.  For a
         # state reachability goal there are no STL variable points.
         for b in range(0, int(bound) + 1):
@@ -152,10 +156,12 @@ class TwoStepAlgorithm(Algorithm):
             bound_started = time.monotonic()
 
             # generate model consts
-            model_f_k, track_f_k = model.k_step_consts(b)
-            model_f_k_final, track_f_k_final = model.k_step_consts(b, is_final=True)
+            # Step tracking maps expose exact jumps to the explicit-path
+            # provider, but are not solver constraints and must not inflate
+            # the reported size of the paper encoding.
+            model_f_k, _ = model.k_step_consts(b)
+            model_f_k_final, _ = model.k_step_consts(b, is_final=True)
             model_consts.append(model_f_k)
-            model_track_consts.append(track_f_k)
 
             if not is_reach:
                 # corresponding stl depth
@@ -188,7 +194,6 @@ class TwoStepAlgorithm(Algorithm):
             total_size = acc_size(model_consts)
             total_size += acc_size(stl_consts)
             total_size += acc_size(stl_time_consts)
-            total_size += acc_size(model_track_consts)
             total_size += size_of_tree(stl_f_k)
             total_size += size_of_tree(time_f_k)
             total_size += size_of_tree(time_order_const)
@@ -386,13 +391,6 @@ class TwoStepAlgorithm(Algorithm):
                     for v in assn_dict:
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
-                            if is_temporal_definitional(v):
-                                # Definitional values are context for proving
-                                # the scenario, but are never scenario literals
-                                # or concrete path constraints themselves.
-                                literal = Eq(v, valuation)
-                                self.minimize_solver.add(literal)
-                                continue
                             track_id = "p@{}".format(v.id)
                             bool_assignment_dict[track_id] = assert_and_track_assignment(
                                 self.minimize_solver, v, valuation, track_id
@@ -535,8 +533,6 @@ class TwoStepAlgorithm(Algorithm):
                     real_set = set()
                     for variable, valuation in assn_dict.items():
                         if isinstance(variable, Bool) and isinstance(valuation, BoolVal):
-                            if is_temporal_definitional(variable):
-                                continue
                             concrete_literals.append(Eq(variable, valuation))
                             if valuation == true:
                                 true_bool_ids.add("p@{}".format(variable.id))

@@ -35,7 +35,11 @@ class DrealInterval(RealVal):
         self.lower = str(lower).strip()
         self.upper = str(upper).strip()
         midpoint = (float(self.lower) + float(self.upper)) / 2
-        super().__init__(str(format(midpoint, "f")))
+        # ``format(..., "f")`` defaults to six fractional digits.  A dReal
+        # box can be narrower than that, in which case the rounded value may
+        # no longer belong to the box it represents.  ``repr`` preserves
+        # enough precision to round-trip the computed float.
+        super().__init__(repr(midpoint))
 
     @property
     def midpoint(self) -> str:

@@ -6,7 +6,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from stlmc.constraints.constraints import And, Geq, Lt, Real, RealVal
+from stlmc.constraints.constraints import (
+    And, Eq, Geq, Int, Lt, Real, RealVal,
+)
 from stlmc.parser.config_visitor import ConfigVisitor
 from stlmc.solver.cvc5 import CVC5Solver
 from stlmc.solver.solver_factory import SolverFactory
@@ -40,6 +42,15 @@ class CVC5SolverTest(unittest.TestCase):
         )
 
         self.assertEqual(result.result, "True")
+
+    def test_mixed_integer_real_equality(self):
+        mode = Int("mode")
+        result = CVC5Solver(self.config).solve(
+            Eq(mode, RealVal("0.0")), timeout=5
+        )
+
+        self.assertEqual(result.result, "False")
+        self.assertIn(mode, result.assignment.get_assignments())
 
 
 if __name__ == "__main__":

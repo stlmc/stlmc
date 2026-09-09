@@ -32,6 +32,15 @@ class DrealAssignmentTest(unittest.TestCase):
         self.assertEqual(assignment[Real("tau_1")].lower, "2.0")
         self.assertEqual(assignment[Real("tau_1")].upper, "2.2")
 
+    def test_midpoint_remains_inside_a_narrow_interval(self):
+        assignment = DrealAssignment([
+            "x : Real = [3.486834135780377, 3.48683414884334]",
+        ]).get_assignments()
+
+        value = assignment[Real("x")]
+        self.assertLessEqual(float(value.lower), float(value.midpoint))
+        self.assertLessEqual(float(value.midpoint), float(value.upper))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -92,8 +92,18 @@ class _CVC5Translator:
         if type(const) in unary:
             return self.solver.mkTerm(unary[type(const)], self.term(const.child))
         if type(const) in binary:
+            left = self.term(const.left)
+            right = self.term(const.right)
+            left_sort = left.getSort()
+            right_sort = right.getSort()
+            # SMT-LIB arithmetic permits Int terms in a Real context, but
+            # the CVC5 API requires the coercion to be explicit.
+            if left_sort.isInteger() and right_sort.isReal():
+                left = self.solver.mkTerm(Kind.TO_REAL, left)
+            elif left_sort.isReal() and right_sort.isInteger():
+                right = self.solver.mkTerm(Kind.TO_REAL, right)
             return self.solver.mkTerm(
-                binary[type(const)], self.term(const.left), self.term(const.right)
+                binary[type(const)], left, right
             )
         if type(const) in multinary:
             children = [self.term(child) for child in const.children]

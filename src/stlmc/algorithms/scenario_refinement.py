@@ -10,14 +10,6 @@ from ..constraints.substitution import substitution
 from ..solver.abstract_solver import SolverStatus
 
 
-def is_temporal_definitional(variable) -> bool:
-    """Return whether a Boolean belongs to the temporal encoding itself."""
-    return (
-        isinstance(variable, Bool)
-        and variable.id.startswith(("rho^", "parU^", "parEnd"))
-    )
-
-
 def scenario_enumeration_finished(status: SolverStatus) -> bool:
     """Return whether an incremental abstraction query can make no progress."""
     return status in (SolverStatus.UNSAT, SolverStatus.UNKNOWN)
@@ -96,7 +88,6 @@ __all__ = [
     "assert_and_track_assignment",
     "boolean_core_assignments",
     "evaluated_arithmetic_literals",
-    "is_temporal_definitional",
     "relevant_boolean_abstract_links",
     "scenario_enumeration_finished",
 ]

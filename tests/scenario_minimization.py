@@ -159,6 +159,56 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         self.assertEqual(solver.check(), SolverStatus.UNSAT)
         self.assertIn("arithmetic-false", solver.unsat_core())
 
+    def test_temporal_auxiliary_core_implies_the_checked_formula(self):
+        # Temporal encoding variables must be scenario literals.  Treating
+        # their model values as untracked context can produce a pi for which
+        # pi and not(Psi) is satisfiable.
+        auxiliary = Bool("rho^{aux}")
+        primary = Bool("primary")
+        psi = And([Eq(auxiliary, primary), auxiliary])
+        assignments = {
+            "auxiliary": Eq(auxiliary, BoolVal("True")),
+            "primary": Eq(primary, BoolVal("True")),
+        }
+        solver = Z3FormulaSolver()
+        for track_id, literal in assignments.items():
+            solver.track(literal, track_id)
+        solver.add(Not(psi))
+
+        self.assertEqual(solver.check(), SolverStatus.UNSAT)
+        core_literals = [assignments[item] for item in solver.unsat_core()]
+        implication_check = Z3FormulaSolver()
+        implication_check.add(And(core_literals))
+        implication_check.add(Not(psi))
+        self.assertEqual(implication_check.check(), SolverStatus.UNSAT)
+
+    def test_unsat_core_is_subset_minimal(self):
+        a, b, redundant = (Bool(name) for name in ("a", "b", "redundant"))
+        assignments = {
+            "a-track": Eq(a, BoolVal("True")),
+            "b-track": Eq(b, BoolVal("True")),
+            "redundant-track": Eq(redundant, BoolVal("True")),
+        }
+        base = Not(And([a, b]))
+        solver = Z3FormulaSolver()
+        solver.add(base)
+        for track_id, literal in assignments.items():
+            solver.track(literal, track_id)
+
+        self.assertEqual(solver.check(), SolverStatus.UNSAT)
+        core = solver.unsat_core()
+        self.assertNotIn("redundant-track", core)
+        for omitted in core:
+            necessity_check = Z3FormulaSolver()
+            necessity_check.add(base)
+            necessity_check.add(And([
+                assignments[item] for item in core if item != omitted
+            ]))
+            self.assertEqual(
+                necessity_check.check(), SolverStatus.SAT,
+                "core literal {} is not necessary".format(omitted),
+            )
+
     def test_concrete_scenario_keeps_arithmetic_clause_polarity(self):
         x = Real("x")
         clause = Gt(x, RealVal("0"))

@@ -37,6 +37,30 @@ goal:
 """
 
 
+OR_JUMP_MODEL = """\
+bool active;
+[0, 10] x;
+{{
+    mode: active = true;
+    inv: (and (x >= 0) (x <= 10));
+    flow: d/dt[x] = 1;
+    jump:
+        x >= 4 => (and (not active') (x' = 1));
+        x >= 5 => (and (not active') (x' = 9));
+}}
+{{
+    mode: active = false;
+    inv: (and (x >= 0) (x <= 10));
+    flow: d/dt[x] = 0;
+    jump:
+}}
+init: (and active (x = 0));
+proposition:
+goal:
+    {goal};
+"""
+
+
 class ReachabilityIntegrationTest(unittest.TestCase):
     def test_application_result_interprets_query_semantics(self):
         from stlmc.application.result import interpret_algorithm_result
@@ -56,12 +80,15 @@ class ReachabilityIntegrationTest(unittest.TestCase):
 
     def run_model(self, goal, *, threshold="0.01", two_step=False,
                   extra_args=(), visualize=False, solver="dreal", bound=0,
-                  solver_batch_size=1, path_strategy="symbolic"):
+                  solver_batch_size=1, path_strategy="symbolic",
+                  model_template=MODEL):
         with tempfile.TemporaryDirectory(prefix="stlmc-reach-") as directory:
             work = Path(directory)
             model = work / "reach.model"
             config = work / "reach.cfg"
-            model.write_text(MODEL.format(goal=goal), encoding="utf-8")
+            model.write_text(
+                model_template.format(goal=goal), encoding="utf-8"
+            )
             config.write_text(
                 """\
 common {{
@@ -161,6 +188,35 @@ dreal {{
         )
         self.assertEqual(completed.returncode, 0, completed.stdout)
         self.assertIn("status      : reachable at bound 0", completed.stdout)
+
+    def test_two_step_preserves_disjunctive_jump_resets(self):
+        goals = (
+            "reach (and (not active) (x <= 2))",
+            "reach (and (not active) (x >= 8))",
+        )
+        for two_step in (False, True):
+            for goal in goals:
+                with self.subTest(two_step=two_step, goal=goal):
+                    completed, _ = self.run_model(
+                        goal, bound=1, two_step=two_step,
+                        model_template=OR_JUMP_MODEL,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stdout)
+                    self.assertIn(
+                        "status      : reachable at bound 1", completed.stdout
+                    )
+
+            with self.subTest(two_step=two_step, goal="middle reset"):
+                completed, _ = self.run_model(
+                    "reach (and (not active) (and (x >= 4) (x <= 6)))",
+                    bound=1, two_step=two_step,
+                    model_template=OR_JUMP_MODEL,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stdout)
+                self.assertIn(
+                    "status      : unreachable up to bound 1",
+                    completed.stdout,
+                )
 
     def test_explicit_paths_support_one_step_and_two_step(self):
         for two_step in (False, True):
