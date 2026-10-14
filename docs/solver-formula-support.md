@@ -54,11 +54,17 @@ at every time in the flow interval. The branch that satisfies the invariant
 may change during that interval. STLMC preserves this meaning by retaining
 the complete disjunction inside one universal time condition.
 
-For closed-form flows and state-independent autonomous ODEs, STLMC uses Z3
-quantifier elimination to translate this condition to arithmetic constraints
-before sending them to the selected solver (including Yices, CVC5, and dReal).
-If time cannot be eliminated, or the ODE depends on the evolving state or time,
-the conversion raises an explicit unsupported error. It does not replace
+For closed-form flows and state-independent autonomous ODEs, STLMC introduces
+a local time variable and substitutes the flow expression into the condition.
+Z3 and CVC5 receive the resulting universal time quantifier directly. Their
+solver contexts use logics that permit quantification; CVC5 also writes these
+logics in exported SMT2 queries.
+
+Yices and dReal 3 use Z3 quantifier elimination to obtain arithmetic constraints
+because these backends do not support the required universal OR expression
+through the current adapters. If time cannot be eliminated for these backends,
+or the ODE depends on the evolving state or time, the conversion raises an
+explicit unsupported error. It does not replace
 `forall t. (p or q)` with the stronger `(forall t. p) or (forall t. q)`.
 
 ## dReal function names

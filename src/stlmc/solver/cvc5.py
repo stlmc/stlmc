@@ -118,8 +118,31 @@ class _CVC5Translator:
 
     def _forall(self, const):
         if isinstance(const.const, (Or, Implies)):
-            from ..constraints.quantified_flow import eliminate_boolean_flow_condition
-            return self.term(eliminate_boolean_flow_condition(const))
+            from ..constraints.quantified_flow import flow_condition_at_time
+            time = self.solver.mkVar(self.solver.getRealSort(), "stlmc_flow_time")
+            # Translate the local time as a bound variable, never a free
+            # model constant. Restore the surrounding translator's bindings.
+            elapsed = Real("__stlmc_bound_flow_time")
+            previous = self.variables.get(elapsed)
+            self.variables[elapsed] = time
+            try:
+                body = self.term(flow_condition_at_time(const, elapsed))
+            finally:
+                if previous is None:
+                    del self.variables[elapsed]
+                else:
+                    self.variables[elapsed] = previous
+            duration = self.term(Sub(const.end_tau, const.start_tau))
+            guard = self.solver.mkTerm(Kind.AND,
+                self.solver.mkTerm(Kind.GT, time, self.solver.mkReal(0)),
+                self.solver.mkTerm(Kind.LT, time, duration))
+            quantified = self.solver.mkTerm(Kind.FORALL,
+                self.solver.mkTerm(Kind.VARIABLE_LIST, time),
+                self.solver.mkTerm(Kind.IMPLIES, guard, body))
+            bound = int(const.end_tau.id[4:]) - 1
+            return self.solver.mkTerm(Kind.AND, self.term(Eq(
+                Real("currentMode_{}".format(bound)),
+                RealVal(str(const.current_mode_number)))), quantified)
         bound = str(int(const.end_tau.id[4:]) - 1)
         if not get_vars(const.const) or isinstance(const.const, Bool):
             return self.term(const.const)
@@ -171,7 +194,8 @@ def cvc5Obj(const, solver=None):
 
 def _new_solver(logic):
     solver = cvc5.Solver()
-    solver.setLogic(logic)
+    # OR flow invariants retain universal time quantification.
+    solver.setLogic(logic[3:] if logic.startswith("QF_") else logic)
     solver.setOption("produce-models", "true")
     return solver
 
@@ -216,6 +240,7 @@ class CVC5Solver(JobSolver):
     def submit(self, const, on_complete=None, query_name=""):
         job = SolverJob(on_complete)
         logic = self.config.get_section("cvc5").get_value("logic").upper()
+        logic = logic[3:] if logic.startswith("QF_") else logic
         if is_enabled(self.config):
             solver = _new_solver(logic)
             translator = _CVC5Translator(solver)

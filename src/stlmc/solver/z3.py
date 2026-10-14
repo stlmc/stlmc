@@ -350,8 +350,17 @@ def _(const: Integral):
 @z3Obj.register(Forall)
 def _(const: Forall):
     if isinstance(const.const, (Or, Implies)):
-        from ..constraints.quantified_flow import eliminate_boolean_flow_condition
-        return z3Obj(eliminate_boolean_flow_condition(const))
+        from ..constraints.quantified_flow import flow_condition_at_time
+        time = z3.FreshReal("stlmc_flow_time")
+        body = z3Obj(flow_condition_at_time(const, Real(time.decl().name())))
+        duration = z3Obj(Sub(const.end_tau, const.start_tau))
+        bound = int(const.end_tau.id[4:]) - 1
+        return z3.And(
+            z3Obj(Eq(Real("currentMode_{}".format(bound)),
+                     RealVal(str(const.current_mode_number)))),
+            z3.ForAll([time], z3.Implies(
+                z3.And(time > 0, time < duration), body)),
+        )
     bound_str = str(int(const.end_tau.id[4:]) - 1)
 
     if len(get_vars(const.const)) == 0:

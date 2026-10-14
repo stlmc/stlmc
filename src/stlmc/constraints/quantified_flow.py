@@ -9,19 +9,9 @@ from .substitution import substitution
 from ..exceptions import NotSupportedError
 
 
-def eliminate_boolean_flow_condition(forall):
-    """Preserve forall-time OR semantics using exact quantifier elimination.
-
-    Closed-form polynomial flows and state-independent ODEs have explicit
-    time expressions. General ODEs cannot be converted this way.
-    """
-    import z3
-    from ..solver.z3 import z3Obj
-
+def flow_condition_at_time(forall, elapsed):
+    """Instantiate a flow condition at a symbolic local elapsed time."""
     integral = forall.integral
-    duration = z3Obj(Sub(forall.end_tau, forall.start_tau))
-    time = z3.FreshReal("stlmc_flow_time")
-    elapsed = Real(time.decl().name())
     dynamics = integral.dynamics
     mapping = {}
     if isinstance(dynamics, Function):
@@ -44,7 +34,17 @@ def eliminate_boolean_flow_condition(forall):
     else:
         raise NotSupportedError("unsupported flow for OR invariant")
 
-    body = z3Obj(substitution(forall.const, mapping))
+    return substitution(forall.const, mapping)
+
+
+def eliminate_boolean_flow_condition(forall):
+    """Eliminate time for backends that cannot accept the quantifier."""
+    import z3
+    from ..solver.z3 import z3Obj
+
+    duration = z3Obj(Sub(forall.end_tau, forall.start_tau))
+    time = z3.FreshReal("stlmc_flow_time")
+    body = z3Obj(flow_condition_at_time(forall, Real(time.decl().name())))
     # Invariant starts are checked separately by the model encoding.
     query = z3.ForAll([time], z3.Implies(
         z3.And(time > 0, time < duration), body,

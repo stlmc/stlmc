@@ -22,6 +22,7 @@ class SolutionFunctionTest(unittest.TestCase):
     def test_or_invariant_preserves_time_varying_choice(self):
         import z3
         import cvc5
+        from unittest.mock import patch
         from yices import Config, Context, Status, Terms
         from stlmc.constraints.constraints import And, Eq, Or, Real, RealVal
         from stlmc.solver.z3 import z3Obj
@@ -50,12 +51,26 @@ class SolutionFunctionTest(unittest.TestCase):
                         Eq(Real("currentMode_0"), RealVal("0")),
                     ])
                     solver = z3.Solver()
-                    solver.add(z3Obj(formula))
+                    # Native quantifier backends must not invoke the QE
+                    # fallback needed by Yices and dReal.
+                    with patch(
+                        "stlmc.constraints.quantified_flow.eliminate_boolean_flow_condition",
+                        side_effect=AssertionError("unexpected QE fallback"),
+                    ):
+                        solver.add(z3Obj(formula))
+                        cvc_solver = cvc5.Solver()
+                        cvc_solver.setLogic("NRA")
+                        cvc_solver.assertFormula(cvc5Obj(formula, cvc_solver))
                     self.assertEqual(solver.check(), z3.sat if expected else z3.unsat)
-                    solver = cvc5.Solver()
-                    solver.setLogic("QF_NRA")
-                    solver.assertFormula(cvc5Obj(formula, solver))
-                    self.assertEqual(solver.checkSat().isSat(), expected)
+                    self.assertEqual(cvc_solver.checkSat().isSat(), expected)
+                    from stlmc.solver.cvc5 import _solve
+                    from stlmc.solver.abstract_solver import SolverStatus
+                    status, assignments, error = _solve(formula, "QF_NRA")
+                    self.assertEqual(status, SolverStatus.SAT if expected
+                                     else SolverStatus.UNSAT)
+                    self.assertIsNone(error)
+                    self.assertFalse(any("bound_flow_time" in v.id
+                                         for v in assignments))
                     config = Config()
                     config.default_config_for_logic("QF_NRA")
                     context = Context(config)
