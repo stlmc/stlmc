@@ -37,7 +37,13 @@ def _abstract_invariant_children(cur_inv_const, inv_prop_dict):
 
 
 make_dictionary_for_invariant.register(And)(_abstract_invariant_children)
-make_dictionary_for_invariant.register(Or)(_abstract_invariant_children)
+@make_dictionary_for_invariant.register(Or)
+def _(cur_inv_const: Or, inv_prop_dict: dict):
+    # Universal time quantification distributes over conjunction, not OR.
+    # Keep the complete disjunction inside one invariant abstraction.
+    new_var = Bool("invAtomicID_" + str(len(inv_prop_dict) + 1))
+    inv_prop_dict[new_var] = cur_inv_const
+    return new_var, inv_prop_dict
 
 
 @make_dictionary_for_invariant.register(BinaryFormula)

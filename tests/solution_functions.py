@@ -3,6 +3,72 @@ import unittest
 
 
 class SolutionFunctionTest(unittest.TestCase):
+    def test_or_invariant_rejects_unsupported_state_dependent_ode(self):
+        from stlmc.constraints.constraints import Forall, Real
+        from stlmc.constraints.quantified_flow import eliminate_boolean_flow_condition
+        from stlmc.exceptions import NotSupportedError
+
+        model = self.parse(
+            "[0, 10] x;", "d/dt[x] = x;",
+            "(or (x <= 6) (x >= 4));",
+        )
+        _, integrals = model.make_flow_consts(0)
+        model.make_invariant_consts(0, integrals)
+        invariant = next(value for value in model.boolean_abstract.values()
+                         if isinstance(value, Forall))
+        with self.assertRaisesRegex(NotSupportedError, "state-independent"):
+            eliminate_boolean_flow_condition(invariant)
+
+    def test_or_invariant_preserves_time_varying_choice(self):
+        import z3
+        import cvc5
+        from yices import Config, Context, Status, Terms
+        from stlmc.constraints.constraints import And, Eq, Or, Real, RealVal
+        from stlmc.solver.z3 import z3Obj
+        from stlmc.solver.yices import yicesObj
+        from stlmc.solver.cvc5 import cvc5Obj
+        from stlmc.solver.dreal import drealObj
+
+        for flow in ("x(t) = t + x(0);", "d/dt[x] = 1;"):
+            for upper, lower, expected in ((6, 4, True), (4, 6, False)):
+                with self.subTest(flow=flow, upper=upper, lower=lower):
+                    model = self.parse(
+                        "[0, 10] x;", flow,
+                        "(or (x <= {}) (x >= {}));".format(upper, lower),
+                    )
+                    _, integrals = model.make_flow_consts(0)
+                    invariant, _ = model.make_invariant_consts(0, integrals)
+                    # One abstraction contains the whole OR, not its atoms.
+                    quantified = [value for value in model.boolean_abstract.values()
+                                  if type(value).__name__ == "Forall"]
+                    self.assertEqual(len(quantified), 1)
+                    self.assertIsInstance(quantified[0].const, Or)
+                    formula = And([
+                        quantified[0], Eq(Real("x_0_0"), RealVal("0")),
+                        Eq(Real("tau_0"), RealVal("0")),
+                        Eq(Real("tau_1"), RealVal("10")),
+                        Eq(Real("currentMode_0"), RealVal("0")),
+                    ])
+                    solver = z3.Solver()
+                    solver.add(z3Obj(formula))
+                    self.assertEqual(solver.check(), z3.sat if expected else z3.unsat)
+                    solver = cvc5.Solver()
+                    solver.setLogic("QF_NRA")
+                    solver.assertFormula(cvc5Obj(formula, solver))
+                    self.assertEqual(solver.checkSat().isSat(), expected)
+                    config = Config()
+                    config.default_config_for_logic("QF_NRA")
+                    context = Context(config)
+                    try:
+                        context.assert_formula(Terms.parse_term(yicesObj(formula)))
+                        self.assertEqual(context.check_context(),
+                                         Status.SAT if expected else Status.UNSAT)
+                    finally:
+                        context.dispose()
+                        config.dispose()
+                    # dReal receives an eliminated arithmetic constraint.
+                    self.assertNotIn("forall_t", drealObj(quantified[0]))
+
     def test_derivative_of_constant_minus_local_time_is_negative(self):
         from stlmc.constraints.constraints import Neg, Real, RealVal, Sub
         from stlmc.constraints.differentiation import diff_aux

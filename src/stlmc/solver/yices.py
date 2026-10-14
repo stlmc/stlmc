@@ -307,6 +307,9 @@ def _(const: Integral):
 
 @yicesObj.register(Forall)
 def _(const: Forall):
+    if isinstance(const.const, (Or, Implies)):
+        from ..constraints.quantified_flow import eliminate_boolean_flow_condition
+        return yicesObj(eliminate_boolean_flow_condition(const))
     bound_str = str(int(const.end_tau.id[4:]) - 1)
 
     if len(get_vars(const.const)) == 0:

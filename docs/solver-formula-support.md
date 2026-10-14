@@ -47,6 +47,20 @@ It selects dReal when a transcendental function or a non-integer, negative, or
 symbolic exponent is present, including when that operation is nested inside
 another arithmetic expression.
 
+## Disjunctive flow invariants
+
+An invariant such as `(or (x <= 6) (x >= 4))` is checked as a whole
+at every time in the flow interval. The branch that satisfies the invariant
+may change during that interval. STLMC preserves this meaning by retaining
+the complete disjunction inside one universal time condition.
+
+For closed-form flows and state-independent autonomous ODEs, STLMC uses Z3
+quantifier elimination to translate this condition to arithmetic constraints
+before sending them to the selected solver (including Yices, CVC5, and dReal).
+If time cannot be eliminated, or the ODE depends on the evolving state or time,
+the conversion raises an explicit unsupported error. It does not replace
+`forall t. (p or q)` with the stronger `(forall t. p) or (forall t. q)`.
+
 ## dReal function names
 
 The model language uses `arcsin`, `arccos`, and `arctan`. The supported dReal 3

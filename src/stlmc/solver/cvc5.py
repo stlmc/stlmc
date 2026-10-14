@@ -117,6 +117,9 @@ class _CVC5Translator:
         )
 
     def _forall(self, const):
+        if isinstance(const.const, (Or, Implies)):
+            from ..constraints.quantified_flow import eliminate_boolean_flow_condition
+            return self.term(eliminate_boolean_flow_condition(const))
         bound = str(int(const.end_tau.id[4:]) - 1)
         if not get_vars(const.const) or isinstance(const.const, Bool):
             return self.term(const.const)

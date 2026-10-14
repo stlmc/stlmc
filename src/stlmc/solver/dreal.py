@@ -641,6 +641,9 @@ def _(const: Integral):
 
 @drealObj.register(Forall)
 def _(const: Forall):
+    if isinstance(const.const, (Or, Implies)):
+        from ..constraints.quantified_flow import eliminate_boolean_flow_condition
+        return drealObj(eliminate_boolean_flow_condition(const))
     if isinstance(const.integral.dynamics, Function):
         bound_str = str(int(const.end_tau.id[4:]) - 1)
         if len(get_vars(const.const)) == 0 or isinstance(const.const, Bool):

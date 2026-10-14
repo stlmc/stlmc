@@ -349,6 +349,9 @@ def _(const: Integral):
 
 @z3Obj.register(Forall)
 def _(const: Forall):
+    if isinstance(const.const, (Or, Implies)):
+        from ..constraints.quantified_flow import eliminate_boolean_flow_condition
+        return z3Obj(eliminate_boolean_flow_condition(const))
     bound_str = str(int(const.end_tau.id[4:]) - 1)
 
     if len(get_vars(const.const)) == 0:
@@ -386,9 +389,9 @@ def _(const: Forall):
                     z3Obj(Forall(const.current_mode_number, const.end_tau, const.start_tau, c, const.integral)))
 
         if isinstance(const.const, Or):
-            return '(or ' + ' '.join(result) + ')'
+            return z3.Or(*result)
         else:
-            return '(and ' + ' '.join(result) + ')'
+            return z3.And(*result)
     elif not isinstance(const.const, Bool):
         op_dict = {Gt: Gt, Geq: Geq, Lt: Lt, Leq: Leq, Eq: Eq, Neq: Neq}
         exp = Sub(const.const.left, const.const.right)
