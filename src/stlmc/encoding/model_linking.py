@@ -3,7 +3,7 @@
 from typing import Dict, Set, Tuple
 
 from ..constraints.constraints import (
-    And, Bool, Eq, Forall, Formula, Or, Real, RealVal,
+    And, Bool, Eq, Forall, Formula, Not, Or, Real, RealVal,
 )
 from .fully_stable_stl import is_proposition
 from .symbolic_discrete import symbolic_inf, symbolic_sup
@@ -49,12 +49,23 @@ def path2const(path: Path, model: Model) -> Formula:
                 module_index, symbolic_sup(depth), symbolic_inf(depth),
                 renamed, integral,
             )
+            forall_negative = Forall(
+                module_index, symbolic_sup(depth), symbolic_inf(depth),
+                Not(renamed), integral,
+            )
             matching = Eq(
                 Real("currentMode_{}".format(bound)),
                 RealVal(str(module_index)),
             )
-            modes.append(And([matching, renamed, forall]))
-        constraints.append(Eq(tracked, Or(modes)))
+            # Fig. 11: both Boolean values must match the entire open
+            # flow interval. Negating a universal positive condition only
+            # requires one false point and does not enforce stability.
+            # The excluded start endpoint is constrained separately.
+            modes.append(And([matching, Or([
+                And([tracked, forall]),
+                And([Not(tracked), forall_negative]),
+            ])]))
+        constraints.append(Or(modes))
     return And(constraints)
 
 

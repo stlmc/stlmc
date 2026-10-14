@@ -1,5 +1,6 @@
 import sys
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 
 
@@ -9,7 +10,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import z3
 
 from stlmc.constraints.constraints import (
-    And, Bool, BoolVal, Eq, Geq, Gt, Int, Leq, Not, Or, Real, RealVal,
+    And, Bool, BoolVal, Eq, Geq, Gt, Int, Integral, Leq, Not, Ode, Or, Real, RealVal,
 )
 from stlmc.encoding.batching import (
     candidate_batch_formula, partitioned_candidate_batch_formula,
@@ -20,12 +21,40 @@ from stlmc.algorithms.two_step import (
     rename, scenario_enumeration_finished, time_path2const, type1_index_info,
 )
 from stlmc.encoding.static_learning import renamed_discrete_variable
+from stlmc.encoding.model_linking import path2const
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.solver.z3 import Z3FormulaSolver, z3Obj
 
 
 class ScenarioMinimizationPolarityTest(unittest.TestCase):
     false = BoolVal("False")
+
+    def test_flow_proposition_matches_both_polarities_on_open_interval(self):
+        start, end = Real("x_0_0"), Real("x_0_t")
+        integral = Integral(0, [end], [start], Ode([start], [RealVal("1")]))
+        model = SimpleNamespace(
+            mode_var_dict={}, modules=[{}],
+            boolean_abstract={Bool("newIntegral_0_0"): integral},
+        )
+        flag = Bool("interval-proposition")
+        matching = path2const({(2, flag): Gt(Real("x"), RealVal("2"))}, model)
+        # x evolves from initial to final with derivative +1. A crossing
+        # inside the interval must be rejected for either Boolean value.
+        # Equality at an excluded endpoint must remain allowed.
+        for initial, final, truth, expected in (
+                (0, 10, False, z3.unsat), (0, 10, True, z3.unsat),
+                (0, 2, False, z3.sat), (2, 10, True, z3.sat)):
+            with self.subTest(initial=initial, final=final, truth=truth):
+                solver = z3.Solver()
+                solver.add(z3Obj(And([
+                    matching, Eq(start, RealVal(str(initial))),
+                    Eq(end, RealVal(str(final))),
+                    Eq(Real("currentMode_0"), RealVal("0")),
+                    Eq(Real("tau_0"), RealVal("0")),
+                    Eq(Real("tau_1"), RealVal(str(final - initial))),
+                    Eq(flag, BoolVal(str(truth))),
+                ])))
+                self.assertEqual(solver.check(), expected)
 
     def test_refinement_helpers_are_strategy_subcomponents(self):
         self.assertEqual(
