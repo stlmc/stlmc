@@ -3,6 +3,15 @@ import unittest
 
 
 class SolutionFunctionTest(unittest.TestCase):
+    def test_derivative_of_constant_minus_local_time_is_negative(self):
+        from stlmc.constraints.constraints import Neg, Real, RealVal, Sub
+        from stlmc.constraints.differentiation import diff_aux
+
+        self.assertEqual(
+            diff_aux(Sub(RealVal("2"), Real("tau_1"))),
+            Neg(RealVal("1")),
+        )
+
     def parse(self, declarations, flow, invariant=""):
         from stlmc.parser.model_visitor import ModelVisitor
 

@@ -62,6 +62,9 @@ def path2const(path: Path, model: Model) -> Formula:
             # requires one false point and does not enforce stability.
             # The excluded start endpoint is constrained separately.
             modes.append(And([matching, Or([
+                # The paper permits repeated partition endpoints. Universal
+                # matching on the resulting empty open interval is vacuous.
+                Eq(symbolic_sup(depth), symbolic_inf(depth)),
                 And([tracked, forall]),
                 And([Not(tracked), forall_negative]),
             ])]))

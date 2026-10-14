@@ -100,7 +100,7 @@ def _(const: Sub):
     if not get_vars(const):
         return RealVal("0")
     if not get_vars(x):
-        return diff_aux(y)
+        return Neg(diff_aux(y))
     if not get_vars(y):
         return diff_aux(x)
     return Sub(diff_aux(x), diff_aux(y))

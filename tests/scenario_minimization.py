@@ -43,7 +43,8 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         # Equality at an excluded endpoint must remain allowed.
         for initial, final, truth, expected in (
                 (0, 10, False, z3.unsat), (0, 10, True, z3.unsat),
-                (0, 2, False, z3.sat), (2, 10, True, z3.sat)):
+                (0, 2, False, z3.sat), (2, 10, True, z3.sat),
+                (2, 2, False, z3.sat), (2, 2, True, z3.sat)):
             with self.subTest(initial=initial, final=final, truth=truth):
                 solver = z3.Solver()
                 solver.add(z3Obj(And([
