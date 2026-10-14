@@ -71,6 +71,10 @@ def temporal_candidate(start: int, scan: int, interval: Interval):
         Add(start_interval.left, start_interval.right), RealVal("2.0")
     )
     conditions = []
+    # Repeated endpoints create an empty open flow interval. Its midpoint
+    # exists arithmetically, but it cannot witness any temporal operator.
+    if scan % 2 == 0:
+        conditions.append(symbolic_inf(scan) < symbolic_sup(scan))
     if not is_positive_infinity(interval.right):
         lower = Sub(scan_interval.left, interval.right)
         conditions.append(

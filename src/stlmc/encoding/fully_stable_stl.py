@@ -13,7 +13,9 @@ from ..constraints.substitution import substitution
 from ..constraints.temporal_rewrite import to_unary_bounded_temporal_form
 from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.goal import Goal
-from .symbolic_discrete import chi, rho, temporal_candidate
+from .symbolic_discrete import (
+    chi, rho, symbolic_inf, symbolic_sup, temporal_candidate,
+)
 
 
 def is_proposition(formula: Formula) -> bool:
@@ -117,6 +119,14 @@ def symbolic_goal(formula: Formula, start: int, depth: int, tau_max):
         ])
     else:
         raise NotSupportedError("cannot find related rule")
+    if depth % 2 == 0 and isinstance(formula, (UntilFormula, ReleaseFormula)):
+        # An empty interval contributes neither a witness nor an operand
+        # obligation. Skip it in the recurrence, preserving U/R duality.
+        nonempty = symbolic_inf(depth) < symbolic_sup(depth)
+        step = Or([
+            And([Not(nonempty), rho(start, depth + 1, formula)]),
+            And([nonempty, step]),
+        ])
     return And([
         Eq(rho(start, depth, formula), step),
         Eq(chi(start, start, formula), rho(start, start, formula))

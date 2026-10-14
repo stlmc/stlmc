@@ -37,6 +37,40 @@ from stlmc.solver.z3 import z3Obj
 
 
 class BoundedTemporalReductionTest(unittest.TestCase):
+    def test_empty_interval_is_skipped_by_all_temporal_recurrences(self):
+        interval = Interval(True, RealVal("0"), True, RealVal("3"))
+        for formula, next_value, expected in (
+                (FinallyFormula(interval, universeInterval, Bool("p")), False, False),
+                (GloballyFormula(interval, universeInterval, Bool("p")), True, True),
+                (UntilFormula(interval, universeInterval, Bool("p"), Bool("q")), True, True),
+                (ReleaseFormula(interval, universeInterval, Bool("p"), Bool("q")), False, False)):
+            with self.subTest(operator=type(formula).__name__):
+                solver = z3.Solver()
+                solver.add(z3Obj(And([
+                    symbolic_goal(formula, 1, 4, 3),
+                    Eq(Real("tau_0"), RealVal("0")),
+                    Eq(Real("tau_1"), RealVal("1")),
+                    Eq(Real("tau_2"), RealVal("1")),
+                    Eq(rho(1, 5, formula), BoolVal(str(next_value))),
+                    Eq(rho(1, 4, formula), BoolVal(str(not expected))),
+                    Eq(chi(4, 4, Bool("p")), BoolVal(str(not next_value))),
+                    Eq(chi(4, 4, Bool("q")), BoolVal("True")),
+                ])))
+                self.assertEqual(solver.check(), z3.unsat)
+
+    def test_empty_interval_cannot_supply_a_future_witness(self):
+        formula = FinallyFormula(
+            Interval(True, RealVal("0"), True, RealVal("2")),
+            universeInterval, self.left,
+        )
+        # Only J4=(tau1,tau2) has p=true, but tau1=tau2. All real
+        # points and nonempty intervals have p=false.
+        self.assertFalse(self._fully_stable_sat(
+            formula, (0.0, 1.0, 1.0, 2.0),
+            (False, False, False, True, False, False),
+            (False,) * 6,
+        ))
+
     def test_legacy_partition_encodings_are_removed(self):
         removed = (
             "stlmc.constraints.encoding",
