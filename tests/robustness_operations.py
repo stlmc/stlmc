@@ -1,5 +1,6 @@
 import sys
 import inspect
+import math
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,38 @@ class RobustnessOperationsTest(unittest.TestCase):
         self.x = Real("x")
         self.zero = RealVal("0")
         self.epsilon = RealVal("0.5")
+
+    def test_car_ode_analytic_robust_counterexample_at_threshold(self):
+        from stlmc.constraints.constraints import FinallyFormula, GloballyFormula
+        from stlmc.constraints.interval import Interval, universeInterval
+        from stlmc.constraints.logical_normalization import reduce_not
+        from stlmc.constraints.temporal_rewrite import to_unary_bounded_temporal_form
+        from stlmc.visualize.robustness import robustness
+
+        rx, ry = Real('rx'), Real('ry')
+        # Exact mode-3 solution: rx=1-t, theta=1/2+t/20,
+        # ry=-3+40*(cos(theta)-cos(13/20)). Thus ry(3)=-3.
+        times = [[0., .5, 1.], [1., 1.5, 2., 2.5, 3.], [3., 4., 5.]]
+        samples = {
+            rx: [[1-t for t in part] for part in times],
+            ry: [[-3+40*(math.cos(.5+.05*t)-math.cos(.65))
+                  for t in part] for part in times],
+        }
+        goal = GloballyFormula(
+            Interval(True, RealVal('0'), True, RealVal('2')), universeInterval,
+            Implies(Gt(rx, RealVal('2')), FinallyFormula(
+                Interval(True, RealVal('2'), True, RealVal('3')), universeInterval,
+                Lt(ry, RealVal('-1')))))
+        counterexample = reduce_not(Not(strengthening(goal, 2.0)))
+        equivalent = to_unary_bounded_temporal_form(counterexample)
+        # Both branches of the implication robustness increase with time;
+        # the outer G minimum is max(1,-1-ry(3))=2 at time zero.
+        for formula, expected in ((goal, 2.0), (counterexample, 0.0),
+                                  (equivalent, 0.0)):
+            with self.subTest(formula=str(formula)):
+                self.assertAlmostEqual(
+                    robustness(formula, samples, {}, 0., times, 5., {}),
+                    expected, places=12)
 
     def test_atomic_weakening_matches_maude_rules(self):
         self.assertEqual(relaxing(Gt(self.x, self.zero), 0.5),

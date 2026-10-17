@@ -15,6 +15,13 @@ def scenario_enumeration_finished(status: SolverStatus) -> bool:
     return status in (SolverStatus.UNSAT, SolverStatus.UNKNOWN)
 
 
+def is_temporal_auxiliary(variable: Variable) -> bool:
+    """Identify private temporal/partition helpers, not model abstractions."""
+    return isinstance(variable, Bool) and variable.id.startswith(
+        ("rho^", "parU^", "parEnd")
+    )
+
+
 def assert_and_track_assignment(solver, formula: Formula, valuation: BoolVal,
                                 track_id: str) -> Eq:
     """Track the exact polarity of a scenario literal and return that literal."""
@@ -85,6 +92,7 @@ def boolean_core_assignments(formula: Formula) -> Dict[Bool, BoolVal]:
 
 
 __all__ = [
+    "is_temporal_auxiliary",
     "assert_and_track_assignment",
     "boolean_core_assignments",
     "evaluated_arithmetic_literals",

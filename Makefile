@@ -62,6 +62,7 @@ test-temporal-reduction:
 test-scenario-minimization:
 	$(info test scenario minimization literal polarity ...)
 	@$(PYTHON) -u $(TEST_DIR)/scenario_minimization.py
+	@$(PYTHON) -u $(TEST_DIR)/scenario_core_integration.py
 
 test-cli-help:
 	$(info test CLI help coverage ...)

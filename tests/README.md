@@ -29,6 +29,14 @@ The test suite has sixteen parts:
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger
   core.
+- `scenario_core_integration.py` replays extracted cores against the full
+  negated encoding and compares two-step results against one-step for
+  direct/equivalent forms, symbolic/explicit paths, preprocessing, and batches.
+  It independently verifies conditional cores, rejects tracked temporal
+  auxiliaries, and checks that fixed auxiliary values survive refinement and
+  blocking. Full STL recurrences are not added to the positive core background
+  or refinement. Open-interval
+  endpoint learning is covered by `scenario_minimization.py`.
 - `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
   remain synchronized and that importing the visualization CLI does not load
   Bokeh or the full visualizer.

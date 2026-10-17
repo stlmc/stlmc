@@ -138,12 +138,12 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         self.assertIsInstance(rewritten, UntilFormula)
         self.assertIsInstance(rewritten.right, And)
 
-    def test_formula_preparation_defaults_to_unary_bounded_temporal_form(self):
+    def test_formula_preparation_defaults_to_direct_temporal_form(self):
         goal = StlGoal(UntilFormula(
             self._interval(True), universeInterval, self.left, self.right,
         ))
-        rewritten = prepare_fully_stable_stl_formula(goal, {}, 0.0)
-        direct = prepare_fully_stable_stl_formula(goal, {}, 0.0, False)
+        rewritten = prepare_fully_stable_stl_formula(goal, {}, 0.0, True)
+        direct = prepare_fully_stable_stl_formula(goal, {}, 0.0)
         self.assertIsInstance(rewritten, Or)
         self.assertIsInstance(direct, ReleaseFormula)
 
@@ -159,7 +159,7 @@ class BoundedTemporalReductionTest(unittest.TestCase):
         )
         self.assertEqual(paper_order, legacy_order)
         prepared = prepare_fully_stable_stl_formula(
-            StlGoal(formula), {}, 0.1
+            StlGoal(formula), {}, 0.1, True
         )
         self.assertEqual(paper_order, prepared)
 

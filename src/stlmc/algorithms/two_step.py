@@ -30,7 +30,8 @@ from ..encoding.symbolic_discrete import (
 )
 from .scenario_refinement import (
     assert_and_track_assignment, boolean_core_assignments,
-    evaluated_arithmetic_literals, relevant_boolean_abstract_links,
+    evaluated_arithmetic_literals, is_temporal_auxiliary,
+    relevant_boolean_abstract_links,
     scenario_enumeration_finished,
 )
 from ..encoding.symbolic_ids import (
@@ -299,13 +300,11 @@ class TwoStepAlgorithm(Algorithm):
         self.minimize_solver.push()
         self.minimize_solver.add(current_minimize_info)
         self.minimize_solver.add(next_minimize_var)
-        # Temporal rho/Psi_PAR auxiliaries are definitional and therefore do
-        # not belong in scenario cubes.  Keep their horizon/base definitions
-        # as untracked context while minimizing primary decisions.
+        # Terminal boundary definitions are shared context. Per-model
+        # auxiliary values are fixed below and retained in refinement/blocking.
         self.minimize_solver.add(stl_final)
-        # Paper Algorithm 2 abstracts only flow and invariant constraints.
-        # Psi_PAR is QF_LRA and must constrain scenario generation/minimization,
-        # rather than being deferred exclusively to the nonlinear refinement.
+        # Psi_PAR is part of the full negated target, scenario generation,
+        # and refinement; it is not assumed as core-minimization background.
 
         # n_symbolic_path: final, n_symbolic_path_next: non-final
         base_symbolic_path = And([
@@ -387,11 +386,17 @@ class TwoStepAlgorithm(Algorithm):
                     self.minimize_solver.push()
 
                     real_set = set()
+                    auxiliary_assignments = []
                     neg_dict: Dict[str, Eq] = dict()
                     bool_assignment_dict: Dict[str, Eq] = dict()
                     for v in assn_dict:
                         valuation = assn_dict[v]
                         if isinstance(v, Bool) and isinstance(valuation, BoolVal):
+                            if is_temporal_auxiliary(v):
+                                literal = Eq(v, valuation)
+                                auxiliary_assignments.append(literal)
+                                self.minimize_solver.add(literal)
+                                continue
                             track_id = "p@{}".format(v.id)
                             bool_assignment_dict[track_id] = assert_and_track_assignment(
                                 self.minimize_solver, v, valuation, track_id
@@ -455,6 +460,10 @@ class TwoStepAlgorithm(Algorithm):
                                                 filter(lambda p: p in real_dict, [p_real for p_real in p_reals])))
 
                     path_const_children = list()
+                    # The core is conditional on these values. Keep A with pi
+                    # both in refinement and in Not(path_const) blocking:
+                    # UNSAT under A does not rule out other auxiliary values.
+                    path_const_children.extend(auxiliary_assignments)
                     path_const_children.extend(path_bool_consts)
                     path_const_children.extend(path_real_consts)
 

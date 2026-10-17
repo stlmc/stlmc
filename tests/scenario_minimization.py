@@ -21,13 +21,54 @@ from stlmc.algorithms.two_step import (
     rename, scenario_enumeration_finished, time_path2const, type1_index_info,
 )
 from stlmc.encoding.static_learning import renamed_discrete_variable
-from stlmc.encoding.model_linking import path2const
+from stlmc.encoding.model_linking import path2const, contradiction_gen
+from stlmc.encoding.symbolic_discrete import chi
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.solver.z3 import Z3FormulaSolver, z3Obj
+from stlmc.algorithms.scenario_refinement import is_temporal_auxiliary
 
 
 class ScenarioMinimizationPolarityTest(unittest.TestCase):
     false = BoolVal("False")
+
+    def test_only_private_temporal_helpers_are_untracked(self):
+        for name in ('rho^{1,2}_p', 'parU^{1,2}_p', 'parEndfall^{1,2}_p'):
+            self.assertTrue(is_temporal_auxiliary(Bool(name)))
+        for name in ('chi^{1,1}_p', 'newIntegral_0_0', 'invAtomicID_0', 'mode'):
+            self.assertFalse(is_temporal_auxiliary(Bool(name)))
+        self.assertFalse(is_temporal_auxiliary(Real('rho^{1,2}_p')))
+
+    def test_conditional_core_blocking_retains_background(self):
+        auxiliary, primary = z3.Bools('auxiliary primary')
+        # A failed refinement under A=true does not justify blocking pi alone.
+        alternative = z3.And(primary, z3.Not(auxiliary))
+        solver = z3.Solver()
+        solver.add(alternative, z3.Not(z3.And(auxiliary, primary)))
+        self.assertEqual(solver.check(), z3.sat)
+        solver.add(z3.Not(primary))
+        self.assertEqual(solver.check(), z3.unsat)
+
+    def test_interval_learning_respects_open_endpoints_and_empty_intervals(self):
+        proposition = Gt(Real("x"), RealVal("0"))
+        flag = chi(2, 2, proposition)
+        intervals, points = contradiction_gen({flag}, {proposition})
+        for start, end, value, duration, expected in (
+                (0, 1, True, 1, z3.sat),
+                (-1, 0, False, 1, z3.sat),
+                (0, 0, True, 1, z3.sat),
+                (-1, 1, True, 1, z3.unsat),
+                (1, -1, False, 1, z3.unsat),
+                (-1, -1, True, 0, z3.sat)):
+            with self.subTest(start=start, end=end, value=value, duration=duration):
+                solver = z3.Solver()
+                solver.add(z3Obj(And([
+                    intervals, points, Eq(flag, BoolVal(str(value))),
+                    Eq(Real("x_0_0"), RealVal(str(start))),
+                    Eq(Real("x_0_t"), RealVal(str(end))),
+                    Eq(Real("tau_0"), RealVal("0")),
+                    Eq(Real("tau_1"), RealVal(str(duration))),
+                ])))
+                self.assertEqual(solver.check(), expected)
 
     def test_flow_proposition_matches_both_polarities_on_open_interval(self):
         start, end = Real("x_0_0"), Real("x_0_t")
@@ -190,8 +231,8 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
         self.assertIn("arithmetic-false", solver.unsat_core())
 
     def test_temporal_auxiliary_core_implies_the_checked_formula(self):
-        # Temporal encoding variables must be scenario literals.  Treating
-        # their model values as untracked context can produce a pi for which
+        # Without fixed definitions, temporal variables must remain tracked.
+        # Treating their model values as untracked context can produce a pi for which
         # pi and not(Psi) is satisfiable.
         auxiliary = Bool("rho^{aux}")
         primary = Bool("primary")

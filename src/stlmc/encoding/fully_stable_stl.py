@@ -161,7 +161,7 @@ def k_depth_stl_consts(
 
 def prepare_fully_stable_stl_formula(
         goal: Goal, goal_prop_dict, delta: float,
-        use_unary_bounded_temporal_form: bool = True) -> Formula:
+        use_unary_bounded_temporal_form: bool = False) -> Formula:
     """Build ``not(phi^+epsilon)`` for the common Boolean STL encoding."""
     raw_formula = substitution(goal.get_formula(), goal_prop_dict)
     strengthened_formula = strengthening(raw_formula, delta)

@@ -57,12 +57,12 @@ class ApplicationBoundaryTest(unittest.TestCase):
         self.assertEqual(options.time_horizon, 10.0)
         self.assertTrue(options.parallel)
         self.assertEqual(options.goal_labels, ())
-        self.assertTrue(options.use_unary_bounded_temporal_form)
+        self.assertFalse(options.use_unary_bounded_temporal_form)
 
-    def test_direct_binary_encoding_can_be_selected(self):
+    def test_equivalent_encoding_can_be_selected_internally(self):
         options = RunOptions.from_configuration(configuration())
-        direct = replace(options, use_unary_bounded_temporal_form=False)
-        self.assertFalse(direct.use_unary_bounded_temporal_form)
+        equivalent = replace(options, use_unary_bounded_temporal_form=True)
+        self.assertTrue(equivalent.use_unary_bounded_temporal_form)
 
     def test_search_result_has_property_independent_meaning(self):
         result = AlgorithmResult(

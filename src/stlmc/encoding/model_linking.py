@@ -3,8 +3,10 @@
 from typing import Dict, Set, Tuple
 
 from ..constraints.constraints import (
-    And, Bool, Eq, Forall, Formula, Not, Or, Real, RealVal,
+    And, Bool, BoolVal, Eq, Forall, Formula, Geq, Gt, Implies, Leq, Lt,
+    Not, Or, Real, RealVal,
 )
+from ..constraints.logical_normalization import reduce_not
 from .fully_stable_stl import is_proposition
 from .symbolic_discrete import symbolic_inf, symbolic_sup
 from ..objects.model import Model
@@ -85,6 +87,19 @@ def time_path2const(path: Path) -> Formula:
     return And(constraints)
 
 
+def _endpoint_closure(predicate: Formula) -> Formula:
+    """A necessary endpoint condition for a continuous interval predicate."""
+    if isinstance(predicate, Gt):
+        return Geq(predicate.left, predicate.right)
+    if isinstance(predicate, Lt):
+        return Leq(predicate.left, predicate.right)
+    if isinstance(predicate, (Geq, Leq, Eq)):
+        if not isinstance(predicate.left, Bool):
+            return predicate
+    # In particular, disequality need not hold at an excluded endpoint.
+    return BoolVal("True")
+
+
 def contradiction_gen(clause_set: Set[Formula],
                       sub_formulas: Set[Formula]):
     """Link learned chi clauses to vertex and edge model propositions."""
@@ -101,9 +116,20 @@ def contradiction_gen(clause_set: Set[Formula],
             renamed, _ = rename(formula, bound, is_vertex=False)
             edge_constraints.append(Eq(clause, renamed))
         else:
-            vertex, _ = rename(formula, bound, is_vertex=True)
-            edge, _ = rename(formula, bound + 1, is_vertex=False)
-            vertex_constraints.append(Eq(clause, And([vertex, edge])))
+            # A flow proposition describes an OPEN interval. Equality to
+            # strict endpoint predicates would exclude valid threshold
+            # crossings at partition endpoints. Only use necessary closure
+            # conditions, and infer nothing from an empty interval.
+            conditions = []
+            for polarity, predicate in (
+                    (clause, formula), (Not(clause), reduce_not(Not(formula)))):
+                closed = _endpoint_closure(predicate)
+                vertex, _ = rename(closed, bound, is_vertex=True)
+                edge, _ = rename(closed, bound + 1, is_vertex=False)
+                conditions.append(Implies(polarity, And([vertex, edge])))
+            vertex_constraints.append(Implies(
+                symbolic_inf(depth) < symbolic_sup(depth), And(conditions),
+            ))
     return And(vertex_constraints), And(edge_constraints)
 
 
