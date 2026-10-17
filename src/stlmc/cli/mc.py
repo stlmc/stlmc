@@ -124,6 +124,12 @@ def main():
         printer.print_normal("interrupted by user")
         return 130
     except Exception as E:
+        # ctypes may wrap a signal-handler exception in ArgumentError while
+        # a native solver call is converting/checking its arguments. Preserve
+        # cancellation in that case instead of reporting a solver traceback.
+        if is_interrupted():
+            printer.print_normal("interrupted by user")
+            return 130
         printer.print_normal("error: {}".format(E))
         printer.print_normal(traceback.format_exc())
         return 1

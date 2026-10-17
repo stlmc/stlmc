@@ -37,6 +37,39 @@ from stlmc.solver.z3 import z3Obj
 
 
 class BoundedTemporalReductionTest(unittest.TestCase):
+    def test_bat_analytic_trace_requires_shifted_partition_endpoints(self):
+        # The independent ON->OFF trace crosses g<7.5 at t=1, then
+        # switches mode at 1.002. q (d<4.5) remains true throughout.
+        # This checks these specific partitions, not global minimality.
+        p, q = Bool('bat-g-below-threshold'), Bool('bat-d-below-threshold')
+        direct = FinallyFormula(
+            Interval(True, RealVal('3'), True, RealVal('4')), universeInterval,
+            And([p, GloballyFormula(
+                Interval(True, RealVal('0'), True, RealVal('6')),
+                universeInterval, q)]))
+        for equivalent in (False, True):
+            formula = to_unary_bounded_temporal_form(direct) if equivalent else direct
+            for times, expected in (
+                    (['0', '1', '1.002', '4', '10'], z3.unsat),
+                    (['0', '1', '1.002', '4', '7', '10'], z3.sat)):
+                with self.subTest(equivalent=equivalent, times=times):
+                    depth = 2*(len(times)-1)
+                    sub_formulas = calc_sub_formulas(formula)
+                    stl, time, terminal = stl_depth_components(
+                        sub_formulas, range(1, depth+1), 10.)
+                    solver = z3.Solver()
+                    solver.add(z3Obj(And(
+                        [chi(1, 1, formula), terminal, time_ordering(depth, 10.)]
+                        + stl + time)))
+                    for index, value in enumerate(times):
+                        solver.add(z3.Real('tau_'+str(index)) == z3.RealVal(value))
+                    for index in range(1, depth+1):
+                        solver.add(z3Obj(chi(index, index, p)) == (index >= 4))
+                        solver.add(z3Obj(chi(index, index, q)))
+                    self.assertEqual(solver.check(), z3.sat)
+                    solver.add(z3Obj(fully_stable_partition_const(sub_formulas, depth)))
+                    self.assertEqual(solver.check(), expected)
+
     def test_empty_interval_is_skipped_by_all_temporal_recurrences(self):
         interval = Interval(True, RealVal("0"), True, RealVal("3"))
         for formula, next_value, expected in (

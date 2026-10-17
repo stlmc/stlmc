@@ -221,7 +221,10 @@ class Constant(Leaf, Expr):
         self._str = str(self.value)
 
     def __hash__(self):
-        return hash((type(self), self.__type, self.__value))
+        # Class-object hashes depend on process addresses, even with a fixed
+        # PYTHONHASHSEED. Keep typed identity without that source of variation.
+        return hash((type(self).__module__, type(self).__qualname__,
+                     self.__type, self.__value))
 
     def __eq__(self, other):
         return (
@@ -251,7 +254,8 @@ class Variable(Leaf, Expr):
         self._str = str(self.__id)
 
     def __hash__(self):
-        return hash((type(self), self.__type, self._str))
+        return hash((type(self).__module__, type(self).__qualname__,
+                     self.__type, self._str))
 
     def __eq__(self, other):
         return (

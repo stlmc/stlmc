@@ -37,6 +37,10 @@ The test suite has sixteen parts:
   blocking. Full STL recurrences are not added to the positive core background
   or refinement. Open-interval
   endpoint learning is covered by `scenario_minimization.py`.
+  Complete proposition matching is shared with one-step and retained outside
+  refinement batches, including false/unselected atoms. Integration checks
+  cover both generalized cores and concrete refinement; the polarity tests
+  reject signals accepted by the former positive-only matching path.
 - `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
   remain synchronized and that importing the visualization CLI does not load
   Bokeh or the full visualizer.

@@ -24,6 +24,43 @@ class RobustnessOperationsTest(unittest.TestCase):
         self.zero = RealVal("0")
         self.epsilon = RealVal("0.5")
 
+    def test_bat_ode_analytic_robust_counterexample_with_strict_margin(self):
+        from stlmc.constraints.constraints import FinallyFormula, GloballyFormula
+        from stlmc.constraints.interval import Interval, universeInterval
+        from stlmc.constraints.logical_normalization import reduce_not
+        from stlmc.constraints.temporal_rewrite import to_unary_bounded_temporal_form
+        from stlmc.visualize.robustness import robustness
+
+        g, d = Real('g1'), Real('d1')
+        switch = 1.002
+        peak = 2/.122*math.expm1(.122*switch)
+        # Exact ON -> OFF solution with initial g=8, d=0. All invariants,
+        # ranges and the g>1 switch guard hold. This is an independent
+        # physical trajectory, not a certification of a solver's bound-3 box.
+        times = [[0., .5, 1.], [1., switch], [switch, 3., 4., 7., 10.]]
+        samples = {
+            g: [[8-.5*min(t, switch) for t in part] for part in times],
+            d: [[2/.122*math.expm1(.122*t) if t <= switch
+                 else peak*math.exp(-.05*(t-switch)) for t in part]
+                for part in times],
+        }
+        goal = GloballyFormula(
+            Interval(True, RealVal('3'), True, RealVal('4')), universeInterval,
+            Implies(Lt(g, RealVal('6')), FinallyFormula(
+                Interval(True, RealVal('0'), True, RealVal('6')), universeInterval,
+                Geq(d, RealVal('3')))))
+        counterexample = reduce_not(Not(strengthening(goal, 1.5)))
+        equivalent = to_unary_bounded_temporal_form(counterexample)
+        # On [3,4], g=7.499 and d is positive, decreasing and <3.
+        # Hence rho(goal)=1.499, with a strict .001 threshold margin.
+        self.assertLess(peak, 3.)
+        for formula, expected in ((goal, 1.499), (counterexample, .001),
+                                  (equivalent, .001)):
+            with self.subTest(formula=str(formula)):
+                self.assertAlmostEqual(
+                    robustness(formula, samples, {}, 0., times, 10., {}),
+                    expected, places=12)
+
     def test_car_ode_analytic_robust_counterexample_at_threshold(self):
         from stlmc.constraints.constraints import FinallyFormula, GloballyFormula
         from stlmc.constraints.interval import Interval, universeInterval

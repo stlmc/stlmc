@@ -2,6 +2,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
+import contextlib
+import ctypes
+import io
 from pathlib import Path
 
 
@@ -14,6 +18,45 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_native_argument_error_after_signal_is_clean_cancellation(self):
+        import signal
+        from stlmc.cli.mc import main, _raise_keyboard_interrupt
+        from stlmc.utils.interrupt import clear_interrupt
+
+        class InterruptedArgument:
+            @classmethod
+            def from_param(cls, value):
+                _raise_keyboard_interrupt(signal.SIGTERM, None)
+
+        native = ctypes.CFUNCTYPE(None, InterruptedArgument)(lambda value: None)
+        output = io.StringIO()
+        try:
+            with mock.patch.object(sys, 'argv', ['stlmc', __file__]), \
+                    mock.patch('stlmc.update_check.notify_if_outdated'), \
+                    mock.patch('stlmc.application.workflow.VerificationWorkflow.run',
+                               side_effect=lambda *args: native(object())), \
+                    contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                status = main()
+            self.assertEqual(status, 130)
+            self.assertIn('interrupted by user', output.getvalue())
+            self.assertNotIn('Traceback', output.getvalue())
+            self.assertNotIn('error:', output.getvalue())
+        finally:
+            clear_interrupt()
+
+    def test_native_argument_error_without_signal_remains_an_error(self):
+        from stlmc.cli.mc import main
+        output = io.StringIO()
+        with mock.patch.object(sys, 'argv', ['stlmc', __file__]), \
+                mock.patch('stlmc.update_check.notify_if_outdated'), \
+                mock.patch('stlmc.application.workflow.VerificationWorkflow.run',
+                           side_effect=ctypes.ArgumentError('ordinary native error')), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            status = main()
+        self.assertEqual(status, 1)
+        self.assertIn('ordinary native error', output.getvalue())
+        self.assertIn('Traceback', output.getvalue())
+
     def test_development_temporal_form_option_is_hidden(self):
         help_text = build_parser(prog="stlmc").format_help()
         self.assertNotIn("unary-bounded-temporal", help_text)

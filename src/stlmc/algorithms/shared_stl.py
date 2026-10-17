@@ -1,16 +1,27 @@
 """Bounded STL formula assembly shared by all solving strategies."""
 
+from typing import Set
+
 from ..constraints.constraints import And, Formula
 from ..encoding.fully_stable_partition import FullyStablePartitionEncoding
 from ..encoding.fully_stable_stl import (
-    calc_sub_formulas, prepare_fully_stable_stl_formula,
+    calc_sub_formulas, is_proposition, prepare_fully_stable_stl_formula,
     stl_depth_components,
 )
 from ..encoding.symbolic_discrete import chi, time_ordering
 from ..encoding.model_linking import path2const
-from ..encoding.path_decoding import assn2path, get_bools
 from ..objects.goal import Goal
 from ..objects.model import Model
+
+
+def bounded_proposition_matching(model: Model, sub_formulas: Set[Formula],
+                                 depth: int) -> Formula:
+    """Retain Fig. 9 matching for every atomic truth value, not only true cores."""
+    return path2const({
+        (index, chi(index, index, proposition)): proposition
+        for proposition in sub_formulas if is_proposition(proposition)
+        for index in range(1, depth + 1)
+    }, model)
 
 
 def bounded_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
@@ -39,12 +50,9 @@ def bounded_stl_formula_from_threshold(
     path_children.extend(time_children)
     path_children.append(time_ordering(max_depth, tau_max))
 
-    path_formula = And(path_children)
-    proposition_ids = {boolean.id for boolean in get_bools(path_formula)}
-    proposition_path, _ = assn2path(
-        proposition_ids, sub_formulas, tau_max
+    proposition_constraints = bounded_proposition_matching(
+        model, sub_formulas, max_depth
     )
-    proposition_constraints = path2const(proposition_path, model)
 
     partition = FullyStablePartitionEncoding(sub_formulas)
     partition.extend_to(max_depth)
@@ -59,6 +67,7 @@ k_size_stl_formula_from_threshold = bounded_stl_formula_from_threshold
 
 
 __all__ = [
-    "bounded_stl_formula", "bounded_stl_formula_from_threshold",
+    "bounded_proposition_matching", "bounded_stl_formula",
+    "bounded_stl_formula_from_threshold",
     "k_size_stl_formula", "k_size_stl_formula_from_threshold",
 ]

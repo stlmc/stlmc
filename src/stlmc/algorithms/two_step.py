@@ -44,6 +44,7 @@ from ..encoding.model_linking import (
     time_path2const,
 )
 from .shared_stl import (
+    bounded_proposition_matching,
     bounded_stl_formula as k_size_stl_formula,
     bounded_stl_formula_from_threshold as k_size_stl_formula_from_threshold,
 )
@@ -331,6 +332,12 @@ class TwoStepAlgorithm(Algorithm):
         self.scenario_solver.add(contra_v_inv)
         true = BoolVal("True")
         false = BoolVal("False")
+        # Shared Fig. 9 matching also constrains false/unselected atoms used
+        # through fixed auxiliary values and Psi_PAR. A positive-only core
+        # path is not a complete refinement of the discrete signal.
+        full_matching = bounded_proposition_matching(
+            model, sub_formulas, 2 * (bound + 1)
+        )
         counter = 0
         submitted = 0
         pending_candidates: List[Tuple[Formula, Formula]] = []
@@ -352,11 +359,10 @@ class TwoStepAlgorithm(Algorithm):
             # Multinary formulas retain the supplied list, so detach it before
             # clearing the pending batch.
             batch_candidates = list(pending_candidates)
-            # Psi_PAR is part of the final encoding. Factor it once around the
-            # candidate disjunction instead of projecting it out after
-            # abstraction-side minimization.
+            # Keep Psi_PAR and complete matching once around the candidate
+            # disjunction, independent of which literals survive each core.
             batch_formula = partitioned_candidate_batch_formula(
-                batch_candidates, partition_const
+                batch_candidates, And([partition_const, full_matching])
             )
             batch_scenario_count = len(pending_candidates)
             self.runner.set_scenario(scenario_label, batch_scenario_count)
@@ -449,13 +455,7 @@ class TwoStepAlgorithm(Algorithm):
                     path_bool_consts = {
                         bool_assignment_dict[track_id] for track_id in core_bool_tracks
                     }
-                    true_core_tracks = {
-                        track_id for track_id in core_bool_tracks
-                        if bool_assignment_dict[track_id].right == true
-                    }
-                    # Only true proposition/time variables describe the derived
-                    # continuous path constraints passed to dReal.
-                    p_bools = pick_time_and_props(true_core_tracks, sub_formulas)
+                    p_bools = pick_time_and_props(core_bool_tracks, sub_formulas)
                     path_real_consts = list(map(lambda p: real_dict[p],
                                                 filter(lambda p: p in real_dict, [p_real for p_real in p_reals])))
 
@@ -469,9 +469,7 @@ class TwoStepAlgorithm(Algorithm):
 
                     path_const = And(path_const_children)
 
-                    extra_prop_path, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
-                    # p_chi = (or currentMode = ... (forall ...) ...)
-                    extra_prop_path_const = path2const(extra_prop_path, model)
+                    _, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
                     extra_time_path_const = time_path2const(extra_time_path)
 
                     if smt_preprocess:
@@ -479,7 +477,7 @@ class TwoStepAlgorithm(Algorithm):
                             model.boolean_abstract,
                             And([
                                 path_const, stl_final,
-                                extra_prop_path_const, extra_time_path_const,
+                                full_matching, extra_time_path_const,
                                 explicit_path,
                             ]),
                             boolean_core_assignments(path_const),
@@ -502,7 +500,7 @@ class TwoStepAlgorithm(Algorithm):
                             assert isinstance(mac, Eq)
                             reduction_dict[mac.left] = mac.right
                         scenario_part = substitution(
-                            And([path_const, extra_prop_path_const, extra_time_path_const]),
+                            And([path_const, extra_time_path_const]),
                             reduction_dict,
                         )
                         common_part = substitution(
@@ -510,7 +508,7 @@ class TwoStepAlgorithm(Algorithm):
                         )
                     else:
                         scenario_part = And(
-                            [path_const, extra_prop_path_const, extra_time_path_const]
+                            [path_const, extra_time_path_const]
                         )
                         common_part = And(
                             [stl_final, range_const, model_abstract_const,
@@ -539,13 +537,12 @@ class TwoStepAlgorithm(Algorithm):
                     # Preserve the truth values of arithmetic clauses instead,
                     # so the refinement describes the same symbolic region.
                     concrete_literals = []
-                    true_bool_ids = set()
+                    bool_ids = set()
                     real_set = set()
                     for variable, valuation in assn_dict.items():
                         if isinstance(variable, Bool) and isinstance(valuation, BoolVal):
                             concrete_literals.append(Eq(variable, valuation))
-                            if valuation == true:
-                                true_bool_ids.add("p@{}".format(variable.id))
+                            bool_ids.add("p@{}".format(variable.id))
                         else:
                             assert isinstance(variable, Real) or isinstance(variable, Int)
                             real_set.add(variable)
@@ -558,16 +555,15 @@ class TwoStepAlgorithm(Algorithm):
                         raise NotSupportedError("cannot construct a concrete scenario without Boolean choices")
 
                     concrete_path = And(concrete_literals)
-                    p_bools = pick_time_and_props(true_bool_ids, sub_formulas)
-                    extra_prop_path, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
-                    extra_prop_path_const = path2const(extra_prop_path, model)
+                    p_bools = pick_time_and_props(bool_ids, sub_formulas)
+                    _, extra_time_path = assn2path(p_bools, sub_formulas, tau_max)
                     extra_time_path_const = time_path2const(extra_time_path)
                     if smt_preprocess:
                         model_abstract_const = relevant_boolean_abstract_links(
                             model.boolean_abstract,
                             And([
                                 concrete_path, stl_final,
-                                extra_prop_path_const, extra_time_path_const,
+                                full_matching, extra_time_path_const,
                                 explicit_path,
                             ]),
                             boolean_core_assignments(concrete_path),
@@ -587,7 +583,7 @@ class TwoStepAlgorithm(Algorithm):
                             if isinstance(mac, Eq)
                         }
                         scenario_part = substitution(
-                            And([concrete_path, extra_prop_path_const, extra_time_path_const]),
+                            And([concrete_path, extra_time_path_const]),
                             reduction_dict,
                         )
                         common_part = substitution(
@@ -596,7 +592,7 @@ class TwoStepAlgorithm(Algorithm):
                         )
                     else:
                         scenario_part = And(
-                            [concrete_path, extra_prop_path_const, extra_time_path_const]
+                            [concrete_path, extra_time_path_const]
                         )
                         common_part = And(
                             [stl_final, partition_const, range_const,

@@ -10,7 +10,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import z3
 
 from stlmc.constraints.constraints import (
-    And, Bool, BoolVal, Eq, Geq, Gt, Int, Integral, Leq, Not, Ode, Or, Real, RealVal,
+    And, Bool, BoolVal, Eq, Geq, Gt, Int, Integral, Leq, Lt, Not, Ode, Or, Real, RealVal,
 )
 from stlmc.encoding.batching import (
     candidate_batch_formula, partitioned_candidate_batch_formula,
@@ -26,10 +26,36 @@ from stlmc.encoding.symbolic_discrete import chi
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.solver.z3 import Z3FormulaSolver, z3Obj
 from stlmc.algorithms.scenario_refinement import is_temporal_auxiliary
+from stlmc.algorithms.shared_stl import bounded_proposition_matching
 
 
 class ScenarioMinimizationPolarityTest(unittest.TestCase):
     false = BoolVal("False")
+
+    def test_full_matching_rejects_incompatible_false_interval_label(self):
+        proposition = Lt(Real('g'), RealVal('7.5'))
+        model = SimpleNamespace(mode_var_dict={}, modules=[{}], boolean_abstract={})
+        for bound in range(2):
+            start, end = Real(f'g_{bound}_0'), Real(f'g_{bound}_t')
+            model.boolean_abstract[Bool(f'newIntegral_0_{bound}')] = Integral(
+                0, [end], [start], Ode([start], [RealVal('0')]))
+        previous, selected = chi(2, 2, proposition), chi(4, 4, proposition)
+        solver = z3.Solver()
+        solver.add(z3Obj(And([
+            Eq(previous, BoolVal('False')), Eq(selected, BoolVal('True')),
+            Eq(Real('tau_0'), RealVal('0')), Eq(Real('tau_1'), RealVal('1')),
+            Eq(Real('tau_2'), RealVal('2')),
+            Eq(Real('currentMode_0'), RealVal('0')),
+            Eq(Real('currentMode_1'), RealVal('0')),
+            Eq(Real('g_0_0'), Real('g_0_t')),
+            Eq(Real('g_0_t'), Real('g_1_0')),
+            Eq(Real('g_1_0'), Real('g_1_t')),
+        ])))
+        # The old positive-only reconstruction accepts this impossible signal.
+        solver.add(z3Obj(path2const({(4, selected): proposition}, model)))
+        self.assertEqual(solver.check(), z3.sat)
+        solver.add(z3Obj(bounded_proposition_matching(model, {proposition}, 4)))
+        self.assertEqual(solver.check(), z3.unsat)
 
     def test_only_private_temporal_helpers_are_untracked(self):
         for name in ('rho^{1,2}_p', 'parU^{1,2}_p', 'parEndfall^{1,2}_p'):

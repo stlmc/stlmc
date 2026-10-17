@@ -1,4 +1,6 @@
 import sys
+import os
+import subprocess
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -40,6 +42,23 @@ def configuration(**overrides):
 
 
 class ApplicationBoundaryTest(unittest.TestCase):
+    def test_ast_hashes_are_reproducible_in_fresh_processes(self):
+        script = '''
+import json
+from stlmc.constraints.constraints import Real, Int, Bool, RealVal, IntVal, And, Gt
+leaves = [Real('x'), Int('x'), Bool('x'), RealVal('1'), IntVal('1')]
+formula = And([Gt(leaves[0], leaves[3]), Bool('p')])
+print(json.dumps([list(map(hash, leaves)), hash(formula),
+                  [(type(item).__name__, repr(item)) for item in set(leaves)]]))
+'''
+        env = dict(os.environ, PYTHONHASHSEED='0',
+                   PYTHONPATH=str(PROJECT_ROOT / 'src'))
+        outputs = [subprocess.check_output(
+            [sys.executable, '-c', script], env=env, text=True, timeout=10)
+            for _ in range(3)]
+        self.assertEqual(outputs[0], outputs[1])
+        self.assertEqual(outputs[0], outputs[2])
+
     def test_ast_leaf_identity_includes_declared_type(self):
         real = Real("value")
         integer = Int("value")
@@ -48,6 +67,9 @@ class ApplicationBoundaryTest(unittest.TestCase):
         self.assertNotEqual(real, integer)
         self.assertNotEqual(real, boolean)
         self.assertEqual(len({real, integer, boolean}), 3)
+        self.assertEqual(real, Real("value"))
+        self.assertEqual(hash(real), hash(Real("value")))
+        self.assertEqual(hash(RealVal("1")), hash(RealVal("1")))
         self.assertNotEqual(RealVal("1"), IntVal("1"))
         self.assertIs(substitution(integer, {real: RealVal("2")}), integer)
 

@@ -30,6 +30,14 @@ from stlmc.constraints.constraints import And, Or, Not, Bool, BoolVal, Eq
 from stlmc.solver.z3 import Z3FormulaSolver, Z3Solver
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.algorithms.two_step import TwoStepAlgorithm
+import stlmc.algorithms.two_step as two_step_module
+original_matching = two_step_module.bounded_proposition_matching
+expected_matching = None
+def audited_matching(*args, **kwargs):
+    global expected_matching
+    expected_matching = original_matching(*args, **kwargs)
+    return expected_matching
+two_step_module.bounded_proposition_matching = audited_matching
 original_clear = TwoStepAlgorithm.clear
 def audited_clear(self):
     result = original_clear(self)
@@ -99,8 +107,11 @@ def audited_submit(self, formula, *args, **kwargs):
         return original_submit(self, formula, *args, **kwargs)
     pending = [formula]
     retained = set()
+    found_matching = False
     while pending:
         item = pending.pop()
+        if item is expected_matching:
+            found_matching = True
         if isinstance(item, (And, Or)):
             pending.extend(item.children)
         elif (isinstance(item, Eq) and isinstance(item.left, Bool)
@@ -111,10 +122,12 @@ def audited_submit(self, formula, *args, **kwargs):
                 assert isinstance(item.right, BoolVal), item
             if isinstance(item.right, BoolVal):
                 retained.add((item.left.id, item.right.value))
-    assert pending_auxiliary, 'refinement without audited core'
-    for auxiliary in pending_auxiliary:
-        assert auxiliary <= retained, auxiliary - retained
-    pending_auxiliary.clear()
+    assert found_matching, 'refinement omitted shared complete proposition matching'
+    if self.config.get_section('common').get_value('concrete') != 'true':
+        assert pending_auxiliary, 'refinement without audited core'
+        for auxiliary in pending_auxiliary:
+            assert auxiliary <= retained, auxiliary - retained
+        pending_auxiliary.clear()
     return original_submit(self, formula, *args, **kwargs)
 Z3Solver.submit = audited_submit
 from stlmc.cli.mc import main
@@ -126,7 +139,7 @@ sys.exit(result)
 
 class ScenarioCoreIntegrationTest(unittest.TestCase):
     def run_case(self, goal, equivalent, path='symbolic', preprocess=False,
-                 batch=1, two_step=True, bound=1):
+                 batch=1, two_step=True, bound=1, concrete=False):
         with tempfile.TemporaryDirectory(prefix='stlmc-scenario-core-') as tmp:
             work = Path(tmp)
             model, config = work/'case.model', work/'case.cfg'
@@ -141,7 +154,9 @@ class ScenarioCoreIntegrationTest(unittest.TestCase):
  path-strategy = "%s"
  smt-preprocess = "%s"
  solver-batch-size = %d
-}''' % (bound, str(two_step).lower(), path, str(preprocess).lower(), batch))
+ concrete = "%s"
+}''' % (bound, str(two_step).lower(), path, str(preprocess).lower(), batch,
+        str(concrete).lower()))
             env = dict(os.environ, PYTHONPATH=str(ROOT/'src'),
                        EQUIVALENT=str(int(equivalent)), PYTHONHASHSEED='0')
             result = subprocess.run(
@@ -175,6 +190,16 @@ class ScenarioCoreIntegrationTest(unittest.TestCase):
                 result, verified = self.run_case(goal, equivalent)
                 self.assertEqual(result, reference)
                 self.assertGreater(verified, 0)
+
+    def test_concrete_refinement_retains_complete_matching(self):
+        goal = '[][0,2] (x <= 1)'
+        for equivalent in (False, True):
+            reference, _ = self.run_case(goal, equivalent, two_step=False)
+            for preprocess in (False, True):
+                with self.subTest(equivalent=equivalent, preprocess=preprocess):
+                    result, _ = self.run_case(goal, equivalent,
+                                              preprocess=preprocess, concrete=True)
+                    self.assertEqual(result, reference)
 
     def test_predicate_crossing_requires_an_extra_partition_segment(self):
         # x(t)=t crosses the counterexample predicate x>1.01 in (0,2).
