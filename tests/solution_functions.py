@@ -3,6 +3,78 @@ import unittest
 
 
 class SolutionFunctionTest(unittest.TestCase):
+    def test_polynomial_forall_uses_local_clock_and_preserves_parameters(self):
+        import z3
+        from stlmc.constraints.constraints import (
+            Add, And, Eq, Forall, Function, Integral, Lt, Mul, Real,
+            RealVal, Sub,
+        )
+        from stlmc.solver.z3 import z3Obj
+        from stlmc.solver.yices import yicesObj
+        from stlmc.solver.dreal import drealObj
+        from stlmc.solver.cvc5 import cvc5Obj
+        from yices import Config, Context, Status, Terms
+        import cvc5
+
+        x, v = Real("x_2_0"), Real("v_2_0")
+        start, end = Real("tau_2"), Real("tau_3")
+        elapsed = Sub(end, start)
+        height = Sub(Add(x, Mul(v, elapsed)),
+                     Mul(RealVal("0.5"), Mul(elapsed, elapsed)))
+        integral = Integral(0, [Real("x_2_t"), Real("v_2_t")],
+                            [x, v], Function([x, v], [height, Sub(v, elapsed)]))
+        for offset in (0, 10, 100):
+            for duration, expected in ((0.5, True), (6, False)):
+                with self.subTest(offset=offset, duration=duration):
+                    condition = Forall(0, end, start, Lt(x, RealVal("1.99")), integral)
+                    formula = And([condition, Eq(x, RealVal("0")),
+                                   Eq(v, RealVal("3")),
+                                   Eq(start, RealVal(str(offset))),
+                                   Eq(end, RealVal(str(offset + duration))),
+                                   Eq(Real("currentMode_2"), RealVal("0"))])
+                    solver = z3.Solver()
+                    solver.add(z3Obj(formula))
+                    self.assertEqual(solver.check(), z3.sat if expected else z3.unsat)
+                    native_time = z3.Real("audit_elapsed")
+                    native = z3.Solver()
+                    native.add(z3.ForAll([native_time], z3.Implies(
+                        z3.And(native_time > 0, native_time < duration),
+                        3*native_time-native_time*native_time/2 < z3.RealVal("1.99"))))
+                    self.assertEqual(native.check(), z3.sat if expected else z3.unsat)
+                    backend = cvc5.Solver()
+                    backend.setLogic("QF_NRA")
+                    backend.assertFormula(cvc5Obj(formula, backend))
+                    self.assertEqual(backend.checkSat().isSat(), expected)
+                    # All arithmetic adapters must use the same corrected path.
+                    yices_formula = yicesObj(formula)
+                    self.assertNotIn("forall", yices_formula)
+                    config = Config()
+                    config.default_config_for_logic("QF_NRA")
+                    context = Context(config)
+                    try:
+                        context.assert_formula(Terms.parse_term(yices_formula))
+                        self.assertEqual(context.check_context(),
+                                         Status.SAT if expected else Status.UNSAT)
+                    finally:
+                        context.dispose()
+                        config.dispose()
+                    self.assertNotIn("forall", drealObj(formula))
+
+    def test_polynomial_derivatives_hold_initial_state_and_other_clocks_fixed(self):
+        import z3
+        from stlmc.constraints.constraints import Mul, Real, RealVal, Sub
+        from stlmc.constraints.differentiation import differentiate_polynomial
+        from stlmc.solver.z3 import z3Obj
+        time, start, velocity = Real("tau_3"), Real("tau_2"), Real("v_2_0")
+        local = Sub(time, start)
+        expression = Sub(Mul(velocity, local), Mul(RealVal("0.5"), Mul(local, local)))
+        first = differentiate_polynomial(expression, time)
+        second = differentiate_polynomial(first, time)
+        solver = z3.Solver()
+        solver.add(z3.Or(z3Obj(first) != z3Obj(Sub(velocity, local)),
+                         z3Obj(second) != -1))
+        self.assertEqual(solver.check(), z3.unsat)
+
     def test_or_invariant_rejects_unsupported_state_dependent_ode(self):
         from stlmc.constraints.constraints import Forall, Real
         from stlmc.constraints.quantified_flow import eliminate_boolean_flow_condition

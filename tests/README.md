@@ -6,11 +6,18 @@ The test suite has sixteen parts:
   bounded-search results, legacy tuple compatibility, and typed solver status.
 - `application_workflow.py` checks parser-error translation, per-goal model
   state isolation, and cleanup when an algorithm fails.
-- `parser_inputs.py` parses every benchmark model and configuration through
-  the public Lark parser APIs and checks the visualization configuration format.
+- `parser_inputs.py` parses benchmark models and configurations through the
+  public Lark parser APIs and checks the visualization configuration format.
+  The unchanged historical `bat-poly` and `bat-poly-small` models must report
+  their known initial-value contradiction until a replacement is reviewed.
 - `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
   rejects incomplete or undeclared closed-form flows, and verifies endpoint
   and invariant encodings for CVC5, Z3, Yices, and dReal.
+- `flow_warnings.py` checks polynomial flow diagnostics: nonzero constant
+  initial offsets are errors; state-dependent initial differences and restart
+  inconsistencies remain advisory. It covers source locations, valid coupled
+  flows, and unchanged input models. Unsupported or oversized expressions are
+  skipped; absence of a diagnostic is not a validity certificate.
 - `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
   results through the STLmc solver adapter.
 - `dreal_assignment.py` checks that dReal interval boxes are preserved while

@@ -19,13 +19,60 @@ def diff(exp: Expr, integral: Integral):
         # Differentiate with respect to tau_end while holding tau_start fixed.
         end_id = integral.end_vector[0].id
         bound = end_id[end_id.find("_") + 1:end_id.rfind("_")]
-        new_exp = substitution(new_exp, {Real("tau_" + bound): RealVal("0")})
+        end_time = Real("tau_" + str(int(bound) + 1))
+        return differentiate_polynomial(new_exp, end_time)
     if not supports_symbolic_differentiation(new_exp):
         raise NotSupportedError(
             "cannot apply polynomial invariant simplification to {}"
             .format(new_exp)
         )
     return diff_aux(new_exp)
+
+
+def differentiate_polynomial(expression, variable):
+    """Differentiate in one clock, keeping all other symbols as parameters.
+
+    Only polynomials in that clock are accepted; parameter-only expressions
+    (including denominators) are constants for this operation.
+    """
+    zero, one = RealVal("0"), RealVal("1")
+    def is_zero(value):
+        return isinstance(value, Constant) and _constant_value(value) == 0
+    if variable not in get_vars(expression):
+        return zero
+    if isinstance(expression, Variable):
+        return one
+    derivative = lambda child: differentiate_polynomial(child, variable)
+    if isinstance(expression, Neg):
+        value = derivative(expression.child)
+        return zero if is_zero(value) else Neg(value)
+    if isinstance(expression, (Add, Sub)):
+        left, right = derivative(expression.left), derivative(expression.right)
+        if is_zero(right):
+            return left
+        if is_zero(left):
+            return right if isinstance(expression, Add) else Neg(right)
+        return type(expression)(left, right)
+    if isinstance(expression, Mul):
+        left, right = derivative(expression.left), derivative(expression.right)
+        if is_zero(left):
+            return zero if is_zero(right) else Mul(expression.left, right)
+        if is_zero(right):
+            return Mul(left, expression.right)
+        return Add(Mul(left, expression.right), Mul(expression.left, right))
+    if isinstance(expression, Div) and variable not in get_vars(expression.right):
+        return Div(derivative(expression.left), expression.right)
+    if isinstance(expression, Pow) and not get_vars(expression.right):
+        exponent = _constant_value(expression.right)
+        if exponent.denominator == 1 and exponent >= 0:
+            if exponent == 0:
+                return zero
+            return Mul(Mul(RealVal(str(exponent.numerator)),
+                           Pow(expression.left, RealVal(str(exponent.numerator - 1)))),
+                       derivative(expression.left))
+    raise NotSupportedError(
+        "cannot apply polynomial invariant simplification to {}".format(expression)
+    )
 
 
 def supports_symbolic_differentiation(const: Constraint) -> bool:

@@ -2,10 +2,11 @@ from functools import singledispatch
 
 from .constraints import (
     Add, And, Bool, Eq, Forall, Function, Geq, Gt, Mul, Neq, Ode, Or, Real,
-    RealVal, Sub,
+    RealVal, Sub, Neg,
 )
 from .analysis import get_vars
-from .differentiation import diff
+from .differentiation import diff, differentiate_polynomial
+from .substitution import substitution
 from .normalization import substitution_zero2t
 
 
@@ -50,6 +51,8 @@ def make_forall_consts_aux(forall: Forall):
 def make_forall_consts(forall: Forall):
     if isinstance(forall.const, Bool) or len(get_vars(forall.const)) == 0:
         return forall.const
+    if isinstance(forall.integral.dynamics, Function):
+        return _make_solution_forall_consts(forall)
     if isinstance(forall.const, Eq):
         return And([forall.const, substitution_zero2t(forall.const),
                     Forall(forall.current_mode_number,
@@ -68,6 +71,50 @@ def make_forall_consts(forall: Forall):
         return Or([first_const, second_const])
     else:
         return make_forall_consts_aux(forall)
+
+
+def _make_solution_forall_consts(forall):
+    """Apply Lemma 6.2 to a polynomial in local elapsed time, once expanded.
+
+    Derivatives must never be re-instantiated through the flow: its initial
+    state symbols remain constant parameters at every derivative order.
+    """
+    from .quantified_flow import flow_condition_at_time
+
+    variables = get_vars(forall.const)
+    for expression in forall.integral.dynamics.exps:
+        variables |= get_vars(expression)
+    name = "__stlmc_polynomial_elapsed"
+    while Real(name) in variables:
+        name += "_"
+    elapsed = Real(name)
+    condition = flow_condition_at_time(forall, elapsed)
+    duration = Sub(forall.end_tau, forall.start_tau)
+    zero = RealVal("0")
+
+    def eliminate(expression, operator):
+        start = substitution(expression, {elapsed: zero})
+        end = substitution(expression, {elapsed: duration})
+        if elapsed not in get_vars(expression):
+            return operator(expression, zero)
+        derivative = differentiate_polynomial(expression, elapsed)
+        if operator is Eq:
+            return And([Eq(start, zero), eliminate(derivative, Eq)])
+        if operator is Neq:
+            return Or([eliminate(expression, Gt), eliminate(Neg(expression), Gt)])
+        increasing = eliminate(derivative, Geq)
+        decreasing = eliminate(Neg(derivative), Geq)
+        if operator is Geq:
+            return Or([And([increasing, Geq(start, zero)]),
+                       And([decreasing, Geq(end, zero)])])
+        return Or([
+            And([increasing, Or([Gt(start, zero),
+                                  And([Eq(start, zero), Gt(end, zero)])])]),
+            And([decreasing, Or([Gt(end, zero),
+                                  And([Eq(end, zero), Gt(start, zero)])])]),
+        ])
+
+    return eliminate(Sub(condition.left, condition.right), type(condition))
 
 
 @singledispatch

@@ -41,6 +41,7 @@ tests/*
 !tests/application_workflow.py
 !tests/parser_inputs.py
 !tests/solution_functions.py
+!tests/flow_warnings.py
 !tests/smoke_solvers.py
 !tests/README.md
 !tests/benchmarks/

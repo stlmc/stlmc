@@ -15,6 +15,7 @@ from ..constraints.substitution import substitution
 from ..exceptions import NotSupportedError
 from ..objects.model import StlMC
 from .syntax_error import parse_file
+from .flow_warnings import validate_solution_flow
 
 
 _PARSER = Lark.open(
@@ -298,6 +299,10 @@ class _ModelTransformer(Transformer):
                         ", ".join(missing),
                     )
                 )
+            validate_solution_flow(
+                variables, expressions, self.file_name,
+                {item[1].id: item[3] for item in children},
+            )
         return kind, variables, expressions
 
     def jump_rule(self, children):
