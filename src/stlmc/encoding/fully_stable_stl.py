@@ -14,7 +14,7 @@ from ..constraints.temporal_rewrite import to_unary_bounded_temporal_form
 from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.goal import Goal
 from .symbolic_discrete import (
-    chi, rho, symbolic_inf, symbolic_sup, temporal_candidate,
+    chi, ordered_formulas, rho, symbolic_inf, symbolic_sup, temporal_candidate,
 )
 
 
@@ -51,6 +51,59 @@ def sub_formula(formula: Formula) -> Set[Formula]:
 
 def calc_sub_formulas(formula: Formula) -> Set[Formula]:
     return sub_formula(formula)
+
+
+def ordered_sub_formulas(formula: Formula):
+    """Unique root-first, left-to-right closure without set iteration."""
+    result, seen, pending = [], set(), [formula]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        result.append(current)
+        if is_proposition(current):
+            continue
+        if isinstance(current, UnaryFormula):
+            children = [current.child]
+        elif isinstance(current, BinaryFormula):
+            children = [current.left, current.right]
+        elif isinstance(current, MultinaryFormula):
+            children = current.children
+        else:
+            continue
+        pending.extend(reversed(children))
+    return tuple(result)
+
+
+def dependency_ordered_formulas(formulas):
+    """Emit supplied subformulas after their operands, preserving siblings."""
+    formulas = tuple(ordered_formulas(formulas))
+    selected, seen, result = set(formulas), set(), []
+    for root in formulas:
+        pending = [(root, False)]
+        while pending:
+            current, expanded = pending.pop()
+            if expanded:
+                if current in selected:
+                    result.append(current)
+                continue
+            if current in seen:
+                continue
+            seen.add(current)
+            pending.append((current, True))
+            if is_proposition(current):
+                continue
+            if isinstance(current, UnaryFormula):
+                children = [current.child]
+            elif isinstance(current, BinaryFormula):
+                children = [current.left, current.right]
+            elif isinstance(current, MultinaryFormula):
+                children = current.children
+            else:
+                continue
+            pending.extend((child, False) for child in reversed(children))
+    return tuple(result)
 
 
 def final(formula: Formula, depth: int) -> Formula:
@@ -137,7 +190,8 @@ def symbolic_goal(formula: Formula, start: int, depth: int, tau_max):
 def k_depth_stl_consts(
         sub_formulas: Set[Formula], depth: int,
         tau_max: float) -> Tuple[Formula, Formula, Formula]:
-    goal_consts = set()
+    sub_formulas = tuple(ordered_formulas(sub_formulas))
+    goal_consts = dict()
     for formula in sub_formulas:
         if is_proposition(formula):
             continue
@@ -145,17 +199,16 @@ def k_depth_stl_consts(
                 FinallyFormula, GloballyFormula,
                 UntilFormula, ReleaseFormula)):
             goal_consts.update(
-                symbolic_goal(formula, start, depth, tau_max)
+                (symbolic_goal(formula, start, depth, tau_max), None)
                 for start in range(1, depth + 1)
             )
         else:
-            goal_consts.add(symbolic_goal(
-                formula, depth, depth, tau_max
-            ))
+            goal_consts[symbolic_goal(formula, depth, depth, tau_max)] = None
     return (
         And(list(goal_consts)),
         BoolVal("True"),
-        And([final(formula, depth) for formula in sub_formulas]),
+        And([final(formula, depth)
+             for formula in sub_formulas]),
     )
 
 

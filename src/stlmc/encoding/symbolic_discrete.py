@@ -12,6 +12,13 @@ from ..constraints.constraints import (
 from ..constraints.interval import is_positive_infinity
 
 
+def ordered_formulas(formulas):
+    """Preserve source order; canonicalize only unordered API inputs."""
+    if isinstance(formulas, (set, frozenset)):
+        return sorted(formulas, key=lambda f: (type(f).__qualname__, repr(f)))
+    return formulas
+
+
 def formula_id(formula: Formula) -> str:
     """Return a deterministic identifier for an immutable formula tree.
 
@@ -93,25 +100,25 @@ def temporal_candidate(start: int, scan: int, interval: Interval):
 
 def time_ordering(depth: int, tau_max: float) -> And:
     """Paper ordering 0=tau_0<=...<=tau_(n-1)<tau_n=tau_max."""
-    constraints = {
+    constraints = [
         Eq(RealVal("0"), Real("tau_0")),
-        Eq(symbolic_sup(depth), RealVal(str(tau_max))),
-    }
+    ]
     for index in range(1, depth, 2):
         current = symbolic_sup(index)
         following = symbolic_sup(index + 1)
-        constraints.add(
+        constraints.append(
             current < following if index == depth - 1
             else current <= following
         )
-    return And(list(constraints))
+    constraints.append(Eq(symbolic_sup(depth), RealVal(str(tau_max))))
+    return And(constraints)
 
 
 def reach_time_ordering(depth: int, tau_max: float) -> And:
-    constraints = {
+    constraints = [
         Eq(RealVal("0"), Real("tau_0")),
-        symbolic_sup(depth) <= RealVal(str(tau_max)),
-    }
+    ]
     for index in range(1, depth, 2):
-        constraints.add(symbolic_sup(index) < symbolic_sup(index + 1))
-    return And(list(constraints))
+        constraints.append(symbolic_sup(index) < symbolic_sup(index + 1))
+    constraints.append(symbolic_sup(depth) <= RealVal(str(tau_max)))
+    return And(constraints)

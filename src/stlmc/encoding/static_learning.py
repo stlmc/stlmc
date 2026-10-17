@@ -1,9 +1,9 @@
 from itertools import combinations
-from typing import Dict, Set
+from typing import Dict, Tuple
 
 from ..constraints.constraints import And, Formula, Int, Not, Real, Variable
 from ..constraints.logical_normalization import reduce_not
-from ..constraints.encoding_helpers import clause
+from ..constraints.encoding_helpers import clause, ordered_clause
 from ..constraints.robustness_transform import relaxing
 from ..constraints.substitution import substitution
 from ..objects.model import Model
@@ -25,39 +25,38 @@ class StaticLearner:
         self.formula = formula
         self.solver_factory = solver_factory
 
-        self.continuous_vars = {v for v in self.model.range_dict}
-        self.mode_vars = {self.model.mode_var_dict[v] for v in self.model.mode_var_dict}
-        self.contradiction_dict: Dict[int, Set[Formula]] = dict()
+        self.continuous_vars = tuple(self.model.range_dict)
+        self.mode_vars = tuple(self.model.mode_var_dict.values())
+        self.contradiction_dict: Dict[int, Tuple[Formula, ...]] = dict()
 
     def get_contradiction_upto(self, bound: int, org_const):
-        children = set()
+        children = dict()
         bounds = list(sorted(self.contradiction_dict.keys()))
         for b in bounds:
             if b <= bound:
                 for chi in self.contradiction_dict[b]:
                     if clause(chi).issubset(org_const):
-                        children.add(chi)
+                        children[chi] = None
         return And(list(children))
 
     def generate_learned_clause(self, bound: int, delta: float):
-        model_clause = set()
+        model_clause = dict.fromkeys(ordered_clause(self.model.init))
 
-        model_clause.update(clause(self.model.init))
         # self.model.modules
 
         for module in self.model.modules:
-            model_clause.update(clause(module["mode"]))
-            model_clause.update(clause(module["inv"]))
+            model_clause.update(dict.fromkeys(ordered_clause(module["mode"])))
+            model_clause.update(dict.fromkeys(ordered_clause(module["inv"])))
             jumps = module["jump"]
             for cond in jumps:
-                model_clause.update(clause(cond))
+                model_clause.update(dict.fromkeys(ordered_clause(cond)))
 
         neg_formula = reduce_not(Not(self.formula))
         neg_relaxed_formula = relaxing(neg_formula, delta)
         relaxed_formula = relaxing(self.formula, delta)
 
-        stl_clause = clause(neg_relaxed_formula)
-        stl_clause.update(clause(relaxed_formula))
+        stl_clause = dict.fromkeys(ordered_clause(neg_relaxed_formula))
+        stl_clause.update(dict.fromkeys(ordered_clause(relaxed_formula)))
 
 
         cont_rename_dict_0 = dict()
@@ -99,22 +98,24 @@ class StaticLearner:
             assert i in cont_rename_dict_t
             assert i in mode_rename_dict
 
-            renamed_clause = set()
+            renamed_clause = dict()
             for c in stl_clause:
-                renamed_clause.add(substitution(c, cont_rename_dict_0[i]))
-                renamed_clause.add(substitution(c, cont_rename_dict_t[i]))
-                renamed_clause.add(substitution(c, mode_rename_dict[i]))
+                renamed_clause[substitution(c, cont_rename_dict_0[i])] = None
+                renamed_clause[substitution(c, cont_rename_dict_t[i])] = None
+                renamed_clause[substitution(c, mode_rename_dict[i])] = None
 
             for c in model_clause:
-                renamed_clause.add(substitution(c, cont_rename_dict_0[i]))
-                renamed_clause.add(substitution(c, cont_rename_dict_t[i]))
-                renamed_clause.add(substitution(c, mode_rename_dict[i]))
+                renamed_clause[substitution(c, cont_rename_dict_0[i])] = None
+                renamed_clause[substitution(c, cont_rename_dict_t[i])] = None
+                renamed_clause[substitution(c, mode_rename_dict[i])] = None
 
-            renamed_clause.difference_update(stl_clause)
-            renamed_clause.difference_update(model_clause)
+            for c in (*stl_clause, *model_clause):
+                renamed_clause.pop(c, None)
 
-            potentials = set(combinations(renamed_clause, 2))
-            contradiction_pairs = set()
+            # combinations already emits each pair once. Fix both pair
+            # orientation and incremental solver query order across seeds.
+            potentials = combinations(renamed_clause, 2)
+            contradiction_pairs = dict()
             for (c1, c2) in potentials:
                 contra_solver.push()
                 contra_solver.add(And([c1, c2]))
@@ -123,7 +124,7 @@ class StaticLearner:
                 # contradiction
                 if result == SolverStatus.UNSAT:
                     child = And([c1, c2])
-                    contradiction_pairs.add(Not(child))
+                    contradiction_pairs[Not(child)] = None
 
                 contra_solver.pop()
-            self.contradiction_dict[i] = contradiction_pairs
+            self.contradiction_dict[i] = tuple(contradiction_pairs)

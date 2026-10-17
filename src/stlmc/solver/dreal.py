@@ -26,6 +26,7 @@ from ..solver.abstract_solver import (
 from ..solver.assignment import Assignment
 from ..solver.dreal_utils import get_dreal_solver_args
 from ..utils.smt2_output import is_enabled, write_smt2
+from ..constraints.boolean_simplification import propagate_boolean_constants
 
 
 class DrealInterval(RealVal):
@@ -293,7 +294,9 @@ class dRealSolver(JobSolver):
         declares, bound = self.get_declared_variables(
             const, time_horizon, time_bound
         )
-        results = [drealObj(const)]
+        # Keep declarations/bound discovery from the original query, even if
+        # propagation removes all references to a flow or a clock.
+        results = [drealObj(propagate_boolean_constants(const))]
         reset_dreal = [drealObj(item) for item in self.add_reset_cond(bound)]
         input_args, cleanup_path = self._solver_input(
             self._smt2_text(declares, results, reset_dreal), query_name

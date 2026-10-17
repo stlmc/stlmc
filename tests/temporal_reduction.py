@@ -1,4 +1,6 @@
 import sys
+import os
+import subprocess
 import importlib.util
 import unittest
 from pathlib import Path
@@ -37,6 +39,83 @@ from stlmc.solver.z3 import z3Obj
 
 
 class BoundedTemporalReductionTest(unittest.TestCase):
+    def test_source_order_helpers_preserve_membership_and_first_occurrence(self):
+        from stlmc.constraints.encoding_helpers import clause, ordered_clause
+        from stlmc.encoding.fully_stable_stl import (
+            calc_sub_formulas, ordered_sub_formulas, dependency_ordered_formulas,
+        )
+        a, b, c = Bool('source_a'), Bool('source_b'), Bool('source_c')
+        formula = And([b, Or([a, c, b]), Not(a)])
+        self.assertEqual(ordered_clause(formula), (b, a, c))
+        self.assertEqual(set(ordered_clause(formula)), clause(formula))
+        closure = ordered_sub_formulas(formula)
+        self.assertEqual(set(closure), calc_sub_formulas(formula))
+        self.assertEqual(closure[:3], (formula, b, formula.children[1]))
+        self.assertEqual(len(closure), len(set(closure)))
+        dependency_order = dependency_ordered_formulas(closure)
+        self.assertEqual(set(dependency_order), set(closure))
+        self.assertEqual(dependency_order[-1], formula)
+        self.assertLess(dependency_order.index(a),
+                        dependency_order.index(formula.children[1]))
+
+    def test_encoding_and_static_learning_order_is_hash_seed_independent(self):
+        # Fresh interpreters are essential: changing os.environ in this
+        # process does not change Python's initialized hash seed.
+        script = r'''
+import hashlib
+import json
+import sys
+from stlmc.parser.model_visitor import ModelVisitor
+from stlmc.objects.goal import StlGoal
+from stlmc.algorithms.shared_stl import bounded_stl_formula
+from stlmc.constraints.constraints import And
+from stlmc.constraints.substitution import substitution
+from stlmc.constraints.boolean_abstraction import make_boolean_abstract_consts
+from stlmc.constraints.encoding_helpers import clause
+from stlmc.encoding.static_learning import StaticLearner
+from stlmc.encoding.symbolic_discrete import reach_time_ordering
+from stlmc.solver.abstract_solver import SolverStatus
+from stlmc.solver.yices import yicesObj
+
+queries = []
+class RecordingSolver:
+    def __init__(self, logic): pass
+    def push(self): pass
+    def pop(self): pass
+    def add(self, formula): queries.append(repr(formula))
+    def check(self): return SolverStatus.UNSAT
+
+model, props, goals, labels = ModelVisitor().get_parse_tree(sys.argv[1])
+formula = next(f for f, label in labels.items() if label == 'f3')
+model.gen_stl_condition()
+learner = StaticLearner(model, substitution(formula, props), RecordingSolver)
+learner.generate_learned_clause(1, 4.)
+outputs = [repr(reach_time_ordering(6, 20.))]
+for equivalent in (False, True):
+    for bound in (0, 1):
+        model_const = model.make_consts(bound)
+        stl = bounded_stl_formula(model, StlGoal(formula), props,
+                                  bound, 4., 20., equivalent)
+        abstract = make_boolean_abstract_consts(model.boolean_abstract)
+        learned = learner.get_contradiction_upto(
+            bound, clause(And([model_const, stl, abstract])))
+        outputs.append(yicesObj(And([model_const, learned, stl, abstract])))
+print(json.dumps([hashlib.sha256(s.encode()).hexdigest()
+                  for s in outputs + queries]))
+'''
+        model = PROJECT_ROOT / 'tests/benchmarks/rail-poly/rail.model'
+        results = []
+        for seed in (0, 1, 7, 42):
+            env = dict(os.environ, PYTHONHASHSEED=str(seed),
+                       PYTHONPATH=str(PROJECT_ROOT / 'src'))
+            completed = subprocess.run(
+                [sys.executable, '-c', script, str(model)], env=env,
+                capture_output=True, text=True, timeout=45)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            results.append(completed.stdout)
+        self.assertTrue(results[0])
+        self.assertTrue(all(result == results[0] for result in results[1:]))
+
     def test_bat_analytic_trace_requires_shifted_partition_endpoints(self):
         # The independent ON->OFF trace crosses g<7.5 at t=1, then
         # switches mode at 1.002. q (d<4.5) remains true throughout.

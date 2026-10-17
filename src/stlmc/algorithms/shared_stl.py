@@ -5,10 +5,10 @@ from typing import Set
 from ..constraints.constraints import And, Formula
 from ..encoding.fully_stable_partition import FullyStablePartitionEncoding
 from ..encoding.fully_stable_stl import (
-    calc_sub_formulas, is_proposition, prepare_fully_stable_stl_formula,
+    ordered_sub_formulas, is_proposition, prepare_fully_stable_stl_formula,
     stl_depth_components,
 )
-from ..encoding.symbolic_discrete import chi, time_ordering
+from ..encoding.symbolic_discrete import chi, ordered_formulas, time_ordering
 from ..encoding.model_linking import path2const
 from ..objects.goal import Goal
 from ..objects.model import Model
@@ -19,7 +19,8 @@ def bounded_proposition_matching(model: Model, sub_formulas: Set[Formula],
     """Retain Fig. 9 matching for every atomic truth value, not only true cores."""
     return path2const({
         (index, chi(index, index, proposition)): proposition
-        for proposition in sub_formulas if is_proposition(proposition)
+        for proposition in ordered_formulas(sub_formulas)
+        if is_proposition(proposition)
         for index in range(1, depth + 1)
     }, model)
 
@@ -40,7 +41,7 @@ def bounded_stl_formula_from_threshold(
         model: Model, shifted_formula: Formula, bound: int,
         tau_max: float) -> Formula:
     """Build a bounded encoding for an already threshold-shifted formula."""
-    sub_formulas = calc_sub_formulas(shifted_formula)
+    sub_formulas = ordered_sub_formulas(shifted_formula)
     max_depth = 2 * (bound + 1)
     stl_children, time_children, terminal = stl_depth_components(
         sub_formulas, range(1, max_depth + 1), tau_max

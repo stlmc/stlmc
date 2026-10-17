@@ -44,6 +44,24 @@ def _(const):
     return clause(const.left) | clause(const.right)
 
 
+def ordered_clause(const):
+    """The same clause leaves as clause(), in source traversal order."""
+    result = dict()
+    pending = [const]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, (Not, FinallyFormula, GloballyFormula)):
+            pending.append(current.child)
+        elif isinstance(current, (And, Or)):
+            pending.extend(reversed(current.children))
+        elif (isinstance(current, (Implies, UntilFormula, ReleaseFormula))
+              or isinstance(current, Eq) and isinstance(current.left, Formula)):
+            pending.extend([current.right, current.left])
+        else:
+            result[current] = None
+    return tuple(result)
+
+
 def lower_encoding(chi, bound, lower):
     adjacent_pairs = [
         (chi + "_" + str(index), chi + "_" + str(index + 1))

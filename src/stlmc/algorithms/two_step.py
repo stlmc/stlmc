@@ -19,7 +19,7 @@ from ..application.options import RunOptions
 from ..encoding.batching import partitioned_candidate_batch_formula
 from ..encoding.fully_stable_partition import FullyStablePartitionEncoding
 from ..encoding.fully_stable_stl import (
-    calc_sub_formulas, final, is_proposition, k_depth_stl_consts,
+    calc_sub_formulas, ordered_sub_formulas, final, is_proposition, k_depth_stl_consts,
     prepare_fully_stable_stl_formula, stl_depth_components, sub_formula,
     symbolic_goal,
 )
@@ -118,7 +118,7 @@ class TwoStepAlgorithm(Algorithm):
                 options.use_unary_bounded_temporal_form,
             )
 
-            sub_formulas = calc_sub_formulas(stl_formula)
+            sub_formulas = ordered_sub_formulas(stl_formula)
             partition_encoding = FullyStablePartitionEncoding(sub_formulas)
 
             initial_stl_f = chi(1, 1, stl_formula)

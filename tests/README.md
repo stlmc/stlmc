@@ -32,12 +32,19 @@ The test suite has sixteen parts:
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
 - `solver_capabilities.py` verifies solver-specific arithmetic validation and
-  dReal inverse-trigonometric translations.
+  dReal inverse-trigonometric translations. It also checks 300 generated
+  Boolean propagation equivalences, branch-local assignment isolation, and
+  preservation of flow atoms and original dReal variable declarations.
 - `robustness_operations.py` checks STL weakening, strengthening, negation,
   and implication polarity transformations.
 - `temporal_reduction.py` checks the fully-stable temporal encoding, including
   shared one-step/two-step components, partition obligations, strict interval
-  endpoints, and bounded Until/Release recurrence semantics.
+  endpoints, and bounded Until/Release recurrence semantics. Fresh processes
+  with four hash seeds compare direct/equivalent Yices input and static
+  learning query order for the rail benchmark. Source traversal preserves
+  first occurrences; partition definitions emit operand subformulas before
+  enclosing temporal operators. This is an input-order policy, not an
+  additional logical constraint.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger

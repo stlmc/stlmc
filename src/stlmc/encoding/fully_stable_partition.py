@@ -12,6 +12,7 @@ from ..constraints.constraints import (
     Implies, Not, Or, ReleaseFormula, Sub, UntilFormula,
 )
 from ..constraints.interval import is_positive_infinity
+from .fully_stable_stl import dependency_ordered_formulas
 from .symbolic_discrete import chi, formula_id, symbolic_inf, symbolic_sup
 
 
@@ -121,7 +122,7 @@ def temporal_partition_obligations(formula: Formula, depth: int):
 
 def partition_obligations(sub_formulas: Set[Formula], depth: int):
     obligations = []
-    for formula in sub_formulas:
+    for formula in dependency_ordered_formulas(sub_formulas):
         if isinstance(formula, (
                 UntilFormula, ReleaseFormula,
                 FinallyFormula, GloballyFormula)):
@@ -141,7 +142,8 @@ class FullyStablePartitionEncoding:
     """Incrementally construct the strategy-independent Psi_PAR encoding."""
 
     def __init__(self, sub_formulas: Set[Formula]):
-        self.sub_formulas = set(sub_formulas)
+        # Define operand partitions before their enclosing temporal operator.
+        self.sub_formulas = dependency_ordered_formulas(sub_formulas)
         self.depth = 0
         self.obligations_by_depth: Dict[int, List[Formula]] = {}
 
