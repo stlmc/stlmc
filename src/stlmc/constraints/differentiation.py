@@ -1,7 +1,7 @@
-"""Symbolic differentiation for expressions along an integral flow."""
-
-from functools import singledispatch
+"""SymPy-backed differentiation with explicit flow-time interpretation."""
 from fractions import Fraction
+
+import sympy
 
 from ..exceptions import NotSupportedError
 from .analysis import get_vars
@@ -10,82 +10,62 @@ from .constraints import (
     Pow, Real, RealVal, Sub, Variable,
 )
 from .substitution import substitution
+from .sympy_expression import SympyExpression
 
 
 def diff(exp: Expr, integral: Integral):
     new_exp = substitution(exp, make_diff_mapping(integral))
     if isinstance(integral.dynamics, Function):
-        # Closed-form flows use local elapsed time (tau_end - tau_start).
-        # Differentiate with respect to tau_end while holding tau_start fixed.
         end_id = integral.end_vector[0].id
-        bound = end_id[end_id.find("_") + 1:end_id.rfind("_")]
-        end_time = Real("tau_" + str(int(bound) + 1))
-        return differentiate_polynomial(new_exp, end_time)
+        bound = end_id[end_id.find('_') + 1:end_id.rfind('_')]
+        # Hold the start clock and initial state fixed; do NOT set them to zero.
+        return differentiate_polynomial(new_exp, Real('tau_' + str(int(bound) + 1)))
     if not supports_symbolic_differentiation(new_exp):
-        raise NotSupportedError(
-            "cannot apply polynomial invariant simplification to {}"
-            .format(new_exp)
-        )
+        raise NotSupportedError('cannot apply polynomial invariant simplification to {}'.format(new_exp))
     return diff_aux(new_exp)
 
 
-def differentiate_polynomial(expression, variable):
-    """Differentiate in one clock, keeping all other symbols as parameters.
-
-    Only polynomials in that clock are accepted; parameter-only expressions
-    (including denominators) are constants for this operation.
-    """
-    zero, one = RealVal("0"), RealVal("1")
-    def is_zero(value):
-        return isinstance(value, Constant) and _constant_value(value) == 0
+def _validate_polynomial(expression, variable):
+    """Reject clock denominators/powers BEFORE SymPy can cancel them away."""
     if variable not in get_vars(expression):
-        return zero
+        return
     if isinstance(expression, Variable):
-        return one
-    derivative = lambda child: differentiate_polynomial(child, variable)
+        return
     if isinstance(expression, Neg):
-        value = derivative(expression.child)
-        return zero if is_zero(value) else Neg(value)
-    if isinstance(expression, (Add, Sub)):
-        left, right = derivative(expression.left), derivative(expression.right)
-        if is_zero(right):
-            return left
-        if is_zero(left):
-            return right if isinstance(expression, Add) else Neg(right)
-        return type(expression)(left, right)
-    if isinstance(expression, Mul):
-        left, right = derivative(expression.left), derivative(expression.right)
-        if is_zero(left):
-            return zero if is_zero(right) else Mul(expression.left, right)
-        if is_zero(right):
-            return Mul(left, expression.right)
-        return Add(Mul(left, expression.right), Mul(expression.left, right))
+        return _validate_polynomial(expression.child, variable)
+    if isinstance(expression, (Add, Sub, Mul)):
+        _validate_polynomial(expression.left, variable)
+        _validate_polynomial(expression.right, variable)
+        return
     if isinstance(expression, Div) and variable not in get_vars(expression.right):
-        return Div(derivative(expression.left), expression.right)
+        return _validate_polynomial(expression.left, variable)
     if isinstance(expression, Pow) and not get_vars(expression.right):
         exponent = _constant_value(expression.right)
         if exponent.denominator == 1 and exponent >= 0:
-            if exponent == 0:
-                return zero
-            return Mul(Mul(RealVal(str(exponent.numerator)),
-                           Pow(expression.left, RealVal(str(exponent.numerator - 1)))),
-                       derivative(expression.left))
-    raise NotSupportedError(
-        "cannot apply polynomial invariant simplification to {}".format(expression)
-    )
+            return _validate_polynomial(expression.left, variable)
+    raise NotSupportedError('cannot apply polynomial invariant simplification to {}'.format(expression))
+
+
+def differentiate_polynomial(expression, variable):
+    """Differentiate only the nominated clock; other symbols are parameters."""
+    if variable not in get_vars(expression):
+        return RealVal('0')
+    _validate_polynomial(expression, variable)
+    context = SympyExpression()
+    converted = context.to_sympy(expression)
+    result = sympy.diff(converted, context.symbol(variable))
+    return context.from_sympy(result)
 
 
 def supports_symbolic_differentiation(const: Constraint) -> bool:
-    """Return whether ``diff_aux`` can soundly differentiate ``const``."""
+    """Compatibility capability check for the legacy ODE simplification path."""
     if isinstance(const, (Constant, Variable)):
         return True
     if isinstance(const, Neg):
         return supports_symbolic_differentiation(const.child)
     if isinstance(const, (Add, Sub, Mul, Div)):
-        return (
-            supports_symbolic_differentiation(const.left)
-            and supports_symbolic_differentiation(const.right)
-        )
+        return (supports_symbolic_differentiation(const.left)
+                and supports_symbolic_differentiation(const.right))
     if isinstance(const, Pow):
         if not isinstance(const.left, Variable) or get_vars(const.right):
             return False
@@ -103,115 +83,30 @@ def make_diff_mapping(integral: Integral):
         if not isinstance(integral.dynamics, Ode):
             result[dyn_var] = integral.dynamics.exps[index]
             continue
-
         end_id = integral.end_vector[0].id
-        bound = end_id[end_id.find("_") + 1:end_id.rfind("_")]
-        end_tau = Real("tau_" + str(int(bound) + 1))
+        bound = end_id[end_id.find('_') + 1:end_id.rfind('_')]
+        end_tau = Real('tau_' + str(int(bound) + 1))
         result[dyn_var] = Mul(integral.dynamics.exps[index], end_tau)
     return result
 
 
-@singledispatch
 def diff_aux(const: Constraint):
-    raise NotSupportedError(
-        "unsupported expression for symbolic differentiation: {}"
-        .format(type(const).__name__)
-    )
+    """Legacy directional derivative: advance all tau clocks together.
 
-
-@diff_aux.register(Constant)
-def _(const: Constant):
-    return RealVal("0")
-
-
-@diff_aux.register(Variable)
-def _(const: Variable):
-    return RealVal("1" if str(const.id).startswith("tau") else "0")
-
-
-@diff_aux.register(Add)
-def _(const: Add):
-    x, y = const.left, const.right
-    if not get_vars(const):
-        return RealVal("0")
-    if not get_vars(x):
-        return diff_aux(y)
-    if not get_vars(y):
-        return diff_aux(x)
-    return Add(diff_aux(x), diff_aux(y))
-
-
-@diff_aux.register(Sub)
-def _(const: Sub):
-    x, y = const.left, const.right
-    if not get_vars(const):
-        return RealVal("0")
-    if not get_vars(x):
-        return Neg(diff_aux(y))
-    if not get_vars(y):
-        return diff_aux(x)
-    return Sub(diff_aux(x), diff_aux(y))
-
-
-@diff_aux.register(Pow)
-def _(const: Pow):
-    x, y = const.left, const.right
-    if not isinstance(x, Variable) or len(get_vars(y)) != 0:
-        raise NotSupportedError(
-            "Cannot handling polynomial yet : {}".format(const)
-        )
-    if _constant_value(y) == 0:
-        return RealVal("0")
-    if str(x.id).startswith("tau"):
-        return Mul(y, Pow(x, Sub(y, RealVal("1"))))
-    return RealVal("0")
+    Kept for the existing ODE path and compatibility imports. Closed-form
+    flows MUST use differentiate_polynomial with one explicit local clock.
+    No hand-written differentiation rules or fallback remain here.
+    """
+    context = SympyExpression()
+    expression = context.to_sympy(const)
+    clocks = [v for v in get_vars(const) if str(v.id).startswith('tau')]
+    result = sum((sympy.diff(expression, context.symbol(v)) for v in clocks), sympy.Integer(0))
+    return context.from_sympy(result)
 
 
 def _constant_value(const):
-    if isinstance(const, Constant):
-        return Fraction(const.value)
-    if isinstance(const, Neg):
-        return -_constant_value(const.child)
-    if isinstance(const, Add):
-        return _constant_value(const.left) + _constant_value(const.right)
-    if isinstance(const, Sub):
-        return _constant_value(const.left) - _constant_value(const.right)
-    if isinstance(const, Mul):
-        return _constant_value(const.left) * _constant_value(const.right)
-    if isinstance(const, Div):
-        return _constant_value(const.left) / _constant_value(const.right)
-    if isinstance(const, Pow):
-        exponent = _constant_value(const.right)
-        if exponent.denominator != 1:
-            raise NotSupportedError("fractional constant exponents are unsupported")
-        return _constant_value(const.left) ** exponent.numerator
-    raise NotSupportedError("expected a constant arithmetic expression")
-
-
-@diff_aux.register(Mul)
-def _(const: Mul):
-    x, y = const.left, const.right
-    if len(get_vars(const)) == 0:
-        return RealVal("0")
-    if len(get_vars(x)) == 0:
-        return Mul(x, diff_aux(y))
-    if len(get_vars(y)) == 0:
-        return Mul(diff_aux(x), y)
-    return Add(Mul(diff_aux(x), y), Mul(x, diff_aux(y)))
-
-
-@diff_aux.register(Div)
-def _(const: Div):
-    x, y = const.left, const.right
-    if len(get_vars(const)) == 0:
-        return RealVal("0")
-    if len(get_vars(x)) == 0:
-        return Sub(RealVal("0"), Div(Mul(diff_aux(y), x), Mul(y, y)))
-    if len(get_vars(y)) == 0:
-        return Div(diff_aux(x), y)
-    return Sub(Div(diff_aux(x), y), Div(Mul(diff_aux(y), x), Mul(y, y)))
-
-
-@diff_aux.register(Neg)
-def _(const: Neg):
-    return Neg(diff_aux(const.child))
+    context = SympyExpression()
+    value = context.to_sympy(const)
+    if not isinstance(value, sympy.Rational):
+        raise NotSupportedError('expected a rational constant arithmetic expression')
+    return Fraction(int(value.p), int(value.q))

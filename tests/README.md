@@ -18,6 +18,10 @@ The test suite has sixteen parts:
   inconsistencies remain advisory. It covers source locations, valid coupled
   flows, and unchanged input models. Unsupported or oversized expressions are
   skipped; absence of a diagnostic is not a validity certificate.
+- `sympy_differentiation.py` checks structural arithmetic conversion, exact
+  rational constants, typed symbols, explicit clock selection, unsupported
+  domains, and 300 generated derivative comparisons against analytic
+  coefficients using independent Z3 equivalence checks.
 - `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
   results through the STLmc solver adapter.
 - `dreal_assignment.py` checks that dReal interval boxes are preserved while
