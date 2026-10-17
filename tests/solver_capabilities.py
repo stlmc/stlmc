@@ -18,6 +18,45 @@ from stlmc.solver.dreal import drealObj
 
 
 class SolverCapabilityTest(unittest.TestCase):
+    def test_other_solver_jobs_do_not_apply_dreal_simplification(self):
+        from unittest.mock import patch
+        from stlmc.constraints.constraints import And, Bool, BoolVal, Eq, Implies, Not
+        from stlmc.parser.config_visitor import ConfigVisitor
+        from stlmc.solver.z3 import Z3Solver, Z3FormulaSolver
+        from stlmc.solver.yices import YicesSolver
+        from stlmc.solver.cvc5 import CVC5Solver
+
+        config = ConfigVisitor().parse_from_file(
+            str(PROJECT_ROOT / 'src/stlmc/default.cfg'))
+        p, q = Bool('final_p'), Bool('final_q')
+        x = Real('final_x')
+        feasible = And([p, Not(q), Implies(p, Eq(x, RealVal('2'))),
+                        Implies(q, Eq(x, RealVal('9')))])
+        infeasible = And([feasible, Eq(x, RealVal('3'))])
+        for adapter in (Z3Solver, YicesSolver, CVC5Solver):
+            for formula, expected in ((feasible, 'False'), (infeasible, 'True')):
+                with self.subTest(adapter=adapter.__name__, expected=expected):
+                    with patch(adapter.__module__ + '.propagate_boolean_constants',
+                               create=True, side_effect=AssertionError(
+                                   'Boolean propagation is dReal-only')) as simplify:
+                        result = adapter(config).solve(formula, timeout=10)
+                        simplify.assert_not_called()
+                    self.assertEqual(result.result, expected)
+                    if expected == 'False':
+                        values = result.assignment.get_assignments()
+                        self.assertEqual(str(values[p].value).lower(), 'true')
+                        self.assertEqual(str(values[q].value).lower(), 'false')
+                        self.assertEqual(float(values[x].value), 2)
+        # The incremental solver must retain the original tracked formulas.
+        with patch('stlmc.solver.z3.propagate_boolean_constants', create=True,
+                   side_effect=AssertionError('core must not simplify')) as simplify:
+            core = Z3FormulaSolver()
+            core.add(feasible)
+            core.track(Eq(x, RealVal('3')), 'final_conflict')
+            core.check()
+            self.assertIn('final_conflict', core.unsat_core())
+            simplify.assert_not_called()
+
     def test_boolean_propagation_preserves_generated_formulas(self):
         import random
         import z3

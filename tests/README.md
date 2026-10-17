@@ -35,6 +35,12 @@ The test suite has sixteen parts:
   dReal inverse-trigonometric translations. It also checks 300 generated
   Boolean propagation equivalences, branch-local assignment isolation, and
   preservation of flow atoms and original dReal variable declarations.
+  Z3/Yices/CVC5 final solver jobs are checked for SAT/UNSAT and retained
+  Boolean/numeric assignments; incremental core tracking remains unchanged.
+  Only dReal final verification jobs propagate unconditional Boolean
+  assignments before translation; Z3/Yices/CVC5 retain their original inputs.
+  This does not change scenario/core solver assertions or rewrite arithmetic,
+  ODE, or quantified-flow bodies.
 - `robustness_operations.py` checks STL weakening, strengthening, negation,
   and implication polarity transformations.
 - `temporal_reduction.py` checks the fully-stable temporal encoding, including
