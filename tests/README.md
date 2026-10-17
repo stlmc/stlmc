@@ -12,7 +12,9 @@ The test suite has sixteen parts:
   their known initial-value contradiction until a replacement is reviewed.
 - `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
   rejects incomplete or undeclared closed-form flows, and verifies endpoint
-  and invariant encodings for CVC5, Z3, Yices, and dReal.
+  and invariant encodings for CVC5, Z3, Yices, and dReal. Yices SMT2 export
+  is independently replayed to check lowered-variable declarations and
+  quoted internal symbol names.
 - `flow_warnings.py` checks polynomial flow diagnostics: nonzero constant
   initial offsets are errors; state-dependent initial differences and restart
   inconsistencies remain advisory. It covers source locations, valid coupled

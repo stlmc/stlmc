@@ -3,6 +3,44 @@ import unittest
 
 
 class SolutionFunctionTest(unittest.TestCase):
+    def test_yices_smt2_export_declares_lowered_flow_symbols(self):
+        from pathlib import Path
+        import z3
+        from stlmc.constraints.constraints import (
+            Add, And, Bool, Eq, Forall, Function, Integral, Lt, Real, RealVal, Sub,
+        )
+        from stlmc.parser.config_visitor import ConfigVisitor
+        from stlmc.solver.yices import YicesSolver, _query_variables
+
+        config = ConfigVisitor().parse_from_file(str(
+            Path(__file__).resolve().parent.parent / "src/stlmc/default.cfg"))
+        common = config.get_section("common")
+        x, end_x = Real("x_2_0"), Real("x_2_t")
+        start, end = Real("tau_2"), Real("tau_3")
+        integral = Integral(0, [end_x], [x], Function(
+            [Real("x_2_0_t")], [Add(x, Sub(end, start))]))
+        formula = And([integral, Bool("chi^{1,1}_export"),
+                       Forall(0, end, start, Lt(x, RealVal("10")), integral),
+                       Eq(x, RealVal("0")), Eq(start, RealVal("2")),
+                       Eq(end, RealVal("3"))])
+        with tempfile.TemporaryDirectory() as directory:
+            common.set_value("save-smt2", "true")
+            common.set_value("smt2-dir", directory)
+            result = YicesSolver(config).solve(formula, timeout=10)
+            self.assertEqual(result.result, "False", result.error)
+            output = next(Path(directory).rglob("*.smt2")).read_text()
+            self.assertIn("(declare-fun currentMode_2 () Real)", output)
+            self.assertIn("(declare-fun x_2_t () Real)", output)
+            self.assertIn("(declare-fun |chi^{1,1}_export| () Bool)", output)
+            # Parse in a fresh solver: no ambient Yices symbol table can hide
+            # missing declarations. Replay both SAT and UNSAT restrictions.
+            replay = z3.Solver()
+            replay.from_string(output)
+            self.assertEqual(replay.check(), z3.sat)
+            replay.add(z3.Real("x_2_t") != 1)
+            self.assertEqual(replay.check(), z3.unsat)
+            self.assertIsNone(_query_variables.get())
+
     def test_polynomial_forall_uses_local_clock_and_preserves_parameters(self):
         import z3
         from stlmc.constraints.constraints import (

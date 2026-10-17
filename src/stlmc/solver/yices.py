@@ -1,4 +1,6 @@
 import time
+import re
+from contextvars import ContextVar
 from functools import singledispatch
 
 from yices import Config, Context, Model, Status, Terms, Types
@@ -18,6 +20,9 @@ from ..solver.abstract_solver import (
 )
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
+
+
+_query_variables = ContextVar("yices_query_variables", default=None)
 
 
 class YicesAssignment(Assignment):
@@ -49,17 +54,29 @@ class YicesSolver(JobSolver):
     def _set_logic(self, logic_name: str):
         self._logic = (logic_name.upper() if logic_name.upper() in self._logic_list else 'QF_NRA')
 
-    def _write_query(self, consts, raw_constraint, query_name):
+    def _write_query(self, consts, variables, query_name):
         if not is_enabled(self.config):
             return
         sort_names = {"bool": "Bool", "int": "Int", "real": "Real"}
-        variables = sorted(get_vars(raw_constraint), key=lambda variable: variable.id)
+        variables = sorted(variables, key=lambda variable: (variable.id, variable.type))
+        names = {}
+        for variable in variables:
+            name = variable.id
+            if not re.fullmatch(r"[A-Za-z~!@$%^&*_+=<>.?/\-][A-Za-z0-9~!@$%^&*_+=<>.?/\-]*", name):
+                if "|" in name or "\\" in name:
+                    raise NotSupportedError("cannot export SMT2 symbol: {}".format(name))
+                name = "|{}|".format(name)
+            names[variable.id] = name
         lines = ["(set-logic {})".format(self._logic)]
         for variable in variables:
             lines.append("(declare-fun {} () {})".format(
-                variable.id, sort_names[variable.type]
+                names[variable.id], sort_names[variable.type]
             ))
         for const in consts:
+            # Yices accepts generated names containing braces/commas that
+            # SMT-LIB requires to be quoted. Replace whole tokens only.
+            const = re.sub(r"[^\s()]+", lambda match: names.get(
+                match.group(0), match.group(0)), const)
             lines.append("(assert {})".format(const))
         lines.extend(["(check-sat)", "(get-model)"])
         write_smt2(
@@ -70,7 +87,17 @@ class YicesSolver(JobSolver):
         job = SolverJob(on_complete)
         logic = self.config.get_section("yices").get_value("logic")
         self._set_logic(logic)
-        self._write_query([yicesObj(const)], const, query_name)
+        if is_enabled(self.config):
+            # Collect symbols from the actual lowering, not the raw tree:
+            # Integral is a structural marker, and lowering introduces clocks
+            # and mode variables absent from get_vars(raw_constraint).
+            variables = set()
+            token = _query_variables.set(variables)
+            try:
+                query = yicesObj(const)
+            finally:
+                _query_variables.reset(token)
+            self._write_query([query], variables, query_name)
         worker = ThreadWorker()
         start_time = time.monotonic()
 
@@ -144,6 +171,9 @@ def _(const: BoolVal):
 
 @yicesObj.register(Variable)
 def _(const: Variable):
+    variables = _query_variables.get()
+    if variables is not None:
+        variables.add(const)
     op = {'bool': Types.bool_type(), 'real': Types.real_type(), 'int': Types.int_type()}
     x = Terms.new_uninterpreted_term(op[const.type], str(const.id))
 
