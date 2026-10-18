@@ -1,0 +1,23 @@
+# @benchmark.expected(f1=violated:14)
+# @benchmark.fast(f1)
+# @benchmark.quick(f1)
+# Triangular-wave ODE from report/bug2/aux.model; original initial set and goal.
+real a;
+real b;
+[0, 10] x;
+{
+    mode: a = 1; b = 0;
+    inv: x <= 10;
+    flow: d/dt[x] = 1;
+    jump: (x >= 9) => (and (x' = x) (a' = 0) (b' = 1));
+}
+{
+    mode: a = 0; b = 1;
+    inv: x >= 0;
+    flow: d/dt[x] = -1;
+    jump: (x <= 1) => (and (x' = x) (a' = 1) (b' = 0));
+}
+init: (and (x >= 0) (x <= 10) (a = 1) (b = 0));
+proposition:
+goal:
+[f1]: [][0, 10] (x > 2);

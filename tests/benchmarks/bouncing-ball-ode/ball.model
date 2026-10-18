@@ -1,0 +1,33 @@
+# @benchmark.expected(f1=satisfied:1, f2=violated:1, f3=violated:3, f4=violated:2, f5=violated:0, rebound=reachable:1)
+# @benchmark.fast(f1, f2, f3, f4, f5, rebound)
+# @benchmark.quick(f1, f2, f3, f4, f5, rebound)
+# Derived from the reported bouncing-ball ODE, allowing negative velocity.
+# The rebound target cannot hold before the first physical jump: v starts
+# at 1 and decreases under gravity, whereas the target requires v >= 5.
+const g = 9.81;
+const c = 0.75;
+
+bool bouncing;
+[-50, 50] v;
+[-5, 50] x;
+
+{
+    mode: bouncing = true;
+    inv: x >= 0;
+    flow:
+        d/dt[x] = v;
+        d/dt[v] = -g;
+    jump:
+        (and (x = 0) (v <= 0)) =>
+            (and (bouncing' = true) (x' = x) (v' = -(c * v)));
+}
+
+init: (and (x = 10) (v = 1) (bouncing = true));
+proposition:
+goal:
+[f1]: [][0, inf)(<>[0, inf) (x >= 1));
+[f2]: [][0, inf)(x >= 0 -> (<>[0, inf) (x = 0 and v < 0)));
+[f3]: [][0, inf)(<>[0, inf) (x >= 10));
+[f4]: [][0, inf)(v = 0);
+[f5]: [][0, inf)(~ <>[0, inf)(x >= 2));
+[rebound]: (and (x >= 1) (v >= 5));

@@ -80,7 +80,7 @@ goal: [][0,2] (x <= 1);
         from stlmc.parser.flow_warnings import InvalidSolutionFlowError
 
         paths = sorted((PROJECT_ROOT / "tests" / "benchmarks").glob("*/*.model"))
-        self.assertEqual(len(paths), 21)
+        self.assertEqual(len(paths), 25)
         # Preserve these historical inputs until a reviewed polynomial-model
         # replacement is selected. Rejecting them is intentional validation,
         # not a claim that their old benchmark result annotations are correct.
@@ -116,7 +116,7 @@ goal: [][0,2] (x <= 1);
                 if goal_config != model_config:
                     visitor.parse_from_file(str(goal_config), config)
                 parsed += 1
-        self.assertEqual(parsed, 78)
+        self.assertEqual(parsed, 96)
 
     def test_visualization_configuration_parses(self):
         from stlmc.parser.visualize_visitor import VisualizeConfigParser

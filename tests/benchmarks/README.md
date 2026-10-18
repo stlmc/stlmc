@@ -1,8 +1,8 @@
 # STLmc artifact benchmarks
 
 This directory contains the benchmark models and configuration files from the
-CAV 2022 STLmc artifact. Each model directory is placed directly below this
-directory:
+CAV 2022 STLmc artifact, together with additional regression cases. Each model
+directory is placed directly below this directory:
 
 ```text
 benchmarks/

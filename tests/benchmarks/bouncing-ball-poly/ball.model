@@ -1,0 +1,26 @@
+# @benchmark.expected(f1=satisfied:1, f2=violated:1, f3=violated:0, f4=violated:1, f5=violated:0)
+# @benchmark.fast(f1, f2, f3, f4, f5)
+# @benchmark.quick(f1, f2, f3, f4, f5)
+# Closed-form bouncing ball from report/bug3/response/bb-poly.model; g=1,v0=0.
+const g = 1;
+const c = 0.75;
+bool bouncing;
+[0, 15] x;
+[-5, 5] v;
+{
+    mode: bouncing = true;
+    inv: x >= 0;
+    flow:
+        x(t) = v(0) * t + x(0) - 0.5 * t * t;
+        v(t) = - t + v(0);
+    jump:
+        (and (x = 0) (v <= 0)) => (and (bouncing' = true) (x' = x) (v' = -(c * v)));
+}
+init: (and (x = 10.0) (v = 0.0) (bouncing = true));
+proposition:
+goal:
+[f1]: [][0, inf)(<>[0, inf) (x >= 1));
+[f2]: [][0, inf)(x >= 0 -> (<>[0, inf) (x = 0 and v < 0)));
+[f3]: [][0, inf)(<>[0, inf) (x >= 10));
+[f4]: [][0, inf)(v = 0);
+[f5]: [][0, inf)(~ <>[0, inf)(x >= 2));

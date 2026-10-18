@@ -30,9 +30,11 @@ The unit/integration suites and standalone benchmark tools cover:
   results through the STLmc solver adapter.
 - `dreal_assignment.py` checks preservation of dReal interval boxes and
   consistency of their visualization midpoints.
-
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
+  The independent dReal `smt2/dreal/interior-peak.smt2` smoke case checks an
+  interior-peak violation under a universal constraint, expecting `unsat` with
+  precision `0.000001` and ODE step `0.01` supplied by its `.args` file.
 - `solver_capabilities.py` verifies solver-specific arithmetic validation and
   dReal inverse-trigonometric translations. It also checks 300 generated
   Boolean propagation equivalences, branch-local assignment isolation, and
@@ -82,10 +84,21 @@ The unit/integration suites and standalone benchmark tools cover:
   Yices logs from the preceding benchmark run instead of running Yices twice.
 - `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
   compares each result and finishing bound with the annotation in its model.
+  The [bouncing-ball benchmark](benchmarks/bouncing-ball-ode/README.md) uses
+  this same model/configuration-to-result/bound comparison. All six goals have
+  registered expectations and are included in the quick and fast selections.
+  Shorter one-second windows keep `f1`, `f2`, `f4`, and `f5` checks fast;
+  `f3` and `rebound` retain three-second windows containing the first bounce.
   Each log has a JSON manifest containing the git commit, input hashes,
   command, timeout, and result, so solver comparisons reject stale logs.
   The `tank-ode/tank-f2` case covers bound-zero STL checking of a jump-free
   ODE model, ensuring that its initial continuous segment is not skipped.
+  Separate fixtures cover the [bounded tank ODE](benchmarks/tank-bounded-ode/README.md),
+  [triangular-wave ODE](benchmarks/triangular-wave-ode/README.md), and
+  [bouncing-ball polynomial model](benchmarks/bouncing-ball-poly/README.md).
+  Their original dynamics and goals are retained; goal-specific finite windows
+  and bounds define the fast regression scope. These fixtures use the same
+  result/bound comparison and keep the independent native solver smoke separate.
 
 Benchmark expectations use this format:
 
@@ -97,6 +110,9 @@ Benchmark expectations use this format:
 Labels match the suffix of each goal-specific configuration file. In addition
 to STL statuses (`satisfied` and `violated`), reachability cases use
 `reachable` and `unreachable`.
+A `satisfied` expectation means that no counterexample was found within the
+configured time window and discrete bound at the configured threshold. It is
+not a proof for unbounded time or arbitrarily many partition points.
 
 For reachability cases, the expected bound is the number of jumps and
 starts at zero. For STL cases, it also includes STL variable points. Bound

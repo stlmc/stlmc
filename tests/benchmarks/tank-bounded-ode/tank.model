@@ -1,0 +1,28 @@
+# @benchmark.expected(f1=violated:1, f2=violated:0)
+# @benchmark.fast(f1, f2)
+# @benchmark.quick(f1, f2)
+# Bounded two-tank ODE from report/bug1/tank-bounded.model; exact initial set retained.
+# The inward vector field preserves [1.8,3.5]^2; see fixture README.
+[1.8, 3.5] x1;
+[1.8, 3.5] x2;
+const k = 0.015;
+const k2 = 0.01;
+const g = 9.81;
+{ mode: true;
+  inv: true;
+  flow:
+    d/dt[x1] = 0.1 + k2 * (4 - x2) - k * sqrt(2 * g) * sqrt(x1);
+    d/dt[x2] = k * sqrt(2 * g) * (sqrt(x1) - sqrt(x2));
+  jump: (false) => (and (x1' = 0) (x1' = 0));
+}
+init:
+  - x2 + 1.8 <= 0;
+  x1 + -2.2 <= 0;
+  x2 + -2.2 <= 0;
+  - x1 + 1.8 <= 0;
+proposition:
+  [p1]: x2 <= 2.5;
+  [p2]: x2 > 2.5;
+goal:
+  [f1]: [][0, 400] (p1);
+  [f2]: <>[0, 400] (p2);

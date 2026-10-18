@@ -1,0 +1,15 @@
+; Both endpoints satisfy x < 10.01, but the interior peak exceeds 10.05.
+; The sibling .args file specifies the native solver integration settings.
+(set-logic QF_NRA_ODE)
+(declare-fun time_0 () Real [1.533414041, 1.533414041])
+(declare-fun x () Real [-5, 50])
+(declare-fun v () Real [-50, 50])
+(declare-fun x_0_0 () Real [10, 10])
+(declare-fun v_0_0 () Real [1, 1])
+(declare-fun x_0_t () Real [-5, 50])
+(declare-fun v_0_t () Real [-50, 50])
+(define-ode flow_1 ((= d/dt[x] v) (= d/dt[v] (- 0 9.81))))
+(assert (= [x_0_t v_0_t] (integral 0. time_0 [x_0_0 v_0_0] flow_1)))
+(assert (forall_t 1 [0 time_0] (< x_0_t 10.01)))
+(check-sat)
+(exit)

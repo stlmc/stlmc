@@ -1,4 +1,5 @@
 import os
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,8 +20,13 @@ def run_solver(name, executable, test_directory):
     for input_path in sorted(test_directory.glob("*.smt2")):
         expected_path = input_path.with_suffix(input_path.suffix + ".expected")
         expected = expected_path.read_text(encoding="utf-8")
+        arguments_path = input_path.with_suffix(input_path.suffix + ".args")
+        arguments = (
+            shlex.split(arguments_path.read_text(encoding="utf-8"))
+            if arguments_path.is_file() else []
+        )
         result = subprocess.run(
-            [executable, str(input_path)],
+            [executable, *arguments, str(input_path)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

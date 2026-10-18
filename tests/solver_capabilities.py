@@ -18,6 +18,29 @@ from stlmc.solver.dreal import drealObj
 
 
 class SolverCapabilityTest(unittest.TestCase):
+    def test_smt2_smoke_supports_optional_per_case_arguments(self):
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        from smoke_solvers import run_solver
+
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for name in ("plain", "configured"):
+                (folder / (name + ".smt2")).write_text("(check-sat)\n")
+                (folder / (name + ".smt2.expected")).write_text("unsat\n")
+            (folder / "configured.smt2.args").write_text(
+                "--precision 0.000001 --ode-step 0.01\n")
+            result = subprocess.CompletedProcess([], 0, "unsat\n", "")
+            with patch("smoke_solvers.subprocess.run", return_value=result) as execute:
+                run_solver("test", "/solver/binary", folder)
+            commands = [call.args[0] for call in execute.call_args_list]
+            self.assertEqual(commands, [
+                ["/solver/binary", "--precision", "0.000001", "--ode-step", "0.01",
+                 str(folder / "configured.smt2")],
+                ["/solver/binary", str(folder / "plain.smt2")],
+            ])
+
     def test_other_solver_jobs_do_not_apply_dreal_simplification(self):
         from unittest.mock import patch
         from stlmc.constraints.constraints import And, Bool, BoolVal, Eq, Implies, Not
