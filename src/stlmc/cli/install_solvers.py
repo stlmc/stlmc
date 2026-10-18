@@ -1,24 +1,29 @@
 """Install or check STLMC's solver prerequisites."""
 
 import argparse
+import hashlib
 import importlib
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
-from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+from importlib.metadata import version
 
-from ..solver.availability import find_dreal, user_dreal_path
-
-
-_DREAL_VERSION = "3.16.06.02"
-_Z3_PACKAGE = "z3-solver==4.15.4.0"
-_CVC5_PACKAGE = "cvc5==1.3.4"
-_YICES_PACKAGE = "yices==1.1.6"
+from ..solver.availability import find_dreal, user_dreal_path, load_yices_binding
+from .dependency_policy import (
+    DREAL_VERSION as _DREAL_VERSION, Z3_PACKAGE as _Z3_PACKAGE,
+    CVC5_PACKAGE as _CVC5_PACKAGE, YICES_PACKAGE as _YICES_PACKAGE,
+    YICES_NATIVE_VERSION,
+    DREAL_ARCHIVE_SHA256,
+)
 
 
 def _python_package_status(module_name, distribution_name, package_spec, detail):
@@ -26,41 +31,129 @@ def _python_package_status(module_name, distribution_name, package_spec, detail)
     try:
         importlib.import_module(module_name)
         installed = version(distribution_name)
-    except (ImportError, OSError, PackageNotFoundError) as error:
+    except Exception as error:
         return False, str(error)
     if installed != expected:
         return False, "installed {}, expected {}".format(installed, expected)
     return True, "{} ({})".format(detail, installed)
 
 
-def _status():
-    result = {}
-    result["cvc5"] = _python_package_status(
-        "cvc5", "cvc5", _CVC5_PACKAGE, "Python package available"
-    )
-    result["z3"] = _python_package_status(
-        "z3", "z3-solver", _Z3_PACKAGE, "Python package available"
-    )
+def _probe_one(name):
+    if name == "cvc5":
+        return _python_package_status(
+            "cvc5", "cvc5", _CVC5_PACKAGE, "Python package available"
+        )
+    if name == "z3":
+        return _python_package_status(
+            "z3", "z3-solver", _Z3_PACKAGE, "Python package available"
+        )
     try:
-        yices_module = importlib.import_module("yices")
+        yices_module = load_yices_binding()
         available, detail = _python_package_status(
             "yices", "yices", _YICES_PACKAGE,
             "Python binding and native library available",
         )
         if available:
-            detail = "{}, native {}".format(
-                detail, yices_module.Yices.version
+            native_version = yices_module.Yices.version
+            if isinstance(native_version, bytes):
+                native_version = native_version.decode("ascii")
+            if str(native_version) != YICES_NATIVE_VERSION:
+                return False, (
+                    "native Yices {}, expected {}. System packages are not "
+                    "automatically downgraded; use stlmc-installer install --solver yices "
+                    "--build for a managed build."
+                ).format(native_version, YICES_NATIVE_VERSION)
+            detail = "{}, native {}, thread_safe={}, mcsat={}".format(
+                detail, native_version,
+                bool(yices_module.Yices.is_thread_safe()),
+                bool(yices_module.Yices.has_mcsat()),
             )
-        result["yices"] = available, detail
+        return available, detail
     except Exception as error:
-        result["yices"] = (False, str(error).splitlines()[-1])
+        return False, str(error).splitlines()[-1]
+
+
+def _backend_status(name):
+    # Native CVC5 and Yices may conflict when initialized in one process.
+    # Each probe has one backend and can also contain a native import crash.
+    environment = dict(os.environ)
+    source_root = str(Path(__file__).resolve().parents[2])
+    environment["PYTHONPATH"] = source_root + os.pathsep + environment.get("PYTHONPATH", "")
+    script = "import json,sys; from stlmc.cli.install_solvers import _probe_one; print(json.dumps(_probe_one(sys.argv[1])))"
+    try:
+        probe = subprocess.run([sys.executable, "-c", script, name], env=environment,
+                               capture_output=True, text=True, timeout=30)
+        if probe.returncode != 0:
+            return False, "probe exit {}: {}".format(probe.returncode, probe.stderr.strip())
+        available, detail = json.loads(probe.stdout)
+        return bool(available), str(detail)
+    except (OSError, subprocess.SubprocessError, ValueError) as error:
+        return False, "probe failed: " + str(error)
+
+
+def _status():
+    result = {name: _backend_status(name) for name in ("cvc5", "z3", "yices")}
 
     dreal = find_dreal()
     if dreal:
-        result["dreal"] = (True, dreal)
+        result["dreal"] = _dreal_status(dreal)
     else:
         result["dreal"] = (False, "dReal executable not found")
     return result
+
+
+def _dreal_status(executable):
+    """Read-only, timeout-bounded native version and SMT smoke checks."""
+    deadline = time.monotonic() + 10
+    def remaining():
+        timeout = deadline - time.monotonic()
+        if timeout <= 0:
+            raise subprocess.TimeoutExpired(str(executable), 10)
+        return timeout
+    try:
+        result = subprocess.run([str(executable), "--version"],
+                                capture_output=True, text=True, timeout=remaining())
+        output = result.stdout + result.stderr
+        match = re.search(r"\bdReal\s+v?(\d+(?:\.\d+){2,3})\b", output)
+        actual = match.group(1) if match else "unrecognized"
+        if result.returncode != 0 or actual != _DREAL_VERSION:
+            return False, "{}: dReal version {}, expected {}".format(
+                executable, actual, _DREAL_VERSION)
+        with tempfile.TemporaryDirectory(prefix="stlmc-dreal-check-") as directory:
+            query = Path(directory) / "smoke.smt2"
+            algebraic = ("(set-logic QF_NRA)\n(declare-fun x () Real)\n"
+                         "(assert (= x 1))\n(check-sat)\n(exit)\n")
+            # x(t)=t-t^2: both endpoints are zero, interior maximum is 1/4.
+            # The UNSAT query checks forall_t in the interior, not just bounds.
+            ode = """(set-logic QF_NRA_ODE)
+(declare-fun time_0 () Real [1, 1])
+(declare-fun x () Real [-2, 2])
+(declare-fun v () Real [-2, 2])
+(declare-fun x_0_0 () Real [0, 0])
+(declare-fun v_0_0 () Real [1, 1])
+(declare-fun x_0_t () Real [-2, 2])
+(declare-fun v_0_t () Real [-2, 2])
+(define-ode flow_1 ((= d/dt[x] v) (= d/dt[v] (- 0 2))))
+(assert (= [x_0_t v_0_t] (integral 0. time_0 [x_0_0 v_0_0] flow_1)))
+(assert (forall_t 1 [0 time_0] (< x_0_t {limit})))
+(check-sat)
+(exit)
+"""
+            for label, formula, expected in (
+                    ("algebraic SAT", algebraic, r"(?:delta-sat|sat)"),
+                    ("ODE SAT", ode.format(limit="0.5"), r"(?:delta-sat|sat)"),
+                    ("ODE interior UNSAT", ode.format(limit="0.1"), "unsat")):
+                query.write_text(formula, encoding="utf-8")
+                result = subprocess.run(
+                    [str(executable), "--precision", "0.000001", "--ode-step", "0.01", str(query)],
+                    capture_output=True, text=True, timeout=remaining())
+                if result.returncode != 0 or not re.search(
+                        r"(?m)^\s*" + expected + r"\b", result.stdout):
+                    return False, "{}: dReal {} smoke check failed (exit {}): {}".format(
+                        executable, label, result.returncode, (result.stdout + result.stderr).strip())
+        return True, "{} (dReal {}; SMT smoke check passed)".format(executable, actual)
+    except (OSError, subprocess.SubprocessError) as error:
+        return False, "{}: dReal probe failed: {}".format(executable, error)
 
 
 def _run(command):
@@ -91,6 +184,16 @@ def _install_python_package(package):
     _run([sys.executable, "-m", "pip", "install", "--upgrade", package])
 
 
+def _verify_dreal_archive(path, name):
+    expected = DREAL_ARCHIVE_SHA256[name]
+    digest = hashlib.sha256()
+    with open(path, "rb") as archive:
+        for chunk in iter(lambda: archive.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected:
+        raise RuntimeError("dReal archive SHA256 mismatch for {}; installation unchanged".format(name))
+
+
 def _install_dreal():
     if sys.platform == "darwin":
         archive_name = "dReal-{}-darwin.zip".format(_DREAL_VERSION)
@@ -116,6 +219,7 @@ def _install_dreal():
         archive_path = os.path.join(directory, archive_name)
         print("Downloading {}".format(url), flush=True)
         urllib.request.urlretrieve(url, archive_path)
+        _verify_dreal_archive(archive_path, archive_name)
         if archive_kind == "zip":
             with zipfile.ZipFile(archive_path) as archive:
                 content = archive.read(member)
@@ -125,10 +229,14 @@ def _install_dreal():
                 if extracted is None:
                     raise RuntimeError("dReal executable is missing from the archive")
                 content = extracted.read()
-        temporary = destination.with_suffix(".tmp")
-        temporary.write_bytes(content)
-        temporary.chmod(0o755)
-        os.replace(str(temporary), str(destination))
+        with tempfile.TemporaryDirectory(prefix=".stlmc-dreal-", dir=str(destination.parent)) as staging:
+            temporary = Path(staging) / "dReal"
+            temporary.write_bytes(content)
+            temporary.chmod(0o755)
+            available, detail = _dreal_status(str(temporary))
+            if not available:
+                raise RuntimeError("downloaded dReal failed validation: " + detail)
+            os.replace(str(temporary), str(destination))
     print("Installed dReal at {}".format(destination))
 
 
@@ -147,10 +255,11 @@ def build_parser():
             "  dreal  Install the dReal 3 executable in the user solver directory.\n"
             "\n"
             "dReal lookup order:\n"
-            "  1. An executable named dReal in PATH.\n"
-            "  2. ~/Library/Application Support/stlmc/solvers/dReal3/dReal (macOS).\n"
-            "  3. $XDG_DATA_HOME/stlmc/solvers/dReal3/dReal, or\n"
+            "  1. ~/Library/Application Support/stlmc/solvers/dReal3/dReal (macOS), or\n"
+            "     $XDG_DATA_HOME/stlmc/solvers/dReal3/dReal, or\n"
             "     ~/.local/share/stlmc/solvers/dReal3/dReal (Linux).\n"
+            "  2. An executable named dReal in PATH.\n"
+            "  Explicit -executable-path settings take precedence.\n"
             "\n"
             "Automatic native installation:\n"
             "  Yices: Ubuntu/Debian through apt, or macOS through Homebrew.\n"
@@ -168,10 +277,10 @@ def build_parser():
             "  export DYLD_LIBRARY_PATH=\"$(brew --prefix)/lib\"\n"
             "\n"
             "Examples:\n"
-            "  stlmc-install-solvers\n"
-            "  stlmc-install-solvers dreal\n"
-            "  stlmc-install-solvers yices --check\n"
-            "  stlmc-install-solvers --check"
+            "  stlmc-installer install --solver all\n"
+            "  stlmc-installer install --solver dreal\n"
+            "  stlmc-installer check --solver yices\n"
+            "  stlmc-installer check --solver all"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -188,9 +297,9 @@ def build_parser():
     return parser
 
 
-def main():
+def main(argv=None):
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     selected = (("cvc5", "z3", "yices", "dreal")
                 if args.solver == "all" else (args.solver,))
@@ -215,7 +324,3 @@ def main():
         ))
         failed = failed or not available
     return 1 if failed else 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -295,6 +295,10 @@ class RobustnessOperationsTest(unittest.TestCase):
             pairwise_disjoint_check([{"x"}, {"x", "y"}])
 
     def test_bokeh_plot_construction_is_separate_from_facade(self):
+        try:
+            import bokeh
+        except ImportError:
+            self.skipTest("optional Bokeh HTML renderer is not installed")
         from stlmc.visualize.plotting import build_plot
 
         layout = build_plot(

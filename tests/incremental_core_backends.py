@@ -261,6 +261,28 @@ class YicesContract(BackendContract, unittest.TestCase):
 class CVC5Contract(BackendContract, unittest.TestCase):
     backend = "cvc5"
 
+    def test_model_survives_adapter_and_scoped_guard_collection(self):
+        import gc
+        import weakref
+        solver = self.factory()()
+        owner = weakref.ref(solver._native_state)
+        x = Real("retained-model")
+        solver.add(Eq(x, RealVal("1/3")))
+        solver.push()
+        solver.track(Eq(x, RealVal("1/3")), "temporary")
+        self.assertEqual(solver.check(), SolverStatus.SAT)
+        solver.pop()
+        self.assertEqual(solver.check(), SolverStatus.SAT)
+        model = solver.model()
+        del solver
+        gc.collect()
+        self.assertIsNotNone(owner())
+        self.assertEqual(Fraction(model.eval(x).value), Fraction(1, 3))
+        self.assertEqual(model.eval(Eq(x, RealVal("1/3"))), BoolVal("True"))
+        del model
+        gc.collect()
+        self.assertIsNone(owner())
+
     def test_cvc5_does_not_require_optional_yices_import(self):
         self.factory()
         script = '''
@@ -304,7 +326,7 @@ class FactorySelectionTest(unittest.TestCase):
 
     def test_native_import_failure_has_role_and_install_hint(self):
         with mock.patch("importlib.import_module", side_effect=RuntimeError("native library absent")):
-            with self.assertRaisesRegex(SolverUnavailableError, "yices.*core.*stlmc-install-solvers yices"):
+            with self.assertRaisesRegex(SolverUnavailableError, "yices.*core.*stlmc-installer install --solver yices"):
                 SolverFactory().generate_formula_solver_factory("yices", role="core")
 
     def test_legacy_no_argument_scenario_override_does_not_select_core(self):

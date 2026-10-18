@@ -3,17 +3,30 @@
 import itertools
 from typing import Dict, List, Set
 
-from bokeh.models import CrosshairTool, DataRange1d, HoverTool, Legend
-from bokeh.palettes import Dark2_5 as palette
-from bokeh.plotting import column, figure
-
 from ..constraints.constraints import Variable
 from .grouping import flatten, pairwise_disjoint_check, split_groups
+
+
+def require_bokeh():
+    """Load the optional HTML renderer only when HTML output is requested."""
+    try:
+        from bokeh.models import CrosshairTool, DataRange1d, HoverTool, Legend
+        from bokeh.palettes import Dark2_5
+        from bokeh.plotting import column, figure
+        from bokeh.io import output_file, save
+    except (ImportError, OSError) as error:
+        raise ValueError(
+            "HTML visualization requires Bokeh. Run: stlmc-installer install --visualize html"
+        ) from error
 
 
 def build_plot(point_samples, robustness_dict, time_samples_list,
                formula_id_dict, formula_label: str, delta: float,
                user_defined_groups: Dict[int, Set[str]]):
+    require_bokeh()
+    from bokeh.models import CrosshairTool, DataRange1d, HoverTool, Legend
+    from bokeh.palettes import Dark2_5 as palette
+    from bokeh.plotting import column, figure
     user_defined_groups_list = list(user_defined_groups.values())
     robust_variables = set()
     for f in robustness_dict:

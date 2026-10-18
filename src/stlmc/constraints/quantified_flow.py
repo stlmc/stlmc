@@ -39,8 +39,15 @@ def flow_condition_at_time(forall, elapsed):
 
 def eliminate_boolean_flow_condition(forall):
     """Eliminate time for backends that cannot accept the quantifier."""
-    import z3
-    from ..solver.z3 import z3Obj
+    try:
+        import z3
+        from ..solver.z3 import z3Obj
+    except Exception as error:
+        from ..exceptions import SolverUnavailableError
+        raise SolverUnavailableError(
+            "Z3 is required to eliminate this Boolean flow invariant. "
+            "Run: stlmc-installer install --solver z3"
+        ) from error
 
     duration = z3Obj(Sub(forall.end_tau, forall.start_tau))
     time = z3.FreshReal("stlmc_flow_time")

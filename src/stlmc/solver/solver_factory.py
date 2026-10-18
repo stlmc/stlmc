@@ -32,8 +32,8 @@ class SolverFactory:
             return getattr(import_module(".{}".format(module), __package__), name)
         except Exception as error:
             raise SolverUnavailableError(
-                "{} is unavailable for {} solving. Run: stlmc-install-solvers {}".format(
-                    backend, role, backend
+                "{} is unavailable for {} solving ({}). Run: stlmc-installer install --solver {}".format(
+                    backend, role, error, backend
                 )
             ) from error
 
@@ -43,9 +43,9 @@ class SolverFactory:
         if solver_type == 'z3':
             try:
                 from ..solver.z3 import Z3Solver
-            except (ImportError, OSError) as error:
+            except Exception as error:
                 raise SolverUnavailableError(
-                    "Z3 is unavailable. Run: stlmc-install-solvers z3"
+                    "Z3 is unavailable. Run: stlmc-installer install --solver z3"
                 ) from error
             return Z3Solver(config)
         elif solver_type == 'dreal':
@@ -58,7 +58,7 @@ class SolverFactory:
             if not os.path.isfile(executable) or not os.access(executable, os.X_OK):
                 raise SolverUnavailableError(
                     "dReal executable was not found or is not executable: {}. "
-                    "Run: stlmc-install-solvers dreal, or pass "
+                    "Run: stlmc-installer install --solver dreal, or pass "
                     "-executable-path /path/to/dReal".format(executable)
                 )
             dreal_section.set_value("executable-path", executable)
@@ -69,15 +69,15 @@ class SolverFactory:
                 from ..solver.yices import YicesSolver
             except Exception as error:
                 raise SolverUnavailableError(
-                    "Yices is unavailable. Run: stlmc-install-solvers yices"
+                    "Yices is unavailable ({}). Run: stlmc-installer install --solver yices".format(error)
                 ) from error
             return YicesSolver(config)
         elif solver_type == 'cvc5':
             try:
                 from ..solver.cvc5 import CVC5Solver
-            except (ImportError, OSError) as error:
+            except Exception as error:
                 raise SolverUnavailableError(
-                    "CVC5 is unavailable. Run: stlmc-install-solvers cvc5"
+                    "CVC5 is unavailable. Run: stlmc-installer install --solver cvc5"
                 ) from error
             return CVC5Solver(config)
         raise SolverUnavailableError(

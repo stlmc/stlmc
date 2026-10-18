@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -56,13 +57,13 @@ class InstallerCliTest(unittest.TestCase):
             "brew trust --formula sri-csl/sri-csl/cudd",
             "entire SRI tap is not required",
             "DYLD_LIBRARY_PATH",
-            "stlmc-install-solvers dreal",
+            "stlmc-installer install --solver dreal",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, normalized_help)
 
     def test_check_reports_failure_without_installing(self):
-        with mock.patch.object(sys, "argv", ["stlmc-install-solvers", "--check"]), \
+        with mock.patch.object(sys, "argv", ["internal-solver-installer", "--check"]), \
                 mock.patch.object(install_solvers, "_status", return_value=MISSING), \
                 mock.patch.object(install_solvers, "_install_python_package") as pip, \
                 mock.patch.object(install_solvers, "_install_yices") as yices, \
@@ -74,7 +75,7 @@ class InstallerCliTest(unittest.TestCase):
         dreal.assert_not_called()
 
     def test_default_installs_every_missing_solver(self):
-        with mock.patch.object(sys, "argv", ["stlmc-install-solvers"]), \
+        with mock.patch.object(sys, "argv", ["internal-solver-installer"]), \
                 mock.patch.object(
                     install_solvers, "_status", side_effect=[MISSING, AVAILABLE]
                 ), \
@@ -93,7 +94,7 @@ class InstallerCliTest(unittest.TestCase):
 
     def test_individual_selection_only_installs_requested_solver(self):
         with mock.patch.object(
-                sys, "argv", ["stlmc-install-solvers", "dreal"]
+                sys, "argv", ["internal-solver-installer", "dreal"]
              ), mock.patch.object(
                 install_solvers, "_status", side_effect=[MISSING, AVAILABLE]
              ), mock.patch.object(
@@ -159,21 +160,141 @@ class InstallerCliTest(unittest.TestCase):
                         install_solvers.urllib.request,
                         "urlretrieve",
                         side_effect=copy_archive,
-                    ):
+                    ), mock.patch.object(install_solvers, "_verify_dreal_archive"), \
+                    mock.patch.object(install_solvers, "_dreal_status", return_value=(True, "validated")):
                 install_solvers._install_dreal()
 
             self.assertEqual(destination.read_bytes(), b"#!/bin/sh\nexit 0\n")
             self.assertTrue(os.access(str(destination), os.X_OK))
 
 
+class NativeVersionCheckTest(unittest.TestCase):
+    def test_three_component_dreal_version_is_reported_as_mismatch(self):
+        with mock.patch.object(install_solvers.subprocess, "run", return_value=subprocess.CompletedProcess(
+                [], 0, "dReal v3.16.12 (commit 6fa469fb1f84)\n", "")) as run:
+            available, detail = install_solvers._dreal_status("/test/dReal")
+        self.assertFalse(available)
+        self.assertIn("version 3.16.12, expected 3.16.06.02", detail)
+        run.assert_called_once()
+
+    def test_yices_native_version_mismatch_is_reported(self):
+        binding = mock.Mock()
+        binding.Yices.version = "2.6.5"
+        with mock.patch.object(install_solvers, "load_yices_binding", return_value=binding), \
+                mock.patch.object(install_solvers, "_python_package_status", return_value=(True, "binding ok")):
+            available, detail = install_solvers._probe_one("yices")
+        self.assertFalse(available)
+        self.assertIn("2.6.5, expected 2.7.0", detail)
+        self.assertIn("not automatically downgraded", detail)
+        self.assertIn("install --solver yices --build", detail)
+
+    def test_dreal_probe_checks_version_then_sat_query_with_timeouts(self):
+        results = [subprocess.CompletedProcess([], 0, "dReal v3.16.06.02 (commit abc)\n", ""),
+                   subprocess.CompletedProcess([], 0, "delta-sat\n", ""),
+                   subprocess.CompletedProcess([], 0, "delta-sat\n", ""),
+                   subprocess.CompletedProcess([], 0, "unsat\n", "")]
+        with mock.patch.object(install_solvers.subprocess, "run", side_effect=results) as run:
+            available, detail = install_solvers._dreal_status("/solver/dReal")
+        self.assertTrue(available, detail)
+        self.assertEqual(run.call_count, 4)
+        self.assertEqual(run.call_args_list[0].args[0], ["/solver/dReal", "--version"])
+        for call in run.call_args_list:
+            self.assertGreater(call.kwargs["timeout"], 0)
+            self.assertLessEqual(call.kwargs["timeout"], 10)
+
+    def test_dreal_wrong_version_is_rejected_before_smoke(self):
+        with mock.patch.object(install_solvers.subprocess, "run", return_value=
+                               subprocess.CompletedProcess([], 0, "dReal v4.21.06.2", "")) as run:
+            available, detail = install_solvers._dreal_status("/solver/dReal")
+        self.assertFalse(available)
+        self.assertIn("expected 3.16.06.02", detail)
+        run.assert_called_once()
+
+    def test_dreal_rejects_broken_ode_or_interior_forall(self):
+        version_result = subprocess.CompletedProcess([], 0, "dReal v3.16.06.02", "")
+        sat = subprocess.CompletedProcess([], 0, "delta-sat\n", "")
+        unsat = subprocess.CompletedProcess([], 0, "unsat\n", "")
+        for replies, label in (([version_result, sat, unsat], "ODE SAT"),
+                               ([version_result, sat, sat, sat], "ODE interior UNSAT")):
+            with self.subTest(label=label), mock.patch.object(
+                    install_solvers.subprocess, "run", side_effect=replies):
+                available, detail = install_solvers._dreal_status("/solver/dReal")
+                self.assertFalse(available)
+                self.assertIn(label, detail)
+
+    def test_dreal_hanging_or_wrong_smoke_result_is_rejected(self):
+        version_result = subprocess.CompletedProcess([], 0, "dReal v3.16.06.02", "")
+        for result in (subprocess.TimeoutExpired("dReal", 10),
+                       subprocess.CompletedProcess([], 0, "unsat\n", ""),
+                       subprocess.CompletedProcess([], -11, "", "crashed")):
+            with self.subTest(result=result), mock.patch.object(
+                    install_solvers.subprocess, "run", side_effect=[version_result, result]):
+                self.assertFalse(install_solvers._dreal_status("/solver/dReal")[0])
+
+    def test_failed_dreal_validation_preserves_previous_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination = root / "installed" / "dReal"
+            destination.parent.mkdir()
+            destination.write_bytes(b"previous")
+            archive_source = root / "dreal.zip"
+            with zipfile.ZipFile(str(archive_source), "w") as archive:
+                archive.writestr("dReal-3.16.06.02-darwin/bin/dReal", b"invalid")
+            with mock.patch.object(install_solvers.sys, "platform", "darwin"), \
+                    mock.patch.object(install_solvers, "user_dreal_path", return_value=destination), \
+                    mock.patch.object(install_solvers.urllib.request, "urlretrieve",
+                                      side_effect=lambda _url, output: shutil.copyfile(str(archive_source), output)), \
+                    mock.patch.object(install_solvers, "_verify_dreal_archive"), \
+                    mock.patch.object(install_solvers, "_dreal_status", return_value=(False, "bad version")):
+                with self.assertRaisesRegex(RuntimeError, "failed validation"):
+                    install_solvers._install_dreal()
+            self.assertEqual(destination.read_bytes(), b"previous")
+
+    def test_dreal_archive_checksum_mismatch_rejects_changed_download(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "fixture.zip"
+            archive.write_bytes(b"expected release bytes")
+            expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+            with mock.patch.dict(install_solvers.DREAL_ARCHIVE_SHA256, {"fixture.zip": expected}):
+                install_solvers._verify_dreal_archive(archive, "fixture.zip")
+                archive.write_bytes(b"changed download")
+                with self.assertRaisesRegex(RuntimeError, "SHA256 mismatch"):
+                    install_solvers._verify_dreal_archive(archive, "fixture.zip")
+
+    def test_dreal_changed_download_never_replaces_previous_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "dReal"
+            destination.write_bytes(b"previous")
+            def changed_download(_url, output):
+                Path(output).write_bytes(b"not the pinned archive")
+            with mock.patch.object(install_solvers.sys, "platform", "darwin"), \
+                    mock.patch.object(install_solvers, "user_dreal_path", return_value=destination), \
+                    mock.patch.object(install_solvers.urllib.request, "urlretrieve", side_effect=changed_download), \
+                    mock.patch.object(install_solvers, "_dreal_status") as probe:
+                with self.assertRaisesRegex(RuntimeError, "SHA256 mismatch"):
+                    install_solvers._install_dreal()
+            probe.assert_not_called()
+            self.assertEqual(destination.read_bytes(), b"previous")
+
+
 class DRealDiscoveryTest(unittest.TestCase):
-    def test_path_executable_has_priority(self):
+    def test_path_executable_is_used_without_managed_install(self):
         with mock.patch.object(
                 availability.shutil, "which", return_value="/path/dReal"
              ), mock.patch.object(
-                availability, "user_dreal_path", return_value=Path("/user/dReal")
+                availability, "user_dreal_path", return_value=Path("/nonexistent/stlmc/dReal")
              ):
             self.assertEqual(availability.find_dreal(), "/path/dReal")
+
+    def test_managed_installation_prevents_path_shadowing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / "dReal"
+            executable.touch()
+            executable.chmod(0o755)
+            with mock.patch.object(availability.shutil, "which", return_value="/old/dReal"), \
+                    mock.patch.object(availability, "user_dreal_path", return_value=executable):
+                self.assertEqual(availability.find_dreal(), str(executable))
 
     def test_user_installation_is_used_as_fallback(self):
         with tempfile.TemporaryDirectory() as directory:

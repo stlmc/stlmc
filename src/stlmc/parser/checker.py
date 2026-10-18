@@ -124,7 +124,7 @@ def check_validity(config: Configuration):
                                 or not os.access(quote_removed_val, os.X_OK)):
                             raise SolverUnavailableError(
                                 "dReal executable was not found or is not executable: {}. "
-                                "Run: stlmc-install-solvers dreal, or pass "
+                                "Run: stlmc-installer install --solver dreal, or pass "
                                 "-executable-path /path/to/dReal".format(
                                     quote_removed_val
                                 )

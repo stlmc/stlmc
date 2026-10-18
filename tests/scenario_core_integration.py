@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULT = re.compile(r'status\s*:\s*(\w+)\s+(?:at|up to) bound\s+(\d+)')
@@ -262,6 +263,33 @@ class ScenarioCoreIntegrationTest(unittest.TestCase):
                         scenario_backend=scenario, core_backend=core)
                     self.assertEqual(result, reference)
                     self.assertGreater(verified, 0)
+
+    def test_cvc5_plain_cli_native_collection(self):
+        # No auditing hooks/third-backend replay: those change native lifetimes
+        # and previously masked the pinned cvc5 cleanup crash.
+        sys.path.insert(0, str(ROOT/'src'))
+        from stlmc.solver.solver_factory import SolverFactory
+        from stlmc.exceptions import SolverUnavailableError
+        try:
+            SolverFactory().generate_formula_solver_factory('cvc5')()
+        except SolverUnavailableError as error:
+            self.skipTest(str(error))
+        wrapper = '''import faulthandler
+faulthandler.enable(all_threads=True)
+from stlmc.cli.mc import main
+result = main()
+import gc
+gc.collect()
+print('CORE_AUDIT={"verified":0}')
+raise SystemExit(result)
+'''
+        with mock.patch.dict(globals(), {'WRAPPER': wrapper}):
+            for attempt in range(3):
+                with self.subTest(attempt=attempt):
+                    result, _ = self.run_case(
+                        '[][0,2] (x <= 1)', False, preprocess=True, batch=2,
+                        scenario_backend='cvc5', core_backend='z3')
+                    self.assertEqual(result, ('violated', 1))
 
 
 if __name__ == '__main__':

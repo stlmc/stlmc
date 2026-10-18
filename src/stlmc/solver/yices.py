@@ -5,6 +5,9 @@ from functools import singledispatch
 from fractions import Fraction
 from weakref import finalize
 
+from .availability import load_yices_binding
+
+load_yices_binding()
 from yices import Config, Context, Model, Status, Terms, Types
 
 from ..constraints.constraints import (
@@ -16,7 +19,7 @@ from ..constraints.analysis import get_vars, size_of_tree
 from ..constraints.logical_normalization import reduce_not
 from ..constraints.normalization import reverse_inequality
 from ..constraints.translation import make_forall_consts, make_dynamics_consts
-from ..exceptions import NotSupportedError
+from ..exceptions import NotSupportedError, SolverUnavailableError
 from ..solver.abstract_solver import (
     JobSolver, SolveResult, SolverJob, SolverStatus, ThreadWorker,
 )
@@ -26,6 +29,27 @@ from ..utils.smt2_output import is_enabled, write_smt2
 
 
 _query_variables = ContextVar("yices_query_variables", default=None)
+
+
+def validate_yices_configuration(config):
+    """Reject unsupported native execution modes before starting workers."""
+    from yices import Yices
+
+    common = config.get_section("common")
+    parallel = str(common.get_value("parallel")).lower() == "true"
+    if parallel and not Yices.is_thread_safe():
+        raise SolverUnavailableError(
+            "parallel Yices execution requires a thread-safe native library "
+            "(including parallel-core=1). Run: stlmc-installer install --solver yices "
+            "--build --thread-safe, or set common.parallel = false"
+        )
+    logic = config.get_section("yices").get_value("logic").upper()
+    if logic in ("QF_NRA", "NRA", "QF_NIA", "NIA") and not Yices.has_mcsat():
+        raise SolverUnavailableError(
+            "Yices logic {} requires MCSAT, but the loaded library has no MCSAT. "
+            "Run: stlmc-installer install --solver yices --build "
+            "(omit --without-mcsat); use --thread-safe as well for parallel execution".format(logic)
+        )
 
 
 class YicesAssignment(Assignment):
@@ -38,12 +62,17 @@ class YicesAssignment(Assignment):
         if self._yices_model is None:
             return new_dict
         for e in self._yices_model.collect_defined_terms():
+            # The pretty-printer truncates long generated identifiers at its
+            # default width. Query the symbol itself, never its display text.
+            name = Terms.get_name(e)
+            if name is None:
+                raise NotSupportedError("Yices model contains an unnamed variable")
             if Terms.is_real(e):
-                new_dict[Real(Terms.to_string(e))] = RealVal(str(self._yices_model.get_float_value(e)))
+                new_dict[Real(name)] = RealVal(str(self._yices_model.get_float_value(e)))
             elif Terms.is_int(e):
-                new_dict[Int(Terms.to_string(e))] = IntVal(str(self._yices_model.get_integer_value(e)))
+                new_dict[Int(name)] = IntVal(str(self._yices_model.get_integer_value(e)))
             elif Terms.is_bool(e):
-                new_dict[Bool(Terms.to_string(e))] = BoolVal(str(self._yices_model.get_bool_value(e)))
+                new_dict[Bool(name)] = BoolVal(str(self._yices_model.get_bool_value(e)))
             else:
                 NotSupportedError("cannot generate assignments")
         return new_dict
@@ -224,6 +253,8 @@ class YicesFormulaSolver(AssumptionFormulaSolver):
 
 class YicesSolver(JobSolver):
     def __init__(self, config=None):
+        if config is not None:
+            validate_yices_configuration(config)
         JobSolver.__init__(self, config)
         self._logic_list = ["QF_LRA", "QF_NRA"]
         self._logic = "QF_NRA"
@@ -261,6 +292,7 @@ class YicesSolver(JobSolver):
         )
 
     def submit(self, const, on_complete=None, query_name=""):
+        validate_yices_configuration(self.config)
         job = SolverJob(on_complete)
         logic = self.config.get_section("yices").get_value("logic")
         self._set_logic(logic)

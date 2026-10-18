@@ -77,17 +77,6 @@ def main():
     clear_interrupt()
     notify_if_outdated()
     printer = ExceptionPrinter()
-    # Z3 is also used internally by STLMC's abstraction and core-learning
-    # machinery, independently of the selected continuous solver.
-    try:
-        import z3  # noqa: F401
-    except (ImportError, OSError) as error:
-        printer.print_normal(
-            "solver error: Z3 is unavailable ({}). "
-            "Run: stlmc-install-solvers z3".format(error)
-        )
-        return 3
-
     from ..application.workflow import VerificationWorkflow
     from .command import CliCommand
     from ..utils.print import Printer

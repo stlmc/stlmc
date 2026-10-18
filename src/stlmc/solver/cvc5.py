@@ -9,8 +9,8 @@ from queue import Empty
 # initialized after the CVC5 extension. Fix the optional library import order;
 # Yices remains optional and reports its own error only when selected.
 try:
-    from importlib import import_module
-    import_module("yices")
+    from .availability import load_yices_binding
+    load_yices_binding()
 except Exception:
     pass
 
@@ -233,6 +233,14 @@ def _assignment_value(term, value):
 class _CVC5FormulaTranslator(_CVC5Translator):
     """Exact internal arithmetic without changing the final solver adapter."""
 
+    def __init__(self, state):
+        self._native_state = state
+        self.variables = state.variables
+
+    @property
+    def solver(self):
+        return self._native_state.solver
+
     def term(self, formula):
         if isinstance(formula, (RealVal, IntVal)):
             value = "99999" if formula.value == "inf" else formula.value
@@ -249,15 +257,56 @@ class _CVC5FormulaTranslator(_CVC5Translator):
         return super().term(formula)
 
 
+class _CVC5NativeState:
+    """Release native terms before their solver/manager (cvc5 < 1.4)."""
+
+    def __init__(self, logic):
+        self.variables = {}
+        self.guards = {}
+        self.manager = None
+        self.solver = None
+        self.manager = cvc5.TermManager()
+        self.solver = cvc5.Solver(self.manager)
+        self.solver.setLogic(logic[3:] if logic.startswith("QF_") else logic)
+        self.solver.setOption("produce-models", "true")
+
+    def __del__(self):
+        # Models retain this owner through their translator. No adapter cleanup
+        # may clear the cache while such a model is still usable.
+        self.variables.clear()
+        self.guards.clear()
+        self.solver = None
+        self.manager = None
+
+
+class _CVC5FormulaAssignment(CVC5Assignment):
+    def __init__(self, translator, assignments=None):
+        self._translator = translator
+        self._assignments = assignments or {}
+
+    @property
+    def _solver(self):
+        return self._translator.solver
+
+
 class CVC5FormulaSolver(AssumptionFormulaSolver):
     """Independent incremental context with assumption-based core extraction."""
 
     def __init__(self, logic="QF_LRA"):
         self._init_state(logic)
-        self._solver = _new_solver(logic)
+        self._native_state = _CVC5NativeState(logic)
         self._solver.setOption("incremental", "true")
         self._solver.setOption("produce-unsat-assumptions", "true")
-        self._translator = _CVC5FormulaTranslator(self._solver)
+        self._translator = _CVC5FormulaTranslator(self._native_state)
+        self._native_state.guards = self._tracked_terms
+
+    @property
+    def _solver(self):
+        return self._native_state.solver
+
+    def pop(self):
+        super().pop()
+        self._native_state.guards = self._tracked_terms
 
     def _term(self, formula):
         return self._translator.term(formula)
@@ -291,10 +340,10 @@ class CVC5FormulaSolver(AssumptionFormulaSolver):
 
     def model(self):
         self._require_model()
-        assignment = CVC5Assignment(solver=self._solver, translator=self._translator)
-        return CVC5Assignment(
+        assignment = _CVC5FormulaAssignment(self._translator)
+        return _CVC5FormulaAssignment(
+            self._translator,
             {v: assignment.eval(v) for v in self._active_variables()},
-            self._solver, self._translator,
         )
 
 

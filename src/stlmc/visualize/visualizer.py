@@ -2,8 +2,6 @@ import errno
 import os
 from typing import List, Dict, Set, Tuple
 
-from bokeh.io import output_file, save
-
 from ..constraints.constraints import Constraint, Formula, Ode, Variable
 from ..constraints.substitution import substitution
 from ..artifacts.formula_index import index_subformulas as sub_formula
@@ -11,7 +9,6 @@ from ..exceptions import NotSupportedError
 from .latex import formula2latex, interval_string
 from .grouping import flatten, pairwise_disjoint_check, split_groups
 from .projection import Projector, continuous_values
-from .plotting import build_plot
 from .robustness import robustness
 from .text_output import write_counterexample_text
 from .sampling import (
@@ -29,6 +26,9 @@ class Visualizer:
     def write(self, file_name):
         if self.plot is None:
             raise NotSupportedError("plot must not be none!")
+        from .plotting import require_bokeh
+        require_bokeh()
+        from bokeh.io import output_file, save
         output_file(filename="{}.html".format(file_name))
         save(self.plot)
         self.plot = None
@@ -112,6 +112,8 @@ class Visualizer:
                       propositions: Dict[Variable, Constraint], cont_var_dict: dict, prop_dict: dict,
                       formula: Constraint, formula_label: str, delta: float, user_defined_groups: Dict[int, Set[str]]):
 
+        from .plotting import build_plot, require_bokeh
+        require_bokeh()
         point_samples, robustness_dict, time_samples_list, formula_id_dict, _, _ = self.generate_data(assignment,
                                                                                                       modules,
                                                                                                       mode_var_dict,
