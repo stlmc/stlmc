@@ -109,13 +109,14 @@ class BasePrinter:
 
     def run_finished(self, status, bound, elapsed, formula, scope,
                      counterexample=None, visual_config=None, guarantee=None):
+        from ..constraints.formatting import format_constraint
         self.clear_progress()
         lines = [
             "",
             "Result",
             "  status      : {} {}".format(status, scope),
             "  time        : {:.3f}s".format(elapsed),
-            "  formula     : {}".format(formula),
+            "  formula     : {}".format(format_constraint(formula)),
         ]
         if guarantee is not None:
             lines.append("  guarantee   : {}".format(guarantee))

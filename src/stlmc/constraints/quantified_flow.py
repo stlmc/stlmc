@@ -21,16 +21,10 @@ def flow_condition_at_time(forall, elapsed):
         for variable, expression in zip(integral.start_vector, dynamics.exps):
             mapping[variable] = substitution(expression, clock_mapping)
     elif isinstance(dynamics, Ode):
-        states = set(integral.start_vector) | set(dynamics.vars)
-        for variable, expression in zip(integral.start_vector, dynamics.exps):
-            if get_vars(expression) & states or any(
-                    v.id.startswith("tau_") or v.id == "time"
-                    for v in get_vars(expression)):
-                raise NotSupportedError(
-                    "OR invariant requires a closed-form flow or a "
-                    "state-independent autonomous ODE"
-                )
-            mapping[variable] = Add(variable, Mul(elapsed, expression))
+        from .translation import polynomial_ode_solution
+        mapping.update(zip(integral.start_vector,
+                           polynomial_ode_solution(
+                               dynamics, elapsed, integral.start_vector)))
     else:
         raise NotSupportedError("unsupported flow for OR invariant")
 

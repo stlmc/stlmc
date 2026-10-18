@@ -8,6 +8,9 @@ STL variable points. A variable point splits a continuous trajectory when a
 subformula changes truth value. `time-horizon` limits the duration of every
 continuous segment separated by a mode change or variable point. For a state
 reachability query there are no STL variable points, so `bound` limits jumps.
+The segment duration limit is a common arithmetic constraint for every
+solver. Both scenario generation and final refinement retain it; unsat-core
+generalization cannot remove it from the final query.
 
 ## One-step and two-step solving
 

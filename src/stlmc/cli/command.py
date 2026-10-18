@@ -47,6 +47,22 @@ class CliCommand:
             raise ValueError('"{}" is not a valid SMT solver'.format(solver_name))
         if solver_name != "auto":
             self.update_solver_config(solver_name)
+        else:
+            # Probe the effective requested settings, not stale defaults.
+            # Shared arguments (logic) must reach every candidate before any
+            # one candidate consumes them.
+            overrides = dict(self.arg_value_dict)
+            for backend in ("z3", "cvc5", "yices", "dreal"):
+                if backend not in self.config.sections_by_name:
+                    continue
+                self.arg_value_dict = dict(overrides)
+                self.update_solver_config(backend)
+            consumed = set().union(*(
+                set(self.config_visitor.section_argument_dict[backend]) |
+                set(self.config_visitor.section_boolean_argument_dict[backend])
+                for backend in ("z3", "cvc5", "yices", "dreal")
+            ))
+            self.arg_value_dict = {key: value for key, value in overrides.items() if key not in consumed}
         self._apply_missing_section_overrides(solver_name)
         self.config.check_mandatory()
 

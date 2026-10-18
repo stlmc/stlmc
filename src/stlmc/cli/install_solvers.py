@@ -5,6 +5,7 @@ import hashlib
 import importlib
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -23,7 +24,10 @@ from .dependency_policy import (
     CVC5_PACKAGE as _CVC5_PACKAGE, YICES_PACKAGE as _YICES_PACKAGE,
     YICES_NATIVE_VERSION,
     DREAL_ARCHIVE_SHA256,
+    DREAL_KNOWN_LIMITATIONS_WARNING,
 )
+from ..exceptions import SolverUnavailableError
+from ..solver.dreal_runtime import validate_dreal_runtime
 
 
 def _python_package_status(module_name, distribution_name, package_spec, detail):
@@ -116,9 +120,9 @@ def _dreal_status(executable):
         output = result.stdout + result.stderr
         match = re.search(r"\bdReal\s+v?(\d+(?:\.\d+){2,3})\b", output)
         actual = match.group(1) if match else "unrecognized"
-        if result.returncode != 0 or actual != _DREAL_VERSION:
-            return False, "{}: dReal version {}, expected {}".format(
-                executable, actual, _DREAL_VERSION)
+        if result.returncode != 0 or actual.split('.')[0] != '3':
+            return False, "{}: dReal version {}, expected dReal 3 with required ODE capabilities".format(
+                executable, actual)
         with tempfile.TemporaryDirectory(prefix="stlmc-dreal-check-") as directory:
             query = Path(directory) / "smoke.smt2"
             algebraic = ("(set-logic QF_NRA)\n(declare-fun x () Real)\n"
@@ -151,8 +155,19 @@ def _dreal_status(executable):
                         r"(?m)^\s*" + expected + r"\b", result.stdout):
                     return False, "{}: dReal {} smoke check failed (exit {}): {}".format(
                         executable, label, result.returncode, (result.stdout + result.stderr).strip())
-        return True, "{} (dReal {}; SMT smoke check passed)".format(executable, actual)
-    except (OSError, subprocess.SubprocessError) as error:
+        runtime = validate_dreal_runtime(executable)
+        if (actual == _DREAL_VERSION
+                and runtime.get("zero_derivative_forall") is False
+                and runtime.get("known_limitations")):
+            return True, ("{} (official dReal {}; feature checks only; "
+                          "zero-derivative invariant check FAILED and execution "
+                          "is allowed with known limitations (#325); "
+                          "not an ODE correctness approval)").format(executable, actual)
+        if runtime.get("zero_derivative_forall") is False:
+            return False, "{}: unrecognized failed zero-derivative invariant capability".format(executable)
+        return True, ("{} (dReal {}; SMT and zero-derivative parameter checks passed; "
+                      "compatible external build; not a verified managed release)").format(executable, actual)
+    except (OSError, subprocess.SubprocessError, SolverUnavailableError) as error:
         return False, "{}: dReal probe failed: {}".format(executable, error)
 
 
@@ -194,50 +209,90 @@ def _verify_dreal_archive(path, name):
         raise RuntimeError("dReal archive SHA256 mismatch for {}; installation unchanged".format(name))
 
 
-def _install_dreal():
-    if sys.platform == "darwin":
-        archive_name = "dReal-{}-darwin.zip".format(_DREAL_VERSION)
-        member = "dReal-{}-darwin/bin/dReal".format(_DREAL_VERSION)
-        archive_kind = "zip"
-    elif sys.platform.startswith("linux") and os.uname().machine in {
-        "x86_64", "amd64"
-    }:
-        archive_name = "dReal-{}-linux.tar.gz".format(_DREAL_VERSION)
-        member = "dReal-{}-linux/bin/dReal".format(_DREAL_VERSION)
-        archive_kind = "tar"
-    else:
-        raise RuntimeError(
-            "automatic dReal installation supports macOS and x86_64 Linux only"
-        )
+def _dreal_install_status(executable):
+    """Check release identity/basic SMT, not ODE safety or runtime eligibility."""
+    try:
+        result = subprocess.run([str(executable), "--version"], capture_output=True,
+                                text=True, timeout=5)
+        match = re.search(r"\bdReal\s+v?(\d+(?:\.\d+){2,3})\b", result.stdout + result.stderr)
+        if result.returncode or match is None or match.group(1) != _DREAL_VERSION:
+            return False, "expected official dReal " + _DREAL_VERSION
+        with tempfile.TemporaryDirectory(prefix="stlmc-dreal-install-check-") as directory:
+            query = Path(directory) / "sat.smt2"
+            query.write_text("(set-logic QF_NRA)\n(declare-fun x () Real)\n"
+                             "(assert (= x 1))\n(check-sat)\n(exit)\n")
+            result = subprocess.run([str(executable), str(query)], capture_output=True,
+                                    text=True, timeout=5)
+        if result.returncode or not re.search(r"(?m)^\s*(?:delta-sat|sat)\b", result.stdout):
+            return False, "official dReal basic SMT SAT installation check failed"
+        return True, ("official dReal {}; release identity/basic SMT passed; "
+                      "known invariant and ODE witness defects (#325); "
+                      "NOT an ODE correctness approval").format(_DREAL_VERSION)
+    except (OSError, subprocess.SubprocessError) as error:
+        return False, "dReal installation probe failed: " + str(error)
 
-    url = "https://github.com/dreal/dreal3/releases/download/v{}/{}".format(
-        _DREAL_VERSION, archive_name
-    )
-    destination = user_dreal_path()
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="stlmc-dreal-install-") as directory:
-        archive_path = os.path.join(directory, archive_name)
-        print("Downloading {}".format(url), flush=True)
-        urllib.request.urlretrieve(url, archive_path)
-        _verify_dreal_archive(archive_path, archive_name)
-        if archive_kind == "zip":
+
+def _install_dreal():
+    """Stage pinned official bytes and atomically publish only a basic-tested binary."""
+    machine = platform.machine().lower()
+    if sys.platform.startswith("linux"):
+        if machine not in ("x86_64", "amd64"):
+            raise RuntimeError("Official dReal Linux release installation supports x86-64 only; native ARM is not supported")
+        suffix = "linux.tar.gz"
+    elif sys.platform == "darwin":
+        if machine in ("arm64", "aarch64"):
+            try:
+                rosetta = subprocess.run(
+                    ["/usr/bin/arch", "-x86_64", "/usr/bin/true"],
+                    capture_output=True, text=True, timeout=5)
+                usable = rosetta.returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                usable = False
+            if not usable:
+                raise RuntimeError(
+                    "The official dReal macOS binary is Intel x86-64 and requires "
+                    "Rosetta on Apple Silicon. Install/enable Rosetta yourself "
+                    "after reviewing Apple's license, then retry. No OS software "
+                    "was installed and no license was accepted by this installer.")
+        elif machine not in ("x86_64", "amd64"):
+            raise RuntimeError("Official dReal macOS binary requires x86-64 or Apple Silicon with Rosetta")
+        suffix = "darwin.zip"
+    else:
+        raise RuntimeError("Official dReal release installation supports Linux/macOS x86-64 only")
+    name = "dReal-{}-{}".format(_DREAL_VERSION, suffix)
+    member = "dReal-{}-{}/bin/dReal".format(_DREAL_VERSION, suffix.split('.')[0])
+    url = "https://github.com/dreal/dreal3/releases/download/v{}/{}".format(_DREAL_VERSION, name)
+    target = Path(user_dreal_path())
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="install-dreal-", dir=str(target.parent)) as directory:
+        work = Path(directory)
+        archive_path = work / name
+        urllib.request.urlretrieve(url, str(archive_path))
+        _verify_dreal_archive(archive_path, name)
+        staged = work / "dReal"
+        if suffix.endswith("zip"):
             with zipfile.ZipFile(archive_path) as archive:
-                content = archive.read(member)
+                entries = [entry for entry in archive.infolist() if entry.filename == member]
+                if (len(entries) != 1 or entries[0].is_dir()
+                        or entries[0].file_size > 256 * 1024 * 1024
+                        or (entries[0].external_attr >> 16) & 0o170000 not in (0, 0o100000)):
+                    raise RuntimeError("Official dReal archive has no unique regular executable")
+                with archive.open(entries[0]) as source, staged.open("wb") as output:
+                    shutil.copyfileobj(source, output)
         else:
             with tarfile.open(archive_path, "r:gz") as archive:
-                extracted = archive.extractfile(member)
-                if extracted is None:
-                    raise RuntimeError("dReal executable is missing from the archive")
-                content = extracted.read()
-        with tempfile.TemporaryDirectory(prefix=".stlmc-dreal-", dir=str(destination.parent)) as staging:
-            temporary = Path(staging) / "dReal"
-            temporary.write_bytes(content)
-            temporary.chmod(0o755)
-            available, detail = _dreal_status(str(temporary))
-            if not available:
-                raise RuntimeError("downloaded dReal failed validation: " + detail)
-            os.replace(str(temporary), str(destination))
-    print("Installed dReal at {}".format(destination))
+                entries = [entry for entry in archive.getmembers() if entry.name == member]
+                if len(entries) != 1 or not entries[0].isfile() or entries[0].size > 256 * 1024 * 1024:
+                    raise RuntimeError("Official dReal archive has no unique regular executable")
+                with archive.extractfile(entries[0]) as source, staged.open("wb") as output:
+                    shutil.copyfileobj(source, output)
+        staged.chmod(0o755)
+        available, detail = _dreal_install_status(staged)
+        if not available:
+            raise RuntimeError("dReal installation validation failed; previous installation unchanged: " + detail)
+        os.replace(str(staged), str(target))
+    print(DREAL_KNOWN_LIMITATIONS_WARNING, file=sys.stderr)
+    return target
 
 
 def build_parser():
@@ -252,7 +307,7 @@ def build_parser():
             "  cvc5   Install the cvc5 Python package.\n"
             "  z3     Install the z3-solver Python package.\n"
             "  yices  Install the Python binding and native Yices library.\n"
-            "  dreal  Install the dReal 3 executable in the user solver directory.\n"
+            "  dreal  Install the pinned official release, with known ODE limitations.\n"
             "\n"
             "dReal lookup order:\n"
             "  1. ~/Library/Application Support/stlmc/solvers/dReal3/dReal (macOS), or\n"
@@ -263,7 +318,9 @@ def build_parser():
             "\n"
             "Automatic native installation:\n"
             "  Yices: Ubuntu/Debian through apt, or macOS through Homebrew.\n"
-            "  dReal: macOS or x86-64 Linux.\n"
+            "  dReal: pinned Intel binaries for macOS and x86-64 Linux only;\n"
+            "         Apple Silicon requires already available Rosetta (never auto-installed).\n"
+            "         Installation is not runtime safety approval.\n"
             "  Native package installation may request administrator privileges.\n"
             "\n"
             "Homebrew 6 first-time Yices setup:\n"
@@ -277,10 +334,11 @@ def build_parser():
             "  export DYLD_LIBRARY_PATH=\"$(brew --prefix)/lib\"\n"
             "\n"
             "Examples:\n"
-            "  stlmc-installer install --solver all\n"
+            "  stlmc-installer install --all\n"
             "  stlmc-installer install --solver dreal\n"
+            "  stlmc-installer install --solver dreal --experimental-build --jobs 2\n"
             "  stlmc-installer check --solver yices\n"
-            "  stlmc-installer check --solver all"
+            "  stlmc-installer check"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -304,6 +362,15 @@ def main(argv=None):
     selected = (("cvc5", "z3", "yices", "dreal")
                 if args.solver == "all" else (args.solver,))
     before = _status()
+    installed_dreal = None
+    official_install_status = None
+    if not args.check and "dreal" in selected and not before["dreal"][0]:
+        existing = find_dreal()
+        if existing:
+            probe = _dreal_install_status(existing)
+            if probe[0]:
+                official_install_status = probe
+                print(DREAL_KNOWN_LIMITATIONS_WARNING, file=sys.stderr)
     if not args.check:
         if "cvc5" in selected and not before["cvc5"][0]:
             _install_python_package(_CVC5_PACKAGE)
@@ -312,10 +379,15 @@ def main(argv=None):
         if "yices" in selected and not before["yices"][0]:
             _install_python_package(_YICES_PACKAGE)
             _install_yices()
-        if "dreal" in selected and not before["dreal"][0]:
-            _install_dreal()
+        if "dreal" in selected and not before["dreal"][0] and official_install_status is None:
+            installed_dreal = _install_dreal()
 
-    status = _status()
+    status = dict(_status())
+    if not args.check and installed_dreal is not None and not status["dreal"][0]:
+        # Installation success and strict ODE capability checks are distinct.
+        status["dreal"] = _dreal_install_status(installed_dreal)
+    elif not args.check and official_install_status is not None and not status["dreal"][0]:
+        status["dreal"] = official_install_status
     failed = False
     for name in selected:
         available, detail = status[name]

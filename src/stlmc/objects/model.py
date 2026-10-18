@@ -213,10 +213,11 @@ class StlMC(Model):
                 track_v = Bool("m_{}@inv^{}_{}".format(module_index, inv_index, bound))
 
                 const = inv_prop_dict[invariant_var]
-                bound_applied_inv_var = substitution(invariant_var, new_substitute_dict)
-                key_index = bound_applied_inv_var.id.find("_")
-                inv_boolean = bound_applied_inv_var.id[:key_index + 1] + str(index) + str(
-                    bound_applied_inv_var.id[key_index + 1]) + "_" + bound_applied_inv_var.id[-1]
+                # Keep every namespace component complete and delimited:
+                # truncating bound/atom indices aliases 10 with 0/1 and
+                # silently overwrites earlier Forall definitions.
+                inv_boolean = "invAtomicID_m{}_i{}_{}".format(
+                    module_index, inv_index, bound)
                 bound_applied_const = substitution(const, new_substitute_dict)
                 self.boolean_abstract[Bool(inv_boolean)] = Forall(integral.current_mode_number,
                                                                   Real('tau_' + str(bound + 1)),

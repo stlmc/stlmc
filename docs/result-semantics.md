@@ -13,6 +13,16 @@ continuous segment and defaults to `time-bound`. Neither is a wall-clock
 timeout. Unbounded temporal intervals such as `[0, inf)` are evaluated within
 the configured finite analysis window, not over an infinite execution.
 
+The per-segment limit applies to all solver backends through the common
+constraint `0 <= tau[i+1] - tau[i] <= time-horizon`. Reducing the partition
+bound or segment limit can exclude every full-length STL execution; an UNSAT
+query in that configuration is not evidence about longer or less restricted
+executions. Earlier versions enforced this option only in dReal inputs.
+For Z3, Yices, and CVC5, an explicit limit smaller than `time-bound` now
+restricts the query and may change the result or the required partition bound.
+The default limit equal to `time-bound` does not further restrict an ordered
+trace within the global time window.
+
 ## Robustness versus Boolean truth
 
 The normal STL query searches for the relaxed negation of the selected

@@ -82,10 +82,15 @@ def v_type2_info(variable_id: str, tau_max: float) -> Tuple[Formula, int]:
     return type2_info(variable_id, tau_max)
 
 
-def rename(formula: Formula, bound: int, is_vertex=True):
+def rename(formula: Formula, bound: int, is_vertex=True, mode_variables=None,
+           mode_bound=None):
+    mode_variables = mode_variables or {}
     rename_dict = {}
     for variable in get_vars(formula):
-        if isinstance(variable, Bool):
+        if variable.id in mode_variables:
+            rename_dict[variable] = type(variable)("{}_{}".format(
+                variable.id, bound if mode_bound is None else mode_bound))
+        elif isinstance(variable, Bool):
             rename_dict[variable] = Bool("{}_{}".format(variable.id, bound))
         elif isinstance(variable, Real) and "tau_" not in variable.id:
             if is_vertex or bound == 0:

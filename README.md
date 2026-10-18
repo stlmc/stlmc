@@ -54,21 +54,31 @@ selected as the final solver. Install the additional backends your models
 need, for example:
 
 ```sh
-stlmc-installer install --solver dreal
 stlmc-installer install --solver cvc5
 stlmc-installer install --solver yices
+stlmc-installer install --solver dreal
 ```
 
-`stlmc-installer install --solver z3 cvc5 yices dreal` installs all missing solver prerequisites
-where supported. The installer manages Python bindings and the required native
-libraries or executables for the selected backend.
+`stlmc-installer install --solver z3 cvc5 yices` installs the supported missing
+solver prerequisites. The installer manages Python bindings and the required
+native libraries for these backends.
 Choose the `install` or `check` action first; running the installer without an
 action shows help. Select multiple backends with `--solver z3 cvc5 yices dreal`
-or formats with `--visualize html pdf text`. `install --all` explicitly installs
-all components; `check` alone checks all components without installing anything.
+or formats with `--visualize html pdf text`. `install --all` selects all
+components, including the official dReal 3.16.06.02 binary on supported
+platforms. `check` alone checks all components without installing anything.
 
-General ODE and transcendental models require dReal. Automatic dReal 3
-installation supports macOS and x86-64 Linux. See
+General ODE and transcendental models require a compatible dReal 3 build.
+The default dReal download is the official 3.16.06.02 release, which has known
+ODE bugs. Installation success checks its version and a basic algebraic query;
+it does not establish ODE correctness. `check` and verification warn about this
+official release's known invariant limitation and allow execution; unrelated
+executable errors and failed capability checks remain errors. A successful
+check does not certify ODE correctness. An alternative executable can be
+selected with `-executable-path /path/to/dReal`. The advanced
+[experimental source-build route](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#dreal-source-builds)
+requires explicit `--experimental-build` and is separate from the official binary.
+See
 [Installation and troubleshooting](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
 for platform restrictions, Homebrew setup, solver locations, and offline use.
 
@@ -114,7 +124,7 @@ file. Use those paths with `stlmc-vis` as shown below.
 An analysis requires a model, a discrete STL bound, and a global time bound.
 For STL model checking, the discrete bound limits mode changes plus
 variable points where an STL subformula changes truth value. For state
-reachability it limits jumps. `time-horizon` limits the duration
+reachability it limits jumps. For every solver, `time-horizon` limits the duration
 of each continuous segment separated by a mode change or STL variable
 point; it defaults to the global `time-bound`. These are modeled time limits,
 not wall-clock execution timeouts. Values may be supplied by
@@ -129,6 +139,15 @@ or overridden on the command line:
 ```sh
 stlmc system.model -bound 5 -time-bound 20 -solver dreal
 ```
+
+The default `-solver auto` checks model and selected-goal support and probes
+installed backends in the order Z3, CVC5, Yices, then dReal. General ODEs and
+dReal-only arithmetic require dReal. A candidate must pass an isolated runtime
+check, including any required native capabilities. If no candidate is usable,
+STLmc reports the reasons and exits; it does not install dependencies or retry
+after an inconclusive verification. An explicit choice such as `-solver z3`
+never falls back to another backend. Internal scenario/core dependencies are
+checked separately.
 
 Use `-goal` to select a labeled goal:
 
@@ -196,6 +215,11 @@ number of solver jobs and can reduce available parallelism. Start with batch
 size `1` when solver utilization is the priority, then try `2` or `4` to trade
 some parallelism for fewer solver invocations.
 
+Parallel refinement with Yices requires a thread-safe native Yices build,
+even with one worker. Otherwise, use sequential execution. See
+[Yices source builds](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#yices-source-builds)
+for installation and capability checks.
+
 See [Solving strategies](https://github.com/stlmc/stlmc/blob/main/docs/solving-strategies.md)
 for path exploration, batching, parallelism, and live progress fields.
 
@@ -237,7 +261,8 @@ From a source checkout, install in editable mode and run unit/integration checks
 
 ```sh
 python -m pip install -e .
-stlmc-installer install --solver z3 cvc5 yices dreal
+stlmc-installer install --solver z3 cvc5 yices
+stlmc-installer check --solver dreal
 make test-unit
 ```
 

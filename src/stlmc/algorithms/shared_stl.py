@@ -9,6 +9,7 @@ from ..encoding.fully_stable_stl import (
     stl_depth_components,
 )
 from ..encoding.symbolic_discrete import chi, ordered_formulas, time_ordering
+from ..encoding.time import segment_duration_bounds
 from ..encoding.model_linking import path2const
 from ..objects.goal import Goal
 from ..objects.model import Model
@@ -27,19 +28,20 @@ def bounded_proposition_matching(model: Model, sub_formulas: Set[Formula],
 
 def bounded_stl_formula(model: Model, goal: Goal, goal_prop_dict, bound: int,
                         delta: float, tau_max: float,
-                        use_unary_bounded_temporal_form: bool = False) -> Formula:
+                        use_unary_bounded_temporal_form: bool = False,
+                        time_horizon=None) -> Formula:
     """Build the complete bounded STL formula used by either strategy."""
     shifted_formula = prepare_fully_stable_stl_formula(
         goal, goal_prop_dict, delta, use_unary_bounded_temporal_form
     )
     return bounded_stl_formula_from_threshold(
-        model, shifted_formula, bound, tau_max
+        model, shifted_formula, bound, tau_max, time_horizon=time_horizon
     )
 
 
 def bounded_stl_formula_from_threshold(
         model: Model, shifted_formula: Formula, bound: int,
-        tau_max: float) -> Formula:
+        tau_max: float, time_horizon=None) -> Formula:
     """Build a bounded encoding for an already threshold-shifted formula."""
     sub_formulas = ordered_sub_formulas(shifted_formula)
     max_depth = 2 * (bound + 1)
@@ -50,6 +52,8 @@ def bounded_stl_formula_from_threshold(
     path_children.extend(stl_children)
     path_children.extend(time_children)
     path_children.append(time_ordering(max_depth, tau_max))
+    if time_horizon is not None:
+        path_children.append(segment_duration_bounds(bound, time_horizon))
 
     proposition_constraints = bounded_proposition_matching(
         model, sub_formulas, max_depth

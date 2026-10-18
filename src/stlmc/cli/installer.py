@@ -20,6 +20,8 @@ from .dependency_policy import (
     visualization_packages,
 )
 from ..solver.availability import solver_data_dir
+from ..exceptions import SolverUnavailableError
+from .native_linkage import audit_static_linkage
 
 YICES_VERSION = YICES_NATIVE_VERSION
 YICES_SOURCE = YICES_SOURCE_URL
@@ -157,6 +159,51 @@ def build_yices(*, prefix=None, source=None, thread_safe=False, mcsat=True, jobs
             "prefixes. No OS packages were installed.".format(error, log)) from error
 
 
+def build_dreal(*, prefix=None, jobs=1):
+    """Build privately and atomically activate only a validated executable."""
+    if not isinstance(jobs, int) or jobs < 1:
+        raise RuntimeError("--jobs must be a positive build-job count")
+    base = (Path(prefix).expanduser() if prefix else solver_data_dir() / "dReal3").resolve()
+    protected = (Path.home().resolve(), Path(__file__).resolve().parents[3])
+    if base in (Path("/"), Path("/usr"), Path("/usr/local"), Path("/opt")) or any(
+            base == path or base in path.parents for path in protected):
+        raise RuntimeError("Choose a dedicated user-owned --prefix directory")
+    build = base / "builds" / ("dreal-" + uuid.uuid4().hex)
+    destination = build / "prefix"
+    try:
+        from .dreal_build import build_dreal as build_private_dreal
+
+        build.mkdir(parents=True, exist_ok=False)
+        executable = Path(build_private_dreal(destination, jobs=jobs)).resolve()
+        expected = (destination / "bin" / "dReal").resolve()
+        if (executable != expected or destination.resolve() not in executable.parents
+                or not executable.is_file()):
+            raise RuntimeError("dReal builder did not return its private bin/dReal")
+        target = solvers.user_dreal_path()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Stage next to the active path so os.replace stays atomic even when
+        # --prefix selects another filesystem. No existing file is truncated.
+        with tempfile.TemporaryDirectory(prefix="activate-dreal-", dir=str(target.parent)) as staging:
+            staged = Path(staging) / "dReal"
+            shutil.copy2(str(executable), str(staged))
+            staged.chmod(staged.stat().st_mode | 0o111)
+            # Audit and execute the exact bytes that will become active, not
+            # a mutable source file or another PATH binary.
+            linkage = audit_static_linkage(staged)
+            metadata = solvers.validate_dreal_runtime(staged)
+            os.replace(str(staged), str(target))
+    except (ImportError, OSError, RuntimeError, subprocess.SubprocessError, ValueError,
+            SolverUnavailableError) as error:
+        raise RuntimeError(
+            "dReal private build/validation failed; previous installation remains active. "
+            "{}. Build prefix: {}. No OS packages were installed.".format(error, destination)
+        ) from error
+    result = dict(metadata, executable=str(target), prefix=str(destination),
+                  build_jobs=jobs, linkage=dict(linkage, executable=str(target)))
+    print("Activated private dReal build: {} (build prefix: {})".format(target, destination))
+    return result
+
+
 def visualize_status(modules=None):
     status = {}
     packages = visualization_packages(sys.version_info)
@@ -251,10 +298,13 @@ def build_parser():
         command.add_argument("--thread-safe", action="store_true", help="require native Yices thread safety")
         command.add_argument("--without-mcsat", action="store_true", help="Yices LRA/core-only; check accepts a full MCSAT installation too")
         if action == "install":
-            command.add_argument("--build", action="store_true", help="build Yices in a unique user prefix")
+            builds = command.add_mutually_exclusive_group()
+            builds.add_argument("--build", action="store_true", help="build Yices in a unique private user prefix")
+            builds.add_argument("--experimental-build", action="store_true",
+                                help="opt into the experimental dReal source build; ODE soundness is not certified")
             command.add_argument("--jobs", type=int, default=None, help="number of make build jobs (default: 1)")
             command.add_argument("--prefix", type=Path, help="managed user build root; system libraries are never replaced")
-            command.add_argument("--source", type=Path, help="local Yices source tree, copied before building")
+            command.add_argument("--source", type=Path, help="local Yices source tree; dReal builds use pinned sources")
     return parser
 
 
@@ -275,15 +325,23 @@ def main(argv=None):
     selected_solvers = ["z3", "cvc5", "yices", "dreal"] if select_all else (args.solver or [])
     selected_visuals = ["html", "pdf", "text"] if select_all else (args.visualize or [])
     build = getattr(args, "build", False)
+    experimental_build = getattr(args, "experimental_build", False)
+    any_build = build or experimental_build
     jobs = getattr(args, "jobs", None)
     prefix, source = getattr(args, "prefix", None), getattr(args, "source", None)
     if jobs is not None and jobs < 1:
         parser.error("--jobs must be positive")
-    if build or prefix is not None or source is not None or jobs is not None:
-        if selected_solvers != ["yices"] or selected_visuals:
-            parser.error("source build options require selecting only --solver yices")
-    if not check and (args.thread_safe or args.without_mcsat or prefix is not None or source is not None or jobs is not None) and not build:
-        parser.error("source build options require --build")
+    if experimental_build and (selected_solvers != ["dreal"] or selected_visuals):
+        parser.error("--experimental-build requires selecting only --solver dreal")
+    if build and selected_solvers == ["dreal"]:
+        parser.error("dReal source builds require explicit --experimental-build; --build is for Yices")
+    if any_build or prefix is not None or source is not None or jobs is not None:
+        if len(selected_solvers) != 1 or selected_solvers[0] not in {"yices", "dreal"} or selected_visuals:
+            parser.error("source build options require selecting only --solver yices or only --solver dreal")
+    if source is not None and selected_solvers == ["dreal"]:
+        parser.error("--source is supported only for Yices; dReal builds use pinned sources")
+    if not check and (args.thread_safe or args.without_mcsat or prefix is not None or source is not None or jobs is not None) and not any_build:
+        parser.error("source build options require --build for Yices or --experimental-build for dReal")
     if (args.thread_safe or args.without_mcsat) and "yices" not in selected_solvers:
         parser.error("Yices capability options require --solver yices (or --all)")
     if check and args.without_mcsat and (selected_solvers != ["yices"] or selected_visuals):
@@ -298,11 +356,15 @@ def main(argv=None):
     failed = False
     for backend in selected_solvers:
         try:
-            if build:
-                # Binding repair must succeed before activating a native build.
-                solvers._install_python_package(solvers._YICES_PACKAGE)
-                build_yices(prefix=prefix, source=source, thread_safe=args.thread_safe,
-                            mcsat=not args.without_mcsat, jobs=jobs or 1)
+            if any_build:
+                if backend == "yices":
+                    # Binding repair must succeed before activating a native build.
+                    solvers._install_python_package(solvers._YICES_PACKAGE)
+                    build_yices(prefix=prefix, source=source, thread_safe=args.thread_safe,
+                                mcsat=not args.without_mcsat, jobs=jobs or 1)
+                else:
+                    print("Experimental dReal source build: passing feature probes does not certify general ODE soundness.", file=sys.stderr)
+                    build_dreal(prefix=prefix, jobs=jobs or 1)
             else:
                 backend_failed = bool(solvers.main([backend] + (["--check"] if check else [])))
                 failed = backend_failed or failed

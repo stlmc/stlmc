@@ -16,6 +16,35 @@ def _truth(formula):
     return None
 
 
+def flatten_boolean(formula):
+    """Return an equivalent Boolean display tree, without mutating the input.
+
+    Only And/Or nesting and their neutral/absorbing constants are reduced.
+    No assignments, duplicate elimination, or cross-operator rewrites occur.
+    Other node kinds remain opaque; renderers traverse their children.
+    """
+    if not isinstance(formula, (And, Or)):
+        return formula
+    conjunction = isinstance(formula, And)
+    children = []
+    for original in formula.children:
+        child = flatten_boolean(original)
+        truth = _truth(child)
+        if truth is not None:
+            if truth != conjunction:
+                return BoolVal(str(truth))
+            continue
+        if type(child) is type(formula):
+            children.extend(child.children)
+        else:
+            children.append(child)
+    if not children:
+        return BoolVal(str(conjunction))
+    if len(children) == 1:
+        return children[0]
+    return type(formula)(children)
+
+
 def propagate_boolean_constants(formula):
     assignments = {}
     pending = [formula]

@@ -353,6 +353,10 @@ class dRealSolver(JobSolver):
                 pass
 
     def submit(self, const, on_complete=None, query_name=""):
+        from .dreal_runtime import validate_dreal_runtime
+        dreal_config = self.config.get_section("dreal")
+        runtime = validate_dreal_runtime(dreal_config.get_value("executable-path"))
+        dreal_config.set_value("executable-path", runtime["executable"])
         job = SolverJob(on_complete)
         formula_size = size_of_tree(const)
         command, cleanup_path = self._prepare_solver_command(const, query_name)

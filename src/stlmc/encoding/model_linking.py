@@ -7,6 +7,7 @@ from ..constraints.constraints import (
     Not, Or, Real, RealVal,
 )
 from ..constraints.logical_normalization import reduce_not
+from ..constraints.analysis import get_vars
 from .fully_stable_stl import is_proposition
 from .symbolic_discrete import symbolic_inf, symbolic_sup
 from ..objects.model import Model
@@ -30,16 +31,26 @@ def path2const(path: Path, model: Model) -> Formula:
     for (depth, variable), formula in path.items():
         bound = depth2bound(depth)
         is_vertex = depth % 2 == 0
-        renamed, _ = rename(formula, bound, is_vertex)
+        renamed, _ = rename(formula, bound, is_vertex, model.mode_var_dict)
         tracked = _tracked_variable(variable)
 
         if not is_vertex:
-            renamed_edge, _ = rename(formula, bound, False)
+            renamed_edge, _ = rename(formula, bound, False, model.mode_var_dict)
             constraints.append(Eq(tracked, renamed_edge))
             continue
         if is_mode_variable(variable, model):
-            renamed_edge, _ = rename(formula, bound, False)
+            renamed_edge, _ = rename(formula, bound, False, model.mode_var_dict)
             constraints.append(Eq(tracked, renamed_edge))
+            continue
+
+        # Numeric mode variables are constant over a continuous segment,
+        # just like Boolean modes. Never create phantom continuous endpoints
+        # for them or pass a mode-only predicate to native ODE quantifiers.
+        if all(is_mode_variable(v, model) for v in get_vars(formula)):
+            constraints.append(Or([
+                Eq(symbolic_sup(depth), symbolic_inf(depth)),
+                Eq(tracked, renamed),
+            ]))
             continue
 
         modes = []
@@ -101,10 +112,11 @@ def _endpoint_closure(predicate: Formula) -> Formula:
 
 
 def contradiction_gen(clause_set: Set[Formula],
-                      sub_formulas: Set[Formula]):
+                      sub_formulas: Set[Formula], model=None):
     """Link learned chi clauses to vertex and edge model propositions."""
     edge_constraints = []
     vertex_constraints = []
+    mode_variables = model.mode_var_dict if model is not None else {}
     for clause in clause_set:
         if not isinstance(clause, Bool) or "chi" not in clause.id:
             continue
@@ -113,7 +125,8 @@ def contradiction_gen(clause_set: Set[Formula],
             continue
         bound = depth2bound(depth)
         if depth % 2 == 1:
-            renamed, _ = rename(formula, bound, is_vertex=False)
+            renamed, _ = rename(formula, bound, is_vertex=False,
+                                mode_variables=mode_variables)
             edge_constraints.append(Eq(clause, renamed))
         else:
             # A flow proposition describes an OPEN interval. Equality to
@@ -124,8 +137,10 @@ def contradiction_gen(clause_set: Set[Formula],
             for polarity, predicate in (
                     (clause, formula), (Not(clause), reduce_not(Not(formula)))):
                 closed = _endpoint_closure(predicate)
-                vertex, _ = rename(closed, bound, is_vertex=True)
-                edge, _ = rename(closed, bound + 1, is_vertex=False)
+                vertex, _ = rename(closed, bound, is_vertex=True,
+                                   mode_variables=mode_variables)
+                edge, _ = rename(closed, bound + 1, is_vertex=False,
+                                 mode_variables=mode_variables, mode_bound=bound)
                 conditions.append(Implies(polarity, And([vertex, edge])))
             vertex_constraints.append(Implies(
                 symbolic_inf(depth) < symbolic_sup(depth), And(conditions),

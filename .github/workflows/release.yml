@@ -152,7 +152,9 @@ jobs:
       env:
         # Avoid network update checks during the release test matrix.
         STLMC_DISABLE_UPDATE_CHECK: '1'
-      run: make test-quick PYTHON=python3
+      # The official legacy release has one precisely pinned known defect.
+      # Keep it visible as XFAIL; every other smoke mismatch remains fatal.
+      run: make test-quick PYTHON=python3 SMOKE_ARGS=--allow-known-dreal-bugs
 
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4

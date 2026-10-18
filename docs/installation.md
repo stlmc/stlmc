@@ -22,6 +22,7 @@ Install additional backends as needed:
 stlmc-installer install --solver cvc5
 stlmc-installer install --solver yices
 stlmc-installer install --solver dreal
+stlmc-installer check --solver dreal
 stlmc-installer check --solver z3 cvc5 yices dreal
 ```
 
@@ -29,7 +30,8 @@ Choose `install` or `check` before the component selectors. Both `--solver`
 and `--visualize` accept multiple names, for example `install --solver z3 cvc5`
 or `check --visualize html pdf text`. Running the installer without an action
 shows help and does not install anything. `stlmc-installer install --all`
-explicitly installs all components; `stlmc-installer check` checks all solvers
+selects all components, including the official dReal binary on supported
+platforms. `stlmc-installer check` checks all solvers
 and visualization formats, including both HTML and PDF, without installing.
 Native package installation may request administrator privileges. Python
 packages install into the current interpreter's environment.
@@ -46,16 +48,31 @@ can use the optional source build after installing its build dependencies, or
 install a native library manually. The default Yices installation uses the
 official package distribution; source compilation is an explicit option.
 
-Automatic dReal installation downloads a dReal **3** binary for macOS or
-x86-64 Linux. It does not install dReal 4. Automatic native solver setup on
-Windows, and dReal setup on Linux ARM, are not supported by this installer.
+`install --solver dreal` downloads the official dReal **3** release
+3.16.06.02 on Linux x86-64 and supported macOS systems. macOS uses the Intel
+release; Apple Silicon requires Rosetta to be installed already. It verifies the pinned
+archive hash, exact version, and a basic algebraic SAT query. These checks
+establish installation, not ODE correctness: this release has known bugs,
+including omitted invariants involving zero-derivative parameters.
+`check --solver dreal` and verification warn about this official release's
+known invariant limitation and allow execution despite it. This exception
+does not suppress unrelated executable errors or failed capability checks.
+A successful install or check does not certify ODE correctness; results may
+be affected by these known bugs.
+Reinstalling the official release does not fix those bugs. An already
+available compatible build is retained; an independently supplied dReal 3
+build can be selected explicitly as described below. dReal 4 is not installed
+as a replacement. Automatic native solver setup on Windows is not supported.
 Python package support does not imply availability of every solver on every
 OS/CPU combination. The release workflow covers Linux x86-64 and macOS Apple
 Silicon; check its results for the release you intend to use.
 
 ### dReal on Apple Silicon
 
-The legacy Intel dReal 3 executable requires Rosetta on Apple Silicon.
+The managed download route uses the Intel dReal 3 release on both Intel Macs
+and Apple Silicon. Apple Silicon requires an existing Rosetta installation;
+the installer does not install Rosetta or other OS components automatically.
+There is no native ARM64 release in this installation route.
 [Apple documents general Rosetta availability through macOS 27](https://support.apple.com/en-us/102527);
 starting with macOS 28, only a limited exception for certain older games remains.
 See also [Apple's transition notice](https://developer.apple.com/news/?id=w5ngl9k2).
@@ -159,24 +176,103 @@ verified thread-safe build or set `parallel = "false"` in the configuration.
 Final `QF_NRA` queries also require MCSAT support. STLmc does not silently
 disable parallel execution or change the requested arithmetic logic.
 
+## dReal source builds
+
+This experimental route is separate from the official-release baseline and is
+never selected by ordinary installation or `--all`. It currently accepts
+Linux x86-64 with GCC only. It builds the pinned
+dReal 3.16.12 source snapshot at commit
+`6fa469fb1f8485b695b00edc69aa9e9a35e7ba97`, which contains the
+[parameter-invariant correction](https://github.com/dreal/dreal3/commit/2f564b2d7e9bbc930c67bfa0d5ce023809561447).
+This is a source revision, not an official 3.16.12 binary release.
+
+```sh
+stlmc-installer install --solver dreal --experimental-build --jobs 4
+stlmc-installer check --solver dreal
+```
+
+Successful compilation, linkage checks, and runtime feature probes do not
+certify general ODE soundness. Upstream documents a case where failed ODE
+pruning produced an incorrect delta-SAT witness; its
+[issue remains open](https://github.com/dreal/dreal3/issues/325#issuecomment-293295914).
+Both the official 3.16.06.02 binary and this pinned source build have reproduced
+that witness defect. The parameter-invariant correction does not fix it.
+Treat results from this build as experimental and validate
+witnesses independently; sampled numerical checks are not an exact proof.
+All macOS builds, including
+Intel and ARM, are currently rejected by this build route. Nix and
+Docker are not required. A host compiler, build tools, and the platform's
+system development libraries/SDK are prerequisites; a private prefix does
+not supply a compiler or replace the operating system runtime.
+
+The installer automatically prepares CMake 3.29.6 in a private build venv;
+no host CMake installation is required. This does not change system packages
+or the Python environment used to run STLmc, including your project's `.venv`.
+
+The build requires `gcc`, `g++`, `make`, `autoconf`, `automake`
+(including `aclocal`), `autoreconf`, `libtoolize`, `m4`, `bison`, `flex`,
+`pkg-config`, `git`, and `python2.7` on `PATH`, plus the system development
+headers and static libraries needed by the compiler. Python 2.7 is required
+only by the legacy IBEX build tools; it does not replace the Python version
+used to run STLmc. The installer does not install these system prerequisites.
+
+Third-party native dependencies are built inside the private prefix. On Linux,
+static linking of those dependencies is required, with a completely static
+executable preferred. Operating-system and compiler runtime libraries may
+remain dynamic; this is not a promise of a completely static executable
+or portability to every machine. Build-time dependency checks and the final
+runtime probes must succeed before a build can be treated as usable.
+
+The private build disables host CLP discovery and configures IBEX without LP
+support (`--without-lp`). Its performance can therefore differ from an
+external build with CLP/LP enabled.
+
+Use `--prefix /path/to/private/dreal` to select a private build root. Each
+attempt uses a fresh `builds/dreal-<unique-id>/prefix` below that root; without
+`--prefix`, the root is the managed `dReal3` directory listed below. The build
+manifest remains in the private prefix. Only after successful build and
+runtime validation is the executable atomically copied to the managed
+`dReal3/dReal` path. Failure leaves the previous executable active.
+
+`--prefix` is an installer path, not a model input: it does not select a
+`.model` file, change `-model-cfg`, or modify the model's dynamics. dReal
+`--source` is rejected so that builds use the pinned source inputs.
+`--thread-safe` and `--without-mcsat` are also Yices-only options, not dReal
+build options.
+
+Without `--experimental-build`, the installer uses the official-release
+installation route rather than compiling this source snapshot. Its successful
+installation does not establish ODE correctness; runtime warnings and the
+remaining capability checks described above still apply.
+
 ## dReal executable discovery
 
-The installer writes dReal to:
+Existing managed dReal installations are discovered at:
 
 - macOS: `~/Library/Application Support/stlmc/solvers/dReal3/dReal`;
 - Linux: `$XDG_DATA_HOME/stlmc/solvers/dReal3/dReal`, or
   `~/.local/share/stlmc/solvers/dReal3/dReal` when `XDG_DATA_HOME` is unset.
 
 At runtime STLmc prefers the managed user installation above, then searches
-`PATH` for `dReal`. The installer checks dReal 3.16.06.02 with a version probe
-and a small SMT query before activating a downloaded binary. An explicit
-executable setting takes precedence; a differently named or separately
-installed binary can be selected:
+`PATH` for `dReal`. Runtime checks inspect the dReal 3 version, algebraic and
+ODE behavior, interior invariants, and zero-derivative parameter invariants.
+The official 3.16.06.02 release is allowed with a warning for its known
+invariant limitation; unrelated failures remain errors. Passing these
+targeted checks, including a check that succeeds with known-limit warnings,
+does not certify every query or general ODE soundness. Independently supplied
+builds are not thereby certified as official managed releases.
+An explicit executable setting takes precedence; a separately supplied build
+can be selected:
 
 ```sh
 stlmc system.model -bound 5 -time-bound 20 -solver dreal \
     -executable-path /path/to/dReal
 ```
+
+For a build available as `dReal` on `PATH`, run
+`stlmc-installer check --solver dreal` to check compatibility. Native Apple
+Silicon builds remain unvalidated; neither the version label alone nor a
+successful binary launch establishes ODE correctness.
 
 If a required solver is unavailable, STLmc reports the corresponding installer
 command. Import errors in other native dependencies, such as SciPy, are a

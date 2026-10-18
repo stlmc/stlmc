@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -136,6 +137,84 @@ class ComponentInstallerTest(unittest.TestCase):
                 mock.patch.object(installer.solvers, "_install_python_package"):
             self.assertEqual(installer.main(["install", "--solver", "yices", "--build", "--without-mcsat"]), 0)
         self.assertFalse(build.call_args.kwargs["mcsat"])
+
+    def test_explicit_dreal_build_does_not_install_bindings_or_use_legacy_download(self):
+        with mock.patch.object(installer, "build_dreal") as build, \
+                mock.patch.object(installer, "build_yices") as yices, \
+                mock.patch.object(installer.solvers, "main") as legacy, \
+                mock.patch.object(installer.solvers, "_install_python_package") as pip:
+            self.assertEqual(installer.main(["install", "--solver", "dreal", "--experimental-build",
+                                             "--jobs", "3", "--prefix", "/private/managed"]), 0)
+        build.assert_called_once_with(prefix=Path('/private/managed'), jobs=3)
+        yices.assert_not_called()
+        legacy.assert_not_called()
+        pip.assert_not_called()
+
+    def test_dreal_default_install_and_check_never_start_a_source_build(self):
+        for action in ('install', 'check'):
+            with self.subTest(action=action), mock.patch.object(installer, 'build_dreal') as build, \
+                    mock.patch.object(installer.solvers, 'main', return_value=0) as legacy:
+                self.assertEqual(installer.main([action, '--solver', 'dreal']), 0)
+                legacy.assert_called_once_with(['dreal'] + (['--check'] if action=='check' else []))
+                build.assert_not_called()
+
+    def test_dreal_install_success_does_not_bypass_stricter_check_failure(self):
+        with mock.patch.object(installer, 'build_dreal') as build, \
+                mock.patch.object(installer.solvers, 'main', side_effect=[0, 1]) as legacy:
+            self.assertEqual(installer.main(['install', '--solver', 'dreal']), 0)
+            self.assertEqual(installer.main(['check', '--solver', 'dreal']), 1)
+        self.assertEqual(legacy.call_args_list,
+                         [mock.call(['dreal']), mock.call(['dreal', '--check'])])
+        build.assert_not_called()
+
+    def test_dreal_rejects_yices_flags_local_source_and_combined_builds(self):
+        invalid = [
+            ['install', '--solver', 'dreal', '--build'],
+            ['install', '--solver', 'dreal', '--experimental-build', '--build'],
+            ['install', '--solver', 'dreal', '--experimental-build', '--thread-safe'],
+            ['install', '--solver', 'dreal', '--experimental-build', '--without-mcsat'],
+            ['install', '--solver', 'dreal', '--experimental-build', '--source', '/local/source'],
+            ['install', '--solver', 'yices', '--experimental-build'],
+            ['install', '--solver', 'z3', '--experimental-build'],
+            ['install', '--all', '--experimental-build'],
+            ['install', '--solver', 'dreal', 'yices', '--experimental-build'],
+            ['install', '--solver', 'dreal', '--visualize', 'text', '--experimental-build'],
+            ['check', '--solver', 'dreal', '--experimental-build'],
+            ['install', '--solver', 'dreal', '--build', '--thread-safe'],
+            ['install', '--solver', 'dreal', '--build', '--without-mcsat'],
+            ['install', '--solver', 'dreal', '--build', '--source', '/local/source'],
+            ['install', '--solver', 'dreal', '--jobs', '2'],
+            ['install', '--solver', 'dreal', 'yices', '--build'],
+            ['install', '--solver', 'dreal', '--visualize', 'text', '--build'],
+            ['check', '--solver', 'dreal', '--build'],
+            ['check', '--solver', 'dreal', '--thread-safe'],
+        ]
+        for arguments in invalid:
+            with self.subTest(arguments=arguments), mock.patch.object(installer, 'build_dreal') as build, \
+                    mock.patch.object(installer.solvers, 'main') as legacy, \
+                    mock.patch('sys.stderr', new=io.StringIO()):
+                with self.assertRaises(SystemExit) as failure:
+                    installer.main(arguments)
+                self.assertEqual(failure.exception.code, 2)
+                build.assert_not_called()
+                legacy.assert_not_called()
+
+    def test_dreal_build_failure_is_a_clear_nonzero_result(self):
+        with mock.patch.object(installer, 'build_dreal', side_effect=RuntimeError('previous installation remains active')), \
+                mock.patch('sys.stderr', new=io.StringIO()) as output:
+            self.assertEqual(installer.main(['install', '--solver', 'dreal', '--experimental-build']), 1)
+        self.assertIn('previous installation remains active', output.getvalue())
+        self.assertNotIn('Traceback', output.getvalue())
+
+    def test_dreal_experimental_help_and_warning_are_explicit(self):
+        help_text = installer.build_parser()._subparsers._group_actions[0].choices['install'].format_help()
+        self.assertIn('--experimental-build', help_text)
+        self.assertIn('ODE soundness is not certified', ' '.join(help_text.split()))
+        with mock.patch.object(installer, 'build_dreal') as build, \
+                mock.patch('sys.stderr', new=io.StringIO()) as output:
+            self.assertEqual(installer.main(['install', '--solver', 'dreal', '--experimental-build']), 0)
+        build.assert_called_once_with(prefix=None, jobs=1)
+        self.assertIn('does not certify general ODE soundness', output.getvalue())
 
     def test_source_check_is_read_only_and_checks_native_flags(self):
         with mock.patch.object(installer.solvers, "main", return_value=0), \
@@ -276,6 +355,133 @@ class ComponentInstallerTest(unittest.TestCase):
             available, detail = installer.solvers._backend_status("cvc5")
         self.assertFalse(available)
         self.assertIn("-11", detail)
+
+
+class DrealBuildTransactionTest(unittest.TestCase):
+    def setUp(self):
+        from contextlib import ExitStack
+        temporary_root = Path(__file__).resolve().parent.parent / '.tmp'
+        temporary_root.mkdir(exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(prefix='dreal-activation-', dir=temporary_root)
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.active = self.root / 'data/dReal3/dReal'
+        self.active.parent.mkdir(parents=True)
+        self.active.write_bytes(b'previous-valid-solver')
+        self.active.chmod(0o755)
+        self.events = []
+        self.builder = mock.Mock(side_effect=self.fake_build)
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(mock.patch.dict(sys.modules, {
+            'stlmc.cli.dreal_build': SimpleNamespace(build_dreal=self.builder)}))
+        self.stack.enter_context(mock.patch.object(installer, 'solver_data_dir', return_value=self.root / 'data'))
+        self.stack.enter_context(mock.patch.object(installer.solvers, 'user_dreal_path', return_value=self.active))
+        self.audit = self.stack.enter_context(mock.patch.object(installer, 'audit_static_linkage', side_effect=self.fake_audit))
+        self.runtime = self.stack.enter_context(mock.patch.object(installer.solvers, 'validate_dreal_runtime', side_effect=self.fake_runtime))
+        self.stack.enter_context(mock.patch('sys.stdout', new=io.StringIO()))
+
+    def fake_build(self, destination, jobs):
+        self.assertFalse(destination.exists())
+        self.destination = destination
+        (destination / 'bin').mkdir(parents=True)
+        (destination / 'licenses').mkdir()
+        (destination / 'licenses/NOTICE').write_text('private dependency licenses')
+        (destination / 'build-manifest.json').write_text('{"source":"pinned"}')
+        binary = destination / 'bin/dReal'
+        binary.write_bytes(b'new-verified-static-solver')
+        self.events.append('build')
+        return binary
+
+    def fake_audit(self, binary):
+        self.assertEqual(self.active.read_bytes(), b'previous-valid-solver')
+        self.assertEqual(binary.read_bytes(), b'new-verified-static-solver')
+        self.events.append('audit')
+        return {'policy': 'static-third-party-system-runtime-only'}
+
+    def fake_runtime(self, binary):
+        self.assertEqual(self.active.read_bytes(), b'previous-valid-solver')
+        self.assertEqual(binary.read_bytes(), b'new-verified-static-solver')
+        self.events.append('runtime')
+        return {'version': 'dReal v3.16.12', 'ode_supported': True}
+
+    def assert_previous_untouched(self):
+        self.assertEqual(self.active.read_bytes(), b'previous-valid-solver')
+        self.assertEqual(list(self.active.parent.glob('activate-dreal-*')), [])
+
+    def test_only_audited_and_runtime_verified_bytes_are_activated(self):
+        original_replace = installer.os.replace
+        def activate(source, target):
+            self.assertEqual(self.active.read_bytes(), b'previous-valid-solver')
+            self.events.append('activate')
+            original_replace(source, target)
+        with mock.patch.object(installer.os, 'replace', side_effect=activate):
+            result = installer.build_dreal(jobs=2)
+        self.assertEqual(self.events, ['build', 'audit', 'runtime', 'activate'])
+        self.assertEqual(self.active.read_bytes(), b'new-verified-static-solver')
+        self.assertEqual(result['executable'], str(self.active))
+        self.assertEqual(result['build_jobs'], 2)
+        self.assertTrue((self.destination / 'licenses/NOTICE').is_file())
+        self.assertTrue((self.destination / 'build-manifest.json').is_file())
+        self.assertEqual(list(self.active.parent.glob('activate-dreal-*')), [])
+        # Activation is a copy, not a symlink into a disposable build tree.
+        installer.shutil.rmtree(self.destination)
+        self.assertEqual(self.active.read_bytes(), b'new-verified-static-solver')
+
+    def test_custom_prefix_is_only_the_private_build_root(self):
+        base = self.root / 'custom-builds'
+        result = installer.build_dreal(prefix=base, jobs=3)
+        self.assertIn(base, Path(result['prefix']).parents)
+        self.assertEqual(result['executable'], str(self.active))
+        self.assertEqual(self.builder.call_args.kwargs['jobs'], 3)
+
+    def test_build_failure_preserves_previous_install(self):
+        self.builder.side_effect = RuntimeError('compiler failed')
+        with self.assertRaisesRegex(RuntimeError, 'previous installation remains active'):
+            installer.build_dreal()
+        self.audit.assert_not_called()
+        self.runtime.assert_not_called()
+        self.assert_previous_untouched()
+
+    def test_linkage_failure_preserves_previous_install_and_cleans_staging(self):
+        self.audit.side_effect = RuntimeError('unexpected shared GMP dependency')
+        with self.assertRaisesRegex(RuntimeError, 'unexpected shared GMP'):
+            installer.build_dreal()
+        self.runtime.assert_not_called()
+        self.assert_previous_untouched()
+
+    def test_runtime_failure_preserves_previous_install_and_cleans_staging(self):
+        from stlmc.exceptions import SolverUnavailableError
+        self.runtime.side_effect = SolverUnavailableError('broken parameter invariant')
+        with self.assertRaisesRegex(RuntimeError, 'broken parameter invariant'):
+            installer.build_dreal()
+        self.assert_previous_untouched()
+
+    def test_failed_replace_preserves_previous_install_and_cleans_staging(self):
+        with mock.patch.object(installer.os, 'replace', side_effect=PermissionError('activation denied')):
+            with self.assertRaisesRegex(RuntimeError, 'activation denied'):
+                installer.build_dreal()
+        self.assert_previous_untouched()
+
+    def test_out_of_prefix_builder_result_is_rejected(self):
+        outside = self.root / 'unexpected-binary'
+        outside.write_bytes(b'not-from-the-private-prefix')
+        self.builder.side_effect = None
+        self.builder.return_value = outside
+        with self.assertRaisesRegex(RuntimeError, 'private bin/dReal'):
+            installer.build_dreal()
+        self.audit.assert_not_called()
+        self.assert_previous_untouched()
+
+    def test_broad_prefix_and_invalid_jobs_never_invoke_builder(self):
+        repository = Path(__file__).resolve().parent.parent
+        for prefix in (Path('/'), Path('/usr/local'), Path.home(), repository, repository.parent):
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(RuntimeError, 'dedicated user-owned'):
+                installer.build_dreal(prefix=prefix)
+        with self.assertRaisesRegex(RuntimeError, '--jobs'):
+            installer.build_dreal(jobs=0)
+        self.builder.assert_not_called()
+        self.assert_previous_untouched()
 
 
 class SourceBuildTransactionTest(unittest.TestCase):

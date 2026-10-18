@@ -7,6 +7,7 @@ from ..encoding.batching import candidate_batch_formula
 from ..encoding.path import PathProvider, SymbolicPathProvider
 from ..encoding.static_learning import StaticLearner
 from ..encoding.symbolic_discrete import reach_time_ordering
+from ..encoding.time import segment_duration_bounds
 from ..constraints.constraints import (
     And, BinaryFormula, Bool, Constraint, Eq, Forall, Formula, Geq, Gt,
     Implies, Integral, Leq, Lt, MultinaryFormula, Neq, NonLeaf, Not, Or,
@@ -81,11 +82,13 @@ class OneStepAlgorithm(Algorithm):
             if is_reach:
                 k_step_goal = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
                 time_order_const = reach_time_ordering(2 * b + 2, float(time_bound))
-                stl_const = And([k_step_goal, time_order_const])
+                stl_const = And([k_step_goal, time_order_const,
+                                 segment_duration_bounds(b, options.time_horizon)])
             else:
                 stl_const = bounded_stl_formula(
                     model, goal, goal_prop_dict, b, delta, float(time_bound),
                     options.use_unary_bounded_temporal_form,
+                    time_horizon=options.time_horizon,
                 )
 
             boolean_abstract = dict()

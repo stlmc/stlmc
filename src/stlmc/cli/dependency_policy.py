@@ -1,7 +1,9 @@
-"""Versions validated for the managed solver installation workflow.
+"""Managed solver targets and pinned native download information.
 
 These are installation/check targets, not a claim that every other version is
 incompatible. Runtime solver discovery remains independent of this policy.
+The official dReal target has known correctness limitations. Its version/hash
+identify the distribution, not a certificate of ODE correctness.
 """
 
 Z3_VERSION = "4.15.4.0"
@@ -9,6 +11,18 @@ CVC5_VERSION = "1.3.4"
 YICES_BINDING_VERSION = "1.1.6"
 YICES_NATIVE_VERSION = "2.7.0"
 DREAL_VERSION = "3.16.06.02"
+# Official source snapshot containing the parameter-invariant fix. These pins
+# identify build inputs, not a claim that every host/toolchain is validated.
+DREAL_SOURCE_VERSION = "3.16.12"
+DREAL_SOURCE_COMMIT = "6fa469fb1f8485b695b00edc69aa9e9a35e7ba97"
+DREAL_SOURCE_URL = "https://codeload.github.com/dreal/dreal3/tar.gz/" + DREAL_SOURCE_COMMIT
+DREAL_SOURCE_SHA256 = "281eb506f72de7bab6b6c969db84aaec2757eda09034d4cad4480756c82a7221"
+DREAL_KNOWN_LIMITATIONS_WARNING = (
+    "Warning: official dReal 3.16.06.02 has known correctness limitations: "
+    "zero-derivative parameter invariants may be ignored and ODE witnesses "
+    "may be incorrect (upstream issue #325). Execution is allowed with these "
+    "limitations; successful installation or checks do not certify ODE correctness."
+)
 
 Z3_PACKAGE = "z3-solver==" + Z3_VERSION
 CVC5_PACKAGE = "cvc5==" + CVC5_VERSION

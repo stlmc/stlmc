@@ -1,6 +1,7 @@
 TEST_DIR := $(shell pwd)/tests
 PYTHON ?= python3
 FAST ?= 0
+SMOKE_ARGS ?=
 
 DEFAULT_ARTIFACT_SCOPE := .
 DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
@@ -48,7 +49,7 @@ test-solution-functions:
 
 test-smoke:
 	$(info start SMT solver smoke tests ...)
-	@$(PYTHON) -u $(TEST_DIR)/smoke_solvers.py
+	@$(PYTHON) -u $(TEST_DIR)/smoke_solvers.py $(SMOKE_ARGS)
 
 test-cvc5-solver:
 	$(info test CVC5 adapter SAT, UNSAT, and assignments ...)

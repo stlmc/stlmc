@@ -2,11 +2,12 @@
 
 from ..constraints.constraints import Ode
 from ..constraints.substitution import substitution
+from ..constraints.formatting import format_constraint
 from .projection import Projector, continuous_values
 
 
 def model_text(value):
-    return str(value).replace("##$%^&$%^&##'", "'")
+    return format_constraint(value).replace("##$%^&$%^&##'", "'")
 
 
 def assignment_value(assignment, variable):

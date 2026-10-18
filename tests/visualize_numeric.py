@@ -8,7 +8,7 @@ import unittest
 
 from stlmc.constraints.constraints import (
     Add, Arccos, Arcsin, Arctan, Cos, Div, IntVal, Mul, Pow, Real,
-    RealVal, Sin, Function, Sqrt, Sub, Geq, GloballyFormula,
+    RealVal, Sin, Function, Sqrt, Sub, Geq, Gt, Leq, Lt, Eq, Int, GloballyFormula,
 )
 from stlmc.constraints.interval import Interval, universeInterval
 from stlmc.visualize.numbers import number_float, parse_number
@@ -19,6 +19,32 @@ from stlmc.visualize.robustness import robustness
 
 
 class SafeVisualizationNumericTest(unittest.TestCase):
+    def test_numeric_mode_arithmetic_uses_discrete_samples(self):
+        mode = Real('mode')
+        times = [[0., .25, .5], [.5, .75, 1.]]
+        discrete = {mode: [[1., 1., 1.], [3., 3., 3.]]}
+        for operator, sign in ((Geq, 1), (Gt, 1), (Leq, -1), (Lt, -1)):
+            formula = operator(mode, RealVal('2'))
+            with self.subTest(operator=operator.__name__):
+                self.assertEqual(robustness(formula, {}, discrete, .25, times, 1., {}), -sign)
+                self.assertEqual(robustness(formula, {}, discrete, .75, times, 1., {}), sign)
+
+    def test_numeric_mode_equality_and_mixed_continuous_expression(self):
+        mode, x = Real('mode'), Real('x')
+        times = [[0., .5, 1.]]
+        points = {x: [[2., 3., 4.]]}
+        discrete = {mode: [[1., 1., 1.]]}
+        self.assertEqual(robustness(Eq(mode, RealVal('2')), points, discrete,
+                                    .5, times, 1., {}), -1.)
+        self.assertEqual(robustness(Geq(Add(x, mode), RealVal('2')), points,
+                                    discrete, .5, times, 1., {}), 2.)
+
+    def test_integer_mode_arithmetic_uses_discrete_samples(self):
+        mode = Int('mode')
+        self.assertEqual(robustness(Geq(mode, IntVal('2')), {},
+                                    {mode: [[3., 3.]]}, .5,
+                                    [[0., .5]], 1., {}), 1.)
+
     def test_exact_numeric_spellings(self):
         for text, expected in [('1/2',Fraction(1,2)),('(1/2)',Fraction(1,2)),
                                ('(/ 1 2)',Fraction(1,2)),('(- (/ 1 2))',Fraction(-1,2)),

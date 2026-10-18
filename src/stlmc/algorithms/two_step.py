@@ -24,6 +24,7 @@ from ..encoding.fully_stable_stl import (
     symbolic_goal,
 )
 from ..encoding.path import PathProvider, SymbolicPathProvider
+from ..encoding.time import segment_duration_bounds
 from ..encoding.symbolic_discrete import (
     chi, formula_id, reach_time_ordering, rho, symbolic_inf, symbolic_sup,
     time_ordering,
@@ -198,6 +199,8 @@ class TwoStepAlgorithm(Algorithm):
                 time_order_const = reach_time_ordering(2 * b + 2, tau_max)
                 final_f_k = goal.k_step_consts(b, float(time_bound), delta, model, goal_prop_dict)
                 partition_const = BoolVal("True")
+            duration_const = segment_duration_bounds(b, options.time_horizon)
+            time_order_const = And([time_order_const, duration_const])
             finished_bound = b
             total_size = acc_size(model_consts)
             total_size += acc_size(stl_consts)
@@ -222,6 +225,7 @@ class TwoStepAlgorithm(Algorithm):
                     finalize_bound=is_last_path,
                     is_generalized=is_generalized,
                     smt_preprocess=smt_preprocess,
+                    duration_const=duration_const,
                 )
                 total_time += scenario_time
                 bound_scenarios += self.last_scenario_count
@@ -287,8 +291,11 @@ class TwoStepAlgorithm(Algorithm):
                        explicit_path: Formula = BoolVal("True"),
                        finalize_bound=True,
                        is_generalized=True,
-                       smt_preprocess=False):
+                       smt_preprocess=False,
+                       duration_const=None):
         total_time = 0.0
+        if duration_const is None:
+            duration_const = BoolVal("True")
 
         k_model_f = acc_model[bound]
         k_stl_f = acc_stl[bound]
@@ -325,7 +332,7 @@ class TwoStepAlgorithm(Algorithm):
         # arithmetic literals from leaking into another path's refinement.
         self.clause_set.update(clause(base_symbolic_path))
 
-        contra_v_const, contra_e_const = contradiction_gen(self.clause_set, sub_formulas)
+        contra_v_const, contra_e_const = contradiction_gen(self.clause_set, sub_formulas, model)
         contra_v_inv = contradiction_gen_inv(model.boolean_abstract)
 
         self.scenario_solver.push()
@@ -509,7 +516,8 @@ class TwoStepAlgorithm(Algorithm):
                             reduction_dict,
                         )
                         common_part = substitution(
-                            And([stl_final, range_const, explicit_path]), reduction_dict
+                            And([stl_final, range_const, explicit_path,
+                                 duration_const]), reduction_dict
                         )
                     else:
                         scenario_part = And(
@@ -517,7 +525,7 @@ class TwoStepAlgorithm(Algorithm):
                         )
                         common_part = And(
                             [stl_final, range_const, model_abstract_const,
-                             explicit_path]
+                             explicit_path, duration_const]
                         )
 
                     pending_candidates.append((common_part, scenario_part))

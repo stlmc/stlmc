@@ -69,12 +69,12 @@ OPTION_HELP = {
         "choices: symbolic, explicit"
     ),
     "solver": (
-        "underlying solver\n"
+        "underlying solver (auto: first supported, usable installed backend)\n"
         "choices: auto, cvc5, dreal, z3, yices"
     ),
     "bound": "maximum mode changes and variable points (reach: jumps)",
     "time-bound": "maximum global trace time",
-    "time-horizon": "maximum duration of each continuous segment, or 'time-bound'",
+    "time-horizon": "maximum duration of each continuous segment for all solvers, or 'time-bound'",
     "threshold": "robustness threshold used to relax the negated goal",
     "parallel-core": "maximum number of parallel solver workers",
     "solver-batch-size": "maximum candidates combined in one solver OR query",

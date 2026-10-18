@@ -10,6 +10,56 @@ from .substitution import substitution
 from .normalization import substitution_zero2t
 
 
+def polynomial_ode_solution(dynamics, elapsed, initial_variables=None):
+    """Exact autonomous polynomial flow for acyclic state dependencies.
+
+    Initial states are parameters, not frozen right-hand sides. Cyclic ODEs
+    (including exponential flows) are deliberately unsupported, never Euler
+    approximated. This conservative class includes constant acceleration.
+    """
+    import sympy
+    from .sympy_expression import SympyExpression
+    from ..exceptions import NotSupportedError
+
+    # Raw user identifiers must never be interpreted as encoder suffixes.
+    # Indexed callers supply the actual integral initial-state vector.
+    state_variables = (list(dynamics.vars) if initial_variables is None
+                       else list(initial_variables))
+    states = set(state_variables)
+    if (len(states) != len(dynamics.vars)
+            or len(state_variables) != len(dynamics.vars)
+            or len(dynamics.vars) != len(dynamics.exps)):
+        raise NotSupportedError('invalid ODE state vector')
+    if elapsed in states or any(elapsed in get_vars(e) for e in dynamics.exps):
+        raise NotSupportedError('ODE elapsed symbol must be fresh')
+    context = SympyExpression()
+    time = context.symbol(elapsed)
+    aliases = dict(zip(dynamics.vars, state_variables))
+    pending = dict(zip(state_variables,
+                       [substitution(e, aliases) for e in dynamics.exps]))
+    solved = {}
+    while pending:
+        ready = [v for v, e in pending.items()
+                 if not (get_vars(e) & set(pending))]
+        if not ready:
+            raise NotSupportedError(
+                'non-dReal backend requires an exact polynomial ODE solution; '
+                'cyclic state-dependent ODE is unsupported (use dReal)')
+        for variable in ready:
+            expression = pending.pop(variable)
+            if any(v.id == 'time' or v.id.startswith('tau_')
+                   for v in get_vars(expression)):
+                raise NotSupportedError('non-autonomous ODE requires an explicit clock state')
+            rhs = context.to_sympy(expression).subs(
+                {context.symbol(v): e for v, e in solved.items()}, simultaneous=True)
+            try:
+                polynomial = sympy.Poly(rhs, time)
+            except sympy.PolynomialError as error:
+                raise NotSupportedError('ODE solution is not polynomial in elapsed time') from error
+            solved[variable] = context.symbol(variable) + polynomial.integrate().as_expr()
+    return [context.from_sympy(solved[v]) for v in state_variables]
+
+
 def make_forall_consts_aux(forall: Forall):
     start_forall_exp = forall.const.left
     end_forall_exp = substitution_zero2t(forall.const.left)
@@ -51,7 +101,7 @@ def make_forall_consts_aux(forall: Forall):
 def make_forall_consts(forall: Forall):
     if isinstance(forall.const, Bool) or len(get_vars(forall.const)) == 0:
         return forall.const
-    if isinstance(forall.integral.dynamics, Function):
+    if isinstance(forall.integral.dynamics, (Function, Ode)):
         return _make_solution_forall_consts(forall)
     if isinstance(forall.const, Eq):
         return And([forall.const, substitution_zero2t(forall.const),
@@ -121,7 +171,15 @@ def _make_solution_forall_consts(forall):
 def make_dynamics_consts(dyn: Ode):
     dyn_const_children = list()
     index = 0
-    for exp in dyn.exps:
+    elapsed = Real('__stlmc_ode_elapsed')
+    variables = set(dyn.vars)
+    for expression in dyn.exps:
+        variables |= get_vars(expression)
+    while elapsed in variables:
+        elapsed = Real(elapsed.id + '_')
+    initial_variables = [Real(v.id[:-2]) for v in dyn.vars]
+    expressions = polynomial_ode_solution(dyn, elapsed, initial_variables)
+    for exp in expressions:
         var = dyn.vars[index]
         start_index = var.id[0:-2].find("_") + 1
         bound_str = var.id[start_index:-4]
@@ -139,7 +197,8 @@ def make_dynamics_consts(dyn: Ode):
         else:
             start_tau_var = Real('tau_' + bound_str)
 
-        new_exp_const = Eq(new_end_var, Add(new_start_var, Mul(Sub(end_tau_var, start_tau_var), exp)))
+        new_exp_const = Eq(new_end_var, substitution(
+            exp, {elapsed: Sub(end_tau_var, start_tau_var)}))
         dyn_const_children.append(new_exp_const)
         index += 1
     return And(dyn_const_children)

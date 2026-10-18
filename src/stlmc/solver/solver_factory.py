@@ -62,6 +62,8 @@ class SolverFactory:
                     "-executable-path /path/to/dReal".format(executable)
                 )
             dreal_section.set_value("executable-path", executable)
+            from .dreal_runtime import validate_dreal_runtime
+            validate_dreal_runtime(executable)
             from ..solver.dreal import dRealSolver
             return dRealSolver(config)
         elif solver_type == 'yices':

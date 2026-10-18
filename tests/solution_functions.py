@@ -126,7 +126,7 @@ class SolutionFunctionTest(unittest.TestCase):
         model.make_invariant_consts(0, integrals)
         invariant = next(value for value in model.boolean_abstract.values()
                          if isinstance(value, Forall))
-        with self.assertRaisesRegex(NotSupportedError, "state-independent"):
+        with self.assertRaisesRegex(NotSupportedError, "cyclic state-dependent ODE"):
             eliminate_boolean_flow_condition(invariant)
 
     def test_or_invariant_preserves_time_varying_choice(self):

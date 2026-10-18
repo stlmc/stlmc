@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from ..constraints.constraints import (
     Arccos, Arcsin, Arctan, Binary, Constraint, Cos, Dynamics, IntVal,
-    Multinary, Pow, RealVal, Sin, Sqrt, Tan, Unary,
+    Multinary, Ode, Pow, Real, RealVal, Sin, Sqrt, Tan, Unary,
 )
 from ..exceptions import NotSupportedError
 
@@ -49,6 +49,15 @@ def _validate_expression(solver, expression):
     if isinstance(expression, Dynamics):
         for child in expression.exps:
             _validate_expression(solver, child)
+        if solver in {"cvc5", "z3", "yices"} and isinstance(expression, Ode):
+            from ..constraints.translation import polynomial_ode_solution
+            try:
+                polynomial_ode_solution(expression, Real("__stlmc_capability_elapsed"))
+            except NotSupportedError as error:
+                _conversion_error(
+                    solver, "ODE without a supported exact polynomial solution",
+                    expression, "use dReal for native ODE integration: {}".format(error),
+                )
     elif isinstance(expression, Unary):
         _validate_expression(solver, expression.child)
     elif isinstance(expression, Binary):

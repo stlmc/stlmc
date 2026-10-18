@@ -8,11 +8,8 @@ from ..artifacts.writer import write_verification_artifacts
 from ..constraints.substitution import substitution
 from ..exceptions import IllegalArgumentError, NotSupportedError, ParsingError
 from ..objects.goal import ReachGoal, reach_goal, validate_reach_formula
-from ..parser.checker import check_dynamics, check_validity
-from ..solver.capability import (
-    expression_requires_dreal, model_requires_dreal,
-    validate_formula_solver_support, validate_model_solver_support,
-)
+from ..parser.checker import check_validity
+from ..solver.capability import validate_formula_solver_support, validate_model_solver_support
 from ..solver.solver_factory import SolverFactory
 from .algorithm_factory import AlgorithmFactory
 from .options import RunOptions
@@ -67,11 +64,12 @@ class RunPreparer:
 
         solver_name = options.solver
         if solver_name == "auto":
-            solver_name = self._select_solver(model, goals, definitions)
+            selected_goals = [
+                goal for goal in goals
+                if not options.goal_labels or labels.get(goal.get_formula()) in options.goal_labels
+            ]
+            solver_name = self._select_solver(model, selected_goals, definitions, configuration)
             common.set_value("solver", solver_name)
-            if solver_name == "yices":
-                logic = "QF_NRA" if check_dynamics(model) == "poly" else "QF_LRA"
-                configuration.get_section("yices").set_value("logic", logic)
             options = options.with_solver(solver_name)
 
         update_solver_config(solver_name)
@@ -100,15 +98,9 @@ class RunPreparer:
         )
 
     @staticmethod
-    def _select_solver(model, goals, definitions):
-        dynamic_type = check_dynamics(model)
-        requires_dreal = any(
-            expression_requires_dreal(substitution(goal.get_formula(), definitions))
-            for goal in goals
-        )
-        if dynamic_type == "ode" or model_requires_dreal(model) or requires_dreal:
-            return "dreal"
-        return "yices"
+    def _select_solver(model, goals, definitions, configuration):
+        from ..solver.auto_selection import select_available_solver
+        return select_available_solver(model, goals, definitions, configuration)
 
 
 class GoalExecutor:

@@ -8,6 +8,7 @@ from ..constraints.constraints import (
     ReleaseFormula, Sqrt, Sub, UntilFormula, Variable,
 )
 from ..constraints.interval import Interval
+from ..constraints.boolean_simplification import flatten_boolean
 from ..exceptions import NotSupportedError
 
 
@@ -33,12 +34,11 @@ def _binary(formula, operator):
 @formula2latex.register(And)
 @formula2latex.register(Or)
 def _(formula):
-    assert len(formula.children) == 2
-    operator = "and" if isinstance(formula, And) else "or"
-    return "({} {} {})".format(
-        formula2latex(formula.children[0]), operator,
-        formula2latex(formula.children[1]),
-    )
+    reduced = flatten_boolean(formula)
+    if not isinstance(reduced, (And, Or)):
+        return formula2latex(reduced)
+    operator = " and " if isinstance(reduced, And) else " or "
+    return '(' + operator.join(formula2latex(child) for child in reduced.children) + ')'
 
 
 @formula2latex.register(Implies)

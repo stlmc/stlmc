@@ -16,6 +16,18 @@ from .sampling import get_sub_time_samples
 from .numeric import infix_float
 from .numbers import number_float
 
+
+def _sampled_arithmetic(expression, point_samples, discrete_samples, interval, index):
+    values = {
+        variable: RealVal(str(samples[interval][index]))
+        for variable, samples in point_samples.items()
+    }
+    # Numeric mode variables are piecewise constant, not ODE state variables.
+    for variable, samples in discrete_samples.items():
+        if variable.type in ("real", "int"):
+            values[variable] = RealVal(str(samples[interval][index]))
+    return float(infix_float(substitution(expression, values), [], []))
+
 @singledispatch
 def robustness(const: Constraint, point_samples: Dict[Variable, List[List[float]]],
                discrete_samples: Dict[Variable, List[List[float]]],
@@ -97,11 +109,8 @@ def _(const: Geq, point_samples: Dict[Variable, List[List[float]]],
     for interval_index, time_samples in enumerate(times):
         for index, t in enumerate(time_samples):
             if t == time:
-                substitute_dict: Dict[Real, RealVal] = dict()
-                for v in point_samples:
-                    substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
-                robust_value = float(infix_float(expr, [], []))
+                robust_value = _sampled_arithmetic(
+                    lhs, point_samples, discrete_samples, interval_index, index)
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -118,11 +127,8 @@ def _(const: Gt, point_samples: Dict[Variable, List[List[float]]],
     for interval_index, time_samples in enumerate(times):
         for index, t in enumerate(time_samples):
             if t == time:
-                substitute_dict: Dict[Real, RealVal] = dict()
-                for v in point_samples:
-                    substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
-                robust_value = float(infix_float(expr, [], []))
+                robust_value = _sampled_arithmetic(
+                    lhs, point_samples, discrete_samples, interval_index, index)
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -139,11 +145,8 @@ def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
     for interval_index, time_samples in enumerate(times):
         for index, t in enumerate(time_samples):
             if t == time:
-                substitute_dict: Dict[Real, RealVal] = dict()
-                for v in point_samples:
-                    substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
-                robust_value = float(infix_float(expr, [], []))
+                robust_value = _sampled_arithmetic(
+                    lhs, point_samples, discrete_samples, interval_index, index)
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -160,11 +163,8 @@ def _(const: Lt, point_samples: Dict[Variable, List[List[float]]],
     for interval_index, time_samples in enumerate(times):
         for index, t in enumerate(time_samples):
             if t == time:
-                substitute_dict: Dict[Real, RealVal] = dict()
-                for v in point_samples:
-                    substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
-                expr = substitution(lhs, substitute_dict)
-                robust_value = float(infix_float(expr, [], []))
+                robust_value = _sampled_arithmetic(
+                    lhs, point_samples, discrete_samples, interval_index, index)
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))

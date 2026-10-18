@@ -4,13 +4,42 @@ from functools import singledispatch
 
 from .constraints import (
     Add, And, Constraint, Div, Eq, Forall, Geq, Gt, Leq, Lt, Mul, Neg, Neq,
-    Pow, Sub, Variable,
+    Pow, Sub, Variable, Or, Not, Implies, UnaryTemporalFormula,
+    BinaryTemporalFormula, Unary, Binary, Reach, Interval,
 )
+from .boolean_simplification import flatten_boolean
+
+
+def format_constraint(const):
+    """Render a constraint with display-only Boolean flattening at every level."""
+    if isinstance(const, (And, Or)):
+        reduced = flatten_boolean(const)
+        if not isinstance(reduced, (And, Or)):
+            return format_constraint(reduced)
+        operator = 'and' if isinstance(reduced, And) else 'or'
+        return '(' + operator + ' ' + ' '.join(map(format_constraint, reduced.children)) + ')'
+    if isinstance(const, UnaryTemporalFormula):
+        return '({}{} {})'.format(const._op_str, format_constraint(const.local_time), format_constraint(const.child))
+    if isinstance(const, BinaryTemporalFormula):
+        return '({} {}{} {})'.format(format_constraint(const.left), const._op_str,
+                                    format_constraint(const.local_time), format_constraint(const.right))
+    if isinstance(const, Interval):
+        return '{}{},{}{}'.format('[' if const.left_end else '(', format_constraint(const.left),
+                                 format_constraint(const.right), ']' if const.right_end else ')')
+    if isinstance(const, Forall):
+        return '(forall {} . {})'.format(const.current_mode_number, format_constraint(const.const))
+    if isinstance(const, Reach):
+        return 'reach ' + format_constraint(const.formula)
+    if isinstance(const, Unary):
+        return '({} {})'.format(const._op_str, format_constraint(const.child))
+    if isinstance(const, Binary):
+        return '({} {} {})'.format(format_constraint(const.left), const._op_str, format_constraint(const.right))
+    return str(const)
 
 
 @singledispatch
 def infix(const: Constraint):
-    return str(const)
+    return format_constraint(const)
 
 
 @infix.register(Variable)
@@ -19,8 +48,23 @@ def _(const: Variable):
 
 
 @infix.register(And)
-def _(const: And):
-    return '&'.join([infix(c) for c in const.children])
+@infix.register(Or)
+def _(const):
+    reduced = flatten_boolean(const)
+    if not isinstance(reduced, (And, Or)):
+        return infix(reduced)
+    separator = ' & ' if isinstance(reduced, And) else ' | '
+    return '(' + separator.join(infix(child) for child in reduced.children) + ')'
+
+
+@infix.register(Not)
+def _(const):
+    return '(not {})'.format(infix(const.child))
+
+
+@infix.register(Implies)
+def _(const):
+    return '({} -> {})'.format(infix(const.left), infix(const.right))
 
 
 @infix.register(Geq)

@@ -5,8 +5,9 @@ Bound zero therefore checks the initial continuous segment, and bound `k`
 checks paths containing at most `k` jumps. The search stops at the first bound
 that contains a witness.
 
-`time-horizon` limits the duration of each continuous segment. Reachability
-segments are separated by jumps.
+`time-horizon` limits the duration of each continuous segment for every solver
+backend. Reachability segments are separated by jumps. Unlike STL's fixed-end
+time window, a reachability witness may finish before `time-bound`.
 
 ## Writing a query
 

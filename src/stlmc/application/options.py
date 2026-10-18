@@ -1,6 +1,7 @@
 """Typed application options derived from the parser's configuration model."""
 
 from dataclasses import dataclass, replace
+import math
 from typing import Tuple
 
 from ..config_schema import resolve_parallel_core
@@ -35,6 +36,12 @@ class RunOptions:
         raw_horizon = common.get_value("time-horizon")
         raw_time_bound = common.get_value("time-bound")
         horizon = raw_time_bound if raw_horizon == "time-bound" else raw_horizon
+        try:
+            resolved_horizon = float(horizon)
+        except (TypeError, ValueError) as error:
+            raise IllegalArgumentError("time-horizon must be finite and non-negative") from error
+        if not math.isfinite(resolved_horizon) or resolved_horizon < 0:
+            raise IllegalArgumentError("time-horizon must be finite and non-negative")
         raw_labels = (
             common.get_value("goal") if common.is_argument_in("goal") else "all"
         )
@@ -58,7 +65,7 @@ class RunOptions:
             solver=common.get_value("solver"),
             bound=int(common.get_value("bound")),
             time_bound=float(raw_time_bound),
-            time_horizon=float(horizon),
+            time_horizon=resolved_horizon,
             threshold=float(common.get_value("threshold")),
             parallel_core=parallel_core,
             solver_batch_size=batch_size,
