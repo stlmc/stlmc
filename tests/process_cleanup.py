@@ -10,7 +10,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.execution.runner import ParallelAlgRunner
 from stlmc.execution.progress import ProgressTracker
-from stlmc.solver.abstract_solver import SolveResult, SolverJob, ThreadWorker
+from stlmc.solver.abstract_solver import JobSolver, SolveResult, SolverJob, ThreadWorker
 
 
 class FakeClock:
@@ -81,6 +81,91 @@ class JoinWorker:
 
 
 class ParallelRunnerCleanupTest(unittest.TestCase):
+    def test_sequential_solve_interrupt_reaps_its_worker(self):
+        from stlmc.utils.interrupt import (
+            StlmcInterrupted, clear_interrupt, request_interrupt,
+        )
+        worker = SlowProcess(100)
+        job = SolverJob()
+        job.set_worker(worker)
+
+        class Solver(JobSolver):
+            def submit(self, const, **kwargs):
+                return job
+
+        def interrupted_wait(timeout):
+            request_interrupt()
+            raise TimeoutError()
+
+        try:
+            with mock.patch.object(job, 'result', side_effect=interrupted_wait):
+                with self.assertRaises(StlmcInterrupted):
+                    Solver().solve(object())
+            self.assertTrue(worker.terminated)
+            self.assertTrue(worker.killed)
+        finally:
+            clear_interrupt()
+
+    def test_sequential_timeout_reaps_its_worker(self):
+        worker = SlowProcess(100)
+        job = SolverJob()
+        job.set_worker(worker)
+
+        class Solver(JobSolver):
+            def submit(self, const, **kwargs):
+                return job
+
+        result = Solver().solve(object(), timeout=0)
+        self.assertEqual(result.result, 'Unknown')
+        self.assertTrue(worker.killed)
+
+    def test_cli_sigterm_interrupts_sequential_wait_without_orphan(self):
+        import os
+        import select
+        import signal
+        code = '''
+import subprocess, sys
+from unittest.mock import patch
+from stlmc.cli.mc import main
+from stlmc.solver.abstract_solver import JobSolver, SolverJob
+class Solver(JobSolver):
+    def submit(self, const, **kwargs):
+        worker = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        job = SolverJob()
+        job.set_worker(worker)
+        print(worker.pid, flush=True)
+        return job
+def run(*args):
+    Solver().solve(object())
+sys.argv = ['stlmc', sys.argv[1]]
+with patch('stlmc.update_check.notify_if_outdated'), patch(
+        'stlmc.application.workflow.VerificationWorkflow.run', side_effect=run):
+    raise SystemExit(main())
+'''
+        env = dict(os.environ, PYTHONPATH=str(PROJECT_ROOT / 'src'))
+        process = subprocess.Popen([sys.executable, '-u', '-c', code, __file__],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        worker_pid = None
+        try:
+            self.assertTrue(select.select([process.stdout], [], [], 15)[0])
+            worker_pid = int(process.stdout.readline().strip())
+            process.send_signal(signal.SIGTERM)
+            stdout, stderr = process.communicate(timeout=10)
+            self.assertEqual(process.returncode, 130, stdout + stderr)
+            self.assertIn('interrupted by user', stdout)
+            self.assertNotIn('Traceback', stdout + stderr)
+            with self.assertRaises(ProcessLookupError):
+                os.kill(worker_pid, 0)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate()
+            if worker_pid is not None:
+                try:
+                    os.kill(worker_pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
     def test_progress_tracker_keeps_scenario_and_job_units_separate(self):
         progress = ProgressTracker()
         progress.scenario_generated(5)

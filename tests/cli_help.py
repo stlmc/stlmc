@@ -18,6 +18,38 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_signal_during_z3_construction_does_not_unwind_partial_objects(self):
+        import gc
+        import signal
+        import z3
+        from stlmc.cli.mc import main, _raise_keyboard_interrupt
+        from stlmc.utils.interrupt import clear_interrupt
+
+        original = z3.AstRef.__init__
+        unraisable = []
+        output = io.StringIO()
+
+        def interrupted_init(instance, *args, **kwargs):
+            # Reproduce delivery before AstRef has installed its ctx/ast.
+            _raise_keyboard_interrupt(signal.SIGTERM, None)
+            original(instance, *args, **kwargs)
+
+        try:
+            with mock.patch.object(sys, 'argv', ['stlmc', __file__]), \
+                    mock.patch('stlmc.update_check.notify_if_outdated'), \
+                    mock.patch.object(z3.AstRef, '__init__', interrupted_init), \
+                    mock.patch.object(sys, 'unraisablehook', unraisable.append), \
+                    mock.patch('stlmc.application.workflow.VerificationWorkflow.run',
+                               side_effect=lambda *args: z3.Bool('interrupt_during_init')), \
+                    contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                status = main()
+                gc.collect()
+            self.assertEqual(status, 130)
+            self.assertFalse(unraisable)
+            self.assertNotIn('Traceback', output.getvalue())
+        finally:
+            clear_interrupt()
+
     def test_native_argument_error_after_signal_is_clean_cancellation(self):
         import signal
         from stlmc.cli.mc import main, _raise_keyboard_interrupt
@@ -27,6 +59,7 @@ class CliHelpTest(unittest.TestCase):
             @classmethod
             def from_param(cls, value):
                 _raise_keyboard_interrupt(signal.SIGTERM, None)
+                raise TypeError('conversion interrupted')
 
         native = ctypes.CFUNCTYPE(None, InterruptedArgument)(lambda value: None)
         output = io.StringIO()

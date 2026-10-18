@@ -1,6 +1,7 @@
 import abc
 import subprocess
 import threading
+import time
 from dataclasses import dataclass
 from enum import Enum
 from abc import ABC
@@ -213,14 +214,24 @@ class JobSolver(ABC):
         if all_consts is None:
             raise ValueError("solve requires a formula")
         job = self.submit(all_consts, query_name=query_name)
+        from ..utils.interrupt import raise_if_interrupted
+        from ..execution.cleanup import terminate_workers
+        deadline = None if timeout is None else time.monotonic() + timeout
         try:
-            solve_result = job.result(timeout)
-        except TimeoutError:
-            job.kill()
-            solve_result = SolveResult(
-                "Unknown", None, error="solver job timed out"
-            )
-        return solve_result
+            while True:
+                raise_if_interrupted()
+                remaining = None if deadline is None else max(0, deadline-time.monotonic())
+                try:
+                    result = job.result(0.1 if remaining is None else min(0.1, remaining))
+                    raise_if_interrupted()
+                    return result
+                except TimeoutError:
+                    if deadline is not None and time.monotonic() >= deadline:
+                        terminate_workers([job], 0)
+                        return SolveResult("Unknown", None, error="solver job timed out")
+        except BaseException:
+            terminate_workers([job], 3)
+            raise
 
     @abc.abstractmethod
     def submit(self, const, on_complete=None, query_name=""):

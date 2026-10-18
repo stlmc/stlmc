@@ -2,10 +2,11 @@ import sys
 
 
 def _raise_keyboard_interrupt(signum, frame):
-    from ..utils.interrupt import StlmcInterrupted, request_interrupt
+    from ..utils.interrupt import request_interrupt
 
+    # Do not unwind an arbitrary ctypes call or a partially initialized Z3
+    # object. Encoding loops and solver waits raise at safe checkpoints.
     request_interrupt()
-    raise StlmcInterrupted
 
 
 def main():

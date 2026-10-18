@@ -24,6 +24,7 @@ from ..solver.abstract_solver import (
 )
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
+from ..utils.interrupt import raise_if_interrupted
 
 
 class Z3Solver(JobSolver):
@@ -91,6 +92,7 @@ class Z3FormulaSolver(IncrementalFormulaSolver):
         self._scopes = []
 
     def add(self, formula):
+        raise_if_interrupted()
         self._assertions.append(formula)
         self._solver.add(z3Obj(formula))
 
@@ -108,7 +110,9 @@ class Z3FormulaSolver(IncrementalFormulaSolver):
         self._solver.pop()
 
     def check(self):
+        raise_if_interrupted()
         result = self._solver.check()
+        raise_if_interrupted()
         if result == z3.sat:
             return SolverStatus.SAT
         if result == z3.unsat:
@@ -119,6 +123,7 @@ class Z3FormulaSolver(IncrementalFormulaSolver):
         return Z3Assignment(self._solver.model())
 
     def track(self, formula, track_id):
+        raise_if_interrupted()
         self._tracked[track_id] = formula
         self._solver.assert_and_track(z3Obj(formula), track_id)
 

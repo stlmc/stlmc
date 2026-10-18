@@ -69,7 +69,9 @@ The test suite has sixteen parts:
   reject signals accepted by the former positive-only matching path.
 - `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
   remain synchronized and that importing the visualization CLI does not load
-  Bokeh or the full visualizer.
+  Bokeh or the full visualizer. Cancellation tests cover signals during native
+  argument conversion and partially initialized Z3 objects without unraisable
+  destructor exceptions.
 - `install_solvers.py` checks solver selection and status behavior, platform
   installation commands, dReal installation permissions and locations, and
   executable discovery precedence without accessing the network.
@@ -77,6 +79,8 @@ The test suite has sixteen parts:
   cleanup deadline and are forcefully reaped when graceful termination stalls.
   It also checks that completed batches update scenario and job progress in
   their respective units, including batches containing multiple scenarios.
+  Sequential solver waits poll cancellation requests and reap their workers;
+  a real CLI SIGTERM test checks exit 130 without an orphan process.
 - `reachability.py` checks zero-jump reachability, unreachable results,
   threshold relaxation, symbolic/explicit path strategies with one-step and
   two-step solving, CVC5/Z3/Yices/dReal agreement, temporal-target validation, and
