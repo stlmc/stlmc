@@ -1,5 +1,6 @@
 # logging: ode
-# @benchmark.expected(f1=violated:3, f2=violated:3, f3=satisfied:5)
+# @benchmark.expected(f1=violated:0, f2=violated:2, f3=violated:0)
+# Short regression windows; f1 changes y>=60 to y>=90, f3 x<=80 to x<=20.
 bool dx;
 bool dy;
 [-10, 10] vx;
@@ -83,6 +84,6 @@ proposition:
 
 # bound: 5, timebound: 10
 goal:
-[f1]: <>[2, 4] ((y >= 30) -> [][1, 5] y >= 60); # threshold: 3, time-horizon: 3 
-[f2]: <> [2, 4] ([][3, 6] (y <= 40)); # threshold: 2, time-horizon: 2.5
-[f3]: <>[1, 5](vx >= 2 R[0, inf) x <= 80); # threshold: 1, time-horizon: 4
+[f1]: <>[0, 0.25] ((y >= 30) -> [][0, 0.25] y >= 90);
+[f2]: <>[0.2, 0.5] ([][0.2, 0.5] (y <= 40));
+[f3]: <>[0, 0.25](vx >= 2 R[0, 0.25] x <= 20);

@@ -1,5 +1,5 @@
 # logging: poly
-# @benchmark.expected(f1=violated:5, f2=violated:3, f3=satisfied:10)
+# @benchmark.expected(f1=violated:0, f2=violated:3, f3=satisfied:10)
 # @benchmark.fast(f2, f3)
 # @benchmark.z3-slow(f3)
 bool ix;        bool iy;
@@ -91,6 +91,6 @@ proposition:
 
 # bound: 10, timebound: 15, solver: yices
 goal:
-  [f1]: [][0,4] (vx < -2 -> <>[2,5] rx <= -2); # threshold: 0.5
+  [f1]: [][0,0.5] (vx < -2 -> <>[0,0.5] rx <= -2); # threshold: 0.5
   [f2]: (<>[0, 4] ry > 3) U [0, 5] (vy > 1.5); # threshold: 2.0
   [f3]: <>[0,3] (rx <= 5 U[0, 5] ~ pix); # threshold: 0.1

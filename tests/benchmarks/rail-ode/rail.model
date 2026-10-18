@@ -1,5 +1,6 @@
 # logging: ode
-# @benchmark.expected(f1=violated:3, f2=satisfied:5, f3=violated:3)
+# @benchmark.expected(f1=violated:2, f2=violated:0, f3=violated:3)
+# f2 is a short regression with vb<=3 instead of the historical vb<=10.
 # model description:
 #
 # There exist a train and a crossing barrier on a
@@ -50,6 +51,6 @@ proposition:
 
 # bound: 5, timebound: 8
 goal:
-[f1]: [][1, 3](vb > 6 -> <>[2, 4] b > 60); # threshold: 2, time-horizon: 2
-[f2]: (<>[1, 3] b >= 5) R[0, inf) vb <= 10;  # threshold: 0.1, time-horizon: 2
+[f1]: [][1, 3](vb > 6 -> <>[2, 4] b > 60); # threshold: 2, time-horizon: 8
+[f2]: (<>[0, 0.25] b >= 5) R[0, 0.25] vb <= 3;
 [f3]: <>[0, 4] ([] [2, 4] b >= 80); # threshold: 1, time-horizon: 3

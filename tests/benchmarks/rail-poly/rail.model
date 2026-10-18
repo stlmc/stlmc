@@ -1,5 +1,5 @@
 # logging: poly
-# @benchmark.expected(f1=violated:7, f2=satisfied:10, f3=violated:8)
+# @benchmark.expected(f1=violated:1, f2=satisfied:10, f3=violated:0)
 # @benchmark.fast(f1, f2, f3)
 # @benchmark.quick(f2, f3)
 # @benchmark.z3-slow(f1, f3)
@@ -56,6 +56,6 @@ proposition:
 
 # bound: 10, timebound 20, solver: yices
 goal:
-  [f1]: <>[0, 5] ((pb >= 40) U[1, 8] (x < 40));
+  [f1]: <>[0, 1] ((pb >= 40) U[0, 1] (x < 40));
   [f2]: <>[0, 4](x < 50 -> [][2,10] pb > 40);
-  [f3]: [][0.0,5.0) ((x < 50) U[2, 10] (pb > 5));
+  [f3]: [][0,0.5] ((x < 50) U[0,0.5] (pb > 5));

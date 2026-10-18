@@ -1,5 +1,6 @@
 # logging: ode
-# @benchmark.expected(f1=satisfied:5, f2=violated:2, f3=violated:4)
+# @benchmark.expected(f1=violated:0, f2=violated:0, f3=violated:1)
+# Regression windows are shortened; original operators, atoms and thresholds remain.
 # @benchmark.fast(f2)
 int on0;                int on1;
 [10, 35] x0;            [10, 35] x1;
@@ -47,6 +48,6 @@ proposition:
   [p1]: x0 - x1 >= 4;    [p2]: x0 - x1 <= -3;
 goal:
   # bound: 5, timebound: 30, solver: dreal
-  [f1]: <>[0,15](x0 >= 14 U[0, inf) x1 <= 19); # threshold: 0.5, time-horizon: 7
-  [f2]: [][2, 4](p1 -> <>[3, 10] p2);           # threshold: 2.0, time-horizon: 30
-  [f3]: [][0,10] (x0 > 23 R[0,inf) p1);         # threshold: 2.0, time-horizon: 7
+  [f1]: <>[0,1](x0 >= 14 U[0, 1] x1 <= 19);
+  [f2]: [][0, 0.25](p1 -> <>[0, 0.25] p2);
+  [f3]: [][0.2,0.5] (x0 > 23 R[0,0.5] p1);

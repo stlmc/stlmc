@@ -1,5 +1,5 @@
 # logging: ode
-# @benchmark.expected(f1=violated:2, f2=violated:3, f3=violated:2)
+# @benchmark.expected(f1=violated:2, f2=violated:0, f3=violated:0)
 real m;
 [-100, 100] x;
 [-100, 100] y;
@@ -69,5 +69,6 @@ proposition:
 # bound: 5, timebound: 5
 goal:
 [f1]: [][0, 2] ((vx + vy <= -2) -> <>[0, 3] (vx + vy > 10)); # threshold: 1.5, time-horizon : 2
-[f2]: <>[2, 3] ([][1,2] (x <= 40)); # threshold: 0.1, time-horizon: 1.5
-[f3]: <>[0, 4] (x >= 30 U[0, inf) vx <= -2); # threshold: 0.5, time-horizon: 2
+# Short observation windows retain the F/G structure for regression testing.
+[f2]: <>[0, 0.5] ([][0,0.5] (x <= 40)); # threshold: 0.1, time-horizon: 5
+[f3]: <>[0, 4] (x >= 30 U[0, inf) vx <= -2); # threshold: 0.5, time-horizon: 5

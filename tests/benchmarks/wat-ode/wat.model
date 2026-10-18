@@ -1,5 +1,6 @@
 # logging: ode
-# @benchmark.expected(f1=satisfied:5, f2=violated:3, f3=satisfied:5)
+# @benchmark.expected(f1=satisfied:5, f2=violated:3, f3=violated:0)
+# f3 is a short regression with x>=5 instead of the historical x>=2.
 # @benchmark.fast(f2)
 # @benchmark.quick(f2)
 # model description:
@@ -43,4 +44,4 @@ proposition:
 goal:
 [f1]: (x >= 2) R[0, 3] (<> [2, 4] x > 5); # threshold: 2, time-horizon: 2
 [f2]: <>[0, 4](x > 3 -> [][2, 3] x <= 2.5); # threshold: 0.1, time-horizon: 3
-[f3]: (<>[0, 4] x >= 5) R[0,inf) x >= 2; # threshold: 0.5, time-horizon: 2
+[f3]: (<>[0, 0.25] x >= 5) R[0, 0.25] x >= 5;

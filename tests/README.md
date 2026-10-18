@@ -45,6 +45,21 @@ The unit/integration suites and standalone benchmark tools cover:
   assignments before translation; Z3/Yices/CVC5 retain their original inputs.
   This does not change scenario/core solver assertions or rewrite arithmetic,
   ODE, or quantified-flow bodies.
+- `ode_translation.py` checks exact polynomial ODE solutions independently
+  with SymPy, including coupled acceleration, endpoint terms, indexed names,
+  and rejection of unsupported cycles or elapsed-time collisions.
+- `ode_capabilities.py` checks that algebraic backends accept supported exact
+  ODE translations and reject unsupported evolving-state systems before
+  solving; native dReal does not use this polynomial lowering.
+- `invariant_names.py` checks distinct module/atom/bound namespaces, including
+  multi-digit indices, and that later bounds cannot disable earlier invariant
+  constraints in Z3/Yices queries.
+- `numeric_mode_matching.py` checks that numeric mode identifiers retain
+  their declared types and mode indices in proposition matching and interval
+  refinements, without phantom continuous-state endpoint variables.
+- `visualize_numeric.py` checks safe numeric parsing and sampled robustness,
+  including Real/Int mode arithmetic, equality, and expressions mixing
+  discrete modes with continuous state variables.
 - `incremental_core_backends.py` checks the common Z3/Yices/CVC5 incremental
   solver contract: exact model values, tracked core replay, nested scopes,
   independent forks, private guards, and cancellation and unknown results.
@@ -56,6 +71,15 @@ The unit/integration suites and standalone benchmark tools cover:
   shared one-step/two-step components, partition obligations, strict interval
   endpoints, bounded Until/Release recurrence semantics, and deterministic
   solver input order across processes.
+- `time_horizon.py` checks common segment-duration bounds, backend-independent
+  one-step/two-step behavior, reachability, and preservation of duration limits
+  in final refinements after scenario generalization.
+- `formula_formatting.py` checks display-only Boolean flattening without
+  changing encoding trees, hashes, or structural identifiers.
+- `auto_solver.py` checks availability-aware automatic selection, isolated
+  runtime probes, selected-goal filtering, and candidate configuration overrides.
+- `dreal_runtime.py` checks bounded native capability probes and rejection of
+  builds that ignore universal conditions on zero-derivative variables.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger
@@ -128,6 +152,13 @@ A `satisfied` expectation means that no counterexample was found within the
 configured time window and discrete bound at the configured threshold. It is
 not a proof for unbounded time or arbitrarily many partition points.
 
+Some artifact goals have shorter temporal/global windows or revised predicates
+and operators for regression testing. Their results cover the current fixture,
+not the original artifact's verification scope; see the
+[benchmark scope notes](benchmarks/README.md). Quick/fast membership is unchanged
+by these goal revisions. Passing the revised cases alone is not a full-suite
+validation claim.
+
 For reachability cases, the expected bound is the number of jumps and
 starts at zero. For STL cases, it also includes STL variable points. Bound
 zero represents one continuous segment with no jump. Both one-step and
@@ -159,7 +190,8 @@ code being tested:
 
 ```sh
 python -m pip install -e .
-stlmc-installer install --solver z3 cvc5 yices dreal
+stlmc-installer install --solver z3 cvc5 yices
+stlmc-installer check --solver dreal
 stlmc-installer check --solver z3 cvc5 yices dreal
 ```
 
@@ -190,10 +222,9 @@ the CVC5/Z3/Yices benchmark comparison:
 make test
 ```
 
-The full research benchmark set includes known invalid historical inputs
-(`bat-poly` has a detected initial-value contradiction) and difficult cases
-that may time out. The runner still checks the recorded logical expectations
-and reports these as failures; it does not silently skip or relabel them.
+The full research benchmark set includes difficult cases that may time out.
+The runner checks the recorded logical expectations and reports timeouts and
+mismatches as failures; it does not silently skip or relabel them.
 `make test` is therefore not currently an all-green release gate.
 
 Select the cases marked `@benchmark.fast` while retaining all unit/integration
@@ -204,14 +235,14 @@ make test FAST=1
 ```
 
 `FAST=1` changes selection, concurrency, and timeouts, not expected outcomes.
-Its annotations currently include invalid `bat-poly` inputs too, so it is not
-a guaranteed-passing alternative.
+Its annotations include research cases too, so it is not a guaranteed-passing
+alternative.
 
 Run the release workflow selection: all unit/integration and smoke checks,
 cases marked `@benchmark.quick`, and a CVC5/Z3/Yices comparison sample.
 Quick benchmarks run four at a time with a 200-second timeout per case;
 the comparison sample uses 120 seconds per case. The quick selection excludes
-the known invalid polynomial battery fixtures:
+the polynomial battery fixtures, which are not marked `@benchmark.quick`:
 
 ```sh
 make test-quick
@@ -228,6 +259,15 @@ Run only the SMT solver smoke tests:
 ```sh
 make test-smoke
 ```
+
+Smoke checks are strict by default. Release CI explicitly uses
+`make test-quick SMOKE_ARGS=--allow-known-dreal-bugs` to observe the official
+dReal 3.16.06.02 zero-derivative invariant defect as a separate `XFAIL`, not
+a correctness pass. This exception requires the exact pinned fixture,
+arguments, expected-result hashes, official version, and known faulty output.
+Other versions, changed inputs, unexpected outputs, errors, and timeouts do
+not receive an exception. A correct result is reported as successful `XPASS`.
+`smoke_policy.py` tests this narrowly scoped policy without native solvers.
 
 Run the standalone CVC5 adapter test:
 

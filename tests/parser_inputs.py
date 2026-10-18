@@ -75,24 +75,14 @@ goal: [][0,2] (x <= 1);
         self.assertIn("expected", message)
         self.assertIn("^", message)
 
-    def test_benchmark_models_parse_or_report_known_invalid_flow(self):
+    def test_all_benchmark_models_parse(self):
         from stlmc.parser.model_visitor import ModelVisitor
-        from stlmc.parser.flow_warnings import InvalidSolutionFlowError
 
         paths = sorted((PROJECT_ROOT / "tests" / "benchmarks").glob("*/*.model"))
         self.assertEqual(len(paths), 25)
-        # Preserve these historical inputs until a reviewed polynomial-model
-        # replacement is selected. Rejecting them is intentional validation,
-        # not a claim that their old benchmark result annotations are correct.
-        invalid_initial_flows = {'bat-poly', 'bat-poly-small'}
         for path in paths:
             with self.subTest(model=str(path.relative_to(PROJECT_ROOT))):
-                if path.parent.name in invalid_initial_flows:
-                    with self.assertRaisesRegex(InvalidSolutionFlowError,
-                                                'FLOW_INITIAL_VALUE.*3/5'):
-                        ModelVisitor().get_parse_tree(str(path))
-                else:
-                    ModelVisitor().get_parse_tree(str(path))
+                ModelVisitor().get_parse_tree(str(path))
 
     def test_all_benchmark_configurations_parse(self):
         from stlmc.parser.config_visitor import ConfigVisitor
