@@ -7,6 +7,61 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class ParserInputTest(unittest.TestCase):
+    def test_jump_reset_preserves_single_and_disjunctive_formulas(self):
+        import z3
+        from stlmc.parser.model_visitor import ModelVisitor
+        from stlmc.solver.z3 import z3Obj
+
+        for reset, allowed in (("x' = 0", (0,)),
+                               ("and (x' = 0) (x' <= 1)", (0,)),
+                               ("or (x' = 0) (x' = 1)", (0, 1))):
+            source = """[-1,3] x;
+{ mode: true; inv: true; flow: d/dt[x] = 1;
+  jump: true => (%s); }
+init: x = 0;
+proposition:
+goal: [][0,2] (x <= 1);
+""" % reset
+            with tempfile.NamedTemporaryFile("w", suffix=".model") as model_file:
+                model_file.write(source)
+                model_file.flush()
+                model = ModelVisitor().get_parse_tree(model_file.name)[0]
+            # Reach mode excludes the STL identity transition, isolating the
+            # declared reset rather than allowing an alternative stutter.
+            model.gen_reach_condition()
+            jumps, tracks = model.make_jump_consts(0)
+            for value in (0, 1, 2):
+                with self.subTest(reset=reset, next_value=value):
+                    solver = z3.Solver()
+                    solver.add(z3Obj(jumps[0]), z3.Real('x_1_0') == value)
+                    self.assertEqual(solver.check(),
+                                     z3.sat if value in allowed else z3.unsat)
+                    self.assertEqual(len(tracks), 1)
+
+    def test_disabled_single_reset_keeps_stl_variable_point(self):
+        import z3
+        from stlmc.parser.model_visitor import ModelVisitor
+        from stlmc.solver.z3 import z3Obj
+        source = """[-1,3] x;
+{ mode: true; inv: true; flow: d/dt[x] = 1;
+  jump: false => (x' = 0); }
+init: x = 0;
+proposition:
+goal: [][0,2] (x <= 1);
+"""
+        with tempfile.NamedTemporaryFile("w", suffix=".model") as model_file:
+            model_file.write(source)
+            model_file.flush()
+            model = ModelVisitor().get_parse_tree(model_file.name)[0]
+        model.gen_stl_condition()
+        jumps, _ = model.make_jump_consts(0)
+        solver = z3.Solver()
+        solver.add(z3Obj(jumps[0]), z3.Real('x_0_t') == 2,
+                   z3.Real('x_1_0') == 2)
+        self.assertEqual(solver.check(), z3.sat)
+        solver.add(z3.Real('x_1_0') != z3.Real('x_0_t'))
+        self.assertEqual(solver.check(), z3.unsat)
+
     def assert_syntax_diagnostic(self, parser, source, description):
         with tempfile.NamedTemporaryFile("w", suffix=".input") as input_file:
             input_file.write(source)

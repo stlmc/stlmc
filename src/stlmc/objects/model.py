@@ -259,7 +259,12 @@ class StlMC(Model):
                 jump_flat = list()
                 jump_flat.append(jump_pre)
                 jump_post = jump_dict[jump_pre]
-                jump_flat.extend(jump_post.children)
+                if isinstance(jump_post, And):
+                    jump_flat.extend(jump_post.children)
+                else:
+                    # A reset can be a single equality (or another Boolean
+                    # formula). Only conjunctions may be flattened here.
+                    jump_flat.append(jump_post)
                 jump_sub_children.append(And(jump_flat))
 
             # An STL variable point splits a flow without changing the mode or
