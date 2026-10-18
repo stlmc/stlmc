@@ -74,6 +74,15 @@ The unit/integration suites and standalone benchmark tools cover:
 - `install_solvers.py` checks solver selection and status behavior, platform
   installation commands, dReal installation permissions and locations, and
   executable discovery precedence without accessing the network.
+- `installer_components.py` checks Yices source-build activation and
+  format-specific visualization dependencies with mocked downloads and OS
+  commands. Bokeh is an optional HTML dependency; PDF uses optional Matplotlib.
+  Neither renderer is needed for text output. Installer actions require an
+  explicit `install` or `check` action and component selectors.
+- `solver_runtime.py` checks solver-free help, missing-backend installation
+  hints, managed Yices library discovery, and native thread-safety/MCSAT guards.
+  Capability-policy tests do not execute unsafe native calls under mocked
+  thread-safety flags.
 - `process_cleanup.py` verifies that parallel solver workers share one bounded
   cleanup deadline and are forcefully reaped when graceful termination stalls.
   It also checks that completed batches update scenario and job progress in
@@ -138,8 +147,9 @@ python tests/validate_artifacts.py artifact-logs
 This evaluates sampled robustness against `rho(phi, 0) <= epsilon` and checks
 that stored dReal midpoints lie inside their interval boxes. It does not
 certify every initial, jump, invariant, and flow constraint or an exact ODE
-trajectory. See [Result semantics](../docs/result-semantics.md). Only load
-trusted artifacts: their pickle format can execute code when loaded.
+trajectory. See [Result semantics](../docs/result-semantics.md). New artifacts
+use versioned gzip-compressed JSON. Legacy pickle files are outdated and
+unsupported; regenerate them by rerunning model checking with current STLmc.
 
 ## Make targets
 
@@ -149,14 +159,18 @@ code being tested:
 
 ```sh
 python -m pip install -e .
-stlmc-install-solvers --check
+stlmc-installer install --solver z3 cvc5 yices dreal
+stlmc-installer check --solver z3 cvc5 yices dreal
 ```
 
 The full workflow requires cvc5, Z3, the Yices binding/native library, and
-dReal. Use `stlmc-install-solvers` to install missing prerequisites where
-supported. Set `STLMC_DREAL` to the installed dReal executable if it is not in
+dReal. The base package does not install solver bindings; the commands above
+install and check the full test prerequisites where supported. Set
+`STLMC_DREAL` to the installed dReal executable if it is not in
 the repository's `3rd_party/dReal3/` directory. Unit/integration tests also use
 real SMT libraries; they are not a solver-free installation check.
+Parallel final-Yices cases require a native library verified as thread-safe;
+see [Yices source builds](../docs/installation.md#yices-source-builds).
 
 Run every discovered unit/integration suite without the standalone smoke
 programs or benchmarks:

@@ -18,6 +18,40 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_help_and_version_include_installed_version_without_heavy_imports(self):
+        from importlib.metadata import version
+        for argument in ("-h", "--version"):
+            script = (
+                "import sys; from stlmc.cli.mc import main; "
+                "sys.argv=['stlmc',sys.argv[1]]; "
+                "\ntry: main()\nexcept SystemExit as e: assert e.code == 0\n"
+                "assert not any(m in sys.modules for m in ('z3','yices','cvc5','numpy','scipy','bokeh','matplotlib'))"
+            )
+            with self.subTest(argument=argument):
+                result = subprocess.run([sys.executable, "-c", script, argument],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("STLmc - Signal Temporal Logic Model Checker\n", result.stdout)
+                self.assertIn("v" + version("stlmc") + " (commit: ", result.stdout)
+
+    def test_missing_matplotlib_reports_installer_command(self):
+        from stlmc.visualize.pdf import require_matplotlib
+        import builtins
+        original = builtins.__import__
+        def missing(name, *args, **kwargs):
+            if name == "matplotlib.figure":
+                raise ImportError("missing")
+            return original(name, *args, **kwargs)
+        with mock.patch("builtins.__import__", side_effect=missing):
+            with self.assertRaisesRegex(ValueError, "stlmc-installer install --visualize pdf"):
+                require_matplotlib()
+
+    def test_visualization_usage_errors_return_failure(self):
+        from stlmc.cli.visualize import main
+        with mock.patch.object(sys, "argv", ["stlmc-vis"]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main(), 2)
+
     def test_readme_quickstart_runs_and_generates_inspectable_artifact(self):
         import os
         import re
@@ -44,7 +78,7 @@ class CliHelpTest(unittest.TestCase):
             self.assertEqual(len(artifacts), 1, completed.stdout)
             config = artifacts[0].with_suffix('.cfg')
             self.assertTrue(config.is_file())
-            # Only our own generated/trusted pickle is opened here.
+            # Render the generated versioned artifact through the public CLI.
             rendered = subprocess.run([
                 sys.executable, '-c',
                 'from stlmc.cli.visualize import main; main()',

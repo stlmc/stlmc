@@ -1,0 +1,62 @@
+name: Update release notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag, for example v1.0.1.dev2'
+        required: true
+        type: string
+      mode:
+        description: 'Preview first; apply replaces only the existing release body'
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-release-notes-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare preview and back up the current release body
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          test -n "$GH_TOKEN" || {
+            echo "Set RELEASE_TOKEN to a personal token with Contents read/write permission."
+            exit 1
+          }
+          python tools/update_release_notes.py preview \
+            --tag "$RELEASE_TAG" --repository "$RELEASE_REPOSITORY" \
+            --output release-notes-update
+      - name: Show the proposed body
+        run: |
+          echo '## Proposed release notes' >> "$GITHUB_STEP_SUMMARY"
+          cat release-notes-update/notes-proposed.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Save backup and preview before any update
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-notes-update/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply the body-only update
+        if: inputs.mode == 'apply'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: python tools/update_release_notes.py apply --output release-notes-update

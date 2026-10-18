@@ -3,19 +3,18 @@
 from functools import singledispatch
 from typing import Dict, List, Tuple
 
-import sympy
-
 from ..constraints.constraints import (
     And, Bool, BoolVal, Constraint, Eq, FinallyFormula, Formula, Geq,
     GloballyFormula, Gt, Implies, Leq, Lt, Not, Or, Real, RealVal,
     ReleaseFormula, UntilFormula, Variable,
 )
 from ..constraints.analysis import get_vars
-from ..constraints.formatting import infix
 from ..constraints.substitution import substitution
 from ..constraints.robustness import release_robustness, until_robustness
 from ..exceptions import NotSupportedError
 from .sampling import get_sub_time_samples
+from .numeric import infix_float
+from .numbers import number_float
 
 @singledispatch
 def robustness(const: Constraint, point_samples: Dict[Variable, List[List[float]]],
@@ -102,7 +101,7 @@ def _(const: Geq, point_samples: Dict[Variable, List[List[float]]],
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
                 expr = substitution(lhs, substitute_dict)
-                robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
+                robust_value = float(infix_float(expr, [], []))
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -123,7 +122,7 @@ def _(const: Gt, point_samples: Dict[Variable, List[List[float]]],
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
                 expr = substitution(lhs, substitute_dict)
-                robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
+                robust_value = float(infix_float(expr, [], []))
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -144,7 +143,7 @@ def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
                 expr = substitution(lhs, substitute_dict)
-                robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
+                robust_value = float(infix_float(expr, [], []))
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -165,7 +164,7 @@ def _(const: Lt, point_samples: Dict[Variable, List[List[float]]],
                 for v in point_samples:
                     substitute_dict[v] = RealVal(str(point_samples[v][interval_index][index]))
                 expr = substitution(lhs, substitute_dict)
-                robust_value = float(str(sympy.parse_expr("{}".format(infix(expr)))))
+                robust_value = float(infix_float(expr, [], []))
                 dp_table[(const, time)] = robust_value
                 return robust_value
     raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
@@ -214,8 +213,8 @@ def _(const: UntilFormula, point_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
         return dp_table[(const, time)]
-    intv_left = float(str(sympy.parse_expr(const.local_time.left.value, evaluate=True)))
-    intv_right = float(str(sympy.parse_expr(const.local_time.right.value, evaluate=True)))
+    intv_left = number_float(const.local_time.left.value)
+    intv_right = number_float(const.local_time.right.value)
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
 
@@ -244,8 +243,8 @@ def _(const: ReleaseFormula, point_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
         return dp_table[(const, time)]
-    intv_left = float(str(sympy.parse_expr(const.local_time.left.value, evaluate=True)))
-    intv_right = float(str(sympy.parse_expr(const.local_time.right.value, evaluate=True)))
+    intv_left = number_float(const.local_time.left.value)
+    intv_right = number_float(const.local_time.right.value)
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
     robust_value = release_robustness(
@@ -273,8 +272,8 @@ def _(const: GloballyFormula, point_samples: Dict[Variable, List[List[float]]],
     if (const, time) in dp_table:
         return dp_table[(const, time)]
 
-    intv_left = float(str(sympy.parse_expr(const.local_time.left.value, evaluate=True)))
-    intv_right = float(str(sympy.parse_expr(const.local_time.right.value, evaluate=True)))
+    intv_left = number_float(const.local_time.left.value)
+    intv_right = number_float(const.local_time.right.value)
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
     robust_value = min(
@@ -293,8 +292,8 @@ def _(const: FinallyFormula, point_samples: Dict[Variable, List[List[float]]],
     if (const, time) in dp_table:
         return dp_table[(const, time)]
 
-    intv_left = float(str(sympy.parse_expr(const.local_time.left.value, evaluate=True)))
-    intv_right = float(str(sympy.parse_expr(const.local_time.right.value, evaluate=True)))
+    intv_left = number_float(const.local_time.left.value)
+    intv_right = number_float(const.local_time.right.value)
 
     t_primes = get_sub_time_samples(times, time + intv_left, time + intv_right, time_max)
     robust_value = max(

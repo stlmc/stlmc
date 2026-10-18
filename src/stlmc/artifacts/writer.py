@@ -1,8 +1,8 @@
-import pickle
 from pathlib import Path
 
 from ..constraints.substitution import substitution
 from .formula_index import index_subformulas
+from .codec import dump_artifact
 
 
 def write_verification_artifacts(
@@ -16,12 +16,17 @@ def write_verification_artifacts(
     artifact_path = "{}.{}".format(output_name, suffix)
     config_path = "{}.cfg".format(output_name)
 
-    with open(artifact_path, "wb") as artifact_file:
-        pickle.dump((
-            assignment, model.modules, model.mode_var_dict, model.prop_dict,
-            model.range_dict, proposition_definitions, goal.get_formula(),
-            label, float(threshold), model.init, model.const_dict,
-        ), artifact_file)
+    dump_artifact(artifact_path, (
+        assignment, model.modules, model.mode_var_dict, model.prop_dict,
+        model.range_dict, proposition_definitions, goal.get_formula(),
+        label, float(threshold), model.init, model.const_dict,
+    ), metadata={
+        "kind": suffix,
+        "model": Path(model_file).name,
+        "bound": bound,
+        "goal": label,
+        "solver": solver_name,
+    })
 
     expanded_formula = substitution(
         goal.get_formula(), proposition_definitions

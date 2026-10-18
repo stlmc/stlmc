@@ -1,5 +1,4 @@
 import argparse
-import pickle
 import sys
 from pathlib import Path
 
@@ -8,6 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from stlmc.constraints.operations import substitution
+from stlmc.artifacts.codec import load_artifact
 from stlmc.solver.dreal import DrealInterval
 from stlmc.visualize.visualizer import Visualizer
 
@@ -26,10 +26,7 @@ def discover_artifacts(paths):
 
 
 def validate_counterexample(path, tolerance):
-    with path.open("rb") as artifact_file:
-        data = pickle.load(artifact_file)
-    if len(data) < 9:
-        raise ValueError("legacy artifact has fewer than nine fields")
+    data = load_artifact(path)
 
     assignment = data[0]
     interval_count = 0

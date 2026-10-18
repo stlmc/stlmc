@@ -75,5 +75,8 @@ constraint, continuous-time robustness, or an exact solution inside the full
 interval box. Independent exact or validated-numerical checking is needed
 when a strict trajectory certificate is required.
 
-Only load `.counterexample` and `.witness` files from trusted sources. They
-are Python pickle data; loading an untrusted artifact can execute code.
+New `.counterexample` and `.witness` files use versioned, gzip-compressed
+JSON with typed expression data. Legacy pickle files are outdated and
+unsupported; rerun model checking with the current STLmc version to regenerate
+them. No pickle conversion is provided. Changing the storage format does not
+certify the numerical trajectory or strengthen the solver's result guarantee.

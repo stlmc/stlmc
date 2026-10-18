@@ -9,6 +9,7 @@ from ..constraints.constraints import (
     Neg, Pow, Real, RealVal, Sin, Sqrt, Sub, Tan,
 )
 from ..exceptions import NotSupportedError
+from .numbers import number_float, parse_number
 
 
 @singledispatch
@@ -23,12 +24,17 @@ def _(constraint: Neg, values, variables: list):
 
 @infix_float.register(IntVal)
 def _(constraint: IntVal, values, variables: list):
-    return int(constraint.value)
+    value = parse_number(constraint.value)
+    if not hasattr(value, "denominator") or value.denominator != 1:
+        raise ValueError("integer constant must be a finite integer")
+    # Sampling uses floating-point arithmetic: do not create unbounded Python
+    # integers when a typed Pow combines large integer constants.
+    return number_float(value)
 
 
 @infix_float.register(RealVal)
 def _(constraint: RealVal, values, variables: list):
-    return float(constraint.value)
+    return number_float(constraint.value)
 
 
 @infix_float.register(Int)

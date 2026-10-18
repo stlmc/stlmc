@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
     - name: Verify tag matches package version
       shell: bash
       run: |
@@ -17,6 +20,16 @@ jobs:
           echo "Tag ${GITHUB_REF_NAME} does not match package version ${package_version}"
           exit 1
         }
+    - name: Validate release notes and publishing identity
+      env:
+        RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        RELEASE_TAG: ${{ github.ref_name }}
+      run: |
+        test -n "$RELEASE_TOKEN" || {
+          echo "Set the RELEASE_TOKEN Actions secret to publish under your own account."
+          exit 1
+        }
+        python tools/release_notes.py "$RELEASE_TAG" --output /tmp/stlmc-release-notes.md
 
   build:
     name: Build and test wheel 📦
@@ -128,11 +141,11 @@ jobs:
         echo "DYLD_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
 
     - name: Install external solvers through STLMC
-      run: stlmc-install-solvers all
+      run: stlmc-installer install --solver z3 cvc5 yices dreal
 
     - name: Check solver installation
       run: |
-        stlmc-install-solvers --check
+        stlmc-installer check --solver z3 cvc5 yices dreal
         python3 -c "from stlmc.solver.availability import find_dreal; print('STLMC_DREAL=' + find_dreal())" >> "$GITHUB_ENV"
 
     - name: Test the installed distribution
@@ -186,6 +199,14 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for sigstore
 
     steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Extract this version's release notes
+      env:
+        RELEASE_TAG: ${{ github.ref_name }}
+      run: python tools/release_notes.py "$RELEASE_TAG" --output /tmp/stlmc-release-notes.md
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
@@ -199,7 +220,7 @@ jobs:
           ./dist/*.whl
     - name: Create GitHub Release
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         RELEASE_TAG: ${{ github.ref_name }}
         RELEASE_REPO: ${{ github.repository }}
       shell: bash
@@ -211,7 +232,13 @@ jobs:
             echo "GitHub Release $RELEASE_TAG already exists"
             exit 0
           fi
-          if gh release create "$RELEASE_TAG" --repo "$RELEASE_REPO" --notes ""; then
+          prerelease=()
+          if [[ "$RELEASE_TAG" == *".dev"* ]]; then
+            prerelease=(--prerelease)
+          fi
+          if gh release create "$RELEASE_TAG" --repo "$RELEASE_REPO" \
+              --verify-tag --draft "${prerelease[@]}" --title "$RELEASE_TAG" \
+              --notes-file /tmp/stlmc-release-notes.md; then
             exit 0
           fi
           if [ "$attempt" -eq 5 ]; then
@@ -222,7 +249,7 @@ jobs:
         done
     - name: Upload artifact signatures to GitHub Release
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         RELEASE_TAG: ${{ github.ref_name }}
         RELEASE_REPO: ${{ github.repository }}
       # Upload to GitHub Release using the `gh` CLI.

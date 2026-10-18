@@ -20,7 +20,9 @@ For the project website, publications, and user manual, visit
 
 ## Requirements and installation
 
-STLmc supports CPython 3.8 through 3.14. A virtual environment is recommended:
+STLmc supports CPython 3.8 through 3.14. The visualization installer's validated
+dependency profile currently covers only CPython 3.10; its visualization checks
+and installs report an error on other Python versions. A virtual environment is recommended:
 
 ```sh
 python -m venv .venv
@@ -38,35 +40,32 @@ cd stlmc
 python -m pip install .
 ```
 
-STLMC installs the Python interfaces for CVC5, Z3, and Yices by default. Check all
-solver prerequisites after installation with:
+The default package includes NumPy and SciPy but no SMT solver bindings,
+native solvers, Bokeh, or Matplotlib. Install Z3 for the quick start and
+STLmc's default internal reasoning:
 
 ```sh
-stlmc-install-solvers --check
+stlmc-installer install --solver z3
+stlmc-installer check --solver z3
 ```
 
-This checks all backends; install only the additional solvers your analyses
-need. Z3 is also used internally by STLmc.
-
-Install all missing solver prerequisites where supported with:
+The default internal backend still needs Z3 when CVC5, Yices, or dReal is
+selected as the final solver. Install the additional backends your models
+need, for example:
 
 ```sh
-stlmc-install-solvers
+stlmc-installer install --solver dreal
+stlmc-installer install --solver cvc5
+stlmc-installer install --solver yices
 ```
 
-The default target is `all`; an individual solver can be selected with `cvc5`,
-`z3`, `yices`, or `dreal`, for example:
-
-```sh
-stlmc-install-solvers dreal
-stlmc-install-solvers cvc5
-stlmc-install-solvers yices
-```
-
-Yices additionally requires its native library. Automatic Yices installation
-uses the SRI package repository on Ubuntu/Debian and Homebrew on macOS, and may
-request administrator privileges. On other Linux distributions, install the
-Yices native library with the system package manager before running `--check`.
+`stlmc-installer install --solver z3 cvc5 yices dreal` installs all missing solver prerequisites
+where supported. The installer manages Python bindings and the required native
+libraries or executables for the selected backend.
+Choose the `install` or `check` action first; running the installer without an
+action shows help. Select multiple backends with `--solver z3 cvc5 yices dreal`
+or formats with `--visualize html pdf text`. `install --all` explicitly installs
+all components; `check` alone checks all components without installing anything.
 
 General ODE and transcendental models require dReal. Automatic dReal 3
 installation supports macOS and x86-64 Linux. See
@@ -207,19 +206,30 @@ cleans up solver workers; a long native solver call may delay cancellation.
 
 Pass `-visualize` to write a `.counterexample` file for a violated STL property
 or a `.witness` file for a reachable target, together with its visualization
-configuration. Render an artifact with:
+configuration. Writing these artifacts does not require Bokeh. HTML rendering
+uses optional Bokeh; install it with `stlmc-installer install --visualize html`.
+Render an artifact with:
 
 ```sh
 stlmc-vis result.counterexample -cfg result.cfg
 stlmc-vis result.counterexample -cfg result.cfg -output text
 ```
 
-The same command accepts `.witness` files. HTML is the default; PDF output
-requires Gnuplot. Graphs and text reports show the stored trajectory and its
-sampled robustness.
+The same command accepts `.witness` files. HTML is the default. Text output
+does not need either renderer; PDF output uses optional Matplotlib with a
+headless backend and does not need Bokeh or external plotting tools.
+Graphs show reconstructed trajectories and sampled robustness. Text reports
+list model information and per-segment endpoint data.
+Check the PDF dependency with
+`stlmc-installer check --visualize pdf`, or install it with
+`stlmc-installer install --visualize pdf`.
 
-Only open artifacts from trusted sources. `.counterexample` and `.witness`
-files are Python pickle data, and loading an untrusted file can execute code.
+`.counterexample` and `.witness` files contain versioned, gzip-compressed JSON;
+their extensions stay unchanged. The reader validates the format and bounds
+decompression size before decoding the stored expressions.
+
+Legacy pickle artifacts are outdated and unsupported. Rerun model checking
+with the current STLmc version to regenerate them; no conversion is provided.
 
 ## Development and tests
 
@@ -227,6 +237,7 @@ From a source checkout, install in editable mode and run unit/integration checks
 
 ```sh
 python -m pip install -e .
+stlmc-installer install --solver z3 cvc5 yices dreal
 make test-unit
 ```
 
@@ -236,9 +247,8 @@ To also run solver smoke checks and a selected benchmark/comparison sample:
 make test-quick
 ```
 
-The full research benchmark workflow is `make test`; it can take hours and
-currently includes known invalid historical inputs and difficult cases that
-may time out. It is not an all-green installation check.
+The full benchmark workflow is `make test`; it can take hours. See the testing
+guide for prerequisites and known limitations.
 
 See [Testing and benchmarks](https://github.com/stlmc/stlmc/blob/main/tests/README.md)
 for prerequisites, test targets, selections, and output locations, and

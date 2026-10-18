@@ -4,12 +4,11 @@ import abc
 from typing import Dict, List
 
 import numpy as np
-import sympy
 from scipy.integrate import odeint
 
 from ..constraints.constraints import Bool, Dynamics, Int, Real, Variable
-from ..constraints.formatting import infix
 from .numeric import infix_float
+from .numbers import number_float
 
 
 def sample_max(time_list: List[List[float]]):
@@ -37,12 +36,12 @@ class TimeSampler:
         variable_points = self.projector.get_variable_points()
         assignment = self.projector.assignment
         for index in range(len(variable_points) - 1):
-            current = sympy.parse_expr(assignment[variable_points[index]].value)
-            following = sympy.parse_expr(
+            current = number_float(assignment[variable_points[index]].value)
+            following = number_float(
                 assignment[variable_points[index + 1]].value
             )
             arrays.append(np.linspace(
-                float(current.evalf()), float(following.evalf()),
+                current, following,
                 endpoint=endpoint,
             ))
         return [[value.item() for value in array] for array in arrays]
@@ -67,7 +66,7 @@ class DiscreteSampler:
             if variable_type == "bool":
                 value = 1 if assigned.value == "True" else -1
             else:
-                value = float(sympy.parse_expr(assigned.value))
+                value = number_float(assigned.value)
             result[variable] = [value for _ in time_samples]
         return result
 
@@ -83,18 +82,15 @@ class SolutionPointSampler(PointSampler):
     def generate_samples(self, time_samples: List[float], dynamic: Dynamics,
                          initial_values: List[float]):
         normalized_times = [time - time_samples[0] for time in time_samples]
-        assignment = {
-            sympy.parse_expr(variable.id): sympy.parse_expr(str(initial_values[index]))
-            for index, variable in enumerate(dynamic.vars)
-        }
-        symbolic_time = sympy.parse_expr("time")
+        variables = list(dynamic.vars) + [Real("time")]
+        values = list(initial_values) + [0.0]
         result = {}
         for index, variable in enumerate(dynamic.vars):
-            expression = sympy.parse_expr(infix(dynamic.exps[index]))
+            expression = dynamic.exps[index]
             samples = []
             for time in normalized_times:
-                assignment[symbolic_time] = sympy.parse_expr(str(time))
-                samples.append(float(expression.evalf(10, assignment)))
+                values[-1] = time
+                samples.append(float(infix_float(expression, values, variables)))
             result[variable] = samples
         return result
 

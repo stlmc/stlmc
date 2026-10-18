@@ -2,9 +2,8 @@
 
 from typing import Dict, List, Set
 
-import sympy
-
 from ..constraints.constraints import Constraint, Real, Variable
+from .numbers import number_float
 
 
 def continuous_values(assignment: dict, continuous_variables: dict,
@@ -17,8 +16,8 @@ def continuous_values(assignment: dict, continuous_variables: dict,
             initial = assignment[Real("{}_{}_0".format(variable.id, bound))]
             final = assignment[Real("{}_{}_t".format(variable.id, bound))]
             values.append((
-                float(sympy.parse_expr(initial.value).evalf()),
-                float(sympy.parse_expr(final.value).evalf()),
+                number_float(initial.value),
+                number_float(final.value),
             ))
         result[variable.id] = values
     return result
@@ -59,7 +58,7 @@ class Projector:
 
     def get_ordered_modules(self) -> List[Dict]:
         module_ids = [
-            int(float(self.assignment[variable].value))
+            int(number_float(self.assignment[variable].value))
             for variable in self.get_ordered_mode_vars()
         ]
         return [self.modules[module_id] for module_id in module_ids]
