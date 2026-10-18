@@ -27,14 +27,11 @@ results are stored in each model file using this annotation:
 The annotation label matches the suffix of its goal-specific configuration
 file. Reachability cases use `reachable` or `unreachable` as their status.
 
-For STL, the expected bound is the first bound found by the current direct
-encoding with fully stable partitions. It counts both mode changes and STL
-partition points, not just physical jumps. Requiring a proposition to be true
-or false throughout each open flow interval can require extra partition
-points compared with older encodings. `Psi_PAR` also requires shifted temporal
-change points to be partition endpoints. Equivalent-form rewriting is an
-internal alternative and is not required to preserve the same bounded
-partition size.
+For STL, the expected bound counts both mode changes and STL partition points,
+not just physical jumps. Propositions must retain their assigned truth value
+throughout each open flow interval, and temporal changes must align with the
+partition. A valid physical trace may therefore require additional partition
+points before it is representable at a bounded query.
 
 An expected bound must only be changed after checking the lower-bound UNSAT
 results, the new SAT result, and the saved witness. A timeout is not an expected
@@ -44,9 +41,13 @@ an expected status. The crossing regression in `scenario_core_integration.py`
 and the shifted-endpoint regression in `temporal_reduction.py` protect these
 partition requirements.
 
-The `quick` selection records chosen cases whose reference
-`logs/artifact-logs` run completed within 50 seconds, excluding `car-ode` and
-`bat-poly`, and `car-poly`; release CI gives each one a 200-second timeout.
+The `quick` selection follows `@benchmark.quick` annotations; release checks
+give each selected case a 200-second timeout. `fast` and `quick` are distinct
+selections and neither changes the expected logical result. The full and
+fast sets currently retain invalid historical `bat-poly` inputs, which are
+rejected by flow validation and reported as benchmark failures. Parser tests
+separately verify the expected validation error. Quick release checks exclude
+these inputs. See [Testing](../README.md) for prerequisites and selections.
 
 Run every benchmark with `make benchmark`. Select one model with, for example,
 `make benchmark ARTIFACT_SCOPE=rail-poly`.

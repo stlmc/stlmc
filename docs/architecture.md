@@ -65,3 +65,10 @@ The old driver classes and import facades remain adapters only. The executable
 uses `CliCommand` and `VerificationWorkflow` directly. New application code
 should depend on `stlmc.application`, not `stlmc.driver` or compatibility
 modules under `stlmc.objects` and `stlmc.encoding`.
+
+## Parser development
+
+The model, configuration, and visualization languages use Lark grammars under
+`src/stlmc/parser/grammars/`. There is no generated parser source or Java
+build step. Install the checkout in editable mode when developing parsers,
+and run `make test-parser` and `make test-unit` after changes.

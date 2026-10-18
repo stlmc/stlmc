@@ -7,17 +7,28 @@ DEFAULT_ARTIFACT_TIMEOUT := $(if $(filter 1 true yes,$(FAST)),300,3600)
 DEFAULT_ARTIFACT_JOBS := $(if $(filter 1 true yes,$(FAST)),4,1)
 DEFAULT_ARTIFACT_FAST := $(if $(filter 1 true yes,$(FAST)),--fast,)
 
-.PHONY: all test test-quick test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence test-solver-equivalence-quick benchmark benchmark-quick
+.PHONY: all test test-unit test-quick test-flow-warnings test-sympy-differentiation test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability test-solver-equivalence test-solver-equivalence-quick benchmark benchmark-quick
 .NOTPARALLEL: test
 
 all:
 	@echo "Use 'make test' or 'make test-quick' to validate STLmc."
 
-test: test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark test-solver-equivalence
+test: test-unit test-smoke benchmark test-solver-equivalence
+
+# Discover every unit/integration suite, including flow validation and SymPy.
+# This does not run the standalone solver smoke or benchmark programs.
+test-unit:
+	@$(PYTHON) -m unittest discover -s $(TEST_DIR) -p '*.py'
 
 # Short release checks plus benchmark cases that completed within 50 seconds
 # in the reference artifact logs. Each selected case gets a 200-second limit.
-test-quick: test-application-boundaries test-application-workflow test-parser test-solution-functions test-smoke test-cvc5-solver test-dreal-assignment test-capabilities test-robustness test-temporal-reduction test-scenario-minimization test-cli-help test-install-solvers test-process-cleanup test-reachability benchmark-quick test-solver-equivalence-quick
+test-quick: test-unit test-smoke benchmark-quick test-solver-equivalence-quick
+
+test-flow-warnings:
+	@$(PYTHON) -u $(TEST_DIR)/flow_warnings.py
+
+test-sympy-differentiation:
+	@$(PYTHON) -u $(TEST_DIR)/sympy_differentiation.py
 
 test-application-boundaries:
 	$(info test typed application and solver boundaries ...)

@@ -1,6 +1,6 @@
 # Tests
 
-The test suite has sixteen parts:
+The unit/integration suites and standalone benchmark tools cover:
 
 - `application_boundaries.py` checks typed run options, property-independent
   bounded-search results, legacy tuple compatibility, and typed solver status.
@@ -8,8 +8,10 @@ The test suite has sixteen parts:
   state isolation, and cleanup when an algorithm fails.
 - `parser_inputs.py` parses benchmark models and configurations through the
   public Lark parser APIs and checks the visualization configuration format.
-  The unchanged historical `bat-poly` and `bat-poly-small` models must report
-  their known initial-value contradiction until a replacement is reviewed.
+  Invalid closed-form fixtures are checked for explicit input-validation
+  errors rather than a verification result.
+  Jump encoding checks preserve single, conjunctive, and disjunctive resets,
+  and retain STL variable-point transitions when an explicit jump is disabled.
 - `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
   rejects incomplete or undeclared closed-form flows, and verifies endpoint
   and invariant encodings for CVC5, Z3, Yices, and dReal. Yices SMT2 export
@@ -26,8 +28,8 @@ The test suite has sixteen parts:
   coefficients using independent Z3 equivalence checks.
 - `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
   results through the STLmc solver adapter.
-- `dreal_assignment.py` checks that dReal interval boxes are preserved while
-  their midpoint remains available to legacy visualization consumers.
+- `dreal_assignment.py` checks preservation of dReal interval boxes and
+  consistency of their visualization midpoints.
 
 - `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
   compares their standard output with the corresponding `.expected` files.
@@ -45,33 +47,23 @@ The test suite has sixteen parts:
   and implication polarity transformations.
 - `temporal_reduction.py` checks the fully-stable temporal encoding, including
   shared one-step/two-step components, partition obligations, strict interval
-  endpoints, and bounded Until/Release recurrence semantics. Fresh processes
-  with four hash seeds compare direct/equivalent Yices input and static
-  learning query order for the rail benchmark. Source traversal preserves
-  first occurrences; partition definitions emit operand subformulas before
-  enclosing temporal operators. This is an input-order policy, not an
-  additional logical constraint.
+  endpoints, bounded Until/Release recurrence semantics, and deterministic
+  solver input order across processes.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger
   core.
 - `scenario_core_integration.py` replays extracted cores against the full
-  negated encoding and compares two-step results against one-step for
-  direct/equivalent forms, symbolic/explicit paths, preprocessing, and batches.
-  It independently verifies conditional cores, rejects tracked temporal
-  auxiliaries, and checks that fixed auxiliary values survive refinement and
-  blocking. Full STL recurrences are not added to the positive core background
-  or refinement. Open-interval
-  endpoint learning is covered by `scenario_minimization.py`.
-  Complete proposition matching is shared with one-step and retained outside
-  refinement batches, including false/unselected atoms. Integration checks
-  cover both generalized cores and concrete refinement; the polarity tests
-  reject signals accepted by the former positive-only matching path.
+  negated encoding and compares one-step/two-step results across path,
+  preprocessing, and batching options. It checks that refinement and blocking
+  retain the conditions needed for core validity, and that proposition
+  matching preserves both truth polarities.
 - `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
   remain synchronized and that importing the visualization CLI does not load
   Bokeh or the full visualizer. Cancellation tests cover signals during native
   argument conversion and partially initialized Z3 objects without unraisable
-  destructor exceptions.
+  destructor exceptions. Documentation tests run the README quick-start model
+  and check public links and test entry points.
 - `install_solvers.py` checks solver selection and status behavior, platform
   installation commands, dReal installation permissions and locations, and
   executable discovery precedence without accessing the network.
@@ -122,10 +114,11 @@ Numerically reconstruct and check generated counterexamples with:
 python tests/validate_artifacts.py artifact-logs
 ```
 
-This checks the original robust STL condition `rho(phi, 0) <= epsilon` and
-the consistency of stored dReal midpoints with their interval boxes. It is a
-supporting numerical check, not a replacement for an SMT or delta-SAT
-certificate.
+This evaluates sampled robustness against `rho(phi, 0) <= epsilon` and checks
+that stored dReal midpoints lie inside their interval boxes. It does not
+certify every initial, jump, invariant, and flow constraint or an exact ODE
+trajectory. See [Result semantics](../docs/result-semantics.md). Only load
+trusted artifacts: their pickle format can execute code when loaded.
 
 ## Make targets
 
@@ -135,34 +128,55 @@ code being tested:
 
 ```sh
 python -m pip install -e .
+stlmc-install-solvers --check
 ```
 
-Run all twelve test parts in order: parser corpus tests, closed-form solution
-function tests, solver smoke tests, formula capability tests, robustness
-transformations, scenario minimization, CLI help/schema checks, solver
-installer/discovery tests, process cleanup, reachability semantics, every
-annotated benchmark, and the CVC5/Z3/Yices comparison:
+The full workflow requires cvc5, Z3, the Yices binding/native library, and
+dReal. Use `stlmc-install-solvers` to install missing prerequisites where
+supported. Set `STLMC_DREAL` to the installed dReal executable if it is not in
+the repository's `3rd_party/dReal3/` directory. Unit/integration tests also use
+real SMT libraries; they are not a solver-free installation check.
+
+Run every discovered unit/integration suite without the standalone smoke
+programs or benchmarks:
+
+```sh
+make test-unit
+```
+
+This uses `unittest discover` with `*.py`, including flow validation, SymPy
+differentiation, and documentation checks. To run those two validation suites
+separately, use `make test-flow-warnings` and `make test-sympy-differentiation`.
+
+Run unit/integration tests, solver smoke tests, all annotated benchmarks, and
+the CVC5/Z3/Yices benchmark comparison:
 
 ```sh
 make test
 ```
 
-Run the fast selection of all twelve test parts. Unit and integration tests are
-still run in full; the benchmark stages are reduced to 32 FAST benchmark cases
-and 40 CVC5/Z3/Yices comparisons (20 cases for each additional solver):
+The full research benchmark set includes known invalid historical inputs
+(`bat-poly` has a detected initial-value contradiction) and difficult cases
+that may time out. The runner still checks the recorded logical expectations
+and reports these as failures; it does not silently skip or relabel them.
+`make test` is therefore not currently an all-green release gate.
+
+Select the cases marked `@benchmark.fast` while retaining all unit/integration
+and smoke tests:
 
 ```sh
 make test FAST=1
 ```
 
-Run the release workflow selection: all short unit/integration checks, the
-CVC5 adapter test, a three-case CVC5/Z3/Yices equivalence sample, plus the
-21 artifact benchmark cases selected from those that completed within 50
-seconds in the reference `logs/artifact-logs` results, excluding `car-ode` and
-`bat-poly`, and `car-poly`.
-Quick benchmark cases run four at a time with a
-200-second timeout per case. The full benchmark suite and full CVC5/Z3/Yices
-benchmark comparison remain local pre-release checks:
+`FAST=1` changes selection, concurrency, and timeouts, not expected outcomes.
+Its annotations currently include invalid `bat-poly` inputs too, so it is not
+a guaranteed-passing alternative.
+
+Run the release workflow selection: all unit/integration and smoke checks,
+cases marked `@benchmark.quick`, and a CVC5/Z3/Yices comparison sample.
+Quick benchmarks run four at a time with a 200-second timeout per case;
+the comparison sample uses 120 seconds per case. The quick selection excludes
+the known invalid polynomial battery fixtures:
 
 ```sh
 make test-quick
@@ -245,8 +259,7 @@ make test-solver-equivalence
 
 With `FAST=1`, the comparison includes every Yices case marked with
 `@benchmark.fast` except cases marked with `@benchmark.z3-slow`; without it,
-all Yices benchmark cases are compared. The current fast comparison contains
-20 cases, producing 40 solver comparisons. Outputs are stored beside the normal
+all Yices benchmark cases are compared. Outputs are stored beside the normal
 logs with `.cvc5.log` and `.z3.log` suffixes. Any unexpected timeout is a test
 failure. The full run uses the longer
 default timeout and includes all `z3-slow` cases.
@@ -262,7 +275,7 @@ Run only benchmarks:
 make benchmark
 ```
 
-Run only the 21 quick release benchmark cases with their fixed 200-second
+Run only the quick release benchmark cases with their fixed 200-second
 per-case timeout:
 
 ```sh
@@ -288,11 +301,8 @@ Make variables can be combined on the command line:
 
 - `FAST=1`: selects all cases marked with `@benchmark.fast`, a 300-second
   timeout, and four concurrent jobs unless those values are explicitly
-  overridden. The current fast set contains 32 cases. Cases that timed out or
-  had unstable runtimes during parallel execution are not marked as fast, but
-  remain part of the full benchmark run without `FAST=1`. Currently these are
-  all `bat-ode` cases, `car-ode/f3`, `rail-ode/f1`, `space-ode/f2`, and
-  `wat-ode/f1`, and `wat-poly/f2`.
+  overridden. Selection follows annotations, not a promise that every case
+  succeeds on every platform or solver version.
 - `ARTIFACT_SCOPE=<directory>`: runs only a model directory below
   `tests/benchmarks`; the default is `.` for every model.
 - `ARTIFACT_JOBS=<count>`: number of benchmark cases executed concurrently;
@@ -355,3 +365,11 @@ tests/benchmarks/rail-poly/
 
 Directories without goal-specific `*-fN.cfg` files are retained as example
 models and are not included in automated benchmark runs.
+
+## Dependency updates
+
+Solver packages are pinned in `pyproject.toml`. Update one pin at a time and
+run `make test-unit`, the selected release checks, and relevant benchmark
+comparisons. Solver APIs, model values, performance, and witness selection can
+change between releases. Investigate full-suite failures and record limits
+explicitly; do not change benchmark expectations solely to make a test pass.

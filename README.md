@@ -2,15 +2,16 @@
 
 STLmc is an SMT-based bounded model checker for signal temporal logic (STL)
 properties of hybrid systems. It supports linear, polynomial, and ODE dynamics
-through CVC5, Z3, Yices2, and dReal.
+using cvc5, Z3, Yices2, or dReal 3, subject to each solver's
+[formula capabilities](https://github.com/stlmc/stlmc/blob/main/docs/solver-formula-support.md).
 
-For the project website, publications, and full manual, visit
+For the project website, publications, and user manual, visit
 [stlmc.github.io](https://stlmc.github.io/).
 
 ## Features
 
 - Robust bounded model checking of STL properties
-- [Bounded reachability checking](docs/reachability.md)
+- [Bounded reachability checking](https://github.com/stlmc/stlmc/blob/main/docs/reachability.md)
 - Direct one-step and abstraction-based two-step solving
 - Symbolic and explicit transition-path exploration
 - Sequential, batched, and parallel continuous refinement checks
@@ -19,27 +20,23 @@ For the project website, publications, and full manual, visit
 
 ## Requirements and installation
 
-STLmc supports CPython 3.8 through 3.14. Install the released package with:
+STLmc supports CPython 3.8 through 3.14. A virtual environment is recommended:
 
 ```sh
+python -m venv .venv
+# Linux/macOS; on Windows use .venv\Scripts\activate
+. .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install stlmc
 ```
 
-Install the current checkout with:
+To install from source instead:
 
 ```sh
+git clone https://github.com/stlmc/stlmc.git
+cd stlmc
 python -m pip install .
 ```
-
-For development, use an editable installation:
-
-```sh
-python -m pip install -e .
-```
-
-The model, configuration, and visualization languages use Lark grammars under
-`src/stlmc/parser/grammars/`. Parser development requires only Python; there
-is no generated parser source or Java build step.
 
 STLMC installs the Python interfaces for CVC5, Z3, and Yices by default. Check all
 solver prerequisites after installation with:
@@ -47,6 +44,9 @@ solver prerequisites after installation with:
 ```sh
 stlmc-install-solvers --check
 ```
+
+This checks all backends; install only the additional solvers your analyses
+need. Z3 is also used internally by STLmc.
 
 Install all missing solver prerequisites where supported with:
 
@@ -63,71 +63,62 @@ stlmc-install-solvers cvc5
 stlmc-install-solvers yices
 ```
 
-Solver packages are pinned to the versions exercised by the test suite. Update
-one pin at a time and run `make test` before releasing a newer solver version;
-solver APIs, model values, heuristics, and reported finishing bounds can change
-between releases.
-
 Yices additionally requires its native library. Automatic Yices installation
 uses the SRI package repository on Ubuntu/Debian and Homebrew on macOS, and may
 request administrator privileges. On other Linux distributions, install the
 Yices native library with the system package manager before running `--check`.
 
-On Homebrew 6, a first-time Yices installation may require explicit trust for
-the three third-party formulae that will be installed. If Homebrew reports an
-untrusted-tap error, run:
+General ODE and transcendental models require dReal. Automatic dReal 3
+installation supports macOS and x86-64 Linux. See
+[Installation and troubleshooting](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
+for platform restrictions, Homebrew setup, solver locations, and offline use.
 
-```sh
-brew tap SRI-CSL/sri-csl
-brew trust --formula sri-csl/sri-csl/yices2
-brew trust --formula sri-csl/sri-csl/libpoly
-brew trust --formula sri-csl/sri-csl/cudd
-stlmc-install-solvers yices
-```
-
-These commands trust only Yices and its `libpoly` and `cudd` dependencies.
-Trusting the entire SRI tap is not required. Users whose Yices Python binding
-and native library are already available do not need this setup.
-
-If Yices is installed on Apple Silicon but `--check` reports that
-`libyices.dylib` cannot be found, expose the Apple Silicon Homebrew library
-directory in the current shell and check again:
-
-```sh
-export DYLD_LIBRARY_PATH="$(brew --prefix)/lib"
-stlmc-install-solvers yices --check
-```
-
-The installer downloads the dReal 3 executable to:
-
-- macOS: `~/Library/Application Support/stlmc/solvers/dReal3/dReal`
-- Linux: `$XDG_DATA_HOME/stlmc/solvers/dReal3/dReal` when `XDG_DATA_HOME` is
-  set, otherwise `~/.local/share/stlmc/solvers/dReal3/dReal`
-
-Automatic dReal installation supports macOS and x86-64 Linux. At runtime STLMC
-searches for an executable named `dReal` in `PATH` first and then checks the
-user solver directory above. A differently named or separately installed
-executable can be selected with `-executable-path /path/to/dReal`.
-
-If a solver required by the selected analysis is unavailable, STLMC reports
-the corresponding installer command instead of failing with an import or
-process traceback.
-
-Confirm the installation and inspect every available option with:
+Confirm the installation and inspect the supported command-line options with:
 
 ```sh
 stlmc -h
 stlmc-vis -h
 ```
 
-## Basic usage
+## Quick start
+
+Save this complete model as `quickstart.model`. The state follows `x(t) = t`
+from `x(0) = 0`, so the safety property is violated within two time units.
+
+```text
+[0, 10] x;
+{
+    mode: true;
+    inv: x <= 10;
+    flow: x(t) = x(0) + t;
+    jump:
+}
+init: x = 0;
+proposition:
+goal:
+[safety]: [][0, 2] (x <= 1);
+```
+
+Run it using Z3, with no native Yices or dReal installation needed:
+
+```sh
+stlmc quickstart.model -goal safety -bound 2 -time-bound 2 -solver z3 -visualize
+```
+
+The expected status is `violated`. The bound counts STL variable points as
+well as mode changes, even though this example has no physical jump.
+With `-visualize`, the result also lists the generated artifact and its `.cfg`
+file. Use those paths with `stlmc-vis` as shown below.
+
+## Analysis configuration
 
 An analysis requires a model, a discrete STL bound, and a global time bound.
 For STL model checking, the discrete bound limits mode changes plus
 variable points where an STL subformula changes truth value. For state
 reachability it limits jumps. `time-horizon` limits the duration
 of each continuous segment separated by a mode change or STL variable
-point; it defaults to the global `time-bound`. These values may be supplied by
+point; it defaults to the global `time-bound`. These are modeled time limits,
+not wall-clock execution timeouts. Values may be supplied by
 a model configuration file:
 
 ```sh
@@ -159,33 +150,45 @@ interpreted as a reachability target with:
 stlmc system.model -goal target -reach
 ```
 
-See [Bounded reachability](docs/reachability.md) for its precise semantics.
+See [Bounded reachability](https://github.com/stlmc/stlmc/blob/main/docs/reachability.md)
+for its precise semantics.
+
+## Interpreting results
+
+- `violated`: a counterexample to the configured robustness requirement was
+  found. With a positive `threshold`, this need not be a Boolean violation:
+  a trace can have positive STL robustness but still lie below the threshold.
+- `satisfied up to bound k`: no counterexample was found within the checked
+  bounds. This is not a proof over all partition bounds or infinite time.
+  Operators using `inf` are still analyzed within the configured finite time
+  bound. The result does not independently certify that the bounded model has
+  a feasible execution; overly restrictive ranges or invariants can exclude
+  the physical behavior of interest.
+- `reachable` / `unreachable up to bound k`: the corresponding bounded
+  reachability search found a witness / exhausted the checked bounds.
+- `unknown`: a solver check was inconclusive; do not interpret it as success.
+
+`threshold` specifies the STL robustness requirement. dReal's `precision`
+controls its delta-decision tolerance and is a separate setting. A dReal
+delta-SAT result, the saved interval midpoints, and a sampled visualization
+are not an independent certificate of an exact ODE trajectory satisfying all
+model constraints. See
+[Result semantics and limitations](https://github.com/stlmc/stlmc/blob/main/docs/result-semantics.md).
 
 ## Solving strategies
 
-One-step and two-step solving are independent of discrete path exploration.
-The four supported combinations are:
+The default is symbolic one-step solving: one complete bounded encoding is
+sent to the solver. To use two-step abstraction/refinement and concurrent
+refinement checks, for example:
 
 ```sh
-# Complete symbolic encoding, solved directly
-stlmc system.model -path-strategy symbolic
-
-# Symbolic paths with abstraction/refinement
-stlmc system.model -path-strategy symbolic -two-step
-
-# Enumerate exact transition paths and solve each directly
-stlmc system.model -path-strategy explicit
-
-# Enumerate exact paths and apply two-step solving inside each path
-stlmc system.model -path-strategy explicit -two-step
+stlmc quickstart.model -goal safety -bound 2 -time-bound 2 -solver z3 \
+    -two-step -parallel -parallel-core 4
 ```
 
-The default is symbolic one-step solving. `solver-batch-size` controls the
-maximum number of final candidates combined in one solver OR query:
-
-```sh
-stlmc system.model -two-step -solver-batch-size 8
-```
+`-path-strategy explicit` instead enumerates exact transition paths and can
+be combined with either engine. `solver-batch-size` controls how many final
+candidates are combined in one OR query; it defaults to `1`.
 
 With `-two-step -parallel`, scenario generation and unsat-core minimization
 remain sequential, while completed refinement batches are checked concurrently
@@ -196,14 +199,11 @@ number of solver jobs and can reduce available parallelism. Start with batch
 size `1` when solver utilization is the priority, then try `2` or `4` to trade
 some parallelism for fewer solver invocations.
 
-See [Solving strategies](docs/solving-strategies.md) for the abstraction, path,
-batching, parallelism, and live progress fields.
+See [Solving strategies](https://github.com/stlmc/stlmc/blob/main/docs/solving-strategies.md)
+for path exploration, batching, parallelism, and live progress fields.
 
-The internal package boundaries and extension points are described in
-[Architecture](docs/architecture.md).
-
-Pressing `Ctrl+C` stops scenario generation, terminates active solver process
-groups, reaps their worker threads, and exits.
+Pressing `Ctrl+C` requests cancellation. STLmc stops at safe checkpoints and
+cleans up solver workers; a long native solver call may delay cancellation.
 
 ## Visualization
 
@@ -213,33 +213,51 @@ configuration. Render an artifact with:
 
 ```sh
 stlmc-vis result.counterexample -cfg result.cfg
+stlmc-vis result.counterexample -cfg result.cfg -output text
 ```
 
-## Tests and benchmarks
+The same command accepts `.witness` files. HTML is the default; PDF output
+requires Gnuplot. Graphs and text reports are aids to inspection, not formal
+trajectory certificates.
 
-Run the complete test and benchmark workflow with:
+Only open artifacts from trusted sources. `.counterexample` and `.witness`
+files are Python pickle data, and loading an untrusted file can execute code.
+
+## Development and tests
+
+From a source checkout, install in editable mode and run unit/integration checks:
 
 ```sh
-make test
+python -m pip install -e .
+make test-unit
 ```
 
-For a faster development check:
-
-```sh
-make test FAST=1
-```
-
-Run the release selection of short checks and the 21 reference benchmark cases
-that previously completed within 50 seconds. These benchmarks run four at a
-time with a 200-second per-case timeout:
+To also run solver smoke checks and a selected benchmark/comparison sample:
 
 ```sh
 make test-quick
 ```
 
-See [tests/README.md](tests/README.md) for individual test targets, running one
-benchmark formula, timeouts, batching, and benchmark output locations.
+The full research benchmark workflow is `make test`; it can take hours and
+currently includes known invalid historical inputs and difficult cases that
+may time out. It is not an all-green installation check.
+
+See [Testing and benchmarks](https://github.com/stlmc/stlmc/blob/main/tests/README.md)
+for prerequisites, test targets, selections, and output locations, and
+[Architecture](https://github.com/stlmc/stlmc/blob/main/docs/architecture.md)
+for contributor-facing implementation details.
+
+## Support and citation
+
+Report issues through [GitHub Issues](https://github.com/stlmc/stlmc/issues).
+Include the STLmc version, OS/Python/solver versions, exact command, minimal
+model and configuration, and relevant text logs. Remove sensitive model data
+and do not attach secrets.
+
+If you use STLmc in research, please cite Geunyeol Yu, Jia Lee, and Kyungmin
+Bae, *STLmc: Robust STL Model Checking of Hybrid Systems Using SMT*, CAV 2022,
+pp. 524–537. [DOI: 10.1007/978-3-031-13185-1_26](https://doi.org/10.1007/978-3-031-13185-1_26).
 
 ## License
 
-STLmc is distributed under GPLv3.
+STLmc is distributed under [GPLv3](https://github.com/stlmc/stlmc/blob/main/LICENSE).

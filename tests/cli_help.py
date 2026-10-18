@@ -18,6 +18,73 @@ from stlmc.parser.config_visitor import ConfigVisitor
 
 
 class CliHelpTest(unittest.TestCase):
+    def test_readme_quickstart_runs_and_generates_inspectable_artifact(self):
+        import os
+        import re
+        import shlex
+        readme = (PROJECT_ROOT / 'README.md').read_text()
+        section = readme.split('## Quick start\n', 1)[1].split('\n## ', 1)[0]
+        model = re.search(r'```text\n(.*?)\n```', section, re.S).group(1)
+        command = shlex.split(re.search(r'```sh\n(.*?)\n```', section, re.S).group(1))
+        self.assertEqual(command[0], 'stlmc')
+        env = dict(os.environ, PYTHONPATH=str(PROJECT_ROOT / 'src'),
+                   STLMC_DISABLE_UPDATE_CHECK='1', OPENBLAS_NUM_THREADS='1')
+        with tempfile.TemporaryDirectory() as directory:
+            working = Path(directory)
+            (working / 'quickstart.model').write_text(model + '\n')
+            completed = subprocess.run([
+                sys.executable, '-c',
+                'from stlmc.cli.mc import main; raise SystemExit(main())',
+                *command[1:],
+            ], cwd=working, env=env, text=True, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, timeout=20)
+            self.assertEqual(completed.returncode, 0, completed.stdout)
+            self.assertRegex(completed.stdout, r'status\s*:\s*violated at bound [012]')
+            artifacts = list(working.glob('*.counterexample'))
+            self.assertEqual(len(artifacts), 1, completed.stdout)
+            config = artifacts[0].with_suffix('.cfg')
+            self.assertTrue(config.is_file())
+            # Only our own generated/trusted pickle is opened here.
+            rendered = subprocess.run([
+                sys.executable, '-c',
+                'from stlmc.cli.visualize import main; main()',
+                str(artifacts[0]), '-cfg', str(config), '-output', 'text',
+            ], cwd=working, env=env, text=True, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, timeout=20)
+            self.assertEqual(rendered.returncode, 0, rendered.stdout)
+            self.assertNotIn('Traceback', rendered.stdout)
+
+    def test_root_readme_links_are_absolute_and_repo_targets_exist(self):
+        import re
+        from urllib.parse import unquote
+        readme = (PROJECT_ROOT / 'README.md').read_text()
+        prefix = 'https://github.com/stlmc/stlmc/blob/main/'
+        for target in re.findall(r'\]\(([^)]+)\)', readme):
+            with self.subTest(target=target):
+                self.assertTrue(target.startswith(('https://', '#')), target)
+                if target.startswith(prefix):
+                    relative = unquote(target[len(prefix):].split('#', 1)[0])
+                    self.assertTrue((PROJECT_ROOT / relative).is_file(), target)
+
+    def test_make_workflows_discover_all_unit_suites(self):
+        import shutil
+        if shutil.which('make') is None:
+            self.skipTest('make is unavailable')
+        for target in ('test-unit', 'test', 'test-quick'):
+            completed = subprocess.run(['make', '-n', target], cwd=PROJECT_ROOT,
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=10)
+            self.assertEqual(completed.returncode, 0, completed.stdout)
+            self.assertIn('unittest discover', completed.stdout)
+            self.assertIn("-p '*.py'", completed.stdout)
+        for target, script in (('test-flow-warnings', 'flow_warnings.py'),
+                               ('test-sympy-differentiation', 'sympy_differentiation.py')):
+            completed = subprocess.run(['make', '-n', target], cwd=PROJECT_ROOT,
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=10)
+            self.assertEqual(completed.returncode, 0, completed.stdout)
+            self.assertIn(script, completed.stdout)
+
     def test_signal_during_z3_construction_does_not_unwind_partial_objects(self):
         import gc
         import signal
