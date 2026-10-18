@@ -24,7 +24,7 @@ OFFICIAL = (0, "dReal v3.16.06.02 (commit official)", "")
 
 
 class DrealRuntimeTest(unittest.TestCase):
-    def test_official_known_failure_warns_once_and_caches_immutable_metadata(self):
+    def test_official_known_failure_is_silent_and_caches_immutable_metadata(self):
         with mock.patch.object(runtime, "_run_bounded", side_effect=[OFFICIAL, SAT, SAT]) as run, \
                 warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -33,20 +33,19 @@ class DrealRuntimeTest(unittest.TestCase):
             results[0]["known_limitations"] = "changed"
             result = self.validate()
         self.assertEqual(run.call_count, 3)
-        self.assertEqual(len(caught), 1)
-        self.assertIs(caught[0].category, RuntimeWarning)
+        self.assertEqual(len(caught), 0)
         self.assertFalse(result["zero_derivative_forall"])
         self.assertEqual(result["known_limitations"], runtime.DREAL_KNOWN_LIMITATIONS_WARNING)
 
-    def test_warning_as_error_does_not_publish_success_cache(self):
+    def test_known_limitation_is_allowed_with_warnings_as_errors(self):
         with mock.patch.object(runtime, "_run_bounded", side_effect=[OFFICIAL, SAT, SAT] * 2) as run, \
                 warnings.catch_warnings():
             warnings.simplefilter("error", RuntimeWarning)
             for _ in range(2):
-                with self.assertRaises(RuntimeWarning):
-                    self.validate()
-                self.assertFalse(runtime._SUCCESS_CACHE)
-        self.assertEqual(run.call_count, 6)
+                result = self.validate()
+                self.assertFalse(result["zero_derivative_forall"])
+                self.assertTrue(runtime._SUCCESS_CACHE)
+        self.assertEqual(run.call_count, 3)
 
     def test_official_exception_requires_valid_unambiguous_negative_model(self):
         negatives = [
@@ -251,13 +250,15 @@ class DrealRuntimeTest(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("STLMC_TEST_DREAL_RUNTIME_NATIVE") == "1", "opt-in native runtime probes")
 class DrealRuntimeNativeTest(unittest.TestCase):
-    def test_official_repository_build_warns_and_reports_known_limitation(self):
+    def test_official_repository_build_silently_reports_known_limitation(self):
         path = ROOT / "3rd_party/dReal3/dReal"
         if not path.is_file():
             self.skipTest("repository native binary absent")
         runtime._SUCCESS_CACHE.clear()
-        with self.assertWarns(RuntimeWarning):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             result = runtime.validate_dreal_runtime(path)
+        self.assertEqual(len(caught), 0)
         self.assertFalse(result["zero_derivative_forall"])
         self.assertTrue(result["known_limitations"])
 

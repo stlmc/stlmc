@@ -71,8 +71,8 @@ platforms. `check` alone checks all components without installing anything.
 General ODE and transcendental models require a compatible dReal 3 build.
 The default dReal download is the official 3.16.06.02 release, which has known
 ODE bugs. Installation success checks its version and a basic algebraic query;
-it does not establish ODE correctness. `check` and verification warn about this
-official release's known invariant limitation and allow execution; unrelated
+it does not establish ODE correctness. `check` reports this official release's
+known invariant limitation; verification allows execution without a runtime warning. Unrelated
 executable errors and failed capability checks remain errors. A successful
 check does not certify ODE correctness. An alternative executable can be
 selected with `-executable-path /path/to/dReal`. The advanced

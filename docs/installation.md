@@ -54,8 +54,8 @@ release; Apple Silicon requires Rosetta to be installed already. It verifies the
 archive hash, exact version, and a basic algebraic SAT query. These checks
 establish installation, not ODE correctness: this release has known bugs,
 including omitted invariants involving zero-derivative parameters.
-`check --solver dreal` and verification warn about this official release's
-known invariant limitation and allow execution despite it. This exception
+`check --solver dreal` reports this official release's known invariant
+limitation. Verification allows execution without a runtime warning. This exception
 does not suppress unrelated executable errors or failed capability checks.
 A successful install or check does not certify ODE correctness; results may
 be affected by these known bugs.

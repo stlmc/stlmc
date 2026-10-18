@@ -13,7 +13,6 @@ import signal
 import subprocess
 import tempfile
 import threading
-import warnings
 
 from ..exceptions import SolverUnavailableError
 from ..cli.dependency_policy import DREAL_VERSION, DREAL_KNOWN_LIMITATIONS_WARNING
@@ -148,7 +147,7 @@ def validate_dreal_runtime(executable):
                             raise ValueError("expected SAT with integrated model g=8, clock=3")
                     elif not has_unsat or has_sat:
                         # Only the explicitly supported official release's
-                        # reproduced defect is warn-and-allow. A crash, a
+                        # reproduced defect is allowed and recorded. A crash, a
                         # missing/wrong integrated model or ambiguous output
                         # must never be reclassified as that known defect.
                         statuses = [line.strip() for line in stdout.splitlines()
@@ -179,7 +178,7 @@ def validate_dreal_runtime(executable):
         for previous in list(_SUCCESS_CACHE):
             if previous[0] == str(path):
                 del _SUCCESS_CACHE[previous]
-        if known_limitations:
-            warnings.warn(known_limitations, RuntimeWarning, stacklevel=2)
+        # Known official-release limitations are documented in the README
+        # and retained in metadata, without a warning on every CLI invocation.
         _SUCCESS_CACHE[key] = result
         return dict(result)
