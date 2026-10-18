@@ -12,7 +12,7 @@ For the project website, publications, and user manual, visit
 
 - Robust bounded model checking of STL properties
 - [Bounded reachability checking](https://github.com/stlmc/stlmc/blob/main/docs/reachability.md)
-- Direct one-step and abstraction-based two-step solving
+- One-step and abstraction-based two-step solving
 - Symbolic and explicit transition-path exploration
 - Sequential, batched, and parallel continuous refinement checks
 - Counterexample and reachability-witness generation
@@ -169,10 +169,8 @@ for its precise semantics.
 - `unknown`: a solver check was inconclusive; do not interpret it as success.
 
 `threshold` specifies the STL robustness requirement. dReal's `precision`
-controls its delta-decision tolerance and is a separate setting. A dReal
-delta-SAT result, the saved interval midpoints, and a sampled visualization
-are not an independent certificate of an exact ODE trajectory satisfying all
-model constraints. See
+controls its delta-decision tolerance and is a separate setting. dReal results
+and saved trajectories require care when exact guarantees are needed; see
 [Result semantics and limitations](https://github.com/stlmc/stlmc/blob/main/docs/result-semantics.md).
 
 ## Solving strategies
@@ -217,8 +215,8 @@ stlmc-vis result.counterexample -cfg result.cfg -output text
 ```
 
 The same command accepts `.witness` files. HTML is the default; PDF output
-requires Gnuplot. Graphs and text reports are aids to inspection, not formal
-trajectory certificates.
+requires Gnuplot. Graphs and text reports show the stored trajectory and its
+sampled robustness.
 
 Only open artifacts from trusted sources. `.counterexample` and `.witness`
 files are Python pickle data, and loading an untrusted file can execute code.

@@ -32,13 +32,13 @@ Infrastructure
 `RunOptions` is the immutable, typed view of the parser's layered
 `Configuration`. Parsing and backward-compatible string storage stop at this
 boundary. Algorithms consume typed bounds, thresholds, flags, and worker
-counts. The hidden development flag `use_unary_bounded_temporal_form` defaults
-to `True`: after the paper's `not(phi^+epsilon)` robust-to-Boolean reduction,
-the counterexample formula is converted to an equivalent form whose bounded
-temporal operators are unary before it enters the
-fully-stable encoding. Setting it to `False` supplies the direct binary-temporal
-form instead. This input-form
-selection is the only branch; subformula collection, partition construction,
+counts. Direct encoding is the default: after the paper's
+`not(phi^+epsilon)` robust-to-Boolean reduction, the counterexample formula
+enters the fully-stable encoding without a unary-temporal rewrite. The hidden
+development option `use_unary_bounded_temporal_form` defaults to `False`.
+Setting it to `True` first converts bounded temporal operators to an equivalent
+unary form. This input-form selection is the only branch; subformula
+collection, partition construction,
 STL/model encoding, solving, and counterexample reporting remain shared. Both
 forms describe the same continuous-time counterexample set, but they need not
 find a witness at the same fully-stable partition bound, and an SMT solver may

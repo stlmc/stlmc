@@ -67,12 +67,10 @@ STLmc preserves dReal variable intervals and exposes their midpoints for
 visualization. Choosing the midpoint independently for each variable does not
 guarantee an exact trajectory: ODE consistency, initialization, resets, or
 invariants can fail even when each coordinate lies within its reported box.
-A nearby valid execution does not certify the original midpoint or interval
-box either.
 
 `stlmc-vis` and `tests/validate_artifacts.py` support inspection. The latter
 checks that stored midpoints are inside their boxes and evaluates sampled
-robustness. It does **not** certify every initial, jump, invariant, and flow
+robustness. It does not certify every initial, jump, invariant, and flow
 constraint, continuous-time robustness, or an exact solution inside the full
 interval box. Independent exact or validated-numerical checking is needed
 when a strict trajectory certificate is required.
