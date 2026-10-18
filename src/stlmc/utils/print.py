@@ -1,13 +1,6 @@
 import sys
 import time
-from importlib.metadata import PackageNotFoundError, version
-
-
-def _installed_version():
-    try:
-        return version("stlmc")
-    except PackageNotFoundError:
-        return "development"
+from ..version_info import banner
 
 
 class BasePrinter:
@@ -42,8 +35,7 @@ class BasePrinter:
         self._last_progress_update = None
         execution = "parallel ({} workers)".format(workers) if parallel else "sequential"
         lines = [
-            "STLMC v{}".format(_installed_version()),
-            "Signal Temporal Logic Model Checker",
+            banner(),
             "",
             "Configuration",
             "  model       : {}".format(model),

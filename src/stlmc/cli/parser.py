@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 from ..config_schema import OPTION_CHOICES, OPTION_HELP
+from ..version_info import banner
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "default.cfg"
@@ -52,11 +53,13 @@ def add_value_argument(group, name):
 
 
 def build_parser(prog=None):
+    version_banner = banner()
     parser = argparse.ArgumentParser(
         prog=prog,
-        description="STLmc - Signal Temporal Logic Model Checker",
+        description=version_banner,
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=version_banner)
     parser.add_argument("file", nargs="?", help=argument_help("file"))
     parser.add_argument("-default-cfg", metavar="PATH", help=argument_help("default-cfg"))
     parser.add_argument("-model-cfg", metavar="PATH", help=argument_help("model-cfg"))

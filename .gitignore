@@ -34,9 +34,18 @@ tests/*
 !tests/scenario_minimization.py
 !tests/scenario_core_integration.py
 !tests/incremental_core_backends.py
+!tests/solver_runtime.py
 !tests/cli_help.py
+!tests/version_info.py
+!tests/release_notes.py
+!tests/update_release_notes.py
+!tests/artifact_codec.py
+!tests/visualize_numeric.py
+!tests/validate_artifacts.py
 !tests/cvc5_solver.py
 !tests/install_solvers.py
+!tests/installer_components.py
+!tests/bokeh_optional.py
 !tests/process_cleanup.py
 !tests/application_boundaries.py
 !tests/application_workflow.py
@@ -55,6 +64,7 @@ smt2-logs/
 
 # Virtual Env for python
 venv/
+.venv/
 
 # config file
 .idea/
@@ -63,3 +73,4 @@ venv/
 
 # log
 log/
+report/
