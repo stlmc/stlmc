@@ -2,6 +2,8 @@ import time
 import re
 from contextvars import ContextVar
 from functools import singledispatch
+from fractions import Fraction
+from weakref import finalize
 
 from yices import Config, Context, Model, Status, Terms, Types
 
@@ -19,6 +21,7 @@ from ..solver.abstract_solver import (
     JobSolver, SolveResult, SolverJob, SolverStatus, ThreadWorker,
 )
 from ..solver.assignment import Assignment
+from .formula_state import AssumptionFormulaSolver
 from ..utils.smt2_output import is_enabled, write_smt2
 
 
@@ -44,6 +47,180 @@ class YicesAssignment(Assignment):
             else:
                 NotSupportedError("cannot generate assignments")
         return new_dict
+
+class _YicesFormulaAssignment(Assignment):
+    def __init__(self, model, translator, variables):
+        self._model = model
+        self._release = finalize(self, model.dispose)
+        self._translator = translator
+        self._assignments = {v: self.eval(v) for v in variables}
+
+    def get_assignments(self):
+        return dict(self._assignments)
+
+    def eval(self, formula):
+        term = self._translator.term(formula)
+        if Terms.is_bool(term):
+            return BoolVal(str(self._model.get_bool_value(term)))
+        # Native value terms retain arbitrarily large exact rationals; the
+        # Python get_fraction_value wrapper is limited to rational64.
+        value = self._model.get_value_as_term(term)
+        if value < 0:
+            raise NotSupportedError("Yices cannot produce an exact model value")
+        width = 80
+        text = Terms.to_string(value, width=width, height=0)
+        while "..." in text:
+            if width >= (1 << 30):
+                raise NotSupportedError("Yices exact model value exceeds printer limits")
+            width *= 2
+            text = Terms.to_string(value, width=width, height=0)
+        if self._translator.integer_expression(formula):
+            return IntVal(str(int(Fraction(text))))
+        if Terms.is_real(term):
+            return RealVal(str(Fraction(text)))
+        raise NotSupportedError("unsupported Yices model value")
+
+
+class _YicesFormulaTranslator:
+    """Native terms avoid the process-global symbol table used by yicesObj."""
+
+    def __init__(self):
+        self.variables = {}
+
+    @classmethod
+    def integer_expression(cls, formula):
+        # Yices canonicalizes integral Real constants to integer terms. Keep
+        # the Formula sort when selecting division and translating model values.
+        if isinstance(formula, (Int, IntVal)):
+            return True
+        if isinstance(formula, Neg):
+            return cls.integer_expression(formula.child)
+        if isinstance(formula, (Add, Sub, Mul, Div)):
+            return (cls.integer_expression(formula.left)
+                    and cls.integer_expression(formula.right))
+        return False
+
+    def term(self, formula):
+        if isinstance(formula, BoolVal):
+            if formula.value not in ("True", "False"):
+                raise NotSupportedError("invalid Boolean value")
+            return Terms.true() if formula.value == "True" else Terms.false()
+        if isinstance(formula, (RealVal, IntVal)):
+            value = "99999" if formula.value == "inf" else formula.value
+            fraction = Fraction(value)
+            if isinstance(formula, IntVal) and fraction.denominator != 1:
+                raise NotSupportedError("non-integral IntVal")
+            return Terms.parse_rational(str(fraction))
+        if isinstance(formula, Variable):
+            if formula not in self.variables:
+                sorts = {"bool": Types.bool_type, "real": Types.real_type,
+                         "int": Types.int_type}
+                self.variables[formula] = Terms.new_uninterpreted_term(sorts[formula.type]())
+            return self.variables[formula]
+        if isinstance(formula, (And, Or)):
+            terms = [self.term(c) for c in formula.children]
+            # Match STLmc's existing empty multinary convention.
+            if not terms:
+                return Terms.true()
+            return Terms.yand(terms) if isinstance(formula, And) else Terms.yor(terms)
+        if isinstance(formula, (Not, Neg)):
+            return (Terms.ynot if isinstance(formula, Not) else Terms.neg)(self.term(formula.child))
+        if isinstance(formula, Pow):
+            try:
+                exponent = Fraction(formula.right.value)
+            except (AttributeError, ValueError, ZeroDivisionError) as error:
+                raise NotSupportedError("Yices requires an integer exponent") from error
+            if exponent.denominator != 1 or exponent < 0:
+                raise NotSupportedError("Yices requires a non-negative integer exponent")
+            return Terms.power(self.term(formula.left), int(exponent))
+        if isinstance(formula, Div):
+            operation = Terms.idiv if self.integer_expression(formula) else Terms.division
+            return operation(self.term(formula.left), self.term(formula.right))
+        operations = {
+            Eq: Terms.eq, Neq: lambda a, b: Terms.ynot(Terms.eq(a, b)),
+            Geq: Terms.arith_geq_atom, Gt: Terms.arith_gt_atom,
+            Leq: Terms.arith_leq_atom, Lt: Terms.arith_lt_atom,
+            Add: Terms.add, Sub: Terms.sub, Mul: Terms.mul,
+            Div: Terms.division, Implies: Terms.implies,
+        }
+        if type(formula) in operations:
+            return operations[type(formula)](self.term(formula.left), self.term(formula.right))
+        raise NotSupportedError("unsupported incremental Yices formula: {}".format(type(formula)))
+
+
+class YicesFormulaSolver(AssumptionFormulaSolver):
+    """Exact incremental adapter with private unnamed variables and guards."""
+
+    def __init__(self, logic="QF_LRA"):
+        self._init_state(logic)
+        self._config = Config()
+        try:
+            self._config.default_config_for_logic(logic)
+            self._config.set_config("mode", "push-pop")
+            self._context = Context(self._config)
+        except BaseException:
+            self._config.dispose()
+            raise
+        self._release = finalize(self, self._dispose_native, self._context, self._config)
+        self._translator = _YicesFormulaTranslator()
+        self._native_scopes = []
+
+    @staticmethod
+    def _dispose_native(context, config):
+        try:
+            context.dispose()
+        finally:
+            config.dispose()
+
+    def _term(self, formula):
+        return self._translator.term(formula)
+
+    def _assert(self, term):
+        # Virtual descendants must not write into the native parent scope:
+        # even redundant extra assertions could change an assumptions core
+        # into a background-only conflict that cannot be replayed after pop.
+        if self._native_scopes and not self._native_scopes[-1]:
+            return
+        self._context.assert_formula(term)
+
+    def _push(self):
+        # Yices refuses push in its UNSAT state. Descendants only add
+        # assertions/assumptions, so they remain UNSAT until this parent scope
+        # is removed. Keep their logical scopes without a native push/pop.
+        native = self._context.status() != Status.UNSAT
+        if native:
+            self._context.push()
+        self._native_scopes.append(native)
+
+    def _pop(self):
+        if self._native_scopes[-1]:
+            self._context.pop()
+        self._native_scopes.pop()
+
+    def _guard(self, term):
+        guard = Terms.new_uninterpreted_term(Types.bool_type())
+        self._assert(Terms.implies(guard, term))
+        return guard
+
+    def _check(self, assumptions):
+        status = (self._context.check_context_with_assumptions(None, assumptions)
+                  if assumptions else self._context.check_context())
+        if status == Status.SAT:
+            return SolverStatus.SAT
+        if status == Status.UNSAT:
+            return SolverStatus.UNSAT
+        return SolverStatus.UNKNOWN
+
+    def _core(self):
+        return self._context.get_unsat_core()
+
+    def model(self):
+        self._require_model()
+        return _YicesFormulaAssignment(
+            Model.from_context(self._context, 1), self._translator,
+            self._active_variables(),
+        )
+
 
 class YicesSolver(JobSolver):
     def __init__(self, config=None):

@@ -81,6 +81,11 @@ class RunPreparer:
         algorithm = AlgorithmFactory(
             configuration,
             self.solver_factory.generate_formula_solver_factory(),
+            core_solver_factory=(
+                getattr(self.solver_factory, "generate_core_solver_factory",
+                        SolverFactory().generate_core_solver_factory)()
+                if options.two_step else None
+            ),
         ).generate()
         return PreparedRun(
             file_name=file_name,

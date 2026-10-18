@@ -2,7 +2,17 @@ import multiprocessing
 import signal
 import threading
 import time
+from fractions import Fraction
 from queue import Empty
+
+# Some native builds crash at process teardown if the Yices binding is first
+# initialized after the CVC5 extension. Fix the optional library import order;
+# Yices remains optional and reports its own error only when selected.
+try:
+    from importlib import import_module
+    import_module("yices")
+except Exception:
+    pass
 
 import cvc5
 from cvc5 import Kind
@@ -19,15 +29,24 @@ from ..constraints.translation import make_dynamics_consts, make_forall_consts
 from ..exceptions import NotSupportedError
 from ..solver.abstract_solver import JobSolver, SolveResult, SolverJob, SolverStatus
 from ..solver.assignment import Assignment
+from .formula_state import AssumptionFormulaSolver
 from ..utils.smt2_output import is_enabled, write_smt2
 
 
 class CVC5Assignment(Assignment):
-    def __init__(self, assignments=None):
+    def __init__(self, assignments=None, solver=None, translator=None):
         self._assignments = assignments or {}
+        self._solver = solver
+        self._translator = translator
 
     def get_assignments(self):
         return dict(self._assignments)
+
+    def eval(self, const):
+        if self._solver is None:
+            raise NotSupportedError("CVC5 has no active model")
+        term = self._translator.term(const)
+        return _assignment_value(term, self._solver.getValue(term))
 
 
 class _CVC5Translator:
@@ -209,6 +228,74 @@ def _assignment_value(term, value):
     if sort.isReal():
         return RealVal(str(value.getRealValue()))
     raise NotSupportedError("cannot translate CVC5 model value {}".format(value))
+
+
+class _CVC5FormulaTranslator(_CVC5Translator):
+    """Exact internal arithmetic without changing the final solver adapter."""
+
+    def term(self, formula):
+        if isinstance(formula, (RealVal, IntVal)):
+            value = "99999" if formula.value == "inf" else formula.value
+            fraction = Fraction(value)
+            if isinstance(formula, RealVal):
+                return self.solver.mkReal(str(fraction))
+            if fraction.denominator != 1:
+                raise NotSupportedError("non-integral IntVal")
+            return self.solver.mkInteger(str(fraction.numerator))
+        if isinstance(formula, Div):
+            left, right = self.term(formula.left), self.term(formula.right)
+            if left.getSort().isInteger() and right.getSort().isInteger():
+                return self.solver.mkTerm(Kind.INTS_DIVISION, left, right)
+        return super().term(formula)
+
+
+class CVC5FormulaSolver(AssumptionFormulaSolver):
+    """Independent incremental context with assumption-based core extraction."""
+
+    def __init__(self, logic="QF_LRA"):
+        self._init_state(logic)
+        self._solver = _new_solver(logic)
+        self._solver.setOption("incremental", "true")
+        self._solver.setOption("produce-unsat-assumptions", "true")
+        self._translator = _CVC5FormulaTranslator(self._solver)
+
+    def _term(self, formula):
+        return self._translator.term(formula)
+
+    def _assert(self, term):
+        self._solver.assertFormula(term)
+
+    def _push(self):
+        self._solver.push()
+
+    def _pop(self):
+        self._solver.pop()
+
+    def _guard(self, term):
+        # mkConst creates a fresh term; its display name is not an identity.
+        guard = self._solver.mkConst(self._solver.getBooleanSort())
+        self._assert(self._solver.mkTerm(Kind.IMPLIES, guard, term))
+        return guard
+
+    def _check(self, assumptions):
+        result = (self._solver.checkSatAssuming(*assumptions)
+                  if assumptions else self._solver.checkSat())
+        if result.isSat():
+            return SolverStatus.SAT
+        if result.isUnsat():
+            return SolverStatus.UNSAT
+        return SolverStatus.UNKNOWN
+
+    def _core(self):
+        return self._solver.getUnsatAssumptions()
+
+    def model(self):
+        self._require_model()
+        assignment = CVC5Assignment(solver=self._solver, translator=self._translator)
+        return CVC5Assignment(
+            {v: assignment.eval(v) for v in self._active_variables()},
+            self._solver, self._translator,
+        )
 
 
 def _solve(const, logic):

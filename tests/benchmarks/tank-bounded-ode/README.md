@@ -12,15 +12,15 @@ derivative is at least `0.105 - a * sqrt(1.8) > 0`, since
 `0.122 - a * sqrt(3.5) < 0`, since
 `0.122² = 0.014884 < a² * 3.5 = 0.01545075`.
 On the `x2` boundaries, `sqrt(x1) - sqrt(x2)` has the inward sign.
-Thus these state bounds preserve
-the original trajectories from that initial set rather than clipping them.
+Thus these state bounds preserve the original trajectories from that initial
+set rather than clipping them.
 
 The common configuration uses a 400-second window, discrete bound `1`,
 threshold `0.0001`, and two-step dReal solving with precision `0.000001`.
 It uses dReal's default ODE step control; it does not inherit the explicit
 `0.01` step from `bouncing-ball-ode`.
-An independent numerical trajectory check was also performed for the tank
-counterexample; this is a diagnostic, not an exact trajectory certificate.
+dReal's delta-SAT result and numerical trajectory checks do not constitute an
+exact trajectory certificate.
 
 | Goal | Time window | Discrete bound | Registered result and finishing bound |
 | --- | --- | --- | --- |

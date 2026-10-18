@@ -6,15 +6,36 @@ from .availability import find_dreal
 
 
 class SolverFactory:
-    def generate_formula_solver_factory(self):
+    def generate_core_solver_factory(self):
+        """Select the core backend independently of scenario enumeration."""
+        return SolverFactory.generate_formula_solver_factory(self, role="core")
+
+    def generate_formula_solver_factory(self, backend=None, role="scenario"):
         """Return the internal exact-theory solver adapter factory."""
-        try:
-            from ..solver.z3 import Z3FormulaSolver
-        except (ImportError, OSError) as error:
+        if role not in ("scenario", "core"):
+            raise ValueError("unknown internal solver role: {}".format(role))
+        backend = (backend or os.environ.get(
+            "STLMC_{}_SOLVER".format(role.upper()), "z3"
+        )).strip().lower()
+        adapters = {
+            "z3": ("z3", "Z3FormulaSolver"),
+            "yices": ("yices", "YicesFormulaSolver"),
+            "cvc5": ("cvc5", "CVC5FormulaSolver"),
+        }
+        if backend not in adapters:
             raise SolverUnavailableError(
-                "Z3 is unavailable. Run: stlmc-install-solvers z3"
+                "unknown internal {} solver: {}".format(role, backend)
+            )
+        try:
+            from importlib import import_module
+            module, name = adapters[backend]
+            return getattr(import_module(".{}".format(module), __package__), name)
+        except Exception as error:
+            raise SolverUnavailableError(
+                "{} is unavailable for {} solving. Run: stlmc-install-solvers {}".format(
+                    backend, role, backend
+                )
             ) from error
-        return Z3FormulaSolver
 
     def generate_solver(self, config):
         common_section = config.get_section("common")

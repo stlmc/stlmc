@@ -53,12 +53,17 @@ from .shared_stl import (
 class TwoStepAlgorithm(Algorithm):
     """Enumerate abstract scenarios and check their continuous refinements."""
     def __init__(self, path_provider: PathProvider = None,
-                 scenario_solver_factory=None, options=None):
+                 scenario_solver_factory=None, options=None,
+                 core_solver_factory=None):
         if scenario_solver_factory is None:
             raise ValueError("scenario_solver_factory is required")
         self.scenario_solver_factory = scenario_solver_factory
+        if core_solver_factory is None:
+            from ..solver.solver_factory import SolverFactory
+            core_solver_factory = SolverFactory().generate_formula_solver_factory(role="core")
+        self.core_solver_factory = core_solver_factory
         self.scenario_solver = scenario_solver_factory("QF_LRA")
-        self.minimize_solver = scenario_solver_factory("QF_LRA")
+        self.minimize_solver = core_solver_factory("QF_LRA")
 
         self.clause_set: Set[Formula] = set()
         self.run_queue = set()
@@ -70,7 +75,7 @@ class TwoStepAlgorithm(Algorithm):
 
     def clear(self):
         self.scenario_solver = self.scenario_solver_factory("QF_LRA")
-        self.minimize_solver = self.scenario_solver_factory("QF_LRA")
+        self.minimize_solver = self.core_solver_factory("QF_LRA")
         self.clause_set.clear()
 
     def set_debug(self, msg: str):

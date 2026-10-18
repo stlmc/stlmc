@@ -3,6 +3,7 @@ import time
 import multiprocessing
 import signal
 from functools import singledispatch
+from itertools import count
 from queue import Empty
 from queue import Queue
 
@@ -25,6 +26,9 @@ from ..solver.abstract_solver import (
 from ..solver.assignment import Assignment
 from ..utils.smt2_output import is_enabled, write_smt2
 from ..utils.interrupt import raise_if_interrupted
+
+
+_tracking_symbols = count()
 
 
 class Z3Solver(JobSolver):
@@ -89,51 +93,82 @@ class Z3FormulaSolver(IncrementalFormulaSolver):
         self._solver = z3.SolverFor(logic)
         self._assertions = []
         self._tracked = {}
+        self._track_guards = {}
         self._scopes = []
+        self._status = None
+        self._variables = set()
 
     def add(self, formula):
         raise_if_interrupted()
         self._assertions.append(formula)
         self._solver.add(z3Obj(formula))
+        self._variables.update(get_vars(formula))
+        self._status = None
 
     def push(self):
-        self._scopes.append((len(self._assertions), set(self._tracked)))
+        raise_if_interrupted()
+        self._scopes.append((len(self._assertions), set(self._tracked), set(self._variables)))
         self._solver.push()
+        self._status = None
 
     def pop(self):
-        assertion_size, track_ids = self._scopes.pop()
+        raise_if_interrupted()
+        assertion_size, track_ids, variables = self._scopes.pop()
         del self._assertions[assertion_size:]
         self._tracked = {
             key: value for key, value in self._tracked.items()
             if key in track_ids
         }
+        self._track_guards = {k: v for k, v in self._track_guards.items() if k in track_ids}
         self._solver.pop()
+        self._variables = variables
+        self._status = None
 
     def check(self):
         raise_if_interrupted()
+        self._status = None
         result = self._solver.check()
         raise_if_interrupted()
         if result == z3.sat:
-            return SolverStatus.SAT
-        if result == z3.unsat:
-            return SolverStatus.UNSAT
-        return SolverStatus.UNKNOWN
+            self._status = SolverStatus.SAT
+        elif result == z3.unsat:
+            self._status = SolverStatus.UNSAT
+        else:
+            self._status = SolverStatus.UNKNOWN
+        return self._status
 
     def model(self):
-        return Z3Assignment(self._solver.model())
+        if self._status != SolverStatus.SAT:
+            raise ValueError("model requires a SAT check")
+        model = Z3Assignment(self._solver.model())
+        return Z3Assignment(model._z3_model, {v: model.eval(v) for v in self._variables})
 
     def track(self, formula, track_id):
         raise_if_interrupted()
+        if track_id in self._tracked:
+            raise ValueError("duplicate active track ID: {}".format(track_id))
+        # Integer symbols inhabit a separate Z3 namespace from the string
+        # symbols used by STLmc variables. FreshBool's printed name can be
+        # reconstructed as a user string symbol, so it is not sufficient.
+        guard = z3.Bool(next(_tracking_symbols))
+        self._solver.assert_and_track(z3Obj(formula), guard)
         self._tracked[track_id] = formula
-        self._solver.assert_and_track(z3Obj(formula), track_id)
+        self._track_guards[track_id] = guard
+        self._variables.update(get_vars(formula))
+        self._status = None
 
     def unsat_core(self):
-        return {str(item) for item in self._solver.unsat_core()}
+        if self._status != SolverStatus.UNSAT:
+            raise ValueError("unsat_core requires an UNSAT check")
+        reverse = {guard.get_id(): key for key, guard in self._track_guards.items()}
+        return {reverse[item.get_id()] for item in self._solver.unsat_core()}
 
     def fork(self):
         result = Z3FormulaSolver(self.logic)
         for formula in self._assertions:
             result.add(formula)
+        for track_id, formula in self._tracked.items():
+            result.track(formula, track_id)
         return result
 
 class Z3Assignment(Assignment):
@@ -226,7 +261,7 @@ def _(const: BoolVal):
 @z3Obj.register(Variable)
 def _(const: Variable):
     op = {'bool': z3.Bool, 'real': z3.Real, 'int': z3.Int}
-    return op[const.type](const.id)
+    return op[const.type](str(const.id))
 
 
 @z3Obj.register(Geq)

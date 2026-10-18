@@ -136,7 +136,13 @@ class SolverJob:
         return 0
 
 class IncrementalFormulaSolver(ABC):
-    """Backend-neutral incremental solver over STLmc Formula objects."""
+    """Backend-neutral incremental solver over STLmc Formula objects.
+
+    Track IDs are unique within active scopes; reuse after pop is allowed.
+    Models expose active formula variables and exact eval values, not private
+    guards. fork() copies active assertions and tracks into a new flat scope.
+    Native model handles are intended for use before the next solver mutation.
+    """
 
     @abc.abstractmethod
     def add(self, formula):

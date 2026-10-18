@@ -28,6 +28,8 @@ from dataclasses import replace
 from stlmc.application.options import RunOptions
 from stlmc.constraints.constraints import And, Or, Not, Bool, BoolVal, Eq
 from stlmc.solver.z3 import Z3FormulaSolver, Z3Solver
+from stlmc.solver.solver_factory import SolverFactory
+from stlmc.exceptions import SolverUnavailableError
 from stlmc.solver.abstract_solver import SolverStatus
 from stlmc.algorithms.two_step import TwoStepAlgorithm
 import stlmc.algorithms.two_step as two_step_module
@@ -48,7 +50,17 @@ original = RunOptions.from_configuration.__func__
 RunOptions.from_configuration = classmethod(lambda cls, config: replace(
     original(cls, config),
     use_unary_bounded_temporal_form=os.environ['EQUIVALENT'] == '1'))
-original_core = Z3FormulaSolver.unsat_core
+core_class = SolverFactory().generate_formula_solver_factory(role='core')
+scenario_class = SolverFactory().generate_formula_solver_factory()
+original_core = core_class.unsat_core
+expected_partition = None
+expected_terminal = None
+original_scenario_check = TwoStepAlgorithm.scenario_check
+def capture_context(self, *args, **kwargs):
+    global expected_partition, expected_terminal
+    expected_partition, expected_terminal = args[10], args[8]
+    return original_scenario_check(self, *args, **kwargs)
+TwoStepAlgorithm.scenario_check = capture_context
 count = 0
 pending_auxiliary = []
 expected_block = None
@@ -63,6 +75,7 @@ def conjuncts(formulas):
 def audited_core(self):
     global count, expected_block
     core = original_core(self)
+    assert any(item is expected_terminal for item in self._assertions)
     auxiliary = set()
     # Only Boolean values, never full recurrences, are positive background.
     for item in conjuncts(self._assertions):
@@ -78,16 +91,20 @@ def audited_core(self):
             assert not literal.left.id.startswith(('rho^', 'parU^', 'parEnd'))
     pending_auxiliary.append(auxiliary)
     expected_block = auxiliary
-    replay = Z3FormulaSolver()
-    for item in self._assertions:
-        replay.add(item)
-    for tag in core:
-        replay.add(self._tracked[tag])
-    assert replay.check() is SolverStatus.UNSAT
+    for backend in ('z3', 'yices', 'cvc5'):
+        try:
+            replay = SolverFactory().generate_formula_solver_factory(backend)()
+        except SolverUnavailableError:
+            continue
+        for item in self._assertions:
+            replay.add(item)
+        for tag in core:
+            replay.add(self._tracked[tag])
+        assert replay.check() is SolverStatus.UNSAT, backend
     count += 1
     return core
-Z3FormulaSolver.unsat_core = audited_core
-original_add = Z3FormulaSolver.add
+core_class.unsat_core = audited_core
+original_add = scenario_class.add
 def audited_add(self, formula):
     global expected_block
     if (getattr(self, '_audit_scenario', False)
@@ -100,7 +117,7 @@ def audited_add(self, formula):
         assert expected_block <= values, expected_block - values
         expected_block = None
     return original_add(self, formula)
-Z3FormulaSolver.add = audited_add
+scenario_class.add = audited_add
 original_submit = Z3Solver.submit
 def audited_submit(self, formula, *args, **kwargs):
     if self.config.get_section('common').get_value('two-step') != 'true':
@@ -108,10 +125,16 @@ def audited_submit(self, formula, *args, **kwargs):
     pending = [formula]
     retained = set()
     found_matching = False
+    found_partition = False
+    found_terminal = False
     while pending:
         item = pending.pop()
         if item is expected_matching:
             found_matching = True
+        if item is expected_partition:
+            found_partition = True
+        if item is expected_terminal:
+            found_terminal = True
         if isinstance(item, (And, Or)):
             pending.extend(item.children)
         elif (isinstance(item, Eq) and isinstance(item.left, Bool)
@@ -123,6 +146,8 @@ def audited_submit(self, formula, *args, **kwargs):
             if isinstance(item.right, BoolVal):
                 retained.add((item.left.id, item.right.value))
     assert found_matching, 'refinement omitted shared complete proposition matching'
+    assert found_partition, 'refinement omitted Psi_PAR'
+    assert found_terminal, 'refinement omitted terminal definitions'
     if self.config.get_section('common').get_value('concrete') != 'true':
         assert pending_auxiliary, 'refinement without audited core'
         for auxiliary in pending_auxiliary:
@@ -139,7 +164,8 @@ sys.exit(result)
 
 class ScenarioCoreIntegrationTest(unittest.TestCase):
     def run_case(self, goal, equivalent, path='symbolic', preprocess=False,
-                 batch=1, two_step=True, bound=1, concrete=False):
+                 batch=1, two_step=True, bound=1, concrete=False,
+                 scenario_backend='z3', core_backend='z3'):
         with tempfile.TemporaryDirectory(prefix='stlmc-scenario-core-') as tmp:
             work = Path(tmp)
             model, config = work/'case.model', work/'case.cfg'
@@ -158,7 +184,9 @@ class ScenarioCoreIntegrationTest(unittest.TestCase):
 }''' % (bound, str(two_step).lower(), path, str(preprocess).lower(), batch,
         str(concrete).lower()))
             env = dict(os.environ, PYTHONPATH=str(ROOT/'src'),
-                       EQUIVALENT=str(int(equivalent)), PYTHONHASHSEED='0')
+                       EQUIVALENT=str(int(equivalent)), PYTHONHASHSEED='0',
+                       STLMC_SCENARIO_SOLVER=scenario_backend,
+                       STLMC_CORE_SOLVER=core_backend)
             result = subprocess.run(
                 [sys.executable, '-c', WRAPPER, str(model), '-model-cfg', str(config)],
                 cwd=work, env=env, text=True, stdout=subprocess.PIPE,
@@ -212,6 +240,28 @@ class ScenarioCoreIntegrationTest(unittest.TestCase):
                                         two_step=two_step, bound=1)
                 self.assertEqual(low, ('satisfied', 0))
                 self.assertEqual(high, ('violated', 1))
+
+    def test_independent_backend_pairs_preserve_conditional_core_and_matching(self):
+        sys.path.insert(0, str(ROOT/'src'))
+        from stlmc.solver.solver_factory import SolverFactory
+        from stlmc.exceptions import SolverUnavailableError
+        available = []
+        for backend in ('z3', 'yices', 'cvc5'):
+            try:
+                SolverFactory().generate_formula_solver_factory(backend)()
+            except SolverUnavailableError:
+                continue
+            available.append(backend)
+        for scenario, core in itertools.product(available, repeat=2):
+            for goal, equivalent in (('[][0,2] (x <= 1)', False),
+                                     ('(x < 3) U[0,1] (x >= 3)', True)):
+                with self.subTest(scenario=scenario, core=core, goal=goal):
+                    reference, _ = self.run_case(goal, equivalent, two_step=False)
+                    result, verified = self.run_case(
+                        goal, equivalent, preprocess=True, batch=2,
+                        scenario_backend=scenario, core_backend=core)
+                    self.assertEqual(result, reference)
+                    self.assertGreater(verified, 0)
 
 
 if __name__ == '__main__':
