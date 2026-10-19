@@ -27,7 +27,8 @@ registered expectations are:
 | `f5` | 1 second | 0 | `violated:0` |
 | `rebound` | 3 seconds | 1 | `reachable:1` |
 
-All six goals are included in the quick and fast benchmark selections.
+All six goals remain in the full and fast benchmark selections, but are
+excluded from quick release checks because ODE solving can be slow on macOS.
 `f1`, `f2`, `f4`, and `f5` use shorter windows for fast regression checks;
 `f3` and `rebound` retain the three-second window containing the first bounce.
 `f5` is already violated by the initial height `x = 10`, so its regression
@@ -44,7 +45,7 @@ the reported result and finishing bound with the model's expected annotations.
 From the repository root:
 
 ```sh
-python tests/run_artifact_benchmarks.py --scope bouncing-ball-ode --quick --timeout 60 --parallel-core 4
+python tests/run_artifact_benchmarks.py --scope bouncing-ball-ode --timeout 200 --parallel-core 4
 ```
 
 To run one goal directly from the repository root, select its configuration:

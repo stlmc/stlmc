@@ -1,6 +1,5 @@
 # @benchmark.expected(f1=satisfied:1, f2=violated:1, f3=violated:0, f4=violated:1, f5=violated:0)
 # @benchmark.fast(f1, f2, f3, f4, f5)
-# @benchmark.quick(f1, f2, f3, f4, f5)
 # Closed-form bouncing ball from report/bug3/response/bb-poly.model; g=1,v0=0.
 const g = 1;
 const c = 0.75;

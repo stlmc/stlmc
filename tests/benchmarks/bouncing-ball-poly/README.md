@@ -19,12 +19,13 @@ window.
 | `f4` | 1 | `violated:1` |
 | `f5` | 0 | `violated:0` |
 
-All five goals are included in quick and fast selections. `satisfied:1`
+All five goals remain in full and fast selections. Bouncing-ball models are
+excluded from the quick release selection. `satisfied:1`
 records the absence of a counterexample within this time window, discrete
 bound, and threshold; it is not an unbounded proof. Results use the configured
 threshold semantics, including strengthening `x >= 10` to `x >= 10.01`.
 The listed finishing bounds are observed encoding results.
 
 ```sh
-python tests/run_artifact_benchmarks.py --scope bouncing-ball-poly --quick --timeout 60 --parallel-core 8
+python tests/run_artifact_benchmarks.py --scope bouncing-ball-poly --timeout 60 --parallel-core 8
 ```
