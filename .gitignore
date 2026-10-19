@@ -41,6 +41,7 @@ log/
 # Keep test sources and fixtures; ignore generated test outputs
 /tests/*
 !/tests/*.py
+!/tests/ui_frontend.mjs
 !/tests/README.md
 !/tests/benchmarks/
 !/tests/benchmarks/**

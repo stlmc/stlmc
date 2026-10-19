@@ -1,0 +1,13 @@
+---
+layout: workspace
+---
+{% include connection.html %}
+<div class="workspace-grid">
+  <section class="panel editors-panel" aria-labelledby="editor-title">
+    <div class="panel-heading"><div><p class="eyebrow">Verification workspace</p><h2 id="editor-title">Model &amp; configuration</h2></div>
+      <label>Editor layout<select id="editor-layout"><option value="split">Side by side</option><option value="model">Model only</option><option value="config">Configuration only</option></select></label></div>
+    <div class="editors" id="editors">{% include model-editor.html %}{% include config-editor.html %}</div>
+  </section>
+  {% include analysis.html %}
+</div>
+{% include results.html %}

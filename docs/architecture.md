@@ -73,6 +73,35 @@ The model, configuration, and visualization languages use Lark grammars under
 build step. Install the checkout in editable mode when developing parsers,
 and run `make test-parser` and `make test-unit` after changes.
 
+## Workspace frontend development
+
+`src/stlmc/ui/frontend/` is the editable frontend source: Jekyll layouts and includes define
+the panels, SCSS defines their styling, and native JavaScript modules handle
+interaction with the authenticated local API. The homepage and local GUI use
+the same generated assets.
+
+After installing the locked development gems with `bundle install` in
+`src/stlmc/ui/frontend/`, run from the repository root:
+
+```sh
+python tools/build_ui.py
+python tools/build_ui.py --check
+```
+
+Commit both the source changes and generated `src/stlmc/ui/static/` assets.
+Do not edit generated assets directly. CI rebuilds and checks for drift before
+building the universal wheel. Keeping the generated assets in the checkout
+also permits wheel and editable installs without Ruby or Jekyll. The release
+workflow publishes only a wheel, which excludes the Jekyll source directory.
+End users need only the optional Python UI dependencies; Node.js is not
+required for building or running this frontend.
+
+The optional JavaScript development tests run with Node.js 24:
+
+```sh
+node --test tests/ui_frontend.mjs
+```
+
 ## Native solver development
 
 ### dReal ARM64 porting

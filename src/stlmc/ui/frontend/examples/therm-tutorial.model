@@ -1,0 +1,48 @@
+int on0;                int on1;
+[10, 35] x0;            [10, 35] x1;
+const k0 = 0.015;       const k1 = 0.045;
+const h0 = 100;         const h1 = 200;
+const c0 = 0.98;        const c1 = 0.97;
+const d0 = 0.01;        const d1 = 0.03;
+
+{ mode: on0 = 0;        on1 = 0;
+  inv:  x0 > 10;        x1 > 10;
+  flow:
+    d/dt[x0] = - k0 * (c0 * x0 - d0 * x1);
+    d/dt[x1] = - k1 * (c1 * x1 - d1 * x0);
+  jump:
+    x0 <= 17 => (and (on0' = 1) (on1' = on1)
+                     (x0' = x0) (x1' = x1));
+    x1 <= 16 => (and (on1' = 1) (on0' = on0)
+                     (x0' = x0) (x1' = x1));
+}
+{ mode: on0 = 0;        on1 = 1;
+  inv:  10 < x0;        x1 < 30;
+  flow:
+    d/dt[x0] = - k0 * (c0 * x0 - d0 * x1);
+    d/dt[x1] = k1 * (h1 - (c1 * x1 - d1 * x0));
+  jump:
+    x0 <= 17 => (and (on0' = 1) (on1' = 0)
+                         (x0' = x0) (x1' = x1));
+    x1 >= 26 => (and (on1' = 0) (on0' = on0)
+                     (x0' = x0) (x1' = x1));
+}
+{ mode: on0 = 1;        on1 = 0;
+  inv:  x0 < 30;        x1 > 10;
+  flow:
+    d/dt[x0] = k0 * (h0 - (c0 * x0 - d0 * x1));
+    d/dt[x1] = - k1 * (c1 * x1 - d1 * x0);
+  jump:
+    x1 <= 16 => (and (on0' = 0) (on1' = 1)
+                         (x0' = x0) (x1' = x1));
+    x0 >= 25 => (and (on0' = 0) (on1' = on1)
+                     (x0' = x0) (x1' = x1));
+}
+init: on0 = 0; x0 = 20;
+      on1 = 0; x1 = 18;
+proposition:
+  [p1]: x0 - x1 >= 4;    [p2]: x0 - x1 <= -3;
+goal:
+  [f1]: [][0, 8] <>[0, 2] (x0 >= 9);
+  [f2]: <>[0, 2] [][0, 8] (x1 >= 9);
+  [f3]: [][0, 5] ((on1 > 0.5) -> <>[0, 1] (x1 >= 30));

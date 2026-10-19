@@ -49,6 +49,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+exclude = ["stlmc.ui.frontend", "stlmc.ui.frontend.*"]
 
 [tool.setuptools.package-data]
 stlmc = ["default.cfg", "parser/grammars/*.lark", "cli/dependency-constraints.txt", "ui/static/*", "ui/static/**/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["frontend/*", "frontend/**/*"]

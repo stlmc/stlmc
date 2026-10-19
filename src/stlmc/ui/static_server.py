@@ -1,5 +1,6 @@
 """Serve only bundled UI assets, never arbitrary package or user files."""
 from http.server import BaseHTTPRequestHandler
+import json
 import os
 import shutil
 import stat
@@ -11,20 +12,34 @@ ASSETS = {
     '/index.html': ('index.html', 'text/html; charset=utf-8'),
     '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
     '/styles.css': ('styles.css', 'text/css; charset=utf-8'),
+    **{'/js/' + name + '.js': ('js/' + name + '.js', 'text/javascript; charset=utf-8')
+       for name in ('connection', 'documents', 'analysis', 'results', 'progress', 'view')},
     '/examples/therm-tutorial.model': ('examples/therm-tutorial.model', 'text/plain; charset=utf-8'),
     '/examples/therm-tutorial.cfg': ('examples/therm-tutorial.cfg', 'text/plain; charset=utf-8'),
 }
 
 
 class StaticAssetHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, directory, **kwargs):
+    def __init__(self, *args, directory, bridge_port=None, **kwargs):
         self.directory = str(directory)
+        self.bridge_port = bridge_port
         super().__init__(*args, **kwargs)
 
     def log_message(self, format, *values):
         pass
 
     def _serve(self, head=False):
+        if self.path == '/local-connection.json' and self.bridge_port is not None:
+            body = json.dumps({'bridge_url': 'http://127.0.0.1:' + str(self.bridge_port)}).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            if not head:
+                self.wfile.write(body)
+            return
         try:
             asset = ASSETS.get(urlsplit(self.path).path)
         except ValueError:

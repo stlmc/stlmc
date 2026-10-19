@@ -1,5 +1,6 @@
 """The unauthenticated page server exposes a fixed, no-follow asset set."""
 import functools
+import json
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -22,7 +23,7 @@ class UiStaticAssetTest(unittest.TestCase):
             target.write_bytes(b'public asset')
         self.secret = self.root / 'secret'; self.secret.write_bytes(b'private secret')
         self.server = ThreadingHTTPServer(('127.0.0.1', 0),
-            functools.partial(StaticAssetHandler, directory=self.static))
+            functools.partial(StaticAssetHandler, directory=self.static, bridge_port=18080))
         thread = threading.Thread(target=self.server.serve_forever,
                                   kwargs={'poll_interval': .01}, daemon=True)
         thread.start()
@@ -46,6 +47,14 @@ class UiStaticAssetTest(unittest.TestCase):
         status, body, headers = self.request('/app.js', 'HEAD')
         self.assertEqual((status, body), (200, b''))
         self.assertEqual(headers['X-Content-Type-Options'], 'nosniff')
+
+    def test_local_connection_contains_only_configured_address(self):
+        status, body, headers = self.request('/local-connection.json')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), {'bridge_url': 'http://127.0.0.1:18080'})
+        self.assertEqual(headers['Cache-Control'], 'no-store')
+        self.assertNotIn('Access-Control-Allow-Origin', headers)
+        self.assertEqual(self.request('/local-connection.json', 'HEAD')[:2], (200, b''))
 
     def test_listing_traversal_unlisted_and_write_methods_denied(self):
         for path in ['/examples/', '/../secret', '/%2e%2e/secret', '/secret', '/worker.py']:

@@ -1,0 +1,13 @@
+<section class="panel connection-panel" aria-labelledby="connection-title">
+  <div class="panel-heading"><h2 id="connection-title">Local connection</h2><span id="runtime-state" class="badge">Disconnected</span></div>
+  <p class="muted">Start <code>stlmc-gui</code> on your computer and paste the session token from its terminal. No solver or model is uploaded to this website.</p>
+  <form id="connect-form" class="row">
+    <details><summary>Advanced connection settings</summary>
+      <label>Bridge URL<input id="bridge-url" value="http://127.0.0.1:8765" autocomplete="off" required></label>
+    </details>
+    <label class="token-field">Session token<input id="token" type="password" autocomplete="off" spellcheck="false" required></label>
+    <button id="connect" type="submit">Connect</button><button id="disconnect" type="button">Disconnect</button>
+  </form>
+  <p id="connection-state" role="status" class="muted">Disconnected. Tokens are kept in memory only.</p>
+  <p id="error" role="alert"></p>
+</section>

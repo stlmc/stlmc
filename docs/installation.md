@@ -84,10 +84,14 @@ regenerate them; no conversion is provided.
 
 ## Browser workspace
 
-The static browser workspace and local bridge are included in STLmc; NiceGUI
-and a separate web-ui checkout are not required. The GUI supports Linux,
-macOS, and WSL, not native Windows. Install the optional server dependencies
-and start the GUI:
+The browser workspace and local bridge are included in STLmc; a separate
+web-ui checkout is not required. The GUI supports Linux,
+macOS, and WSL, not native Windows.
+
+The installed GUI does not require Ruby, Jekyll, or Node.js. Its templates
+are compiled into static assets during development and release validation.
+
+Install the optional server dependencies and start the GUI:
 
 ```sh
 stlmc-installer install --ui
@@ -95,6 +99,9 @@ stlmc-installer check --ui
 stlmc-gui
 ```
 
+The local workspace detects the API address, including a custom `--port`.
+Only the session token is required; the Bridge URL remains editable under
+Advanced connection settings (also useful for the hosted Workspace).
 Keep the terminal open and enter its session token in the workspace. By
 default the page is served on `http://127.0.0.1:8766` and the authenticated API
 on port 8765. Both bind only to loopback. Use `--no-browser` to avoid opening

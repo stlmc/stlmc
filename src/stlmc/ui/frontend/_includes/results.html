@@ -1,0 +1,19 @@
+<section class="panel output-panel" aria-labelledby="output-title">
+  <div class="panel-heading"><h2 id="output-title">Analysis output</h2><p id="run-state" role="status"></p></div>
+  <nav class="tabs" role="tablist" aria-label="Analysis output">
+    <button id="tab-results" type="button" role="tab" aria-selected="true" aria-controls="panel-results" data-tab="results">Results</button>
+    <button id="tab-visualization" type="button" role="tab" aria-selected="false" aria-controls="panel-visualization" data-tab="visualization" tabindex="-1">Visualization</button>
+    <button id="tab-log" type="button" role="tab" aria-selected="false" aria-controls="panel-log" data-tab="log" tabindex="-1">Execution log</button>
+    <button id="tab-history" type="button" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" tabindex="-1">Run history</button>
+  </nav>
+  <div id="panel-results" role="tabpanel" aria-labelledby="tab-results">
+    <h3>Bound progress</h3><p id="progress-stage" role="status" class="muted">No analysis selected</p><p id="scenario" class="muted"></p>
+    <div class="table-scroll"><table id="progress-table" hidden><thead><tr><th>Goal</th><th>Bound</th><th>Query</th><th>Time</th></tr></thead><tbody id="progress-rows"></tbody></table></div>
+    <p class="muted">Completed bounds appear as soon as their result is available. Encoding and solver work before the first completed bound do not produce a row.</p>
+    <div id="results"><p class="muted">Select or start an analysis to inspect its results.</p></div><div id="artifacts" class="row"></div>
+    <details><summary>Raw progress events</summary><pre id="progress"></pre></details>
+  </div>
+  <div id="panel-visualization" role="tabpanel" aria-labelledby="tab-visualization" hidden><div id="plots"></div><p id="plot-empty" class="muted">A graph is generated when STLmc produces a counterexample or reachability witness.</p></div>
+  <div id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden><pre id="log"></pre></div>
+  {% include history.html %}
+</section>

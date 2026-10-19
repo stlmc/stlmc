@@ -43,7 +43,8 @@ def main(argv=None):
 
     try:
         server = ThreadingHTTPServer(('127.0.0.1', args.ui_port),
-                                    functools.partial(StaticAssetHandler, directory=str(static)))
+                                    functools.partial(StaticAssetHandler, directory=str(static),
+                                                      bridge_port=args.port))
     except OSError as error:
         print('Cannot start the local page: {}'.format(error), file=sys.stderr)
         return 2

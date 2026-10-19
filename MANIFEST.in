@@ -1,0 +1,12 @@
+include tools/build_ui.py
+include src/stlmc/ui/frontend/Gemfile
+include src/stlmc/ui/frontend/Gemfile.lock
+include src/stlmc/ui/frontend/_config.yml
+include src/stlmc/ui/frontend/index.html
+include src/stlmc/ui/frontend/app.js
+include src/stlmc/ui/frontend/styles.scss
+recursive-include src/stlmc/ui/frontend/_layouts *.html
+recursive-include src/stlmc/ui/frontend/_includes *.html
+recursive-include src/stlmc/ui/frontend/_sass *.scss
+recursive-include src/stlmc/ui/frontend/js *.js
+recursive-include src/stlmc/ui/frontend/examples *.model *.cfg

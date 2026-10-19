@@ -1,0 +1,11 @@
+title: STLmc Workspace
+markdown: kramdown
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor
+  - .bundle
+sass:
+  style: compressed
+  sourcemap: never
