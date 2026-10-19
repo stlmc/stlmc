@@ -174,7 +174,8 @@ class CliHelpTest(unittest.TestCase):
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
                 status = main()
             self.assertEqual(status, 130)
-            self.assertIn('interrupted by user', output.getvalue())
+            self.assertIn('execution interrupted', output.getvalue())
+            self.assertNotIn('interrupted by user', output.getvalue())
             self.assertNotIn('Traceback', output.getvalue())
             self.assertNotIn('error:', output.getvalue())
         finally:

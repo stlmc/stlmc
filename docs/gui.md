@@ -84,6 +84,8 @@ a `violated` result. ODE examples may require dReal rather than Z3.
 downloadable files. **Visualization** displays generated counterexamples or
 reachability witnesses. **Execution log** contains the solver output and
 diagnostics. Failures and timeouts also produce a visible failure summary.
+The summary distinguishes the wall-clock time limit, a user stop request,
+and GUI server shutdown. A solver exit code alone does not identify the cause.
 
 `violated` means a counterexample to the configured robustness requirement was
 found. `satisfied up to bound k` applies only within the configured bounded

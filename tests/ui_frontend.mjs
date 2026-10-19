@@ -119,6 +119,23 @@ test('failed and timed-out runs expose a bounded diagnostic without hiding parti
   assert.equal(failureSummary({state: 'timed_out', log: 'x'.repeat(5000)}).detail.length, 2000);
 });
 
+test('timeout, user stop and server shutdown have distinct reasons even with exit 130', () => {
+  for (const [state, reason, expected] of [
+    ['timed_out', 'timeout', /120 seconds/],
+    ['cancelled', 'user_stop', /at your request/],
+    ['interrupted', 'server_shutdown', /server was shutting down/],
+  ]) {
+    const result = failureSummary({state, termination_reason: reason, request: {timeout: 120},
+      exit_code: 130, log: 'execution interrupted'});
+    assert.match(result.reason, expected);
+    assert.equal(result.detail, 'execution interrupted');
+    assert.match(result.exit, /130/);
+  }
+  assert.match(failureSummary({state: 'timed_out', request: {timeout: 120},
+    log: 'interrupted by user'}).reason, /120 seconds/);
+  assert.match(failureSummary({state: 'interrupted'}).reason, /no termination cause was recorded/);
+});
+
 test('local UI discovers a custom API port without a token', async () => {
   const previous = globalThis.fetch;
   const input = {value: 'http://127.0.0.1:8765'};

@@ -82,26 +82,54 @@ def stop_group(process):
     process.wait()
 
 
-def watch(job, process, stream):
+def request_termination(job, reason):
+    """Persist the first termination cause before sending any process signal."""
+    with LOCK:
+        if job['state'] != 'running':
+            return False
+        job.update(state='stopping', termination_reason=reason,
+                   termination_requested_at=time.time())
+        save_job(job)
+        return True
+
+
+def finish_job(job, process):
+    """Called under LOCK so completion cannot race a new stop request."""
     global ACTIVE
+    reason = job.get('termination_reason')
+    if reason:
+        state = {'timeout': 'timed_out', 'user_stop': 'cancelled',
+                 'server_shutdown': 'interrupted'}[reason]
+    elif job['state'] == 'stopping':
+        state = 'cancelled'  # Compatibility with an older in-memory job.
+    elif process.returncode in (130, -signal.SIGINT, -signal.SIGTERM):
+        state = 'interrupted'
+    else:
+        state = 'completed' if process.returncode == 0 else 'failed'
+    job.update(state=state, finished=time.time(), exit_code=process.returncode)
+    job.pop('_process', None)
+    save_job(job)
+    if ACTIVE == job['id']:
+        ACTIVE = None
+
+
+def watch(job, process, stream):
     try:
-        process.wait(timeout=job['request']['timeout'])
+        try:
+            process.wait(timeout=job['request']['timeout'])
+        except subprocess.TimeoutExpired:
+            request_termination(job, 'timeout')
         with LOCK:
-            cancelled = job['state'] == 'stopping'
-        if cancelled:
-            stop_group(process)
-        state = 'cancelled' if cancelled else ('completed' if process.returncode == 0 else 'failed')
-    except subprocess.TimeoutExpired:
+            if job['state'] != 'stopping':
+                finish_job(job, process)
+                return
+        # Cleanup applies to every termination cause, including a parent that
+        # has exited while one of its solver children is still alive.
         stop_group(process)
-        state = 'timed_out'
+        with LOCK:
+            finish_job(job, process)
     finally:
         stream.close()
-    with LOCK:
-        job.update(state=state, finished=time.time(), exit_code=process.returncode)
-        job.pop('_process', None)
-        save_job(job)
-        if ACTIVE == job['id']:
-            ACTIVE = None
 
 
 @asynccontextmanager
@@ -110,8 +138,8 @@ async def lifespan(app):
     with LOCK:
         active = JOBS.get(ACTIVE)
         process = active.get('_process') if active else None
-        if active:
-            active['state'] = 'stopping'
+        if process:
+            request_termination(active, 'server_shutdown')
     if process:
         await __import__('asyncio').to_thread(stop_group, process)
 
@@ -176,7 +204,8 @@ def start(request: RunRequest):
         args += ['-model-cfg', 'input.cfg']
         snapshot = request.model_dump(exclude={'model', 'config'})
         job = dict(id=run_id, state='running', started=time.time(), finished=None,
-                   exit_code=None, request=snapshot, command=['stlmc'] + args[4:])
+                   exit_code=None, termination_reason=None, request=snapshot,
+                   command=['stlmc'] + args[4:])
         stream = (folder / 'run.log').open('wb')
         try:
             process = subprocess.Popen(args, cwd=folder, stdout=stream, stderr=subprocess.STDOUT,
@@ -197,7 +226,6 @@ def stop(run_id: str):
     load_job(run_id)
     with LOCK:
         job = JOBS.get(run_id)
-        if job and job['state'] == 'running':
-            job['state'] = 'stopping'
+        if job and request_termination(job, 'user_stop'):
             threading.Thread(target=stop_group, args=(job['_process'],), daemon=True).start()
     return load_job(run_id)

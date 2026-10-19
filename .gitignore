@@ -48,3 +48,6 @@ log/
 !/tests/benchmarks/**
 !/tests/smt2/
 !/tests/smt2/**
+
+.ui-models/
+.ui-runs/

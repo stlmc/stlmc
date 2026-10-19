@@ -4,9 +4,21 @@ export function failureSummary(job) {
   const titles = {failed: 'Analysis failed', timed_out: 'Analysis timed out',
     interrupted: 'Analysis was interrupted', cancelled: 'Analysis was cancelled'};
   if (!titles[job.state]) return null;
+  let reason = '';
+  if (job.termination_reason === 'timeout' || job.state === 'timed_out') {
+    const limit = job.request?.timeout;
+    reason = Number.isFinite(limit) ? 'The wall-clock time limit of ' + limit + ' seconds was reached.' :
+      'The wall-clock time limit was reached.';
+  } else if (job.termination_reason === 'user_stop') {
+    reason = 'Analysis was stopped at your request.';
+  } else if (job.termination_reason === 'server_shutdown') {
+    reason = 'Analysis was interrupted because the GUI server was shutting down.';
+  } else if (job.state === 'interrupted' || job.state === 'cancelled') {
+    reason = 'The execution was interrupted; no termination cause was recorded.';
+  }
   const lines = (job.log || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim().split('\n');
   const tail = lines.filter(line => line.trim()).slice(-8).join('\n').slice(-2000);
-  return {title: titles[job.state], detail: tail || 'No diagnostic output was recorded.',
+  return {title: titles[job.state], reason, detail: tail || 'No diagnostic output was recorded.',
     exit: job.exit_code == null ? '' : ' (exit code ' + job.exit_code + ')'};
 }
 
@@ -26,7 +38,7 @@ export function setupResults(c) {
     $('run-failure').hidden = !failure;
     if (failure) {
       $('failure-title').textContent = failure.title + failure.exit;
-      $('failure-summary').textContent = failure.detail;
+      $('failure-summary').textContent = [failure.reason, failure.detail].filter(Boolean).join('\n\n');
       $('failure-log').onclick = () => c.selectTab('log');
       if (!state.active) $('activity').textContent = failure.title;
     }

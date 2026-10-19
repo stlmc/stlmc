@@ -152,7 +152,8 @@ with patch('stlmc.update_check.notify_if_outdated'), patch(
             process.send_signal(signal.SIGTERM)
             stdout, stderr = process.communicate(timeout=10)
             self.assertEqual(process.returncode, 130, stdout + stderr)
-            self.assertIn('interrupted by user', stdout)
+            self.assertIn('execution interrupted', stdout)
+            self.assertNotIn('interrupted by user', stdout)
             self.assertNotIn('Traceback', stdout + stderr)
             with self.assertRaises(ProcessLookupError):
                 os.kill(worker_pid, 0)
