@@ -20,12 +20,13 @@ For the project website, publications, and user manual, visit
 
 ## Requirements and installation
 
-STLmc supports CPython 3.8 through 3.14. The visualization installer's validated
-dependency profile currently covers only CPython 3.10; its visualization checks
-and installs report an error on other Python versions. A virtual environment is recommended:
+STLmc requires CPython 3.11 through 3.14, including for HTML and PDF
+visualization. Use one of these Python versions to create a virtual environment:
+the example uses `python3.11`; substitute your chosen supported interpreter
+(for example, `py -3.11` on Windows).
 
 ```sh
-python -m venv .venv
+python3.11 -m venv .venv
 # Linux/macOS; on Windows use .venv\Scripts\activate
 . .venv/bin/activate
 python -m pip install --upgrade pip
@@ -41,13 +42,18 @@ python -m pip install .
 ```
 
 The default package includes NumPy and SciPy but no SMT solver bindings,
-native solvers, Bokeh, or Matplotlib. Install Z3 for the quick start and
-STLmc's default internal reasoning:
+native solvers, Bokeh, or Matplotlib. The recommended starting setup is Z3
+with HTML and PDF rendering:
 
 ```sh
 stlmc-installer install --solver z3
 stlmc-installer check --solver z3
+stlmc-installer install --visualize html pdf
+stlmc-installer check --visualize html pdf
 ```
+
+The visualization commands are optional for model checking and text output.
+Z3 alone is sufficient for the quick-start verification below.
 
 The default internal backend still needs Z3 when CVC5, Yices, or dReal is
 selected as the final solver. Install the additional backends your models
@@ -59,28 +65,48 @@ stlmc-installer install --solver yices
 stlmc-installer install --solver dreal
 ```
 
-`stlmc-installer install --solver z3 cvc5 yices` installs the supported missing
-solver prerequisites. The installer manages Python bindings and the required
-native libraries for these backends.
-Choose the `install` or `check` action first; running the installer without an
+The installer manages Python bindings and native solver downloads in a
+user-owned directory, without sudo or replacing system libraries. Yices uses
+SHA256-pinned official 2.7.0 archives and, on supported Linux systems, an
+openSUSE CUDD binary dependency. See the
+[installation guide](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
+for platform restrictions and native dependencies. Native Yices and dReal
+automatic installation is not supported on Windows.
+
+Choose the `install`, `check`, or `uninstall` action first; running the installer without an
 action shows help. Select multiple backends with `--solver z3 cvc5 yices dreal`
 or formats with `--visualize html pdf text`. `install --all` selects all
 components, including the official dReal 3.16.06.02 binary on supported
 platforms. `check` alone checks all components without installing anything.
 
+Preview removal before uninstalling selected components:
+
+```sh
+stlmc-installer uninstall --solver yices --visualize html pdf --dry-run
+stlmc-installer uninstall --solver yices --visualize html pdf
+```
+
+Removal is limited to selected Python packages in the active virtual
+environment and unchanged native files covered by installer ownership
+receipts. Older native installations without receipts are retained for manual
+cleanup; Yices's managed activation is removed. System installations and
+counterexample files are preserved. Stop jobs using the selected components
+first: managed native installations are shared across that user's virtual
+environments. See the
+[removal guide](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#removing-components)
+for details.
+
 General ODE and transcendental models require a compatible dReal 3 build.
 The default dReal download is the official 3.16.06.02 release, which has known
-ODE bugs. Installation success checks its version and a basic algebraic query;
-it does not establish ODE correctness. `check` reports this official release's
-known invariant limitation; verification allows execution without a runtime warning. Unrelated
-executable errors and failed capability checks remain errors. A successful
-check does not certify ODE correctness. An alternative executable can be
-selected with `-executable-path /path/to/dReal`. The advanced
-[experimental source-build route](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#dreal-source-builds)
-requires explicit `--experimental-build` and is separate from the official binary.
+ODE bugs. Successful installation or checks do not certify ODE correctness.
+`check` reports the known invariant limitation.
+An alternative executable can be selected with
+`-executable-path /path/to/dReal`; an explicit
+[experimental source-build option](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#dreal-source-builds)
+is also available.
 See
 [Installation and troubleshooting](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
-for platform restrictions, Homebrew setup, solver locations, and offline use.
+for platform restrictions, native dependencies, solver locations, and offline use.
 
 Confirm the installation and inspect the supported command-line options with:
 
@@ -116,8 +142,18 @@ stlmc quickstart.model -goal safety -bound 2 -time-bound 2 -solver z3 -visualize
 
 The expected status is `violated`. The bound counts STL variable points as
 well as mode changes, even though this example has no physical jump.
-With `-visualize`, the result also lists the generated artifact and its `.cfg`
-file. Use those paths with `stlmc-vis` as shown below.
+`-visualize` saves result data and its `.cfg` file; it does not render a plot.
+For this example, render the generated files with:
+
+```sh
+stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cfg
+stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cfg -output pdf
+stlmc-vis quickstart_b1_safety_z3.counterexample -output text
+```
+
+The first command writes interactive HTML. The second writes PDF plots, and
+the third writes a text report. If your result lists different filenames, use
+those paths instead.
 
 ## Analysis configuration
 
@@ -165,7 +201,7 @@ A model may declare a `reach` goal directly, or an ordinary state goal can be
 interpreted as a reachability target with:
 
 ```sh
-stlmc system.model -goal target -reach
+stlmc system.model -goal target -reach -bound 5 -time-bound 20
 ```
 
 See [Bounded reachability](https://github.com/stlmc/stlmc/blob/main/docs/reachability.md)
@@ -186,15 +222,16 @@ for its precise semantics.
   reachability search found a witness / exhausted the checked bounds.
 - `unknown`: a solver check was inconclusive; do not interpret it as success.
 
-`threshold` specifies the STL robustness requirement. dReal's `precision`
+`threshold` specifies the STL robustness requirement and defaults to `0.01`.
+dReal's `precision`
 controls its delta-decision tolerance and is a separate setting. dReal results
 and saved trajectories require care when exact guarantees are needed; see
 [Result semantics and limitations](https://github.com/stlmc/stlmc/blob/main/docs/result-semantics.md).
 
 ## Solving strategies
 
-The default is symbolic one-step solving: one complete bounded encoding is
-sent to the solver. To use two-step abstraction/refinement and concurrent
+The default is symbolic one-step solving: one complete encoding is sent to
+the solver for each checked bound. To use two-step abstraction/refinement and concurrent
 refinement checks, for example:
 
 ```sh
@@ -209,11 +246,9 @@ candidates are combined in one OR query; it defaults to `1`.
 With `-two-step -parallel`, scenario generation and unsat-core minimization
 remain sequential, while completed refinement batches are checked concurrently
 by solver workers. `parallel-core` limits those workers and defaults to `auto`,
-which uses all logical CPUs reported by the host. Batching and
-parallelism therefore have different effects: a larger batch reduces the
-number of solver jobs and can reduce available parallelism. Start with batch
-size `1` when solver utilization is the priority, then try `2` or `4` to trade
-some parallelism for fewer solver invocations.
+which uses all logical CPUs reported by the host. Larger batches can reduce
+both solver invocations and available parallelism; see the strategy guide
+below for tuning details.
 
 Parallel refinement with Yices requires a thread-safe native Yices build,
 even with one worker. Otherwise, use sequential execution. See
@@ -237,6 +272,7 @@ Render an artifact with:
 ```sh
 stlmc-vis result.counterexample -cfg result.cfg
 stlmc-vis result.counterexample -cfg result.cfg -output text
+stlmc-vis result.counterexample -cfg result.cfg -output pdf
 ```
 
 The same command accepts `.witness` files. HTML is the default. Text output
@@ -248,9 +284,7 @@ Check the PDF dependency with
 `stlmc-installer check --visualize pdf`, or install it with
 `stlmc-installer install --visualize pdf`.
 
-`.counterexample` and `.witness` files contain versioned, gzip-compressed JSON;
-their extensions stay unchanged. The reader validates the format and bounds
-decompression size before decoding the stored expressions.
+`.counterexample` and `.witness` files contain versioned, gzip-compressed JSON.
 
 Legacy pickle artifacts are outdated and unsupported. Rerun model checking
 with the current STLmc version to regenerate them; no conversion is provided.
@@ -262,18 +296,14 @@ From a source checkout, install in editable mode and run unit/integration checks
 ```sh
 python -m pip install -e .
 stlmc-installer install --solver z3 cvc5 yices
-stlmc-installer check --solver dreal
 make test-unit
 ```
 
-To also run solver smoke checks and a selected benchmark/comparison sample:
-
-```sh
-make test-quick
-```
-
-The full benchmark workflow is `make test`; it can take hours. See the testing
-guide for prerequisites and known limitations.
+The broader `make test-quick` and `make test` workflows also need native solver
+executables and explicit smoke-test path setup. The official dReal release has
+a known-defect smoke case requiring explicit acknowledgment, not an ordinary
+correctness pass. Follow the testing guide before running these workflows;
+the full benchmark workflow can take hours.
 
 See [Testing and benchmarks](https://github.com/stlmc/stlmc/blob/main/tests/README.md)
 for prerequisites, test targets, selections, and output locations, and

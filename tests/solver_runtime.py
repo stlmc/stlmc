@@ -26,6 +26,9 @@ class YicesExecutionGuardTest(unittest.TestCase):
             self.skipTest(str(error))
         from stlmc.parser.config_visitor import ConfigVisitor
         self.adapter = YicesSolver
+        # Patch the class itself: newer unittest.mock resolves the dotted
+        # 'yices.Yices' path to the same-named module, not this exported class.
+        self.yices_api = load_yices_binding().Yices
         self.config = ConfigVisitor().parse_from_file(str(ROOT/'src/stlmc/default.cfg'))
         self.config.get_section('yices').set_value('logic', 'QF_LRA')
 
@@ -34,39 +37,39 @@ class YicesExecutionGuardTest(unittest.TestCase):
         common.set_value('parallel', 'true')
         for workers in ('1', '8'):
             common.set_value('parallel-core', workers)
-            with self.subTest(workers=workers), mock.patch('yices.Yices.is_thread_safe', return_value=False):
+            with self.subTest(workers=workers), mock.patch.object(self.yices_api, 'is_thread_safe', return_value=False):
                 with self.assertRaisesRegex(SolverUnavailableError, 'thread-safe.*stlmc-installer install --solver yices'):
                     self.adapter(self.config)
         self.assertEqual(common.get_value('parallel'), 'true')
 
     def test_unsafe_library_allows_explicit_sequential_execution(self):
         self.config.get_section('common').set_value('parallel', 'false')
-        with mock.patch('yices.Yices.is_thread_safe', return_value=False):
+        with mock.patch.object(self.yices_api, 'is_thread_safe', return_value=False):
             self.adapter(self.config)
 
     def test_thread_safe_library_allows_parallel_configuration(self):
         self.config.get_section('common').set_value('parallel', 'true')
         # Configuration policy only: never run unsafe native calls under a
         # mocked capability. Native concurrency needs a real thread-safe build.
-        with mock.patch('yices.Yices.is_thread_safe', return_value=True):
+        with mock.patch.object(self.yices_api, 'is_thread_safe', return_value=True):
             self.adapter(self.config)
 
     def test_nonlinear_logic_requires_mcsat(self):
         self.config.get_section('yices').set_value('logic', 'QF_NRA')
-        with mock.patch('yices.Yices.has_mcsat', return_value=False):
+        with mock.patch.object(self.yices_api, 'has_mcsat', return_value=False):
             with self.assertRaisesRegex(SolverUnavailableError, 'requires MCSAT.*without-mcsat'):
                 self.adapter(self.config)
 
     def test_nonlinear_parallel_needs_both_capabilities(self):
         self.config.get_section('common').set_value('parallel', 'true')
         self.config.get_section('yices').set_value('logic', 'QF_NRA')
-        with mock.patch('yices.Yices.is_thread_safe', return_value=True), \
-                mock.patch('yices.Yices.has_mcsat', return_value=True):
+        with mock.patch.object(self.yices_api, 'is_thread_safe', return_value=True), \
+                mock.patch.object(self.yices_api, 'has_mcsat', return_value=True):
             self.adapter(self.config)
 
     def test_configuration_change_cannot_bypass_pre_worker_guard(self):
         self.config.get_section('common').set_value('parallel', 'false')
-        with mock.patch('yices.Yices.is_thread_safe', return_value=False):
+        with mock.patch.object(self.yices_api, 'is_thread_safe', return_value=False):
             solver = self.adapter(self.config)
             self.config.get_section('common').set_value('parallel', 'true')
             with mock.patch('stlmc.solver.yices.ThreadWorker') as worker:
@@ -114,9 +117,12 @@ class YicesDiscoveryTest(unittest.TestCase):
                 return binding
             with mock.patch.dict(os.environ, {'STLMC_YICES_LIBRARY': str(library)}), \
                     mock.patch.dict(sys.modules), \
+                    mock.patch('stlmc.solver.availability._yices_managed_selection', None), \
+                    mock.patch('stlmc.solver.availability._yices_dependency_handles', {}), \
                     mock.patch('ctypes.util.find_library', return_value='system-other') as original, \
                     mock.patch('importlib.import_module', side_effect=import_binding):
                 sys.modules.pop('yices', None)
+                sys.modules.pop('yices_api', None)
                 sys.modules.pop('cvc5', None)
                 self.assertIs(load_yices_binding(), binding)
                 self.assertIs(ctypes.util.find_library, original)

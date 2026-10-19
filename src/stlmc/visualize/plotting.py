@@ -80,7 +80,7 @@ def build_plot(point_samples, robustness_dict, time_samples_list,
             multi_line = main_figure.multi_line(time_samples_list, point_samples[v],
                                                 line_width=2, color=next(colors))
             main_figure.add_tools(HoverTool(renderers=[multi_line], tooltips=TOOLTIPS, mode="mouse",
-                                            line_policy="interp", toggleable=False))
+                                            line_policy="interp", visible=False))
             legend_main_figure.append(("{}".format(v), [multi_line]))
     
         legend = Legend(items=legend_main_figure, location="center")

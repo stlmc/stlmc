@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import re
 import tempfile
 import unittest
 
@@ -11,6 +12,19 @@ SPEC.loader.exec_module(TOOL)
 
 
 class ReleaseNotesTest(unittest.TestCase):
+    def test_manual_validation_cannot_publish_even_when_run_on_a_tag(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text()
+        self.assertIn("  workflow_dispatch:\n", workflow)
+        guard = "    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')"
+        self.assertEqual(workflow.count(guard), 2)
+        for job in ("publish-to-pypi", "github-release"):
+            # Check the job body separately below: a manual run must never
+            # inherit publishing merely because its selected ref is a tag.
+            section = re.search(r"(?ms)^  " + re.escape(job)
+                                + r":\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\Z)", workflow)
+            self.assertIsNotNone(section)
+            self.assertIn(guard, section.group(1))
+
     def test_selects_only_exact_version_and_preserves_bullets(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / "1.0.1.md"

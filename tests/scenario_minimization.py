@@ -161,7 +161,8 @@ class ScenarioMinimizationPolarityTest(unittest.TestCase):
             (3, Bool("p@clock")): Leq(Real("x"), RealVal("1")),
         })
         self.assertIn("clock", repr(constraint))
-        self.assertIn("x_0_t", repr(constraint))
+        self.assertIn("x_1_0", repr(constraint))
+        self.assertNotIn("x_0_t", repr(constraint))
 
     def test_slicing_keeps_boolean_dependency_closure(self):
         a, b, c, unused = (Bool(name) for name in ("a", "b", "c", "unused"))

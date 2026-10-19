@@ -30,17 +30,17 @@ def path2const(path: Path, model: Model) -> Formula:
     constraints = []
     for (depth, variable), formula in path.items():
         bound = depth2bound(depth)
-        is_vertex = depth % 2 == 0
-        renamed, _ = rename(formula, bound, is_vertex, model.mode_var_dict)
+        is_point = depth % 2 == 1
+        # A singleton at tau_k observes the post-jump state x_k_0 and mode_k.
+        # The preceding flow's x_(k-1)_t is only its pre-reset left limit.
+        renamed, _ = rename(formula, bound, True, model.mode_var_dict)
         tracked = _tracked_variable(variable)
 
-        if not is_vertex:
-            renamed_edge, _ = rename(formula, bound, False, model.mode_var_dict)
-            constraints.append(Eq(tracked, renamed_edge))
+        if is_point:
+            constraints.append(Eq(tracked, renamed))
             continue
         if is_mode_variable(variable, model):
-            renamed_edge, _ = rename(formula, bound, False, model.mode_var_dict)
-            constraints.append(Eq(tracked, renamed_edge))
+            constraints.append(Eq(tracked, renamed))
             continue
 
         # Numeric mode variables are constant over a continuous segment,
@@ -90,10 +90,7 @@ def time_path2const(path: Path) -> Formula:
     constraints = []
     for (depth, variable), formula in path.items():
         bound = depth2bound(depth)
-        is_vertex = depth % 2 == 0
-        renamed, _ = rename(formula, bound, is_vertex)
-        if not is_vertex:
-            renamed, _ = rename(formula, bound, False)
+        renamed, _ = rename(formula, bound, is_vertex=True)
         constraints.append(Eq(_tracked_variable(variable), renamed))
     return And(constraints)
 
@@ -125,7 +122,7 @@ def contradiction_gen(clause_set: Set[Formula],
             continue
         bound = depth2bound(depth)
         if depth % 2 == 1:
-            renamed, _ = rename(formula, bound, is_vertex=False,
+            renamed, _ = rename(formula, bound, is_vertex=True,
                                 mode_variables=mode_variables)
             edge_constraints.append(Eq(clause, renamed))
         else:

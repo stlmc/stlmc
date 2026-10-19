@@ -17,6 +17,22 @@ from .numeric import infix_float
 from .numbers import number_float
 
 
+def _sample_location(time, times):
+    """Locate a stored value, preferring the post-jump segment at shared times.
+
+    A preceding segment's final sample is its pre-reset left limit. The next
+    segment's first sample owns the actual point; repeated endpoints likewise
+    select the last post-state. The final endpoint remains available for plot
+    display, but temporal witness enumeration separately excludes time_max.
+    No interpolation, tolerance-based time merging, or extrapolation is used.
+    """
+    for interval in range(len(times) - 1, -1, -1):
+        for index, sample_time in enumerate(times[interval]):
+            if sample_time == time:
+                return interval, index
+    raise NotSupportedError("no stored visualization sample at time {}".format(time))
+
+
 def _sampled_arithmetic(expression, point_samples, discrete_samples, interval, index):
     values = {
         variable: RealVal(str(samples[interval][index]))
@@ -41,25 +57,20 @@ def _(const: Bool, point_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
         return dp_table[(const, time)]
-
     if const not in discrete_samples:
         raise NotSupportedError(
             "cannot find discrete samples for a Boolean proposition \"{}\""
             .format(const)
         )
-    for interval_index, time_samples in enumerate(times):
-        for index, sample_time in enumerate(time_samples):
-            if sample_time != time:
-                continue
-            truth_value = discrete_samples[const][interval_index][index]
-            robust_value = (
-                float("inf") if truth_value > 0
-                else float("-inf") if truth_value < 0
-                else 0.0
-            )
-            dp_table[(const, time)] = robust_value
-            return robust_value
-    raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
+    interval, index = _sample_location(time, times)
+    truth_value = discrete_samples[const][interval][index]
+    robust_value = (
+        float("inf") if truth_value > 0
+        else float("-inf") if truth_value < 0
+        else 0.0
+    )
+    dp_table[(const, time)] = robust_value
+    return robust_value
 
 
 @robustness.register(Implies)
@@ -99,75 +110,21 @@ def _(const: Eq, point_samples: Dict[Variable, List[List[float]]],
 
 
 @robustness.register(Geq)
-def _(const: Geq, point_samples: Dict[Variable, List[List[float]]],
-      discrete_samples: Dict[Variable, List[List[float]]],
-      time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
-    if (const, time) in dp_table:
-        return dp_table[(const, time)]
-
-    lhs = const.left - const.right
-    for interval_index, time_samples in enumerate(times):
-        for index, t in enumerate(time_samples):
-            if t == time:
-                robust_value = _sampled_arithmetic(
-                    lhs, point_samples, discrete_samples, interval_index, index)
-                dp_table[(const, time)] = robust_value
-                return robust_value
-    raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
-
-
 @robustness.register(Gt)
-def _(const: Gt, point_samples: Dict[Variable, List[List[float]]],
-      discrete_samples: Dict[Variable, List[List[float]]],
-      time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
-    if (const, time) in dp_table:
-        return dp_table[(const, time)]
-
-    lhs = const.left - const.right
-    for interval_index, time_samples in enumerate(times):
-        for index, t in enumerate(time_samples):
-            if t == time:
-                robust_value = _sampled_arithmetic(
-                    lhs, point_samples, discrete_samples, interval_index, index)
-                dp_table[(const, time)] = robust_value
-                return robust_value
-    raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
-
-
 @robustness.register(Leq)
-def _(const: Leq, point_samples: Dict[Variable, List[List[float]]],
-      discrete_samples: Dict[Variable, List[List[float]]],
-      time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
-    if (const, time) in dp_table:
-        return dp_table[(const, time)]
-
-    lhs = const.right - const.left
-    for interval_index, time_samples in enumerate(times):
-        for index, t in enumerate(time_samples):
-            if t == time:
-                robust_value = _sampled_arithmetic(
-                    lhs, point_samples, discrete_samples, interval_index, index)
-                dp_table[(const, time)] = robust_value
-                return robust_value
-    raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
-
-
 @robustness.register(Lt)
-def _(const: Lt, point_samples: Dict[Variable, List[List[float]]],
+def _(const: Constraint, point_samples: Dict[Variable, List[List[float]]],
       discrete_samples: Dict[Variable, List[List[float]]],
       time: float, times: List[List[float]], time_max: float, dp_table: Dict[Tuple[Formula, float], float]):
     if (const, time) in dp_table:
         return dp_table[(const, time)]
-
-    lhs = const.right - const.left
-    for interval_index, time_samples in enumerate(times):
-        for index, t in enumerate(time_samples):
-            if t == time:
-                robust_value = _sampled_arithmetic(
-                    lhs, point_samples, discrete_samples, interval_index, index)
-                dp_table[(const, time)] = robust_value
-                return robust_value
-    raise NotSupportedError("cannot calculate robustness of a \"{}\"".format(const))
+    difference = (const.left - const.right if isinstance(const, (Geq, Gt))
+                  else const.right - const.left)
+    interval, index = _sample_location(time, times)
+    robust_value = _sampled_arithmetic(
+        difference, point_samples, discrete_samples, interval, index)
+    dp_table[(const, time)] = robust_value
+    return robust_value
 
 
 @robustness.register(Not)

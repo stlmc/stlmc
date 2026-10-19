@@ -1,5 +1,8 @@
 name: Release
+permissions:
+  contents: read
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -13,6 +16,7 @@ jobs:
       with:
         python-version: '3.11'
     - name: Verify tag matches package version
+      if: github.event_name == 'push'
       shell: bash
       run: |
         package_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml)
@@ -20,15 +24,21 @@ jobs:
           echo "Tag ${GITHUB_REF_NAME} does not match package version ${package_version}"
           exit 1
         }
-    - name: Validate release notes and publishing identity
+    - name: Validate release notes and publishing identity when publishing
       env:
         RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         RELEASE_TAG: ${{ github.ref_name }}
+        EVENT_NAME: ${{ github.event_name }}
       run: |
-        test -n "$RELEASE_TOKEN" || {
-          echo "Set the RELEASE_TOKEN Actions secret to publish under your own account."
-          exit 1
-        }
+        if [ "$EVENT_NAME" = "push" ]; then
+          test -n "$RELEASE_TOKEN" || {
+            echo "Set the RELEASE_TOKEN Actions secret to publish under your own account."
+            exit 1
+          }
+        else
+          package_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml)
+          RELEASE_TAG="v${package_version}"
+        fi
         python tools/release_notes.py "$RELEASE_TAG" --output /tmp/stlmc-release-notes.md
 
   build:
@@ -42,15 +52,6 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-          python-version: '3.8'
-          architecture: x64
-        - os: ubuntu-latest
-          python-version: '3.9'
-          architecture: x64
-        - os: ubuntu-latest
-          python-version: '3.10'
-          architecture: x64
-        - os: ubuntu-latest
           python-version: '3.11'
           architecture: x64
         - os: ubuntu-latest
@@ -62,17 +63,6 @@ jobs:
         - os: ubuntu-latest
           python-version: '3.14'
           architecture: x64
-        # These are the newest CPython releases with Apple Silicon builds
-        # available to setup-python for Python 3.8 through 3.10.
-        - os: macos-15
-          python-version: '3.8.10'
-          architecture: arm64
-        - os: macos-15
-          python-version: '3.9.13'
-          architecture: arm64
-        - os: macos-15
-          python-version: '3.10.11'
-          architecture: arm64
         - os: macos-15
           python-version: '3.11'
           architecture: arm64
@@ -126,29 +116,33 @@ jobs:
         python3 -m pip check
         python3 -c "from stlmc.parser.config_visitor import ConfigVisitor; print('Lark parser loaded')"
 
-    - name: Trust Yices formulae on the temporary macOS runner
+    - name: Prepare CUDD on the temporary macOS runner
       if: matrix.os == 'macos-15'
       run: |
         brew tap SRI-CSL/sri-csl
-        # Homebrew 6 requires explicit trust for third-party formulae. Limit
-        # trust to Yices and its two tap dependencies, not the entire tap.
-        brew trust --formula sri-csl/sri-csl/yices2
-        brew trust --formula sri-csl/sri-csl/libpoly
+        # The official Yices archive omits CUDD. Prepare it explicitly for CI;
+        # this source-build prerequisite is not part of the default installer.
         brew trust --formula sri-csl/sri-csl/cudd
-        # The yices Python binding only probes the Intel Homebrew prefix by
-        # default. Make the Apple Silicon Homebrew library visible to dyld in
-        # all subsequent installer, check, and test steps.
+        brew install SRI-CSL/sri-csl/cudd
+        # Resolve the official archive's Intel-style CUDD install name using
+        # the runner's Homebrew directory. The installer still probes loading.
         echo "DYLD_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
 
     - name: Install external solvers through STLMC
-      run: stlmc-installer install --solver z3 cvc5 yices dreal
+      run: stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf
 
     - name: Check solver installation
       run: |
-        stlmc-installer check --solver z3 cvc5 yices dreal
+        stlmc-installer check --solver z3 cvc5 yices dreal --visualize html pdf
+        python3 -m pip check
         python3 -c "from stlmc.solver.availability import find_dreal; print('STLMC_DREAL=' + find_dreal())" >> "$GITHUB_ENV"
 
-    - name: Test the installed distribution
+    - name: Render an installed-wheel counterexample as HTML and PDF
+      env:
+        STLMC_DISABLE_UPDATE_CHECK: '1'
+      run: python3 tools/check_release_visualization.py
+
+    - name: Run source regression tests against the installed dependencies
       env:
         # Avoid network update checks during the release test matrix.
         STLMC_DISABLE_UPDATE_CHECK: '1'
@@ -165,7 +159,7 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs:
     - validate
     - build
@@ -189,6 +183,7 @@ jobs:
         skip-existing: true
 
   github-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     name: >-
       Sign the Python 🐍 distribution 📦 with Sigstore
       and upload them to GitHub Release

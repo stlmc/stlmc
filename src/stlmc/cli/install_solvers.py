@@ -28,6 +28,7 @@ from .dependency_policy import (
 )
 from ..exceptions import SolverUnavailableError
 from ..solver.dreal_runtime import validate_dreal_runtime
+from .install_receipts import write_dreal_receipt
 
 
 def _python_package_status(module_name, distribution_name, package_spec, detail):
@@ -177,26 +178,15 @@ def _run(command):
 
 
 def _install_yices():
-    if sys.platform == "darwin":
-        if shutil.which("brew") is None:
-            raise RuntimeError("Homebrew is required to install Yices on macOS")
-        _run(["brew", "install", "SRI-CSL/sri-csl/yices2"])
-    elif sys.platform.startswith("linux"):
-        if shutil.which("apt-get") is None:
-            raise RuntimeError(
-                "automatic Yices installation supports Ubuntu/Debian only; "
-                "install libyices with your system package manager"
-            )
-        _run(["sudo", "add-apt-repository", "-y", "ppa:sri-csl/formal-methods"])
-        _run(["sudo", "apt-get", "update"])
-        _run(["sudo", "apt-get", "install", "-y", "yices2", "yices2-dev"])
-        _run(["sudo", "ldconfig"])
-    else:
-        raise RuntimeError("automatic Yices installation is not supported on this OS")
+    # Imported lazily: the component installer also uses this module's probes.
+    from .installer import install_official_yices
+    return install_official_yices()
 
 
 def _install_python_package(package):
-    _run([sys.executable, "-m", "pip", "install", "--upgrade", package])
+    constraints = Path(__file__).with_name("dependency-constraints.txt")
+    _run([sys.executable, "-m", "pip", "install", "--upgrade",
+          "--constraint", str(constraints), package])
 
 
 def _verify_dreal_archive(path, name):
@@ -290,6 +280,7 @@ def _install_dreal():
         available, detail = _dreal_install_status(staged)
         if not available:
             raise RuntimeError("dReal installation validation failed; previous installation unchanged: " + detail)
+        write_dreal_receipt(staged, target)
         os.replace(str(staged), str(target))
     print(DREAL_KNOWN_LIMITATIONS_WARNING, file=sys.stderr)
     return target
@@ -317,21 +308,16 @@ def build_parser():
             "  Explicit -executable-path settings take precedence.\n"
             "\n"
             "Automatic native installation:\n"
-            "  Yices: Ubuntu/Debian through apt, or macOS through Homebrew.\n"
+            "  Yices: SHA256-pinned official 2.7.0 archives in a private user directory;\n"
+            "         Linux x86-64 with glibc 2.29+, macOS Intel 12+, or Apple Silicon 15+.\n"
+            "         Linux native CUDD dependencies use a pinned SUSE package in the same\n"
+            "         private prefix. macOS CUDD prerequisites are not auto-installed;\n"
+            "         missing libraries cause an error without changing the active installation.\n"
+            "         Use install --solver yices --build for a local source build.\n"
             "  dReal: pinned Intel binaries for macOS and x86-64 Linux only;\n"
             "         Apple Silicon requires already available Rosetta (never auto-installed).\n"
             "         Installation is not runtime safety approval.\n"
-            "  Native package installation may request administrator privileges.\n"
-            "\n"
-            "Homebrew 6 first-time Yices setup:\n"
-            "  Third-party formula trust may be required before installation:\n"
-            "  brew tap SRI-CSL/sri-csl\n"
-            "  brew trust --formula sri-csl/sri-csl/yices2\n"
-            "  brew trust --formula sri-csl/sri-csl/libpoly\n"
-            "  brew trust --formula sri-csl/sri-csl/cudd\n"
-            "  Trusting the entire SRI tap is not required.\n"
-            "  If Apple Silicon cannot find libyices.dylib, run:\n"
-            "  export DYLD_LIBRARY_PATH=\"$(brew --prefix)/lib\"\n"
+            "  No system package manager or administrator privileges are used.\n"
             "\n"
             "Examples:\n"
             "  stlmc-installer install --all\n"

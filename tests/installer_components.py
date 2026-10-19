@@ -18,9 +18,52 @@ class ComponentInstallerTest(unittest.TestCase):
     def setUp(self):
         # Routing/package tests exercise the validated installer profile, not
         # whichever Python happens to execute this mock-only suite.
-        profile = mock.patch.object(installer.sys, "version_info", (3, 10))
+        profile = mock.patch.object(installer.sys, "version_info", (3, 11))
         profile.start()
         self.addCleanup(profile.stop)
+
+    def test_supported_python_versions_share_pins_and_isolated_profiles(self):
+        from stlmc.cli.dependency_policy import visualization_packages
+        expected = {"numpy": "numpy==2.3.5", "scipy": "scipy==1.16.3",
+                    "bokeh": "bokeh==3.8.2", "matplotlib": "matplotlib==3.10.8"}
+        for minor in range(11, 15):
+            with self.subTest(minor=minor):
+                result = visualization_packages((3, minor, 0))
+                self.assertEqual(result, expected)
+                result["numpy"] = "changed"
+                self.assertEqual(visualization_packages((3, minor)), expected)
+                with mock.patch.object(installer.sys, "version_info", (3, minor)), \
+                        mock.patch.object(installer, "_visualize", return_value=0) as visual:
+                    self.assertEqual(installer.main(["install", "--visualize", "html", "pdf"]), 0)
+                    self.assertEqual(installer.main(["check", "--visualize", "html", "pdf"]), 0)
+                    self.assertEqual(visual.call_count, 4)
+
+    def test_base_and_installer_numerical_pins_remain_consistent(self):
+        import tomllib
+        from stlmc.cli.dependency_policy import visualization_packages
+        project = tomllib.loads((Path(__file__).resolve().parent.parent / "pyproject.toml").read_text())["project"]
+        self.assertEqual(project["requires-python"], ">=3.11,<3.15")
+        self.assertIn("sympy==1.14.0", project["dependencies"])
+        self.assertIn("mpmath==1.3.0", project["dependencies"])
+        for name in ("numpy", "scipy"):
+            self.assertIn(visualization_packages((3, 11))[name], project["dependencies"])
+
+    def test_managed_install_uses_packaged_transitive_constraints(self):
+        constraints = Path(installer.solvers.__file__).with_name("dependency-constraints.txt")
+        self.assertTrue(constraints.is_file())
+        pins = {line.strip() for line in constraints.read_text().splitlines()
+                if line.strip() and not line.startswith("#")}
+        self.assertTrue(set(installer.VISUALIZE_PACKAGES.values()) <= pins)
+        with mock.patch.object(installer.solvers, "_run") as run:
+            installer.solvers._install_python_package("bokeh==3.8.2")
+        self.assertEqual(run.call_args.args[0][-3:],
+                         ["--constraint", str(constraints), "bokeh==3.8.2"])
+
+    def test_out_of_range_python_versions_are_rejected(self):
+        from stlmc.cli.dependency_policy import visualization_packages
+        for version in ((3, 8), (3, 9), (3, 10), (3, 15), (4, 0)):
+            with self.subTest(version=version), self.assertRaisesRegex(RuntimeError, "3.11 through 3.14"):
+                visualization_packages(version)
 
     def test_combined_multi_target_install(self):
         with mock.patch.object(installer.solvers, "main", return_value=0) as engine, \
@@ -45,12 +88,12 @@ class ComponentInstallerTest(unittest.TestCase):
         self.assertEqual(visual.call_count, 2)
 
     def test_unvalidated_visualization_profile_fails_without_installing(self):
-        with mock.patch.object(installer.sys, "version_info", (3, 14)), \
+        with mock.patch.object(installer.sys, "version_info", (3, 10)), \
                 mock.patch.object(installer.solvers, "_install_python_package") as pip, \
                 mock.patch.object(installer.solvers, "main") as engine, \
                 mock.patch("sys.stderr", new=io.StringIO()) as stderr:
             self.assertEqual(installer.main(["install", "--solver", "z3", "--visualize", "html"]), 1)
-            self.assertIn("No validated", stderr.getvalue())
+            self.assertIn("No supported", stderr.getvalue())
         pip.assert_not_called()
         engine.assert_not_called()
 
@@ -413,11 +456,11 @@ class DrealBuildTransactionTest(unittest.TestCase):
         original_replace = installer.os.replace
         def activate(source, target):
             self.assertEqual(self.active.read_bytes(), b'previous-valid-solver')
-            self.events.append('activate')
+            self.events.append('activate' if Path(target) == self.active else 'receipt')
             original_replace(source, target)
         with mock.patch.object(installer.os, 'replace', side_effect=activate):
             result = installer.build_dreal(jobs=2)
-        self.assertEqual(self.events, ['build', 'audit', 'runtime', 'activate'])
+        self.assertEqual(self.events, ['build', 'audit', 'runtime', 'receipt', 'activate'])
         self.assertEqual(self.active.read_bytes(), b'new-verified-static-solver')
         self.assertEqual(result['executable'], str(self.active))
         self.assertEqual(result['build_jobs'], 2)

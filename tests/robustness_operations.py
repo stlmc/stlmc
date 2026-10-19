@@ -1,5 +1,4 @@
 import sys
-import inspect
 import math
 import unittest
 from pathlib import Path
@@ -138,18 +137,23 @@ class RobustnessOperationsTest(unittest.TestCase):
             float("-inf"),
         )
 
-    def test_less_than_robustness_handler_has_matching_type(self):
+    def test_comparison_robustness_handlers_preserve_direction(self):
         from stlmc.visualize.visualizer import robustness
 
-        handler = robustness.dispatch(Lt)
-        self.assertIs(inspect.signature(handler).parameters["const"].annotation, Lt)
-        self.assertEqual(
-            robustness(
-                Lt(self.x, self.zero), {self.x: [[-2.0]]}, {},
-                0.0, [[0.0]], 0.0, {},
-            ),
-            2.0,
-        )
+        # Dispatch may share the arithmetic implementation; its annotation is
+        # not part of the public contract. All four registrations must retain
+        # the appropriate robustness sign, including at the boundary.
+        for comparison, sign in ((Lt, -1), (Leq, -1), (Gt, 1), (Geq, 1)):
+            self.assertIsNot(robustness.dispatch(comparison), robustness.dispatch(object))
+            for sample in (-2.0, 0.0, 2.0):
+                with self.subTest(comparison=comparison.__name__, sample=sample):
+                    self.assertEqual(
+                        robustness(
+                            comparison(self.x, self.zero), {self.x: [[sample]]}, {},
+                            0.0, [[0.0]], 0.0, {},
+                        ),
+                        sign * sample,
+                    )
     def test_atomic_strengthening_matches_maude_rules(self):
         self.assertEqual(strengthening(Gt(self.x, self.zero), 0.5),
                          Gt(self.x, Add(self.zero, self.epsilon)))

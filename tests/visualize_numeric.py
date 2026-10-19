@@ -7,18 +7,48 @@ from types import SimpleNamespace
 import unittest
 
 from stlmc.constraints.constraints import (
-    Add, Arccos, Arcsin, Arctan, Cos, Div, IntVal, Mul, Pow, Real,
+    Add, Arccos, Arcsin, Arctan, Bool, Cos, Div, IntVal, Mul, Pow, Real,
     RealVal, Sin, Function, Sqrt, Sub, Geq, Gt, Leq, Lt, Eq, Int, GloballyFormula,
 )
 from stlmc.constraints.interval import Interval, universeInterval
 from stlmc.visualize.numbers import number_float, parse_number
 from stlmc.visualize.numeric import infix_float
-from stlmc.visualize.projection import continuous_values
+from stlmc.visualize.projection import Projector, continuous_values
 from stlmc.visualize.sampling import DiscreteSampler, SolutionPointSampler, TimeSampler
+from stlmc.solver.dreal import DrealAssignment
 from stlmc.visualize.robustness import robustness
 
 
 class SafeVisualizationNumericTest(unittest.TestCase):
+    def test_dreal_integer_mode_samples_keep_the_declared_mode_type(self):
+        mode = Int('location')
+        assignment = DrealAssignment([
+            'location_0 : Real = [1, 1]',
+        ]).get_assignments()
+        self.assertNotIn(Int('location_0'), assignment)
+        projector = Projector(assignment, {'location': mode}, {}, [])
+        discrete = DiscreteSampler(projector).generate_samples_at([0., .5], 0)
+        self.assertEqual(discrete, {mode: [1., 1.]})
+        self.assertNotIn(Real('location'), discrete)
+        self.assertEqual(robustness(Geq(mode, IntVal('0')), {}, {mode: [discrete[mode]]},
+                                    .5, [[0., .5]], 1., {}), 1.)
+
+    def test_typed_integer_mode_assignment_precedes_a_real_alias(self):
+        mode = Int('location')
+        projector = Projector({Int('location_0'): IntVal('3'),
+                               Real('location_0'): RealVal('1')},
+                              {'location': mode}, {}, [])
+        self.assertEqual(DiscreteSampler(projector).generate_samples_at([0.], 0),
+                         {mode: [3.]})
+
+    def test_discrete_mode_alias_fallback_does_not_cast_boolean_or_real_modes(self):
+        for mode, alias in ((Bool('enabled'), Real('enabled_0')),
+                            (Real('location'), Int('location_0'))):
+            with self.subTest(mode=mode):
+                projector = Projector({alias: RealVal('1')},
+                                      {mode.id: mode}, {}, [])
+                self.assertEqual(DiscreteSampler(projector).generate_samples_at([0.], 0), {})
+
     def test_numeric_mode_arithmetic_uses_discrete_samples(self):
         mode = Real('mode')
         times = [[0., .25, .5], [.5, .75, 1.]]

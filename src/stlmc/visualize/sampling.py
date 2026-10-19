@@ -60,6 +60,13 @@ class DiscreteSampler:
             bound_variable = type_dict[variable_type](
                 "{}_{}".format(variable.id, bound)
             )
+            # dReal's numeric model entries are decoded as Real intervals,
+            # including declared integer modes. Use the model's explicit
+            # mode type for sampling, without changing the assignment or
+            # coercing Boolean/continuous variables. Other backends' typed
+            # integer entries take precedence when both keys are present.
+            if variable_type == "int" and bound_variable not in assignment:
+                bound_variable = Real(bound_variable.id)
             if bound_variable not in assignment:
                 continue
             assigned = assignment[bound_variable]

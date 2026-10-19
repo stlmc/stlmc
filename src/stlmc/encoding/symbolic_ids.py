@@ -84,6 +84,12 @@ def v_type2_info(variable_id: str, tau_max: float) -> Tuple[Formula, int]:
 
 def rename(formula: Formula, bound: int, is_vertex=True, mode_variables=None,
            mode_bound=None):
+    """Select a segment start, or the preceding flow's pre-reset endpoint.
+
+    ``is_vertex=True`` selects x_bound_0, including at a singleton time point.
+    False selects x_(bound-1)_t for a flow-end closure, not a post-jump point.
+    Mode variables retain their segment index unless mode_bound is supplied.
+    """
     mode_variables = mode_variables or {}
     rename_dict = {}
     for variable in get_vars(formula):

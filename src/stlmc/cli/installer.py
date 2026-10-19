@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import shlex
 import shutil
@@ -17,35 +18,94 @@ import uuid
 from . import install_solvers as solvers
 from .dependency_policy import (
     YICES_NATIVE_VERSION, YICES_SOURCE_SHA256, YICES_SOURCE_URL,
+    YICES_BINARY_ARCHIVES, YICES_BINARY_RELEASE_URL, YICES_BINARY_MIN_MACOS,
+    CUDD_VERSION, CUDD_RPM_URL, CUDD_RPM_SHA256, CUDD_LIBRARY_PATH,
+    CUDD_LICENSE_PATH, CUDD_LIBRARY_SHA256,
     visualization_packages,
 )
 from ..solver.availability import solver_data_dir
 from ..exceptions import SolverUnavailableError
 from .native_linkage import audit_static_linkage
+from .native_archive import download_pinned, extract_rpm_files
+from .install_receipts import write_receipt, write_dreal_receipt
 
 YICES_VERSION = YICES_NATIVE_VERSION
 YICES_SOURCE = YICES_SOURCE_URL
 YICES_SHA256 = YICES_SOURCE_SHA256
-VISUALIZE_PACKAGES = visualization_packages((3, 10))
+VISUALIZE_PACKAGES = visualization_packages((3, 11))
 
 
-def _probe_library(library):
+def _probe_library(library, dependencies=()):
     # A subprocess avoids keeping an old library/binding loaded during activation.
-    script = """import ctypes,json,sys
+    script = """import ctypes,hashlib,json,sys
+handles=[]
+for entry in json.loads(sys.argv[2]):
+ with open(entry['library'],'rb') as source:
+  if hashlib.sha256(source.read()).hexdigest()!=entry['sha256']:
+   raise RuntimeError('Managed Yices dependency SHA256 mismatch')
+ handles.append(ctypes.CDLL(entry['library'],mode=ctypes.RTLD_GLOBAL))
 l=ctypes.CDLL(sys.argv[1]); l.yices_init()
 try:
  print(json.dumps(dict(version=ctypes.c_char_p.in_dll(l,'yices_version').value.decode(),
  thread_safe=bool(l.yices_is_thread_safe()),mcsat=bool(l.yices_has_mcsat()))))
 finally: l.yices_exit()
 """
-    result = subprocess.run([sys.executable, "-c", script, str(library)],
-                            check=True, capture_output=True, text=True, timeout=30)
+    try:
+        result = subprocess.run([sys.executable, "-c", script, str(library), json.dumps(dependencies)],
+                                check=True, capture_output=True, text=True, timeout=30)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError("Native Yices library probe failed (exit {}): {}".format(
+            error.returncode, (error.stderr or error.stdout or str(error)).strip())) from error
     return json.loads(result.stdout)
 
 
-def _extract_source(archive, destination):
+def _require_linux_glibc():
+    name, version = platform.libc_ver()
+    if not name:
+        try:
+            name, version = os.confstr('CS_GNU_LIBC_VERSION').split()
+        except (AttributeError, OSError, ValueError, TypeError):
+            name, version = '', ''
+    try:
+        actual = tuple(int(part) for part in version.split('.')[:2])
+    except ValueError:
+        actual = ()
+    if name.lower() not in ('glibc', 'gnu libc') or len(actual) != 2 or actual < (2, 29):
+        raise RuntimeError(
+            "Managed official Yices/CUDD binaries require Linux x86-64 with glibc "
+            "2.29 or newer; detected {} {}. musl and unknown/older libc are not "
+            "supported. Use stlmc-installer install --solver yices --build with "
+            "local prerequisites. No files were downloaded.".format(name or 'unknown', version))
+
+
+def _install_yices_dependencies(installed):
+    prefix = installed / 'dependencies' / ('cudd-' + CUDD_VERSION)
+    with tempfile.TemporaryDirectory(prefix='stlmc-cudd-download-') as temporary:
+        archive = Path(temporary) / 'cudd.rpm'
+        download_pinned(CUDD_RPM_URL, archive, CUDD_RPM_SHA256, max_bytes=2 * 1024 * 1024)
+        files = extract_rpm_files(archive, prefix, (CUDD_LIBRARY_PATH, CUDD_LICENSE_PATH))
+    library = files[CUDD_LIBRARY_PATH].resolve()
+    content = library.read_bytes()
+    # Independently pinned extracted ELF bytes fix the audited x86-64 SONAME
+    # libcudd-3.0.0.so.0 as well as the package content identity.
+    if (content[:6] != b'\x7fELF\x02\x01' or content[18:20] != b'\x3e\x00'
+            or hashlib.sha256(content).hexdigest() != CUDD_LIBRARY_SHA256):
+        raise RuntimeError('Managed CUDD shared library failed ELF/hash verification')
+    return [dict(library=str(library), sha256=CUDD_LIBRARY_SHA256,
+                 version=CUDD_VERSION, source=CUDD_RPM_URL, package_sha256=CUDD_RPM_SHA256,
+                 license=str(files[CUDD_LICENSE_PATH].resolve()))]
+
+
+def _extract_source(archive, destination, max_bytes=None):
     with tarfile.open(archive, "r:gz") as source:
-        members = source.getmembers()
+        members = []
+        expanded = 0
+        for member in source:
+            members.append(member)
+            expanded += member.size
+            if member.size < 0 or (max_bytes is not None and (
+                    len(members) > 10000 or expanded > max_bytes)):
+                raise RuntimeError('Yices archive exceeds permitted extraction size')
         base = destination.resolve()
         for member in members:
             target = (base / member.name).resolve()
@@ -65,6 +125,88 @@ def _logged(command, cwd, environment, log):
         output.flush()
         subprocess.run([str(x) for x in command], cwd=str(cwd), env=environment,
                        stdout=output, stderr=subprocess.STDOUT, check=True)
+
+
+def _activate_yices(metadata):
+    """Publish only a fully probed installation, without replacing user files."""
+    activation = solver_data_dir() / "yices" / "active.json"
+    activation.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=str(activation.parent),
+                                     prefix="activate-", delete=False) as output:
+        json.dump(metadata, output, indent=2)
+        replacement = Path(output.name)
+    try:
+        os.replace(str(replacement), str(activation))
+    finally:
+        if replacement.exists():
+            replacement.unlink()
+
+
+def install_official_yices():
+    """Install a pinned upstream binary into a new private user directory."""
+    system = "linux" if sys.platform.startswith("linux") else sys.platform
+    machine = platform.machine().lower()
+    machine = {"amd64": "x86_64", "aarch64": "arm64"}.get(machine, machine)
+    asset = YICES_BINARY_ARCHIVES.get((system, machine))
+    if asset is None:
+        raise RuntimeError(
+            "No managed official Yices binary for {}/{}. Use "
+            "stlmc-installer install --solver yices --build with local build "
+            "prerequisites. No system packages were installed.".format(system, machine))
+    if system == 'linux':
+        _require_linux_glibc()
+    if system == "darwin":
+        release = platform.mac_ver()[0]
+        try:
+            actual = tuple(int(part) for part in release.split('.')[:2])
+        except ValueError:
+            actual = ()
+        minimum = YICES_BINARY_MIN_MACOS[machine]
+        if len(actual) != 2 or actual < minimum:
+            raise RuntimeError(
+                "Official Yices {} binary requires macOS {}.{} or newer on {}; "
+                "detected {}. Use stlmc-installer install --solver yices --build "
+                "with local prerequisites. No files were downloaded.".format(
+                    YICES_VERSION, *minimum, machine, release or 'unknown'))
+    name, expected = asset
+    base = solver_data_dir() / "yices" / "releases"
+    installed = base / ("yices-" + YICES_VERSION + "-" + uuid.uuid4().hex)
+    installed.mkdir(parents=True, exist_ok=False)
+    url = YICES_BINARY_RELEASE_URL + name
+    try:
+        with tempfile.TemporaryDirectory(prefix="stlmc-yices-download-") as temporary:
+            archive = Path(temporary) / name
+            download_pinned(url, archive, expected, max_bytes=32 * 1024 * 1024)
+            # The official release has no links. Reject all links/devices as
+            # well as traversal, rather than trusting archive link targets.
+            prefix = _extract_source(archive, installed, max_bytes=128 * 1024 * 1024)
+        candidates = list((prefix / "lib").glob("libyices.so*")) + list(
+            (prefix / "lib").glob("libyices*.dylib"))
+        if len(candidates) != 1 or not candidates[0].is_file():
+            raise RuntimeError("Official archive must contain one shared libyices library")
+        library = candidates[0].resolve()
+        dependencies = _install_yices_dependencies(installed) if system == 'linux' else []
+        capabilities = (_probe_library(library, dependencies) if dependencies
+                        else _probe_library(library))
+        if (capabilities.get("version") != YICES_VERSION
+                or not capabilities.get("mcsat")):
+            raise RuntimeError("Official Yices failed version/MCSAT verification: " +
+                               json.dumps(capabilities))
+        metadata = dict(capabilities, library=str(library), prefix=str(prefix),
+                        source=url, archive_sha256=expected, installation="official-binary",
+                        dependencies=dependencies)
+        write_receipt(installed, 'yices-official')
+        _activate_yices(metadata)
+        print("Activated official Yices {}: thread_safe={}, mcsat={} ({})".format(
+            YICES_VERSION, capabilities["thread_safe"], capabilities["mcsat"], library))
+        return metadata
+    except (OSError, subprocess.SubprocessError, tarfile.TarError, ValueError, RuntimeError) as error:
+        raise RuntimeError(
+            "Official Yices installation/probe failed; previous installation remains "
+            "active. {}. The upstream binary may require a newer OS or native "
+            "dependencies. Use stlmc-installer install --solver yices --build "
+            "for a local build (--thread-safe for parallel execution). No system "
+            "packages were installed. Incomplete files: {}".format(error, installed)) from error
 
 
 def build_yices(*, prefix=None, source=None, thread_safe=False, mcsat=True, jobs=1):
@@ -134,23 +276,13 @@ def build_yices(*, prefix=None, source=None, thread_safe=False, mcsat=True, jobs
             raise RuntimeError("--without-mcsat build unexpectedly reports MCSAT support")
         metadata = dict(capabilities, library=str(library), prefix=str(installed),
                         build_jobs=jobs, source=YICES_SOURCE if not source else str(source))
-        activation = solver_data_dir() / "yices" / "active.json"
-        activation.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(mode="w", dir=str(activation.parent),
-                                         prefix="activate-", delete=False) as output:
-            json.dump(metadata, output, indent=2)
-            replacement = Path(output.name)
-        try:
-            os.replace(str(replacement), str(activation))
-        finally:
-            if replacement.exists():
-                replacement.unlink()
+        _activate_yices(metadata)
         print("Activated Yices {}: thread_safe={}, mcsat={} ({})".format(
             YICES_VERSION, capabilities["thread_safe"], capabilities["mcsat"], library))
         if not mcsat:
             print("LRA/core-only installation: final nonlinear arithmetic requires MCSAT.")
         return metadata
-    except (OSError, subprocess.SubprocessError, ValueError, RuntimeError) as error:
+    except (OSError, subprocess.SubprocessError, tarfile.TarError, ValueError, RuntimeError) as error:
         raise RuntimeError(
             "Yices build/probe failed; previous installation remains active. {}. "
             "Log: {}. Prerequisites: C99 compiler, GNU make, gperf, sed, autoconf "
@@ -191,6 +323,7 @@ def build_dreal(*, prefix=None, jobs=1):
             # a mutable source file or another PATH binary.
             linkage = audit_static_linkage(staged)
             metadata = solvers.validate_dreal_runtime(staged)
+            write_dreal_receipt(staged, target)
             os.replace(str(staged), str(target))
     except (ImportError, OSError, RuntimeError, subprocess.SubprocessError, ValueError,
             SolverUnavailableError) as error:
@@ -283,18 +416,26 @@ def _visualize(check=False, output_format="html"):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Install or check STLmc solver and visualization dependencies.")
+    parser = argparse.ArgumentParser(description="Install, check, or uninstall STLmc solver and visualization dependencies.")
     class UniqueSelection(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
             if getattr(namespace, self.dest, None) is not None or len(set(values)) != len(values):
                 parser.error("{} must not be repeated or contain duplicate targets".format(option_string))
             setattr(namespace, self.dest, values)
     subparsers = parser.add_subparsers(dest="action")
-    for action in ("install", "check"):
-        command = subparsers.add_parser(action, help=("install explicitly selected dependencies" if action == "install" else "read-only version and capability checks"))
+    for action in ("install", "check", "uninstall"):
+        command = subparsers.add_parser(action, help={
+            'install': 'install explicitly selected dependencies',
+            'check': 'read-only version and capability checks',
+            'uninstall': 'remove selected optional packages and receipt-verified managed native files',
+        }[action])
         command.add_argument("--solver", nargs="+", choices=["z3", "cvc5", "yices", "dreal"], action=UniqueSelection)
         command.add_argument("--visualize", nargs="+", choices=["html", "pdf", "text"], action=UniqueSelection)
         command.add_argument("--all", action="count", default=0, help="select all solvers and visualization formats")
+        if action == 'uninstall':
+            command.add_argument('--dry-run', action='store_true',
+                                 help='show the removal plan without changing files or running pip')
+            continue
         command.add_argument("--thread-safe", action="store_true", help="require native Yices thread safety")
         command.add_argument("--without-mcsat", action="store_true", help="Yices LRA/core-only; check accepts a full MCSAT installation too")
         if action == "install":
@@ -320,10 +461,17 @@ def main(argv=None):
     if args.all and (args.solver or args.visualize):
         parser.error("--all cannot be combined with --solver or --visualize")
     if not check and not (args.all or args.solver or args.visualize):
-        parser.error("install requires --solver, --visualize, or --all")
+        parser.error("{} requires --solver, --visualize, or --all".format(args.action))
     select_all = args.all or (check and not args.solver and not args.visualize)
     selected_solvers = ["z3", "cvc5", "yices", "dreal"] if select_all else (args.solver or [])
     selected_visuals = ["html", "pdf", "text"] if select_all else (args.visualize or [])
+    if args.action == 'uninstall':
+        from .uninstall import plan_uninstall, execute_uninstall
+        try:
+            return execute_uninstall(plan_uninstall(selected_solvers, selected_visuals), args.dry_run)
+        except (OSError, ValueError, RuntimeError) as error:
+            print('Uninstall could not be safely planned: ' + str(error), file=sys.stderr)
+            return 1
     build = getattr(args, "build", False)
     experimental_build = getattr(args, "experimental_build", False)
     any_build = build or experimental_build

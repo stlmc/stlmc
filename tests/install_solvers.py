@@ -59,16 +59,18 @@ class InstallerCliTest(unittest.TestCase):
             "Application Support/stlmc/solvers/dReal3/dReal",
             "XDG_DATA_HOME",
             "x86-64 Linux",
-            "brew trust --formula sri-csl/sri-csl/yices2",
-            "brew trust --formula sri-csl/sri-csl/libpoly",
-            "brew trust --formula sri-csl/sri-csl/cudd",
-            "entire SRI tap is not required",
-            "DYLD_LIBRARY_PATH",
+            "SHA256-pinned official 2.7.0 archives",
+            "macOS Intel 12+",
+            "Apple Silicon 15+",
+            "native CUDD dependencies",
+            "No system package manager or administrator privileges",
             "stlmc-installer install --solver dreal",
             "stlmc-installer install --solver dreal --experimental-build --jobs 2",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, normalized_help)
+        self.assertNotIn("brew trust", normalized_help)
+        self.assertNotIn("through apt", normalized_help)
 
     def test_check_reports_failure_without_installing(self):
         with mock.patch.object(sys, "argv", ["internal-solver-installer", "--check"]), \
@@ -119,36 +121,21 @@ class InstallerCliTest(unittest.TestCase):
         yices.assert_not_called()
         dreal.assert_called_once_with()
 
-    def test_macos_yices_uses_official_homebrew_tap(self):
+    def test_macos_yices_uses_managed_official_release(self):
         with mock.patch.object(install_solvers.sys, "platform", "darwin"), \
-                mock.patch.object(install_solvers.shutil, "which", return_value="/brew"), \
+                mock.patch('stlmc.cli.installer.install_official_yices') as install, \
                 mock.patch.object(install_solvers, "_run") as run:
             install_solvers._install_yices()
-
-        run.assert_called_once_with(
-            ["brew", "install", "SRI-CSL/sri-csl/yices2"]
-        )
+        install.assert_called_once_with()
+        run.assert_not_called()
 
     def test_linux_yices_installs_cli_and_native_library(self):
         with mock.patch.object(install_solvers.sys, "platform", "linux"), \
-                mock.patch.object(
-                    install_solvers.shutil, "which", return_value="/usr/bin/apt-get"
-                ), mock.patch.object(install_solvers, "_run") as run:
+                mock.patch('stlmc.cli.installer.install_official_yices') as install, \
+                mock.patch.object(install_solvers, "_run") as run:
             install_solvers._install_yices()
-
-        self.assertEqual(
-            run.call_args_list,
-            [
-                mock.call(
-                    ["sudo", "add-apt-repository", "-y", "ppa:sri-csl/formal-methods"]
-                ),
-                mock.call(["sudo", "apt-get", "update"]),
-                mock.call(
-                    ["sudo", "apt-get", "install", "-y", "yices2", "yices2-dev"]
-                ),
-                mock.call(["sudo", "ldconfig"]),
-            ],
-        )
+        install.assert_called_once_with()
+        run.assert_not_called()
 
     def test_official_archive_is_installed_with_warning_and_executable_mode(self):
         with tempfile.TemporaryDirectory() as directory:

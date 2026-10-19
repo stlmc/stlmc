@@ -1,7 +1,8 @@
 # Installation and troubleshooting
 
 Install STLmc in a virtual environment with a current pip. The package
-provides `stlmc`, `stlmc-vis`, and `stlmc-installer`.
+requires CPython 3.11 through 3.14 and provides `stlmc`, `stlmc-vis`, and
+`stlmc-installer`.
 The default installation includes NumPy and SciPy but no Bokeh, Matplotlib,
 solver bindings, or native solvers.
 
@@ -26,27 +27,96 @@ stlmc-installer check --solver dreal
 stlmc-installer check --solver z3 cvc5 yices dreal
 ```
 
-Choose `install` or `check` before the component selectors. Both `--solver`
+Choose `install`, `check`, or `uninstall` before the component selectors. Both `--solver`
 and `--visualize` accept multiple names, for example `install --solver z3 cvc5`
 or `check --visualize html pdf text`. Running the installer without an action
 shows help and does not install anything. `stlmc-installer install --all`
 selects all components, including the official dReal binary on supported
 platforms. `stlmc-installer check` checks all solvers
 and visualization formats, including both HTML and PDF, without installing.
-Native package installation may request administrator privileges. Python
-packages install into the current interpreter's environment.
+Managed downloads do not invoke an OS package manager or replace system
+libraries. Python packages install into the current interpreter's environment.
+Installing missing native dependencies or build tools separately may require
+administrator privileges.
 
 Use `stlmc-installer` to install solver and visualization dependencies.
 Package extras are not provided; the default package includes no solver
 bindings or optional HTML/PDF renderers.
 
+## Removing components
+
+Use `--dry-run` to inspect the removal plan first:
+
+```sh
+stlmc-installer uninstall --solver yices --visualize html pdf --dry-run
+```
+
+Then remove the selected components:
+
+```sh
+stlmc-installer uninstall --solver yices --visualize html pdf
+```
+
+`--solver` accepts `z3`, `cvc5`, `yices`, and `dreal`; `--visualize` accepts
+`html`, `pdf`, and `text`. `uninstall --all --dry-run` previews removal of
+all managed components; `--all` cannot be combined with individual selectors.
+A selector or `--all` is required: removal never defaults to all components.
+Removal does not uninstall STLmc itself, and `--dry-run` changes no files or
+Python packages.
+
+Only explicitly selected top-level Python packages in the active virtual
+environment are uninstalled: `z3-solver`, `cvc5`, `yices`, `bokeh` for HTML,
+and `matplotlib` for PDF. Text output has no optional package to uninstall.
+Packages outside that virtual environment are preserved.
+
+Native removal requires an installer ownership receipt and removes only
+recorded files whose hashes still match. Modified or additional user files
+are retained; only empty managed directories are pruned. Installations made
+before ownership receipts were introduced, and custom source-build prefixes,
+are kept for manual cleanup. Selecting Yices also removes its managed
+activation, even when its native files must be retained. Apt/Homebrew packages,
+externally supplied solver libraries, and counterexample or visualization
+output files are not removed. NumPy and SciPy remain installed because they
+are base STLmc dependencies, not optional visualization components.
+The installer reports retained native paths for manual cleanup. It does not
+change `STLMC_YICES_LIBRARY` or delete the installation explicitly selected
+by that environment variable.
+
+Stop jobs using the selected components before removing them. Python packages
+may also be used by other applications in the same virtual environment, and
+managed native installations are shared by that user across virtual
+environments. The installer does not stop running processes or unload their
+Python modules or native libraries; restart affected STLmc or UI processes
+after changing their installed components.
+
 ## Platforms
 
-Automatic Yices native-library installation supports Ubuntu/Debian through the
-SRI package repository and macOS through Homebrew. Other Linux distributions
-can use the optional source build after installing its build dependencies, or
-install a native library manually. The default Yices installation uses the
-official package distribution; source compilation is an explicit option.
+`install --solver yices` downloads a SHA256-pinned archive from the official
+Yices 2.7.0 release for Linux x86-64, macOS Intel, or macOS ARM64. It stages the
+archive in a new user-owned directory and checks the shared library's version
+and MCSAT support before activating it. Failure leaves the previous active
+native installation unchanged. It does not run apt or Homebrew, modify system
+libraries, or automatically build missing native dependencies.
+
+On Linux x86-64 with glibc 2.29 or newer, the installer also obtains CUDD
+3.0.0 from a SHA256-pinned [openSUSE Leap 15.6 binary RPM](https://download.opensuse.org/distribution/leap/15.6/repo/oss/x86_64/libcudd-3_0_0-0-3.0.0-bp156.4.4.x86_64.rpm). This dependency is an
+openSUSE package, not an SRI-CSL Yices release artifact. Its shared library
+is extracted into the managed user directory and loaded before Yices;
+the RPM is not installed into the operating system. This route does not
+compile CUDD, run package installation scripts, require sudo, or change
+system libraries. The package's license is retained beside the managed library.
+Other Linux architectures and older or non-glibc
+systems are not covered by this managed dependency route.
+
+An archive matching the CPU is not a guarantee that it can run on the host.
+The macOS ARM64 archive declares macOS 15.0 as its minimum OS; the Intel
+archive declares macOS 12.0. The archives still depend on external shared
+libraries, including CUDD: the Linux archive requires
+`libcudd-3.0.0.so.0`, and the macOS archives reference
+`/usr/local/lib/libcudd-3.0.0.0.dylib`. The `static-gmp` archive name does not
+mean that every dependency is static. Unsupported platforms or failed native loading
+produce an error with alternatives; source compilation remains an explicit
+`--build` option after installing its prerequisites.
 
 `install --solver dreal` downloads the official dReal **3** release
 3.16.06.02 on Linux x86-64 and supported macOS systems. macOS uses the Intel
@@ -103,32 +173,23 @@ it is not a validated long-term workaround here.
 
 ## Yices on macOS
 
-If Homebrew reports an untrusted third-party formula, explicitly trust only
-the required formulae before retrying:
+The official 2.7.0 archives are not fully self-contained: both macOS shared
+libraries reference `/usr/local/lib/libcudd-3.0.0.0.dylib`. The same missing
+dependency is reported for the ARM command-line executable in
+[upstream issue #641](https://github.com/SRI-CSL/yices2/issues/641).
+The `static-gmp` archive name does not mean that every dependency is static.
+Automatic CUDD dependency installation is not provided on macOS.
 
-```sh
-brew tap SRI-CSL/sri-csl
-brew trust --formula sri-csl/sri-csl/yices2
-brew trust --formula sri-csl/sri-csl/libpoly
-brew trust --formula sri-csl/sri-csl/cudd
-stlmc-installer install --solver yices
-```
+Consequently, meeting the minimum OS version alone is insufficient. If the
+required CUDD library is unavailable, the installer reports a native-load
+failure rather than activating the download. Supply compatible dependencies
+or use the explicit local-build route below. These archives have not been
+validated across all macOS versions; a successful Python wheel installation
+does not establish native solver compatibility.
 
-These are the Homebrew 6 trust commands. Trusting the whole tap is not required.
-Users with an already available Python binding and native library do not need
-to repeat this setup.
-
-If an Apple Silicon installation cannot find `libyices.dylib`, expose the
-Homebrew library directory in the current shell:
-
-```sh
-export DYLD_LIBRARY_PATH="$(brew --prefix)/lib"
-stlmc-installer check --solver yices
-```
-
-The release workflow also checks Rosetta availability for legacy macOS
-executables. A Python wheel installing successfully does not establish that
-all downloaded native binaries can run on the host.
+An older system Yices installation can remain installed. A successfully
+activated managed library takes precedence over ordinary system discovery;
+an explicit `STLMC_YICES_LIBRARY` setting takes precedence over both.
 
 ## Yices source builds
 
@@ -169,7 +230,8 @@ to change an already loaded library.
 
 The availability check reports native `thread_safe` and `mcsat` capabilities.
 The managed installer requires Yices 2.7.0; an older native library is reported
-as incompatible and the installer explains how to build the required version.
+as incompatible and the installer offers the pinned download or an explicit
+local build.
 When final Yices is selected with `parallel = "true"`, a library reporting
 `thread_safe=False` is rejected before solving, even with one worker. Use a
 verified thread-safe build or set `parallel = "false"` in the configuration.
@@ -242,7 +304,7 @@ build options.
 
 Without `--experimental-build`, the installer uses the official-release
 installation route rather than compiling this source snapshot. Its successful
-installation does not establish ODE correctness; runtime warnings and the
+installation does not establish ODE correctness; known limitations and the
 remaining capability checks described above still apply.
 
 ## dReal executable discovery
@@ -256,8 +318,9 @@ Existing managed dReal installations are discovered at:
 At runtime STLmc prefers the managed user installation above, then searches
 `PATH` for `dReal`. Runtime checks inspect the dReal 3 version, algebraic and
 ODE behavior, interior invariants, and zero-derivative parameter invariants.
-The official 3.16.06.02 release is allowed with a warning for its known
-invariant limitation; unrelated failures remain errors. Passing these
+The official 3.16.06.02 release is allowed despite its known invariant
+limitation. The installer check reports this limitation; verification does
+not repeat the warning. Unrelated failures remain errors. Passing these
 targeted checks, including a check that succeeds with known-limit warnings,
 does not certify every query or general ODE soundness. Independently supplied
 builds are not thereby certified as official managed releases.
@@ -282,11 +345,16 @@ solver does not repair an incompatible SciPy binary.
 
 ## Visualization
 
-The visualization installer currently has a validated dependency profile only
-for CPython 3.10: NumPy 2.2.6, SciPy 1.15.3, Bokeh 3.1.1, and Matplotlib
-3.10.8. Visualization `check` and `install` on other Python versions
-report an unvalidated-profile error (exit status 1). This narrower installer
-coverage is separate from the core package's Python support range.
+The visualization installer targets CPython 3.11 through 3.14 with NumPy
+2.3.5, SciPy 1.16.3, Bokeh 3.8.2, and Matplotlib 3.10.8. Visualization
+`check` and `install` on other Python versions report an unsupported-profile
+error (exit status 1).
+
+Managed pip installs also apply the packaged
+`stlmc/cli/dependency-constraints.txt` to pin Python transitive dependencies
+for Linux/macOS. Constraints do not install unselected components and are
+not a lock for system libraries, native build tools, or externally supplied
+solver binaries. Existing environments are not globally rewritten.
 
 Writing model-checker artifacts and rendering text do not require Bokeh.
 HTML rendering requires optional Bokeh, installed by
