@@ -12,13 +12,19 @@ from ..config_schema import (
 )
 from ..exceptions import IllegalArgumentError, NotSupportedError
 from ..objects.configuration import Configuration, Section
-from .syntax_error import parse_file
+from .syntax_error import parse_text
 
 
 _PARSER = Lark.open(
     str(Path(__file__).with_name("grammars") / "config.lark"),
     parser="lalr", start="start", propagate_positions=True,
 )
+
+
+def configuration_keys(source):
+    """Inspect assignment names using the canonical grammar, not a second parser."""
+    tree = parse_text(_PARSER, source, description='configuration')
+    return [str(node.children[0]) for node in tree.find_data('assignment')]
 
 
 class _ConfigTransformer(Transformer):
@@ -87,9 +93,14 @@ class ConfigVisitor:
     def parse_from_file(
         self, file_name: str, base: Union[Configuration, None] = None
     ) -> Configuration:
+        return self.parse_text(Path(file_name).read_text(encoding='utf-8'), base,
+                               source_name=file_name)
+
+    def parse_text(self, source: str, base=None, *, source_name='<configuration>'):
+        file_name = source_name
         self.config = base if base is not None else Configuration()
-        tree = parse_file(
-            _PARSER, file_name, description="configuration",
+        tree = parse_text(
+            _PARSER, source, source_name=file_name, description="configuration",
             keywords=self.section_names,
         )
 

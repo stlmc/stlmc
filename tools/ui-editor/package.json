@@ -1,0 +1,17 @@
+{
+  "name": "stlmc-editor-build",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@codemirror/state": "6.5.2",
+    "@codemirror/view": "6.38.6",
+    "@codemirror/commands": "6.8.1",
+    "@codemirror/language": "6.11.3",
+    "@codemirror/lint": "6.8.5",
+    "@lezer/highlight": "1.2.1"
+  },
+  "devDependencies": {"esbuild": "0.25.11"}
+}

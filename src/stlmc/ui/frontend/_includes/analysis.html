@@ -2,17 +2,18 @@
   <h2 id="analysis-title">Analysis settings</h2>
   <form id="run-form">
     <div class="settings">
-      <label>Goal label<input id="goal" list="goal-labels" placeholder="All goals"><datalist id="goal-labels"></datalist></label>
-      <label>Final solver<select id="solver"><option>z3</option><option>cvc5</option><option>yices</option><option>dreal</option></select></label>
-      <div class="settings-pair"><label>Bound<input id="bound" type="number" min="0" max="1000" value="5" required></label><label>Global time bound<input id="time-bound" type="number" min="0.000001" max="1000000" value="20" step="any" required></label></div>
-      <label>Robustness threshold<input id="threshold" type="number" min="0" max="1000000" value="0.01" step="any" required></label>
+      <label>Goal<select id="goal"><option value="">All goals</option></select></label>
+      <label>Final solver<select id="solver"></select></label>
+      <div class="settings-pair"><label>Bound<input id="bound" type="number" min="0" max="1000" placeholder="Required in config or here" required></label><label>Global time bound<input id="time-bound" type="number" min="0.000001" max="1000000" placeholder="Required in config or here" step="any" required></label></div>
+      <label>Robustness threshold<input id="threshold" type="number" min="0" max="1000000" step="any" required></label>
       <label class="check"><input id="reach" type="checkbox">Reachability target</label>
       <details><summary>Advanced options</summary><div class="settings advanced">
         <label class="check"><input id="two-step" type="checkbox">Two-step solving</label><label class="check"><input id="explicit" type="checkbox">Explicit paths</label>
         <label>Wall-clock timeout (seconds)<input id="timeout" type="number" min="1" max="3600" value="120" required></label>
       </div></details>
     </div>
-    <p class="muted">The form overrides matching configuration settings, including unchecked options. An empty goal checks all goals. Other configuration values, such as precision and parallel workers, are retained.</p>
+    <p id="settings-state" role="status" class="muted">Connect to read STLmc settings.</p>
+    <p class="muted">Values come from STLmc's default and loaded configuration. Only edited fields override it. Wall-clock timeout is a separate workspace limit; visualization is enabled for workspace runs.</p>
     <div class="actions"><button id="run" type="submit" disabled>Run analysis</button><button id="stop" type="button" disabled>Stop active analysis</button></div>
     <div id="activity" class="activity" role="status">Ready to run</div>
     <p class="muted">Results apply to the selected bounds and robustness threshold, not an unbounded proof. dReal precision is a separate setting.</p>

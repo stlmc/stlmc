@@ -14,7 +14,7 @@ from ..constraints.analysis import get_vars
 from ..constraints.substitution import substitution
 from ..exceptions import NotSupportedError
 from ..objects.model import StlMC
-from .syntax_error import parse_file
+from .syntax_error import parse_text
 from .flow_warnings import validate_solution_flow
 
 
@@ -456,10 +456,14 @@ class _ModelTransformer(Transformer):
 
 class ModelVisitor:
     def get_parse_tree(self, file_name: str):
+        return self.parse_text(Path(file_name).read_text(encoding='utf-8'),
+                               source_name=file_name)
+
+    def parse_text(self, source: str, *, source_name='<model>'):
         try:
-            tree = parse_file(
-                _PARSER, file_name, description="model", keywords=_SECTION_KEYWORDS
+            tree = parse_text(
+                _PARSER, source, source_name=source_name, description="model", keywords=_SECTION_KEYWORDS
             )
-            return _ModelTransformer(file_name).transform(tree)
+            return _ModelTransformer(source_name).transform(tree)
         except VisitError as error:
             raise error.orig_exc from error

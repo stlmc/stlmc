@@ -1,5 +1,15 @@
 import {renderProgress} from './progress.js';
 
+export function failureSummary(job) {
+  const titles = {failed: 'Analysis failed', timed_out: 'Analysis timed out',
+    interrupted: 'Analysis was interrupted', cancelled: 'Analysis was cancelled'};
+  if (!titles[job.state]) return null;
+  const lines = (job.log || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim().split('\n');
+  const tail = lines.filter(line => line.trim()).slice(-8).join('\n').slice(-2000);
+  return {title: titles[job.state], detail: tail || 'No diagnostic output was recorded.',
+    exit: job.exit_code == null ? '' : ' (exit code ' + job.exit_code + ')'};
+}
+
 export function setupResults(c) {
   const {$, state} = c;
   let plotSignature = '', plotUrls = [];
@@ -12,6 +22,14 @@ export function setupResults(c) {
     const job = await c.json('/api/runs/' + encodeURIComponent(id), undefined, session);
     if (generation !== state.epoch || state.selected !== id) return;
     $('run-state').textContent = 'Run ' + id + ' — ' + job.state;
+    const failure = failureSummary(job);
+    $('run-failure').hidden = !failure;
+    if (failure) {
+      $('failure-title').textContent = failure.title + failure.exit;
+      $('failure-summary').textContent = failure.detail;
+      $('failure-log').onclick = () => c.selectTab('log');
+      if (!state.active) $('activity').textContent = failure.title;
+    }
     $('log').textContent = (job.log || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
     renderProgress(c, job);
     $('results').replaceChildren();

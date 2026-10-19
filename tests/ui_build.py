@@ -45,7 +45,7 @@ class UiBuildTest(unittest.TestCase):
 
     def test_manifest_is_the_server_allowlist_without_optional_imports(self):
         names = TOOL.expected_assets()
-        self.assertEqual(len(names), 11)
+        self.assertEqual(len(names), 14)
         self.assertIn('js/connection.js', names)
         self.assertIn('examples/therm-tutorial.model', names)
         self.assertNotIn('/', names)

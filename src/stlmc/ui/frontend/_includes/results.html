@@ -1,5 +1,9 @@
 <section class="panel output-panel" aria-labelledby="output-title">
   <div class="panel-heading"><h2 id="output-title">Analysis output</h2><p id="run-state" role="status"></p></div>
+  <div id="run-failure" class="run-failure" role="alert" hidden>
+    <strong id="failure-title"></strong><p id="failure-summary"></p>
+    <button id="failure-log" type="button">View execution log</button>
+  </div>
   <nav class="tabs" role="tablist" aria-label="Analysis output">
     <button id="tab-results" type="button" role="tab" aria-selected="true" aria-controls="panel-results" data-tab="results">Results</button>
     <button id="tab-visualization" type="button" role="tab" aria-selected="false" aria-controls="panel-visualization" data-tab="visualization" tabindex="-1">Visualization</button>

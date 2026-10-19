@@ -13,16 +13,17 @@ ASSETS = {
     '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
     '/styles.css': ('styles.css', 'text/css; charset=utf-8'),
     **{'/js/' + name + '.js': ('js/' + name + '.js', 'text/javascript; charset=utf-8')
-       for name in ('connection', 'documents', 'analysis', 'results', 'progress', 'view')},
+       for name in ('connection', 'documents', 'analysis', 'results', 'progress', 'view', 'settings', 'editor', 'codemirror')},
     '/examples/therm-tutorial.model': ('examples/therm-tutorial.model', 'text/plain; charset=utf-8'),
     '/examples/therm-tutorial.cfg': ('examples/therm-tutorial.cfg', 'text/plain; charset=utf-8'),
 }
 
 
 class StaticAssetHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, directory, bridge_port=None, **kwargs):
+    def __init__(self, *args, directory, bridge_port=None, auth_required=True, **kwargs):
         self.directory = str(directory)
         self.bridge_port = bridge_port
+        self.auth_required = auth_required
         super().__init__(*args, **kwargs)
 
     def log_message(self, format, *values):
@@ -30,7 +31,8 @@ class StaticAssetHandler(BaseHTTPRequestHandler):
 
     def _serve(self, head=False):
         if self.path == '/local-connection.json' and self.bridge_port is not None:
-            body = json.dumps({'bridge_url': 'http://127.0.0.1:' + str(self.bridge_port)}).encode('utf-8')
+            body = json.dumps({'bridge_url': 'http://127.0.0.1:' + str(self.bridge_port),
+                               'auth_required': self.auth_required}).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))

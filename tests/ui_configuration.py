@@ -40,14 +40,15 @@ yices extends z3 {}
 dreal { precision=0.000001 ode-order=10 }
 '''
         request = self.api.RunRequest(model='not executed', config=original,
-            bound=2, time_bound=5, threshold=0, goal='', two_step=False, reach=False)
+            solver='z3', bound=2, time_bound=5, threshold=0, goal='',
+            path_strategy='symbolic', two_step=False, reach=False)
         text = self.api.effective_config(request)
         self.assertTrue(text.startswith(original))
         config = self.configuration(text)
         common = config.get_section('common')
         for key, expected in {'goal': 'all', 'two-step': 'false', 'reach': 'false',
                 'solver': 'z3', 'bound': '2', 'time-bound': '5.0', 'threshold': '0.0',
-                'path-strategy': 'symbolic', 'visualize': 'true',
+                'path-strategy': 'symbolic', 'visualize': 'false',
                 'parallel': 'true', 'time-horizon': '3'}.items():
             self.assertEqual(common.get_value(key), expected, key)
         self.assertEqual(config.get_section('yices').get_value('logic'), 'QF_LRA')
@@ -63,6 +64,24 @@ dreal { precision=0.000001 ode-order=10 }
         self.assertEqual(common.get_value('two-step'), 'true')
         self.assertEqual(common.get_value('reach'), 'true')
 
+    def test_default_solver_preserves_config_or_uses_auto_when_omitted(self):
+        for text, expected in [('', 'auto'), ('common {solver="dreal"}', 'dreal')]:
+            request = self.api.RunRequest(model='not executed', config=text)
+            self.assertIsNone(request.solver)
+            common = self.configuration(self.api.effective_config(request)).get_section('common')
+            self.assertEqual(common.get_value('solver'), expected)
+        request = self.api.RunRequest(model='not executed',
+            config='common {solver="dreal"}', solver='auto')
+        common = self.configuration(self.api.effective_config(request)).get_section('common')
+        self.assertEqual(common.get_value('solver'), 'auto')
+
+    def test_unedited_form_is_not_a_configuration_layer(self):
+        original = 'common {bound=7 time-bound=8 two-step="true" goal="f2"}'
+        request = self.api.RunRequest(model='not executed', config=original)
+        self.assertEqual(self.api.effective_config(request), original)
+        for key in ('solver', 'bound', 'time_bound', 'threshold', 'goal', 'two_step', 'reach'):
+            self.assertIsNone(getattr(request, key))
+
     def test_start_passes_effective_config_through_the_real_cli_merge(self):
         from stlmc.cli.command import CliCommand
         with tempfile.TemporaryDirectory() as directory, \
@@ -75,7 +94,7 @@ dreal { precision=0.000001 ode-order=10 }
                 mock.patch.object(self.api.subprocess, 'Popen', return_value=SimpleNamespace(pid=123)) as spawn:
             request = self.api.RunRequest(model='not parsed by the mocked worker',
                 config='common {goal="f1" two-step="true" reach="true"}',
-                goal='', two_step=False, reach=False, bound=0, threshold=0)
+                goal='', two_step=False, reach=False, bound=0, time_bound=1, threshold=0)
             job = self.api.start(request)
             try:
                 command = spawn.call_args.args[0]
@@ -100,7 +119,8 @@ dreal { precision=0.000001 ode-order=10 }
             working = Path(directory)
             (working / 'input.model').write_text(model)
             request = self.api.RunRequest(model=model, config=config,
-                solver='z3', bound=0, time_bound=1, threshold=0)
+                solver='z3', bound=0, time_bound=1, threshold=0,
+                goal='', two_step=False, reach=False)
             (working / 'input.cfg').write_text(self.api.effective_config(request))
             completed = subprocess.run([sys.executable, '-m', 'stlmc.ui.worker',
                 'input.model', '-model-cfg', 'input.cfg', '-visualize'], cwd=working,

@@ -35,39 +35,33 @@ def save_job(job):
 class RunRequest(BaseModel):
     model: str = Field(min_length=1, max_length=500_000)
     config: str = Field(default='', max_length=100_000)
-    goal: str = Field(default='', max_length=100, pattern=r'^[A-Za-z0-9_]*$')
-    solver: Literal['z3', 'cvc5', 'yices', 'dreal'] = 'z3'
-    bound: int = Field(default=5, ge=0, le=1000)
-    time_bound: float = Field(default=20, gt=0, le=1000000)
-    threshold: float = Field(default=0.1, ge=0, le=1000000)
-    path_strategy: Literal['symbolic', 'explicit'] = 'symbolic'
-    two_step: bool = False
-    reach: bool = False
+    goal: str | None = Field(default=None, max_length=100, pattern=r'^[A-Za-z0-9_,]*$')
+    solver: Literal['auto', 'z3', 'cvc5', 'yices', 'dreal'] | None = None
+    bound: int | None = Field(default=None, ge=0, le=1000)
+    time_bound: float | None = Field(default=None, gt=0, le=1000000)
+    threshold: float | None = Field(default=None, ge=0, le=1000000)
+    path_strategy: Literal['symbolic', 'explicit'] | None = None
+    two_step: bool | None = None
+    reach: bool | None = None
     timeout: int = Field(default=120, ge=1, le=3600)
 
     @field_validator('time_bound', 'threshold')
     @classmethod
     def finite(cls, value):
-        if not math.isfinite(value):
+        if value is not None and not math.isfinite(value):
             raise ValueError('Must be finite')
         return value
 
 
 def effective_config(request):
-    """Keep user inheritance intact, then explicitly override every form field.
-
-    ConfigVisitor merges repeated sections in source order. Appending this
-    trusted common section also expresses false flags, which the CLI's
-    positive-only switches cannot override in an uploaded configuration.
-    """
-    values = {'goal': request.goal or 'all', 'solver': request.solver,
+    """Pass only explicit browser changes to the shared config language."""
+    from ..application.configuration import common_overrides_text
+    values = {'goal': None if request.goal is None else request.goal or 'all',
               'bound': request.bound, 'time-bound': request.time_bound,
               'threshold': request.threshold, 'path-strategy': request.path_strategy,
-              'two-step': str(request.two_step).lower(),
-              'reach': str(request.reach).lower(), 'visualize': 'true'}
-    assignments = '\n'.join('    {} = {}'.format(key, json.dumps(value))
-                            for key, value in values.items())
-    return request.config + '\n\n# Explicit browser form values\ncommon {\n' + assignments + '\n}\n'
+              'two-step': request.two_step, 'reach': request.reach,
+              'solver': request.solver}
+    return request.config + common_overrides_text(values)
 
 
 def stop_group(process):
@@ -177,16 +171,7 @@ def start(request: RunRequest):
         folder = RUNS / run_id
         folder.mkdir(parents=True)
         (folder / 'input.model').write_text(request.model, encoding='utf-8')
-        args = [sys.executable, '-u', '-m', 'stlmc.ui.worker', 'input.model',
-                '-solver', request.solver, '-bound', str(request.bound),
-                '-time-bound', str(request.time_bound), '-threshold', str(request.threshold),
-                '-path-strategy', request.path_strategy, '-visualize']
-        if request.goal:
-            args += ['-goal', request.goal]
-        if request.two_step:
-            args += ['-two-step']
-        if request.reach:
-            args += ['-reach']
+        args = [sys.executable, '-u', '-m', 'stlmc.ui.worker', 'input.model', '-visualize']
         (folder / 'input.cfg').write_text(effective_config(request), encoding='utf-8')
         args += ['-model-cfg', 'input.cfg']
         snapshot = request.model_dump(exclude={'model', 'config'})
@@ -200,6 +185,7 @@ def start(request: RunRequest):
             stream.close()
             raise HTTPException(503, str(error))
         JOBS[run_id] = job
+        job['owner_pid'] = os.getpid()
         ACTIVE = run_id
         save_job(job)
         job['_process'] = process

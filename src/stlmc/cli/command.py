@@ -3,10 +3,10 @@
 import os.path
 
 from .parser import build_parser
-from ..exceptions import IllegalArgumentError, NotSupportedError
+from ..exceptions import IllegalArgumentError
 from ..objects.configuration import Configuration
 from ..parser.config_visitor import ConfigVisitor
-from ..solver.availability import find_dreal
+from ..application.configuration import load_configuration
 
 
 class CliCommand:
@@ -76,39 +76,10 @@ class CliCommand:
             raise ValueError('"{}" is not a file (please provide an STLmc model "file")'.format(file_name))
 
     def _load_configuration(self, args):
-        if args.default_cfg is not None:
-            config = self.config_visitor.parse_from_file(args.default_cfg)
-        else:
-            package_dir = os.path.dirname(os.path.dirname(__file__))
-            config = self.config_visitor.parse_from_file(
-                os.path.join(package_dir, "default.cfg")
-            )
-            dreal = config.get_section("dreal")
-            path = dreal.get_value("executable-path")
-            if path == "dReal":
-                dreal.set_value("executable-path", find_dreal() or path)
-
-        model_config = args.model_cfg
-        if model_config is None:
-            model_config = "{}/{}.cfg".format(
-                os.path.dirname(args.file), os.path.basename(args.file).split(".")[0]
-            )
-            if not os.path.exists(model_config):
-                model_config = None
-        if model_config is not None:
-            if not os.path.exists(model_config):
-                raise NotSupportedError('model config "{}" does not exist'.format(model_config))
-            config = self.config_visitor.parse_from_file(model_config, config)
-
-        if args.model_specific_cfg is not None:
-            if not os.path.exists(args.model_specific_cfg):
-                raise NotSupportedError(
-                    'model specific config "{}" does not exist'.format(
-                        args.model_specific_cfg
-                    )
-                )
-            config = self.config_visitor.parse_from_file(args.model_specific_cfg, config)
-        return config
+        return load_configuration(args.file, default_cfg=args.default_cfg,
+                                  model_cfg=args.model_cfg,
+                                  model_specific_cfg=args.model_specific_cfg,
+                                  visitor=self.config_visitor)
 
     def _collect_overrides(self, args):
         for raw_name, raw_value in vars(args).items():

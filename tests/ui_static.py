@@ -51,7 +51,7 @@ class UiStaticAssetTest(unittest.TestCase):
     def test_local_connection_contains_only_configured_address(self):
         status, body, headers = self.request('/local-connection.json')
         self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body), {'bridge_url': 'http://127.0.0.1:18080'})
+        self.assertEqual(json.loads(body), {'bridge_url': 'http://127.0.0.1:18080', 'auth_required': True})
         self.assertEqual(headers['Cache-Control'], 'no-store')
         self.assertNotIn('Access-Control-Allow-Origin', headers)
         self.assertEqual(self.request('/local-connection.json', 'HEAD')[:2], (200, b''))

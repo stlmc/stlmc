@@ -5,48 +5,32 @@ import json
 import math
 import os
 import stat
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import re
 import sys
 from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-from lark import Lark, UnexpectedInput
-from pydantic import ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.responses import JSONResponse, Response, StreamingResponse
 
 from . import app as local
 
 MAX_BODY = 1024 * 1024
 FORBIDDEN_CONFIG = frozenset({'executable-path', 'save-smt2', 'smt2-dir'})
-# Match STLmc config.lark syntax without importing STLmc: pairing/health must
-# remain available before the runtime is installed. The worker still performs
-# the authoritative configuration semantic validation, including inheritance.
-_CONFIG = Lark(r'''
-start: section*
-section: NAME "extends" name_list "{" assignment* "}" | NAME "{" assignment* "}"
-name_list: NAME ("," NAME)*
-assignment: NAME "=" value?
-?value: ESCAPED_STRING | SIGNED_NUMBER | NAME
-NAME: /[a-zA-Z0-9_.\/-]+/
-%import common.ESCAPED_STRING
-%import common.SIGNED_NUMBER
-%import common.WS
-%ignore WS
-%ignore /#[^\r\n]*/
-%ignore /(?s:\'\'\'.*?\'\'\')/
-''', parser='lalr')
 
 
-def validate_config(text):
+def validate_config(text, *, allow_invalid=False):
     """Inspect actual assignment keys, not comments or quoted values."""
+    from ..parser.config_visitor import configuration_keys
     try:
-        tree = _CONFIG.parse(text)
-    except UnexpectedInput:
+        keys = configuration_keys(text)
+    except SyntaxError:
+        if allow_invalid:
+            return text
         raise ValueError('Invalid configuration syntax') from None
-    if any(str(node.children[0]).lower() in FORBIDDEN_CONFIG
-           for node in tree.find_data('assignment')):
+    if any(key.lower() in FORBIDDEN_CONFIG for key in keys):
         raise ValueError('Executable overrides and SMT file output are disabled in the bridge')
     return text
 
@@ -58,6 +42,22 @@ class BridgeRunRequest(local.RunRequest):
     @classmethod
     def safe_config(cls, value):
         return validate_config(value)
+
+
+class InspectRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    model: str = Field(default='', max_length=500_000)
+    config: str = Field(default='', max_length=100_000)
+
+    @field_validator('config')
+    @classmethod
+    def safe_config(cls, value):
+        return validate_config(value, allow_invalid=True)
+
+
+class ClearHistoryRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    run_ids: list[str] = Field(max_length=100)
 
 
 def canonical_origin(value):
@@ -84,9 +84,10 @@ def canonical_origin(value):
 
 class BridgeGuard:
     """Enforce authentication and bounded buffering before any endpoint runs."""
-    def __init__(self, app, *, token, origins, port):
+    def __init__(self, app, *, token, origins, port, auth_required=True):
         self.app = app
         self._token = token
+        self.auth_required = auth_required
         self.origins = frozenset(origins)
         self.hosts = frozenset({'127.0.0.1:' + str(port), 'localhost:' + str(port)})
 
@@ -137,12 +138,12 @@ class BridgeGuard:
             return
         authorization = single(b'authorization') or ''
         scheme, _, credential = authorization.partition(' ')
-        if scheme.lower() != 'bearer' or not hmac.compare_digest(credential, self._token):
+        if self.auth_required and (scheme.lower() != 'bearer' or not hmac.compare_digest(credential, self._token)):
             await fail(401, 'A valid bridge session token is required', {'WWW-Authenticate': 'Bearer'})
             return
         query = parse_qsl(scope.get('query_string', b'').decode('ascii', errors='replace'))
         if any(key.lower().replace('-', '_') in {'token', 'access_token', 'session_token', 'authorization', 'bearer'}
-               or self._token in value for key, value in query):
+               or (self._token and self._token in value) for key, value in query):
             await fail(400, 'Session tokens must not be supplied in URLs')
             return
         length = single(b'content-length')
@@ -259,17 +260,20 @@ def _records(descriptor, name):
     return records
 
 
-def create_app(*, token, allow_origins, port=8765):
-    if not isinstance(token, str) or len(token) < 32 or not token.isascii():
+def create_app(*, token=None, allow_origins, port=8765, auth_required=True):
+    if auth_required and (not isinstance(token, str) or len(token) < 32 or not token.isascii()):
         raise ValueError('Use a fresh, high-entropy session token')
     if not 1 <= port <= 65535:
         raise ValueError('Invalid bridge port')
     origins = {canonical_origin(v) for v in allow_origins}
+    if not auth_required and any(urlsplit(origin).hostname not in {'127.0.0.1', 'localhost'}
+                                 or urlsplit(origin).scheme != 'http' for origin in origins):
+        raise ValueError('Authentication can only be disabled for local HTTP workspace origins')
     if not origins:
         raise ValueError('At least one paired origin is required')
     app = FastAPI(title='STLmc local bridge', lifespan=local.lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
-    app.add_middleware(BridgeGuard, token=token, origins=origins, port=port)
+    app.add_middleware(BridgeGuard, token=token, origins=origins, port=port, auth_required=auth_required)
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, exception):
         # Python's JSON parser accepts NaN/Infinity. Pydantic correctly rejects
@@ -309,6 +313,79 @@ def create_app(*, token, allow_origins, port=8765):
             except HTTPException:
                 continue
         return sorted(jobs, key=lambda item: item['started'], reverse=True)[:100]
+
+    @app.post('/api/runs/clear')
+    def clear_history(request: ClearHistoryRequest):
+        ids = list(dict.fromkeys(request.run_ids))
+        if any(not re.fullmatch('[0-9a-f]{32}', name) for name in ids):
+            raise HTTPException(422, 'Invalid run identifier')
+        if not ids:
+            return {'deleted': [], 'kept': []}
+        deleted, kept = [], []
+        # Delete only explicitly requested, verified finished run directories.
+        # Never recurse or follow links, and preflight every file before any
+        # deletion. The active run and the model/config storage are not targets.
+        with local.LOCK, ExitStack() as stack:
+            root_fd = stack.enter_context(_directory(runs))
+            pending = []
+            for name in ids:
+                if name == local.ACTIVE:
+                    kept.append(name)
+                    continue
+                try:
+                    descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                         dir_fd=root_fd)
+                except FileNotFoundError:
+                    kept.append(name)
+                    continue
+                except OSError:
+                    raise HTTPException(409, 'History contains an unsafe run directory') from None
+                stack.callback(os.close, descriptor)
+                job = _job(name, descriptor)
+                # A second GUI may share this folder. Disk-only "running"
+                # records are not proof that their worker has stopped.
+                if name not in local.JOBS:
+                    saved = json.loads(_read(descriptor, 'job.json') or '{}')
+                    if saved.get('state') in {'running', 'stopping'}:
+                        owner = saved.get('owner_pid')
+                        alive = True
+                        if isinstance(owner, int) and owner > 0:
+                            try:
+                                os.kill(owner, 0)
+                            except ProcessLookupError:
+                                alive = False
+                            except PermissionError:
+                                pass
+                        if alive:
+                            kept.append(name)
+                            continue
+                if job.get('state') not in {'completed', 'failed', 'cancelled', 'timed_out', 'interrupted'}:
+                    kept.append(name)
+                    continue
+                names = os.listdir(descriptor)
+                if len(names) > 1000:
+                    raise HTTPException(409, 'Run contains too many files to clear safely')
+                for filename in names:
+                    try:
+                        fd = _file(descriptor, filename)
+                        if fd is not None:
+                            os.close(fd)
+                    except HTTPException:
+                        raise HTTPException(409, 'Run contains a link or nonregular file; history was not cleared') from None
+                pending.append((name, descriptor, names))
+            try:
+                for name, descriptor, names in pending:
+                    for filename in names:
+                        try:
+                            os.unlink(filename, dir_fd=descriptor)
+                        except FileNotFoundError:
+                            pass
+                    os.rmdir(name, dir_fd=root_fd)
+                    local.JOBS.pop(name, None)
+                    deleted.append(name)
+            except OSError:
+                raise HTTPException(409, 'History changed while clearing; refresh before retrying') from None
+        return {'deleted': deleted, 'kept': kept}
 
     @app.get('/api/runs/{run_id}')
     def detail(run_id: str):
@@ -371,10 +448,23 @@ def create_app(*, token, allow_origins, port=8765):
             version = metadata.version('stlmc')
         except metadata.PackageNotFoundError:
             version = None
-        return {'protocol': 1, 'version': version,
-                'capabilities': ['health', 'examples', 'documents', 'runs', 'stop', 'artifacts']}
+        return {'protocol': 1, 'version': version, 'auth_required': auth_required,
+                'capabilities': ['health', 'examples', 'documents', 'runs', 'stop', 'artifacts', 'inspect']}
+    @app.post('/api/inspect')
+    def inspect(request: InspectRequest):
+        from ..application.inspection import inspect_inputs
+        try:
+            result = inspect_inputs(request.model, request.config)
+            # Do not expose local output paths from defaults via the browser API.
+            if result['common'] is not None:
+                result['common'] = {key: value for key, value in result['common'].items()
+                                    if key not in FORBIDDEN_CONFIG}
+            return result
+        except Exception as error:
+            raise HTTPException(422, str(error)) from None
     for path, endpoint in [('/api/health', local.health), ('/api/examples', local.examples),
                            ('/api/documents', local.documents.list_documents),
+                           ('/api/documents/watch', local.documents.watch_documents),
                            ('/api/documents/{name}', local.documents.get_document)]:
         app.add_api_route(path, endpoint, methods=['GET'])
     @app.put('/api/documents/{name}')
@@ -408,6 +498,10 @@ def show_pairing(token, origins, port, workspace_url=None):
         paired = [origin for origin in paired if origin not in local_origins]
     if paired:
         text += 'Paired website origin(s): {}\n'.format(', '.join(paired))
+    if token is None:
+        print(text + 'Authentication disabled: use only on a trusted single-user machine.\n'
+              'Keep this terminal open while using the workspace.', file=sys.stderr)
+        return
     text += 'Session token (paste only into your trusted STLmc page): {}\n'.format(token)
     text += 'Keep this terminal open; paste the session token into the workspace to connect.\n'
     for stream in (sys.stderr, sys.stdout):

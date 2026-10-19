@@ -1,6 +1,7 @@
 """Managed model/config files, with atomic writes and revision checks."""
 import hashlib
 import os
+import stat
 import tempfile
 import threading
 from pathlib import Path
@@ -50,6 +51,28 @@ def list_documents(kind: Literal['model', 'cfg'] = 'model'):
     with LOCK:
         return [{'name': p.name} for p in sorted(DIRECTORY.glob('*.' + kind))
                 if p.is_file() and not p.is_symlink() and not p.name.startswith('.')]
+
+
+def watch_documents():
+    """Return lightweight change markers; content revisions still guard saves.
+
+    Polling avoids platform-specific watcher dependencies and works for remote
+    and mounted folders. ctime also detects same-size edits with restored mtime.
+    """
+    result = {'model': [], 'cfg': []}
+    with LOCK:
+        for kind in result:
+            for entry in list_documents(kind):
+                try:
+                    info = (DIRECTORY / entry['name']).stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if not stat.S_ISREG(info.st_mode):
+                    continue
+                version = '{}:{}:{}:{}'.format(info.st_ino, info.st_size,
+                                               info.st_mtime_ns, info.st_ctime_ns)
+                result[kind].append({'name': entry['name'], 'version': version})
+    return result
 
 
 def get_document(name: str):

@@ -111,11 +111,32 @@ a browser automatically, or `--allow-origin https://stlmc.github.io` to also
 allow the homepage Workspace to connect. Do not share the token or allow an
 untrusted origin. Browser local-network permissions may also be required.
 
-Analysis form values override the loaded configuration for options shown in
-the form. A blank Goal checks all goals, and unchecked Two-step and
-Reachability controls explicitly disable those options. Options not exposed
-in the form, such as dReal precision, remain controlled by the configuration.
-Goals declared as reachability targets in the model retain that meaning.
+For a trusted single-user local session, `stlmc-gui --no-auth` skips the token
+and connects the local page automatically. Host and Origin checks remain
+enabled. This option cannot be combined with `--allow-origin`; keep
+authentication enabled on shared machines and when using a hosted page.
+
+Use `--models-dir /path/to/models --runs-dir /path/to/history` to choose
+separate, non-nested folders for model/config files and run history. Otherwise
+the user data folders are used. The Run history tab can clear listed finished
+runs after confirmation, including their logs and artifacts. Model/config
+files and active runs are kept; deletion cannot be undone.
+
+While connected, the workspace checks the model/config folder every two
+seconds. Added and removed files update the lists automatically. Clean open
+files reload after external changes; unsaved edits are preserved with a
+conflict notice. Parser errors appear at the editor with their line/column;
+click the message to focus that location. Running analyses keep their original
+input snapshot.
+
+The workspace reads settings through the same configuration loader and parser
+as the CLI, and lists goals from the model parser. Only fields you edit override
+the loaded configuration; unchanged fields retain their values. Bound and
+global time bound are required if absent from the configuration. Selecting
+All goals checks every goal. Options not exposed in the form, such as dReal
+precision, remain controlled by the configuration. Workspace runs explicitly
+enable visualization and have a separate wall-clock timeout. Goals declared
+as reachability targets in the model retain that meaning.
 
 Solvers and HTML/PDF renderers are installed separately. For example:
 

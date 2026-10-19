@@ -1,4 +1,9 @@
 include tools/build_ui.py
+include tools/ui-editor/entry.js
+include tools/ui-editor/build.mjs
+include tools/ui-editor/package.json
+include tools/ui-editor/package-lock.json
+include tools/ui-editor/README.md
 include src/stlmc/ui/frontend/Gemfile
 include src/stlmc/ui/frontend/Gemfile.lock
 include src/stlmc/ui/frontend/_config.yml

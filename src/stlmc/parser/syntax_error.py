@@ -140,13 +140,27 @@ def syntax_error(file_name: str, source: str, error: UnexpectedInput,
             details.append("  expected " + ", ".join(shown) + suffix)
     if line:
         details.extend((f"  {line}", f"  {pointer}"))
-    return SyntaxError("\n".join(details))
+    diagnostic = SyntaxError("\n".join(details))
+    # Keep CLI formatting unchanged while exposing machine-readable locations
+    # to editors; setting SyntaxError.filename would change its __str__ output.
+    diagnostic.source_name = file_name
+    diagnostic.source_line = error.line
+    diagnostic.source_column = error.column
+    diagnostic.summary = '; '.join(item.strip() for item in details[1:3])
+    return diagnostic
 
 
 def parse_file(parser, file_name: str, *, description: Optional[str] = None,
                keywords: Iterable[str] = ()):
     """Read and parse a UTF-8 file, enriching only Lark syntax failures."""
     source = Path(file_name).read_text(encoding="utf-8")
+    return parse_text(parser, source, source_name=file_name, description=description,
+                      keywords=keywords)
+
+
+def parse_text(parser, source: str, *, source_name="<input>", description=None,
+               keywords=()):
+    """Parse an in-memory document with the same diagnostics as a file."""
     try:
         return parser.parse(source)
     except UnexpectedInput as error:
@@ -156,6 +170,6 @@ def parse_file(parser, file_name: str, *, description: Optional[str] = None,
             if isinstance(terminal.pattern, PatternStr)
         }
         raise syntax_error(
-            file_name, source, error, description=description, keywords=keywords,
+            source_name, source, error, description=description, keywords=keywords,
             token_labels=token_labels,
         ) from error

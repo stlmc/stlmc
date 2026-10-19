@@ -75,10 +75,23 @@ and run `make test-parser` and `make test-unit` after changes.
 
 ## Workspace frontend development
 
+The CLI and workspace share `application.configuration.load_configuration`;
+default and model configuration precedence is not reimplemented in JavaScript.
+The authenticated `/api/inspect` endpoint adapts the common inspection API to
+the browser. Model/configuration text uses the same visitors and diagnostics
+as file input. Forms display these parsed values and submit only explicit edits.
+
 `src/stlmc/ui/frontend/` is the editable frontend source: Jekyll layouts and includes define
 the panels, SCSS defines their styling, and native JavaScript modules handle
 interaction with the authenticated local API. The homepage and local GUI use
 the same generated assets.
+
+The model and configuration editors use CodeMirror 6 (MIT). The pinned,
+self-contained bundle is checked in at `frontend/js/codemirror.js`, including
+dependency license notices. Only updating this bundle needs Node.js;
+see [editor build instructions](../tools/ui-editor/README.md). Normal wheel
+builds use the existing bundle. Syntax colors are presentation only; parser
+diagnostics still come from STLmc through `/api/inspect`.
 
 After installing the locked development gems with `bundle install` in
 `src/stlmc/ui/frontend/`, run from the repository root:
