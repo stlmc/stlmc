@@ -47,16 +47,17 @@ From the repository root:
 python tests/run_artifact_benchmarks.py --scope bouncing-ball-ode --quick --timeout 60 --parallel-core 4
 ```
 
-To select any of the six goal configurations directly from the repository root:
+To run one goal directly from the repository root, select its configuration:
 
 ```sh
 stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-f1.cfg
-stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-f2.cfg
-stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-f3.cfg
-stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-f4.cfg
-stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-f5.cfg
-stlmc tests/benchmarks/bouncing-ball-ode/ball.model -model-cfg tests/benchmarks/bouncing-ball-ode/ball.cfg -model-specific-cfg tests/benchmarks/bouncing-ball-ode/ball-rebound.cfg
 ```
 
-Set `STLMC_DREAL` if the dReal executable is installed outside the default
-repository location.
+Replace `ball-f1.cfg` with `ball-f2.cfg`, `ball-f3.cfg`, `ball-f4.cfg`,
+`ball-f5.cfg`, or `ball-rebound.cfg` for another goal. Each configuration
+selects its goal and the settings in the table above.
+
+For the benchmark runner, set `STLMC_DREAL=/path/to/dReal` when the executable
+is outside its default test location. This is a test-runner setting, not a
+general STLmc executable override. For a direct `stlmc` invocation, use normal
+solver discovery or pass `-executable-path /path/to/dReal`.

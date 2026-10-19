@@ -33,87 +33,24 @@ python -m pip install --upgrade pip
 python -m pip install stlmc
 ```
 
-To install from source instead:
-
-```sh
-git clone https://github.com/stlmc/stlmc.git
-cd stlmc
-python -m pip install .
-```
-
 The default package includes NumPy and SciPy but no SMT solver bindings,
 native solvers, Bokeh, or Matplotlib. The recommended starting setup is Z3
 with HTML and PDF rendering:
 
 ```sh
-stlmc-installer install --solver z3
-stlmc-installer check --solver z3
-stlmc-installer install --visualize html pdf
-stlmc-installer check --visualize html pdf
+stlmc-installer install --solver z3 --visualize html pdf
+stlmc-installer check --solver z3 --visualize html pdf
 ```
 
 The visualization commands are optional for model checking and text output.
 Z3 alone is sufficient for the quick-start verification below.
 
-The default internal backend still needs Z3 when CVC5, Yices, or dReal is
-selected as the final solver. Install the additional backends your models
-need, for example:
-
-```sh
-stlmc-installer install --solver cvc5
-stlmc-installer install --solver yices
-stlmc-installer install --solver dreal
-```
-
-The installer manages Python bindings and native solver downloads in a
-user-owned directory, without sudo or replacing system libraries. Yices uses
-SHA256-pinned official 2.7.0 archives and, on supported Linux systems, an
-openSUSE CUDD binary dependency. See the
-[installation guide](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
-for platform restrictions and native dependencies. Native Yices and dReal
-automatic installation is not supported on Windows.
-
-Choose the `install`, `check`, or `uninstall` action first; running the installer without an
-action shows help. Select multiple backends with `--solver z3 cvc5 yices dreal`
-or formats with `--visualize html pdf text`. `install --all` selects all
-components, including the official dReal 3.16.06.02 binary on supported
-platforms. `check` alone checks all components without installing anything.
-
-Preview removal before uninstalling selected components:
-
-```sh
-stlmc-installer uninstall --solver yices --visualize html pdf --dry-run
-stlmc-installer uninstall --solver yices --visualize html pdf
-```
-
-Removal is limited to selected Python packages in the active virtual
-environment and unchanged native files covered by installer ownership
-receipts. Older native installations without receipts are retained for manual
-cleanup; Yices's managed activation is removed. System installations and
-counterexample files are preserved. Stop jobs using the selected components
-first: managed native installations are shared across that user's virtual
-environments. See the
-[removal guide](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#removing-components)
-for details.
-
-General ODE and transcendental models require a compatible dReal 3 build.
-The default dReal download is the official 3.16.06.02 release, which has known
-ODE bugs. Successful installation or checks do not certify ODE correctness.
-`check` reports the known invariant limitation.
-An alternative executable can be selected with
-`-executable-path /path/to/dReal`; an explicit
-[experimental source-build option](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#dreal-source-builds)
-is also available.
-See
+For other solvers, platform requirements, source builds, or safe component
+removal, see
 [Installation and troubleshooting](https://github.com/stlmc/stlmc/blob/main/docs/installation.md)
-for platform restrictions, native dependencies, solver locations, and offline use.
-
-Confirm the installation and inspect the supported command-line options with:
-
-```sh
-stlmc -h
-stlmc-vis -h
-```
+and `stlmc-installer -h`. General ODE and transcendental models require dReal 3;
+its default official release has known ODE correctness limitations described
+in the guide. Installation checks do not certify ODE correctness.
 
 ## Quick start
 
@@ -143,17 +80,14 @@ stlmc quickstart.model -goal safety -bound 2 -time-bound 2 -solver z3 -visualize
 The expected status is `violated`. The bound counts STL variable points as
 well as mode changes, even though this example has no physical jump.
 `-visualize` saves result data and its `.cfg` file; it does not render a plot.
-For this example, render the generated files with:
+Render the counterexample as interactive HTML:
 
 ```sh
 stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cfg
-stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cfg -output pdf
-stlmc-vis quickstart_b1_safety_z3.counterexample -output text
 ```
 
-The first command writes interactive HTML. The second writes PDF plots, and
-the third writes a text report. If your result lists different filenames, use
-those paths instead.
+If your result lists different filenames, use those paths instead. See
+[Visualization](#visualization) below for PDF and text output.
 
 ## Analysis configuration
 
@@ -290,6 +224,14 @@ Legacy pickle artifacts are outdated and unsupported. Rerun model checking
 with the current STLmc version to regenerate them; no conversion is provided.
 
 ## Development and tests
+
+To install from source, use the virtual environment created above:
+
+```sh
+git clone https://github.com/stlmc/stlmc.git
+cd stlmc
+python -m pip install .
+```
 
 From a source checkout, install in editable mode and run unit/integration checks:
 

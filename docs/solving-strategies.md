@@ -98,12 +98,12 @@ job.
 
 Parallel execution applies to the final solver-refinement stage of the
 two-step algorithm. The current scenario producer remains sequential because
-each new Z3 scenario is generated after adding a blocking clause for the
+each new SMT scenario is generated after adding a blocking clause for the
 previous scenario. Unsat-core minimization is part of this sequential producer
 stage. The execution pipeline is therefore:
 
 ```text
-sequential Z3 scenario generation
+sequential SMT scenario generation (Z3 by default)
     -> collect B candidates
     -> submit one OR query
     -> concurrent solver workers
@@ -146,7 +146,7 @@ temporary Bound checks line in place:
 bound=2  generated=4240  submitted=4235  completed=4210  pending=25  jobs=842/847  active=5
 ```
 
-- `generated`: scenarios produced by the sequential Z3 stage;
+- `generated`: scenarios produced by the sequential SMT stage;
 - `submitted`: scenarios included in solver jobs;
 - `completed`: scenarios in solver jobs that have finished;
 - `pending`: submitted scenarios whose jobs have not finished;

@@ -25,7 +25,10 @@ results are stored in each model file using this annotation:
 ```
 
 The annotation label matches the suffix of its goal-specific configuration
-file. Reachability cases use `reachable` or `unreachable` as their status.
+file, named `<model>-<goal>.cfg`. The goal can be `f1`, `f2`, or another label
+such as `rebound`. Directories without goal-specific configurations are not
+included in automated benchmark runs. Reachability cases use `reachable` or
+`unreachable` as their status.
 
 Selected artifact goals have been revised for short, bounded regression runs.
 Their temporal intervals, and in some cases predicates or operator structure,

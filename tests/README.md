@@ -1,186 +1,7 @@
 # Tests
 
-The unit/integration suites and standalone benchmark tools cover:
-
-- `application_boundaries.py` checks typed run options, property-independent
-  bounded-search results, legacy tuple compatibility, and typed solver status.
-- `application_workflow.py` checks parser-error translation, per-goal model
-  state isolation, and cleanup when an algorithm fails.
-- `parser_inputs.py` parses benchmark models and configurations through the
-  public Lark parser APIs and checks the visualization configuration format.
-  Invalid closed-form fixtures are checked for explicit input-validation
-  errors rather than a verification result.
-  Jump encoding checks preserve single, conjunctive, and disjunctive resets,
-  and retain STL variable-point transitions when an explicit jump is disabled.
-- `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
-  rejects incomplete or undeclared closed-form flows, and verifies endpoint
-  and invariant encodings for CVC5, Z3, Yices, and dReal. Yices SMT2 export
-  is independently replayed to check lowered-variable declarations and
-  quoted internal symbol names.
-- `flow_warnings.py` checks polynomial flow diagnostics: nonzero constant
-  initial offsets are errors; state-dependent initial differences and restart
-  inconsistencies remain advisory. It covers source locations, valid coupled
-  flows, and unchanged input models. Unsupported or oversized expressions are
-  skipped; absence of a diagnostic is not a validity certificate.
-- `sympy_differentiation.py` checks structural arithmetic conversion, exact
-  rational constants, typed symbols, explicit clock selection, unsupported
-  domains, and 300 generated derivative comparisons against analytic
-  coefficients using independent Z3 equivalence checks.
-- `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
-  results through the STLmc solver adapter.
-- `dreal_assignment.py` checks preservation of dReal interval boxes and
-  consistency of their visualization midpoints.
-- `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
-  compares their standard output with the corresponding `.expected` files.
-  The independent dReal `smt2/dreal/interior-peak.smt2` smoke case checks an
-  interior-peak violation under a universal constraint, expecting `unsat` with
-  precision `0.000001` and ODE step `0.01` supplied by its `.args` file.
-- `solver_capabilities.py` verifies solver-specific arithmetic validation and
-  dReal inverse-trigonometric translations. It also checks 300 generated
-  Boolean propagation equivalences, branch-local assignment isolation, and
-  preservation of flow atoms and original dReal variable declarations.
-  Z3/Yices/CVC5 final solver jobs are checked for SAT/UNSAT and retained
-  Boolean/numeric assignments.
-  Only dReal final verification jobs propagate unconditional Boolean
-  assignments before translation; Z3/Yices/CVC5 retain their original inputs.
-  This does not change scenario/core solver assertions or rewrite arithmetic,
-  ODE, or quantified-flow bodies.
-- `ode_translation.py` checks exact polynomial ODE solutions independently
-  with SymPy, including coupled acceleration, endpoint terms, indexed names,
-  and rejection of unsupported cycles or elapsed-time collisions.
-- `ode_capabilities.py` checks that algebraic backends accept supported exact
-  ODE translations and reject unsupported evolving-state systems before
-  solving; native dReal does not use this polynomial lowering.
-- `invariant_names.py` checks distinct module/atom/bound namespaces, including
-  multi-digit indices, and that later bounds cannot disable earlier invariant
-  constraints in Z3/Yices queries.
-- `numeric_mode_matching.py` checks that numeric mode identifiers retain
-  their declared types and mode indices in proposition matching and interval
-  refinements, without phantom continuous-state endpoint variables.
-- `visualize_numeric.py` checks safe numeric parsing and sampled robustness,
-  including Real/Int mode arithmetic, equality, and expressions mixing
-  discrete modes with continuous state variables.
-- `incremental_core_backends.py` checks the common Z3/Yices/CVC5 incremental
-  solver contract: exact model values, tracked core replay, nested scopes,
-  independent forks, private guards, and cancellation and unknown results.
-  It also checks independent internal backend selection and clear errors for
-  unavailable backends. Optional native backends are skipped when unavailable.
-- `robustness_operations.py` checks STL weakening, strengthening, negation,
-  and implication polarity transformations.
-- `temporal_reduction.py` checks the fully-stable temporal encoding, including
-  shared one-step/two-step components, partition obligations, strict interval
-  endpoints, bounded Until/Release recurrence semantics, and deterministic
-  solver input order across processes.
-- `time_horizon.py` checks common segment-duration bounds, backend-independent
-  one-step/two-step behavior, reachability, and preservation of duration limits
-  in final refinements after scenario generalization.
-- `formula_formatting.py` checks display-only Boolean flattening without
-  changing encoding trees, hashes, or structural identifiers.
-- `auto_solver.py` checks availability-aware automatic selection, isolated
-  runtime probes, selected-goal filtering, and candidate configuration overrides.
-- `dreal_runtime.py` checks bounded native capability probes and rejection of
-  builds that ignore universal conditions on zero-derivative variables.
-- `scenario_minimization.py` checks that Boolean and arithmetic scenario
-  literals retain their true/false polarity, concrete scenarios preserve
-  arithmetic clauses, and repeated core minimization never selects a larger
-  core.
-- `scenario_core_integration.py` replays extracted cores against the full
-  negated encoding and compares one-step/two-step results across path,
-  preprocessing, and batching options. It checks that refinement and blocking
-  retain the conditions needed for core validity, and that proposition
-  matching preserves both truth polarities.
-- `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
-  remain synchronized and that importing the visualization CLI does not load
-  Bokeh or the full visualizer. Cancellation tests cover signals during native
-  argument conversion and partially initialized Z3 objects without unraisable
-  destructor exceptions. Documentation tests run the README quick-start model
-  and check public links and test entry points.
-- `install_solvers.py` checks solver selection and status behavior, platform
-  installation commands, dReal installation permissions and locations, and
-  executable discovery precedence without accessing the network.
-- `installer_components.py` checks Yices source-build activation and
-  format-specific visualization dependencies with mocked downloads and OS
-  commands. Bokeh is an optional HTML dependency; PDF uses optional Matplotlib.
-  Neither renderer is needed for text output. Installer actions require an
-  explicit `install` or `check` action and component selectors.
-- `solver_runtime.py` checks solver-free help, missing-backend installation
-  hints, managed Yices library discovery, and native thread-safety/MCSAT guards.
-  Capability-policy tests do not execute unsafe native calls under mocked
-  thread-safety flags.
-- `process_cleanup.py` verifies that parallel solver workers share one bounded
-  cleanup deadline and are forcefully reaped when graceful termination stalls.
-  It also checks that completed batches update scenario and job progress in
-  their respective units, including batches containing multiple scenarios.
-  Sequential solver waits poll cancellation requests and reap their workers;
-  a real CLI SIGTERM test checks exit 130 without an orphan process.
-- `reachability.py` checks zero-jump reachability, unreachable results,
-  threshold relaxation, symbolic/explicit path strategies with one-step and
-  two-step solving, CVC5/Z3/Yices/dReal agreement, temporal-target validation, and
-  witness generation.
-- `compare_solvers.py` reruns every Yices benchmark case with CVC5 and Z3, then
-  checks that all three solvers produce the same status and finishing bound. It reuses the
-  Yices logs from the preceding benchmark run instead of running Yices twice.
-- `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
-  compares each result and finishing bound with the annotation in its model.
-  The [bouncing-ball benchmark](benchmarks/bouncing-ball-ode/README.md) uses
-  this same model/configuration-to-result/bound comparison. All six goals have
-  registered expectations and are included in the quick and fast selections.
-  Shorter one-second windows keep `f1`, `f2`, `f4`, and `f5` checks fast;
-  `f3` and `rebound` retain three-second windows containing the first bounce.
-  Each log has a JSON manifest containing the git commit, input hashes,
-  command, timeout, and result, so solver comparisons reject stale logs.
-  The `tank-ode/tank-f2` case covers bound-zero STL checking of a jump-free
-  ODE model, ensuring that its initial continuous segment is not skipped.
-  Separate fixtures cover the [bounded tank ODE](benchmarks/tank-bounded-ode/README.md),
-  [triangular-wave ODE](benchmarks/triangular-wave-ode/README.md), and
-  [bouncing-ball polynomial model](benchmarks/bouncing-ball-poly/README.md).
-  Their original dynamics and goals are retained; goal-specific finite windows
-  and bounds define the fast regression scope. These fixtures use the same
-  result/bound comparison and keep the independent native solver smoke separate.
-
-Benchmark expectations use this format:
-
-```text
-# @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
-# @benchmark.expected(f1=satisfied:0, reach=reachable:0)
-```
-
-Labels match the suffix of each goal-specific configuration file. In addition
-to STL statuses (`satisfied` and `violated`), reachability cases use
-`reachable` and `unreachable`.
-A `satisfied` expectation means that no counterexample was found within the
-configured time window and discrete bound at the configured threshold. It is
-not a proof for unbounded time or arbitrarily many partition points.
-
-Some artifact goals have shorter temporal/global windows or revised predicates
-and operators for regression testing. Their results cover the current fixture,
-not the original artifact's verification scope; see the
-[benchmark scope notes](benchmarks/README.md). Quick/fast membership is unchanged
-by these goal revisions. Passing the revised cases alone is not a full-suite
-validation claim.
-
-For reachability cases, the expected bound is the number of jumps and
-starts at zero. For STL cases, it also includes STL variable points. Bound
-zero represents one continuous segment with no jump. Both one-step and
-two-step algorithms use this convention.
-
-Execution logs are written to `artifact-logs/` by default. Violated cases also
-generate their `.counterexample` and visualization `.cfg` files beside the
-corresponding log. Each benchmark model has a separate output directory, so
-cases running in parallel cannot overwrite one another's artifacts.
-
-Numerically reconstruct and check generated counterexamples with:
-
-```sh
-python tests/validate_artifacts.py artifact-logs
-```
-
-This evaluates sampled robustness against `rho(phi, 0) <= epsilon` and checks
-that stored dReal midpoints lie inside their interval boxes. It does not
-certify every initial, jump, invariant, and flow constraint or an exact ODE
-trajectory. See [Result semantics](../docs/result-semantics.md). New artifacts
-use versioned gzip-compressed JSON. Legacy pickle files are outdated and
-unsupported; regenerate them by rerunning model checking with current STLmc.
+Start with the setup and Make targets below. Detailed
+[suite coverage](#suite-coverage) follows the execution instructions.
 
 ## Make targets
 
@@ -190,9 +11,8 @@ code being tested:
 
 ```sh
 python -m pip install -e .
-stlmc-installer install --solver z3 cvc5 yices
-stlmc-installer check --solver dreal
-stlmc-installer check --solver z3 cvc5 yices dreal
+stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf
+stlmc-installer check --solver z3 cvc5 yices dreal --visualize html pdf
 ```
 
 The full workflow requires cvc5, Z3, the Yices binding/native library, and
@@ -426,25 +246,195 @@ stop within five seconds are killed.
 
 ## Benchmark directory convention
 
-Each runnable benchmark directory contains one model configuration and one or
-more goal-specific configurations:
+See the [benchmark directory convention](benchmarks/README.md) when adding
+fixtures. Directories without goal-specific configurations are not included
+in automated benchmark runs.
 
-```text
-tests/benchmarks/rail-poly/
-  rail.model
-  rail.cfg
-  rail-f1.cfg
-  rail-f2.cfg
-  rail-f3.cfg
+## Benchmark results
+The [benchmark conventions](benchmarks/README.md) define expectation
+annotations, goal-specific configuration names, and fixture layout. STL cases
+use `satisfied` and `violated`; reachability cases use `reachable` and
+`unreachable`.
+A `satisfied` expectation means that no counterexample was found within the
+configured time window and discrete bound at the configured threshold. It is
+not a proof for unbounded time or arbitrarily many partition points.
+
+Some artifact goals have shorter temporal/global windows or revised predicates
+and operators for regression testing. Their results cover the current fixture,
+not the original artifact's verification scope; see the
+[benchmark scope notes](benchmarks/README.md). Quick/fast membership is unchanged
+by these goal revisions. Passing the revised cases alone is not a full-suite
+validation claim.
+
+For reachability cases, the expected bound is the number of jumps and
+starts at zero. For STL cases, it also includes STL variable points. Bound
+zero represents one continuous segment with no jump. Both one-step and
+two-step algorithms use this convention.
+
+Execution logs are written to `artifact-logs/` by default. Violated cases also
+generate their `.counterexample` and visualization `.cfg` files beside the
+corresponding log. Each benchmark model has a separate output directory, so
+cases running in parallel cannot overwrite one another's artifacts.
+
+Numerically reconstruct and check generated counterexamples with:
+
+```sh
+python tests/validate_artifacts.py artifact-logs
 ```
 
-Goal-specific configurations use `<model>-<goal>.cfg`; the goal suffix may be
-`f1`, `f2`, or another label such as `rebound`. Directories without any such
-configuration are not included in automated benchmark runs.
+This evaluates sampled robustness against `rho(phi, 0) <= epsilon` and checks
+that stored dReal midpoints lie inside their interval boxes. It does not
+certify every initial, jump, invariant, and flow constraint or an exact ODE
+trajectory. See [Result semantics](../docs/result-semantics.md). New artifacts
+use versioned gzip-compressed JSON. Legacy pickle files are outdated and
+unsupported; regenerate them by rerunning model checking with current STLmc.
+
+## Suite coverage
+
+The unit/integration suites and standalone benchmark tools cover:
+
+- `application_boundaries.py` checks typed run options, property-independent
+  bounded-search results, legacy tuple compatibility, and typed solver status.
+- `application_workflow.py` checks parser-error translation, per-goal model
+  state isolation, and cleanup when an algorithm fails.
+- `parser_inputs.py` parses benchmark models and configurations through the
+  public Lark parser APIs and checks the visualization configuration format.
+  Invalid closed-form fixtures are checked for explicit input-validation
+  errors rather than a verification result.
+  Jump encoding checks preserve single, conjunctive, and disjunctive resets,
+  and retain STL variable-point transitions when an explicit jump is disabled.
+- `solution_functions.py` checks the manual's `x(t) = e(t, x(0))` semantics,
+  rejects incomplete or undeclared closed-form flows, and verifies endpoint
+  and invariant encodings for CVC5, Z3, Yices, and dReal. Yices SMT2 export
+  is independently replayed to check lowered-variable declarations and
+  quoted internal symbol names.
+- `flow_warnings.py` checks polynomial flow diagnostics: nonzero constant
+  initial offsets are errors; state-dependent initial differences and restart
+  inconsistencies remain advisory. It covers source locations, valid coupled
+  flows, and unchanged input models. Unsupported or oversized expressions are
+  skipped; absence of a diagnostic is not a validity certificate.
+- `sympy_differentiation.py` checks structural arithmetic conversion, exact
+  rational constants, typed symbols, explicit clock selection, unsupported
+  domains, and 300 generated derivative comparisons against analytic
+  coefficients using independent Z3 equivalence checks.
+- `cvc5_solver.py` checks CVC5 factory selection, SAT assignments, and UNSAT
+  results through the STLmc solver adapter.
+- `dreal_assignment.py` checks preservation of dReal interval boxes and
+  consistency of their visualization midpoints.
+- `smoke_solvers.py` runs small SMT2 inputs against Yices, Z3, and dReal and
+  compares their standard output with the corresponding `.expected` files.
+  The independent dReal `smt2/dreal/interior-peak.smt2` smoke case checks an
+  interior-peak violation under a universal constraint, expecting `unsat` with
+  precision `0.000001` and ODE step `0.01` supplied by its `.args` file.
+- `solver_capabilities.py` verifies solver-specific arithmetic validation and
+  dReal inverse-trigonometric translations. It also checks 300 generated
+  Boolean propagation equivalences, branch-local assignment isolation, and
+  preservation of flow atoms and original dReal variable declarations.
+  Z3/Yices/CVC5 final solver jobs are checked for SAT/UNSAT and retained
+  Boolean/numeric assignments.
+  Only dReal final verification jobs propagate unconditional Boolean
+  assignments before translation; Z3/Yices/CVC5 retain their original inputs.
+  This does not change scenario/core solver assertions or rewrite arithmetic,
+  ODE, or quantified-flow bodies.
+- `ode_translation.py` checks exact polynomial ODE solutions independently
+  with SymPy, including coupled acceleration, endpoint terms, indexed names,
+  and rejection of unsupported cycles or elapsed-time collisions.
+- `ode_capabilities.py` checks that algebraic backends accept supported exact
+  ODE translations and reject unsupported evolving-state systems before
+  solving; native dReal does not use this polynomial lowering.
+- `invariant_names.py` checks distinct module/atom/bound namespaces, including
+  multi-digit indices, and that later bounds cannot disable earlier invariant
+  constraints in Z3/Yices queries.
+- `numeric_mode_matching.py` checks that numeric mode identifiers retain
+  their declared types and mode indices in proposition matching and interval
+  refinements, without phantom continuous-state endpoint variables.
+- `visualize_numeric.py` checks safe numeric parsing and sampled robustness,
+  including Real/Int mode arithmetic, equality, and expressions mixing
+  discrete modes with continuous state variables.
+- `incremental_core_backends.py` checks the common Z3/Yices/CVC5 incremental
+  solver contract: exact model values, tracked core replay, nested scopes,
+  independent forks, private guards, and cancellation and unknown results.
+  It also checks independent internal backend selection and clear errors for
+  unavailable backends. Optional native backends are skipped when unavailable.
+- `robustness_operations.py` checks STL weakening, strengthening, negation,
+  and implication polarity transformations.
+- `temporal_reduction.py` checks the fully-stable temporal encoding, including
+  shared one-step/two-step components, partition obligations, strict interval
+  endpoints, bounded Until/Release recurrence semantics, and deterministic
+  solver input order across processes.
+- `time_horizon.py` checks common segment-duration bounds, backend-independent
+  one-step/two-step behavior, reachability, and preservation of duration limits
+  in final refinements after scenario generalization.
+- `formula_formatting.py` checks display-only Boolean flattening without
+  changing encoding trees, hashes, or structural identifiers.
+- `auto_solver.py` checks availability-aware automatic selection, isolated
+  runtime probes, selected-goal filtering, and candidate configuration overrides.
+- `dreal_runtime.py` checks bounded native capability probes and rejection of
+  builds that ignore universal conditions on zero-derivative variables.
+- `scenario_minimization.py` checks that Boolean and arithmetic scenario
+  literals retain their true/false polarity, concrete scenarios preserve
+  arithmetic clauses, and repeated core minimization never selects a larger
+  core.
+- `scenario_core_integration.py` replays extracted cores against the full
+  negated encoding and compares one-step/two-step results across path,
+  preprocessing, and batching options. It checks that refinement and blocking
+  retain the conditions needed for core validity, and that proposition
+  matching preserves both truth polarities.
+- `cli_help.py` checks that the CLI schema, `default.cfg`, and generated help
+  remain synchronized and that importing the visualization CLI does not load
+  Bokeh or the full visualizer. Cancellation tests cover signals during native
+  argument conversion and partially initialized Z3 objects without unraisable
+  destructor exceptions. Documentation tests run the README quick-start model
+  and check public links and test entry points.
+- `install_solvers.py` checks solver selection and status behavior, platform
+  installation commands, dReal installation permissions and locations, and
+  executable discovery precedence without accessing the network.
+- `installer_components.py` checks Yices source-build activation and
+  format-specific visualization dependencies with mocked downloads and OS
+  commands. Bokeh is an optional HTML dependency; PDF uses optional Matplotlib.
+  Neither renderer is needed for text output. Installer actions require an
+  explicit `install` or `check` action and component selectors.
+- `solver_runtime.py` checks solver-free help, missing-backend installation
+  hints, managed Yices library discovery, and native thread-safety/MCSAT guards.
+  Capability-policy tests do not execute unsafe native calls under mocked
+  thread-safety flags.
+- `process_cleanup.py` verifies that parallel solver workers share one bounded
+  cleanup deadline and are forcefully reaped when graceful termination stalls.
+  It also checks that completed batches update scenario and job progress in
+  their respective units, including batches containing multiple scenarios.
+  Sequential solver waits poll cancellation requests and reap their workers;
+  a real CLI SIGTERM test checks exit 130 without an orphan process.
+- `reachability.py` checks zero-jump reachability, unreachable results,
+  threshold relaxation, symbolic/explicit path strategies with one-step and
+  two-step solving, CVC5/Z3/Yices/dReal agreement, temporal-target validation, and
+  witness generation.
+- `compare_solvers.py` reruns every Yices benchmark case with CVC5 and Z3, then
+  checks that all three solvers produce the same status and finishing bound. It reuses the
+  Yices logs from the preceding benchmark run instead of running Yices twice.
+- `run_artifact_benchmarks.py` runs the model cases under `benchmarks/` and
+  compares each result and finishing bound with the annotation in its model.
+  The [bouncing-ball benchmark](benchmarks/bouncing-ball-ode/README.md) uses
+  this same model/configuration-to-result/bound comparison. All six goals have
+  registered expectations and are included in the quick and fast selections.
+  Shorter one-second windows keep `f1`, `f2`, `f4`, and `f5` checks fast;
+  `f3` and `rebound` retain three-second windows containing the first bounce.
+  Each log has a JSON manifest containing the git commit, input hashes,
+  command, timeout, and result, so solver comparisons reject stale logs.
+  The `tank-ode/tank-f2` case covers bound-zero STL checking of a jump-free
+  ODE model, ensuring that its initial continuous segment is not skipped.
+  Separate fixtures cover the [bounded tank ODE](benchmarks/tank-bounded-ode/README.md),
+  [triangular-wave ODE](benchmarks/triangular-wave-ode/README.md), and
+  [bouncing-ball polynomial model](benchmarks/bouncing-ball-poly/README.md).
+  Their original dynamics and goals are retained; goal-specific finite windows
+  and bounds define the fast regression scope. These fixtures use the same
+  result/bound comparison and keep the independent native solver smoke separate.
 
 ## Dependency updates
 
-Solver packages are pinned in `pyproject.toml`. Update one pin at a time and
+Base Python dependencies are pinned in `pyproject.toml`. Managed solver and
+renderer versions are defined in `src/stlmc/cli/dependency_policy.py`, with
+Python transitive pins in `src/stlmc/cli/dependency-constraints.txt`.
+Update one pin at a time and
 run `make test-unit`, the selected release checks, and relevant benchmark
 comparisons. Solver APIs, model values, performance, and witness selection can
 change between releases. Investigate full-suite failures and record limits

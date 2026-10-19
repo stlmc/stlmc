@@ -39,55 +39,47 @@ libraries. Python packages install into the current interpreter's environment.
 Installing missing native dependencies or build tools separately may require
 administrator privileges.
 
-Use `stlmc-installer` to install solver and visualization dependencies.
-Package extras are not provided; the default package includes no solver
-bindings or optional HTML/PDF renderers.
+Package extras are not provided; use `stlmc-installer` for optional components.
 
-## Removing components
+## Visualization
 
-Use `--dry-run` to inspect the removal plan first:
+The visualization installer targets CPython 3.11 through 3.14 with NumPy
+2.3.5, SciPy 1.16.3, Bokeh 3.8.2, and Matplotlib 3.10.8. Visualization
+`check` and `install` on other Python versions report an unsupported-profile
+error (exit status 1).
+
+Managed pip installs also apply the packaged
+`stlmc/cli/dependency-constraints.txt` to pin Python transitive dependencies
+for Linux/macOS. Constraints do not install unselected components and are
+not a lock for system libraries, native build tools, or externally supplied
+solver binaries. Existing environments are not globally rewritten.
+
+Writing model-checker artifacts and rendering text do not require Bokeh.
+HTML rendering requires optional Bokeh; PDF rendering uses optional Matplotlib
+with a headless backend; it does not require Bokeh or an external plotting
+executable. Saved artifacts can be
+rendered without solver bindings. Select the format explicitly when checking
+or installing its prerequisites:
 
 ```sh
-stlmc-installer uninstall --solver yices --visualize html pdf --dry-run
+stlmc-installer install --visualize html pdf
+stlmc-installer check --visualize html pdf
+stlmc-installer check --visualize text
 ```
 
-Then remove the selected components:
+Text and PDF checks require NumPy and SciPy but not Bokeh. Renderer
+installation uses pip in the current Python environment and does not invoke
+an OS package manager.
 
 ```sh
-stlmc-installer uninstall --solver yices --visualize html pdf
+stlmc-vis result.counterexample -cfg result.cfg -output text
+stlmc-vis result.counterexample -cfg result.cfg -output pdf
 ```
 
-`--solver` accepts `z3`, `cvc5`, `yices`, and `dreal`; `--visualize` accepts
-`html`, `pdf`, and `text`. `uninstall --all --dry-run` previews removal of
-all managed components; `--all` cannot be combined with individual selectors.
-A selector or `--all` is required: removal never defaults to all components.
-Removal does not uninstall STLmc itself, and `--dry-run` changes no files or
-Python packages.
-
-Only explicitly selected top-level Python packages in the active virtual
-environment are uninstalled: `z3-solver`, `cvc5`, `yices`, `bokeh` for HTML,
-and `matplotlib` for PDF. Text output has no optional package to uninstall.
-Packages outside that virtual environment are preserved.
-
-Native removal requires an installer ownership receipt and removes only
-recorded files whose hashes still match. Modified or additional user files
-are retained; only empty managed directories are pruned. Installations made
-before ownership receipts were introduced, and custom source-build prefixes,
-are kept for manual cleanup. Selecting Yices also removes its managed
-activation, even when its native files must be retained. Apt/Homebrew packages,
-externally supplied solver libraries, and counterexample or visualization
-output files are not removed. NumPy and SciPy remain installed because they
-are base STLmc dependencies, not optional visualization components.
-The installer reports retained native paths for manual cleanup. It does not
-change `STLMC_YICES_LIBRARY` or delete the installation explicitly selected
-by that environment variable.
-
-Stop jobs using the selected components before removing them. Python packages
-may also be used by other applications in the same virtual environment, and
-managed native installations are shared by that user across virtual
-environments. The installer does not stop running processes or unload their
-Python modules or native libraries; restart affected STLmc or UI processes
-after changing their installed components.
+Result files use versioned, gzip-compressed JSON and retain the
+`.counterexample` and `.witness` extensions. Legacy pickle files are outdated
+and unsupported. Rerun model checking with the current STLmc version to
+regenerate them; no conversion is provided.
 
 ## Platforms
 
@@ -101,22 +93,19 @@ libraries, or automatically build missing native dependencies.
 On Linux x86-64 with glibc 2.29 or newer, the installer also obtains CUDD
 3.0.0 from a SHA256-pinned [openSUSE Leap 15.6 binary RPM](https://download.opensuse.org/distribution/leap/15.6/repo/oss/x86_64/libcudd-3_0_0-0-3.0.0-bp156.4.4.x86_64.rpm). This dependency is an
 openSUSE package, not an SRI-CSL Yices release artifact. Its shared library
-is extracted into the managed user directory and loaded before Yices;
+is extracted into the managed user directory and loaded before Yices to
+satisfy its `libcudd-3.0.0.so.0` dependency;
 the RPM is not installed into the operating system. This route does not
 compile CUDD, run package installation scripts, require sudo, or change
 system libraries. The package's license is retained beside the managed library.
 Other Linux architectures and older or non-glibc
 systems are not covered by this managed dependency route.
 
-An archive matching the CPU is not a guarantee that it can run on the host.
-The macOS ARM64 archive declares macOS 15.0 as its minimum OS; the Intel
-archive declares macOS 12.0. The archives still depend on external shared
-libraries, including CUDD: the Linux archive requires
-`libcudd-3.0.0.so.0`, and the macOS archives reference
-`/usr/local/lib/libcudd-3.0.0.0.dylib`. The `static-gmp` archive name does not
-mean that every dependency is static. Unsupported platforms or failed native loading
-produce an error with alternatives; source compilation remains an explicit
-`--build` option after installing its prerequisites.
+The macOS archives require additional native dependencies; see
+[Yices on macOS](#yices-on-macos) for minimum OS versions and CUDD requirements.
+Unsupported platforms or failed native loading produce an error with alternatives;
+source compilation remains an explicit `--build` option after installing its
+prerequisites.
 
 `install --solver dreal` downloads the official dReal **3** release
 3.16.06.02 on Linux x86-64 and supported macOS systems. macOS uses the Intel
@@ -125,10 +114,7 @@ archive hash, exact version, and a basic algebraic SAT query. These checks
 establish installation, not ODE correctness: this release has known bugs,
 including omitted invariants involving zero-derivative parameters.
 `check --solver dreal` reports this official release's known invariant
-limitation. Verification allows execution without a runtime warning. This exception
-does not suppress unrelated executable errors or failed capability checks.
-A successful install or check does not certify ODE correctness; results may
-be affected by these known bugs.
+limitation. A successful install or check does not certify ODE correctness.
 Reinstalling the official release does not fix those bugs. An already
 available compatible build is retained; an independently supplied dReal 3
 build can be selected explicitly as described below. dReal 4 is not installed
@@ -148,23 +134,11 @@ starting with macOS 28, only a limited exception for certain older games remains
 See also [Apple's transition notice](https://developer.apple.com/news/?id=w5ngl9k2).
 Rosetta is therefore not a long-term compatibility solution for this solver.
 
-Native arm64 builds have not been validated for this package. The
-[dReal 3 build configuration](https://github.com/dreal/dreal3/blob/v3.16.06.02/src/CMakeLists.txt#L32)
-unconditionally enables x86 SSE compiler flags and uses interval-arithmetic
-dependencies. Native support requires porting and interval-rounding regression
-checks, not merely a CMake architecture option. dReal 4 is not a drop-in ODE
-replacement: the [official download page](https://dreal.github.io/download/)
-states that dReach support is available only in dReal 3.
-
-The legacy CAPD dependency also needs changes: its
-[architecture detection](https://github.com/dreal-deps/capdDynSys-4.0/blob/edc1d8c8edf68af4cac4911f448738bbb6ac9bd3/capdAux/include/capd/settings/archSetting.h#L68)
-classifies Apple targets as PowerPC, selecting PowerPC rounding instructions
-instead of an arm64 implementation. Removing the SSE flags alone is insufficient.
-
-Current [CAPD ARM64 rounding code](https://github.com/CAPDGroup/CAPD/blob/37057e5899bccaa6cd5701057b7e6ea5e232ef8b/capdAlg/src/capd/rounding/DoubleRounding.cpp#L149)
-provides a potential porting path. Updating CAPD or backporting its architecture
-and rounding support still requires dReal integration tests and numerical
-validation; neither is a validated native STLmc solver installation yet.
+Native ARM64 dReal 3 builds are not supported by the installer. See
+[dReal ARM64 porting](architecture.md#dreal-arm64-porting) for development
+requirements. dReal 4 is not a drop-in ODE replacement: the
+[official download page](https://dreal.github.io/download/) states that dReach
+support is available only in dReal 3.
 
 For ODE checking without a working Mac executable, run STLmc and its solver
 together on Linux x86-64, then render the saved artifacts on the Mac. An amd64
@@ -173,7 +147,8 @@ it is not a validated long-term workaround here.
 
 ## Yices on macOS
 
-The official 2.7.0 archives are not fully self-contained: both macOS shared
+The official 2.7.0 ARM64 archive requires macOS 15.0 or newer; the Intel
+archive requires macOS 12.0 or newer. They are not fully self-contained: both shared
 libraries reference `/usr/local/lib/libcudd-3.0.0.0.dylib`. The same missing
 dependency is reported for the ARM command-line executable in
 [upstream issue #641](https://github.com/SRI-CSL/yices2/issues/641).
@@ -343,49 +318,51 @@ separate environment issue: record the OS/CPU, Python version, and full error,
 and check that the installed wheels match that environment. Reinstalling a
 solver does not repair an incompatible SciPy binary.
 
-## Visualization
+## Removing components
 
-The visualization installer targets CPython 3.11 through 3.14 with NumPy
-2.3.5, SciPy 1.16.3, Bokeh 3.8.2, and Matplotlib 3.10.8. Visualization
-`check` and `install` on other Python versions report an unsupported-profile
-error (exit status 1).
-
-Managed pip installs also apply the packaged
-`stlmc/cli/dependency-constraints.txt` to pin Python transitive dependencies
-for Linux/macOS. Constraints do not install unselected components and are
-not a lock for system libraries, native build tools, or externally supplied
-solver binaries. Existing environments are not globally rewritten.
-
-Writing model-checker artifacts and rendering text do not require Bokeh.
-HTML rendering requires optional Bokeh, installed by
-`stlmc-installer install --visualize html`. PDF rendering uses optional Matplotlib
-with a headless backend; it does not require Bokeh or an external plotting
-executable. Saved artifacts can be
-rendered without solver bindings. Select the format explicitly when checking
-or installing its prerequisites:
+Use `--dry-run` to inspect the removal plan first:
 
 ```sh
-stlmc-installer check --visualize html
-stlmc-installer install --visualize html
-stlmc-installer check --visualize text
-stlmc-installer check --visualize pdf
-stlmc-installer install --visualize pdf
+stlmc-installer uninstall --solver yices --visualize html pdf --dry-run
 ```
 
-The HTML check requires Bokeh, whereas
-the PDF check requires Matplotlib. Text and PDF checks require NumPy and SciPy
-but not Bokeh. Renderer installation uses pip in the current Python environment
-and does not invoke an OS package manager.
+Then remove the selected components:
 
 ```sh
-stlmc-vis result.counterexample -cfg result.cfg -output text
-stlmc-vis result.counterexample -cfg result.cfg -output pdf
+stlmc-installer uninstall --solver yices --visualize html pdf
 ```
 
-Result files use versioned, gzip-compressed JSON and retain the
-`.counterexample` and `.witness` extensions. Legacy pickle files are outdated
-and unsupported. Rerun model checking with the current STLmc version to
-regenerate them; no conversion is provided.
+`--solver` accepts `z3`, `cvc5`, `yices`, and `dreal`; `--visualize` accepts
+`html`, `pdf`, and `text`. `uninstall --all --dry-run` previews removal of
+all managed components; `--all` cannot be combined with individual selectors.
+A selector or `--all` is required: removal never defaults to all components.
+Removal does not uninstall STLmc itself, and `--dry-run` changes no files or
+Python packages.
+
+Only explicitly selected top-level Python packages in the active virtual
+environment are uninstalled: `z3-solver`, `cvc5`, `yices`, `bokeh` for HTML,
+and `matplotlib` for PDF. Text output has no optional package to uninstall.
+Packages outside that virtual environment are preserved.
+
+Native removal requires an installer ownership receipt and removes only
+recorded files whose hashes still match. Modified or additional user files
+are retained; only empty managed directories are pruned. Installations made
+before ownership receipts were introduced, and custom source-build prefixes,
+are kept for manual cleanup. Selecting Yices also removes its managed
+activation, even when its native files must be retained. Apt/Homebrew packages,
+externally supplied solver libraries, and counterexample or visualization
+output files are not removed. NumPy and SciPy remain installed because they
+are base STLmc dependencies, not optional visualization components.
+The installer reports retained native paths for manual cleanup. It does not
+change `STLMC_YICES_LIBRARY` or delete the installation explicitly selected
+by that environment variable.
+
+Stop jobs using the selected components before removing them. Python packages
+may also be used by other applications in the same virtual environment, and
+managed native installations are shared by that user across virtual
+environments. The installer does not stop running processes or unload their
+Python modules or native libraries; restart affected STLmc or UI processes
+after changing their installed components.
 
 ## Offline and reproducible runs
 

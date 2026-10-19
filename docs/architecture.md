@@ -72,3 +72,28 @@ The model, configuration, and visualization languages use Lark grammars under
 `src/stlmc/parser/grammars/`. There is no generated parser source or Java
 build step. Install the checkout in editable mode when developing parsers,
 and run `make test-parser` and `make test-unit` after changes.
+
+## Native solver development
+
+### dReal ARM64 porting
+
+Native arm64 builds have not been validated for this package. The
+[dReal 3 build configuration](https://github.com/dreal/dreal3/blob/v3.16.06.02/src/CMakeLists.txt#L32)
+unconditionally enables x86 SSE compiler flags and uses interval-arithmetic
+dependencies. Native support requires porting and interval-rounding regression
+checks, not merely a CMake architecture option. dReal 4 is not a drop-in ODE
+replacement: the [official download page](https://dreal.github.io/download/)
+states that dReach support is available only in dReal 3.
+
+The legacy CAPD dependency also needs changes: its
+[architecture detection](https://github.com/dreal-deps/capdDynSys-4.0/blob/edc1d8c8edf68af4cac4911f448738bbb6ac9bd3/capdAux/include/capd/settings/archSetting.h#L68)
+classifies Apple targets as PowerPC, selecting PowerPC rounding instructions
+instead of an arm64 implementation. Removing the SSE flags alone is insufficient.
+
+Current [CAPD ARM64 rounding code](https://github.com/CAPDGroup/CAPD/blob/37057e5899bccaa6cd5701057b7e6ea5e232ef8b/capdAlg/src/capd/rounding/DoubleRounding.cpp#L149)
+provides a potential porting path. Updating CAPD or backporting its architecture
+and rounding support still requires dReal integration tests and numerical
+validation; neither is a validated native STLmc solver installation yet.
+
+The supported installation route and user alternatives are described in
+[dReal on Apple Silicon](installation.md#dreal-on-apple-silicon).
