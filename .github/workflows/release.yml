@@ -3,6 +3,11 @@ permissions:
   contents: read
 on:
   workflow_dispatch:
+    inputs:
+      diagnose_timeouts:
+        description: 'Run isolated benchmark timing diagnostics only (no publishing)'
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -43,6 +48,7 @@ jobs:
 
   build:
     name: Build and test wheel 📦
+    if: github.event_name != 'workflow_dispatch' || !inputs.diagnose_timeouts
     needs: validate
     strategy:
       # Run every environment so a failure report is available for each one.
@@ -163,6 +169,69 @@ jobs:
       with:
         name: python-package-distributions-${{ matrix.os }}-${{ matrix.python-version }}
         path: dist/
+
+  diagnose-timeouts:
+    name: Isolated benchmark diagnostics
+    if: github.event_name == 'workflow_dispatch' && inputs.diagnose_timeouts
+    needs: validate
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          python-version: '3.12'
+          architecture: x64
+        - os: macos-15
+          python-version: '3.11'
+          architecture: arm64
+        - os: macos-15
+          python-version: '3.12'
+          architecture: arm64
+        - os: macos-15
+          python-version: '3.13'
+          architecture: arm64
+        - os: macos-15
+          python-version: '3.14'
+          architecture: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.architecture }}
+    - name: Create an isolated environment and build the wheel
+      run: |
+        python3 -m venv .tmp/ci-venv
+        .tmp/ci-venv/bin/python -m pip install build
+        .tmp/ci-venv/bin/python -m build --wheel
+        .tmp/ci-venv/bin/python -m pip install dist/*.whl
+        echo "$PWD/.tmp/ci-venv/bin" >> "$GITHUB_PATH"
+    - name: Ensure Rosetta is available
+      if: matrix.os == 'macos-15'
+      run: |
+        if ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+          sudo softwareupdate --install-rosetta --agree-to-license
+        fi
+    - name: Install the required solvers
+      run: |
+        stlmc-installer install --solver z3 dreal
+        stlmc-installer check --solver z3 dreal
+        python3 -c "from stlmc.solver.availability import find_dreal; print('STLMC_DREAL=' + find_dreal())" >> "$GITHUB_ENV"
+    - name: Diagnose the unchanged cases one at a time
+      env:
+        STLMC_DISABLE_UPDATE_CHECK: '1'
+      run: python3 tools/diagnose_ci_benchmarks.py
+    - name: Preserve diagnostics even when a case times out
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: timeout-diagnostics-${{ matrix.os }}-${{ matrix.python-version }}
+        path: .tmp/ci-timeout-diagnostics/
+        include-hidden-files: true
+        if-no-files-found: warn
+        retention-days: 7
 
   publish-to-pypi:
     name: >-
