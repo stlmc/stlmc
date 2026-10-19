@@ -36,7 +36,7 @@ class ReleaseNotesTest(unittest.TestCase):
 
     def test_current_notes_use_bullets_without_category_subsections(self):
         directory = Path(__file__).resolve().parents[1] / "docs/releases"
-        for stable, count in (("1.0.0", 3), ("1.0.1", 4)):
+        for stable, count in (("1.0.0", 3), ("1.0.1", 4), ("1.0.2", 1)):
             for development in range(1, count + 1):
                 with self.subTest(stable=stable, development=development):
                     notes = TOOL.extract_notes("v{}.dev{}".format(stable, development), directory)

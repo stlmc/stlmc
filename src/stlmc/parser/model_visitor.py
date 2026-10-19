@@ -355,12 +355,37 @@ class _ModelTransformer(Transformer):
 
     def direct_condition(self, children):
         left, operator, right = children
-        left, right = self._resolve(left), self._resolve(right)
+        operator = self._text(operator)
+        left, right = (self._goal_comparison_value(value) for value in (left, right))
+        left_boolean = isinstance(left, (Bool, BoolVal))
+        right_boolean = isinstance(right, (Bool, BoolVal))
+        if left_boolean or right_boolean:
+            if not (left_boolean and right_boolean):
+                raise NotSupportedError("goal comparisons cannot mix Boolean and numeric values")
+            if operator not in {"=", "!="}:
+                raise NotSupportedError("Boolean goal comparisons support only '=' and '!='")
+            # Keep aliases in formula position: an alias may expand to an
+            # entire condition, not an arithmetic operand of Eq/Neq.
+            if isinstance(left, BoolVal):
+                left, right = right, left
+            if isinstance(right, BoolVal):
+                positive = (right.value == "True") == (operator == "=")
+                if isinstance(left, BoolVal):
+                    return BoolVal(str((left.value == "True") == positive))
+                return left if positive else Not(left)
+            if operator == "=":
+                return Or([And([left, right]), And([Not(left), Not(right)])])
+            return Or([And([left, Not(right)]), And([Not(left), right])])
         operation = {"<=": Leq, ">=": Geq, "<": Lt, ">": Gt,
                      "=": Eq, "!=": Neq}
         proposition = Bool("newPropDecl_{}".format(len(self.proposition_dict)))
-        self.proposition_dict[proposition] = operation[self._text(operator)](left, right)
+        self.proposition_dict[proposition] = operation[operator](left, right)
         return proposition
+
+    def _goal_comparison_value(self, value):
+        if isinstance(value, _NameReference) and Bool(value.name) in self.proposition_dict:
+            return Bool(value.name)
+        return self._resolve(value)
 
     def not_formula(self, children):
         return Not(children[-1])

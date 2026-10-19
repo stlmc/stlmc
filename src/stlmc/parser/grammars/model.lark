@@ -90,7 +90,7 @@ interval: "=" NUMBER -> exact_interval
               | formula_atom
 ?formula_atom: TRUE -> true_formula
              | FALSE -> false_formula
-             | expression COMPARE_OP expression -> direct_condition
+             | condition_value COMPARE_OP condition_value -> direct_condition
              | expression -> expression_formula
              | "(" formula ")"
 
