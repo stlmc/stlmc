@@ -108,7 +108,10 @@ class UiBridgeSecurityTest(unittest.TestCase):
             self.skipTest('Optional UI test dependencies are unavailable: ' + str(error))
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        for name, value in [('RUNS', Path(temporary.name) / 'runs'), ('JOBS', {}),
+        # Production canonicalizes RUNS. macOS temporary paths may begin with
+        # /var, which is a symlink to /private/var; keep that system alias out
+        # of the no-follow path fixture while testing actual malicious links.
+        for name, value in [('RUNS', Path(temporary.name).resolve() / 'runs'), ('JOBS', {}),
                             ('health', lambda: {'stlmc': True})]:
             patch = mock.patch.object(self.bridge.local, name, value)
             patch.start(); self.addCleanup(patch.stop)
@@ -122,6 +125,14 @@ class UiBridgeSecurityTest(unittest.TestCase):
         for path in ['/api/bridge', '/api/health', '/api/runs', '/api/documents']:
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path, headers={'Authorization': 'Bearer wrong'}).status_code, 401)
+
+    def test_only_guarded_application_factory_is_exposed(self):
+        self.assertFalse(hasattr(self.bridge.local, 'app'))
+        self.assertFalse(hasattr(self.bridge.local.documents, 'router'))
+        self.assertFalse(hasattr(self.bridge, 'main'))
+        self.assertEqual(self.client.delete('/api/runs').status_code, 405)
+        self.assertEqual(self.client.get('/api/bridge',
+            headers={'Authorization': 'Bearer invalid'}).status_code, 401)
 
     def test_origin_host_and_url_tokens_rejected(self):
         for origin in ['null', 'https://evil.invalid', self.ORIGIN + '.evil.invalid']:
@@ -169,8 +180,33 @@ class UiBridgeSecurityTest(unittest.TestCase):
         folder = root / ('b' * 32); folder.mkdir()
         (folder / 'job.json').write_text(json.dumps({'id': folder.name, 'started': 1, 'state': 'completed'}))
         (folder / 'secret.html').symlink_to(Path(__file__))
-        self.assertNotIn('secret.html', self.client.get('/api/runs/' + folder.name).json()['files'])
+        response = self.client.get('/api/runs/' + folder.name)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn('secret.html', response.json()['files'])
         self.assertEqual(self.client.get('/api/runs/' + folder.name + '/files/secret.html').status_code, 404)
+
+    def test_ancestor_symlink_is_rejected_even_when_leaf_directory_is_regular(self):
+        from fastapi.testclient import TestClient
+        root = self.bridge.local.RUNS.parent
+        actual = root / 'real-parent'; actual.mkdir()
+        alias = root / 'linked-parent'; alias.symlink_to(actual, target_is_directory=True)
+        run_id = 'c' * 32
+        folder = actual / 'runs' / run_id; folder.mkdir(parents=True)
+        (folder / 'job.json').write_text(json.dumps({'id': run_id, 'started': 1, 'state': 'completed'}))
+        (folder / 'secret.html').write_text('private ancestor content')
+        with mock.patch.object(self.bridge.local, 'RUNS', alias / 'runs'):
+            client = TestClient(self.bridge.create_app(token=self.TOKEN, allow_origins=[self.ORIGIN]),
+                base_url='http://127.0.0.1:8765',
+                headers={'Origin': self.ORIGIN, 'Authorization': 'Bearer ' + self.TOKEN})
+            try:
+                for path in ['/api/runs', '/api/runs/' + run_id,
+                             '/api/runs/' + run_id + '/files/secret.html']:
+                    with self.subTest(path=path):
+                        response = client.get(path)
+                        self.assertEqual(response.status_code, 404)
+                        self.assertNotIn('private ancestor content', response.text)
+            finally:
+                client.close()
 
 
 if __name__ == '__main__':

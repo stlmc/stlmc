@@ -6,13 +6,12 @@ import threading
 from pathlib import Path
 from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from .paths import data_dir
 
 DIRECTORY = Path(os.environ.get('STLMC_WEB_MODELS', str(data_dir() / 'models'))).resolve()
 LOCK = threading.RLock()
-router = APIRouter(prefix='/api/documents')
 
 
 class SaveRequest(BaseModel):
@@ -45,7 +44,6 @@ def read_document(name):
         return {'name': name, 'text': text, 'revision': hashlib.sha256(data).hexdigest()}
 
 
-@router.get('')
 def list_documents(kind: Literal['model', 'cfg'] = 'model'):
     if not DIRECTORY.is_dir():
         return []
@@ -54,12 +52,10 @@ def list_documents(kind: Literal['model', 'cfg'] = 'model'):
                 if p.is_file() and not p.is_symlink() and not p.name.startswith('.')]
 
 
-@router.get('/{name}')
 def get_document(name: str):
     return read_document(name)
 
 
-@router.put('/{name}')
 def save_document(name: str, request: SaveRequest):
     with LOCK:
         DIRECTORY.mkdir(parents=True, exist_ok=True)

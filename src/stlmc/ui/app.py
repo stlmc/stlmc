@@ -4,7 +4,6 @@ import math
 import os
 import re
 import signal
-import shutil
 import subprocess
 import sys
 import threading
@@ -14,8 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from . import documents
@@ -124,11 +122,6 @@ async def lifespan(app):
         await __import__('asyncio').to_thread(stop_group, process)
 
 
-app = FastAPI(title='STLMC Web UI', lifespan=lifespan)
-app.include_router(documents.router)
-
-
-@app.get('/api/health')
 def health():
     # Match the worker's interpreter and import path, rather than trusting
     # a top-level package name (which may be an old release or namespace).
@@ -143,7 +136,6 @@ def health():
                 'error': 'Could not check the STLMC runtime: {}'.format(error)}
 
 
-@app.get('/api/examples')
 def examples():
     result = []
     for item in documents.list_documents('model'):
@@ -171,39 +163,6 @@ def load_job(run_id):
     return job
 
 
-@app.get('/api/runs')
-def history():
-    RUNS.mkdir(parents=True, exist_ok=True)
-    with LOCK:
-        ids = {p.parent.name for p in RUNS.glob('*/job.json')} | set(JOBS)
-        return sorted([load_job(run_id) for run_id in ids], key=lambda job: job['started'], reverse=True)[:100]
-
-
-@app.delete('/api/runs')
-def clear_history():
-    """Remove all saved inactive runs, including those outside the history limit."""
-    deleted = 0
-    RUNS.mkdir(parents=True, exist_ok=True)
-    with LOCK:
-        ids = {p.parent.name for p in RUNS.glob('*/job.json')} | set(JOBS)
-        for run_id in ids:
-            if not re.fullmatch(r'[0-9a-f]{32}', run_id):
-                continue
-            job = JOBS.get(run_id)
-            if run_id == ACTIVE or (job and job['state'] in ('running', 'stopping')):
-                continue
-            folder = RUNS / run_id
-            # Never follow a run directory symlink to another location.
-            if folder.is_symlink():
-                continue
-            if folder.exists():
-                shutil.rmtree(folder)
-            JOBS.pop(run_id, None)
-            deleted += 1
-    return {'deleted': deleted}
-
-
-@app.post('/api/runs', status_code=201)
 def start(request: RunRequest):
     global ACTIVE
     if os.name != 'posix':
@@ -248,67 +207,6 @@ def start(request: RunRequest):
         return load_job(run_id)
 
 
-@app.get('/api/runs/{run_id}')
-def detail(run_id: str):
-    job = load_job(run_id)
-    folder = RUNS / run_id
-    log = folder / 'run.log'
-    if log.exists():
-        with log.open('rb') as stream:
-            stream.seek(max(0, log.stat().st_size - 200_000))
-            job['log'] = stream.read().decode('utf-8', errors='replace')
-    else:
-        job['log'] = ''
-    results = []
-    if (folder / 'results.jsonl').exists():
-        for line in (folder / 'results.jsonl').read_text(encoding='utf-8').splitlines():
-            try:
-                results.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass  # Last line may still be in flight.
-    job['results'] = results
-    job['visualization_errors'] = []
-    rendering = folder / 'visualization.jsonl'
-    if rendering.exists():
-        for line in rendering.read_text(encoding='utf-8').splitlines():
-            try:
-                outcome = json.loads(line)
-                if outcome.get('error'):
-                    job['visualization_errors'].append(outcome['error'])
-            except json.JSONDecodeError:
-                pass
-    # Historical runs predate structured rendering outcomes.
-    if not rendering.exists():
-        artifacts = {item.get('artifact') for item in results if item.get('artifact')}
-        artifacts.update(path.name for pattern in ('*.counterexample', '*.witness') for path in folder.glob(pattern))
-        recovered = bool(artifacts) and all(
-            Path(name).name == name and (folder / (name + '.html')).is_file()
-            for name in artifacts)
-        if not recovered:
-            job['visualization_errors'] = [line for line in job['log'].splitlines()
-                                           if line.startswith('Visualization unavailable:')]
-    events = []
-    progress = folder / 'progress.jsonl'
-    if progress.exists():
-        for line in progress.read_text(encoding='utf-8').splitlines():
-            try:
-                events.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
-    scenario = None
-    scenario_file = folder / 'scenario.json'
-    if scenario_file.exists():
-        try:
-            scenario = json.loads(scenario_file.read_text(encoding='utf-8'))
-        except json.JSONDecodeError:
-            pass
-    job['progress'] = {'events': events, 'scenario': scenario}
-    job['files'] = sorted(p.name for p in folder.iterdir()
-                          if p.is_file() and p.suffix in ('.model', '.cfg', '.counterexample', '.witness', '.html', '.log'))
-    return job
-
-
-@app.post('/api/runs/{run_id}/stop')
 def stop(run_id: str):
     load_job(run_id)
     with LOCK:
@@ -317,16 +215,3 @@ def stop(run_id: str):
             job['state'] = 'stopping'
             threading.Thread(target=stop_group, args=(job['_process'],), daemon=True).start()
     return load_job(run_id)
-
-
-@app.get('/api/runs/{run_id}/files/{name}')
-def download(run_id: str, name: str, inline: bool = False):
-    job = detail(run_id)
-    if name not in job['files'] or Path(name).name != name:
-        raise HTTPException(404, 'File not found')
-    path = RUNS / run_id / name
-    if inline and path.suffix == '.html':
-        return FileResponse(path, media_type='text/html', headers={
-            'Content-Security-Policy': "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.bokeh.org; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:"
-        })
-    return FileResponse(path, filename=name)

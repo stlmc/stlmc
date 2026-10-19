@@ -1,5 +1,4 @@
 """Opt-in Pages-to-loopback API; never expose this service on a public interface."""
-import argparse
 import hmac
 from importlib import metadata
 import json
@@ -8,7 +7,6 @@ import os
 import stat
 from contextlib import contextmanager
 import re
-import secrets
 import sys
 from urllib.parse import parse_qsl, urlsplit
 
@@ -422,20 +420,3 @@ def show_pairing(token, origins, port, workspace_url=None):
             terminal.write(text)
     except OSError:
         raise RuntimeError('Start the bridge in an interactive terminal to display its session token securely') from None
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(description='Pair a trusted web page with a single-user, loopback-only STLmc bridge.')
-    parser.add_argument('--allow-origin', action='append', required=True, help='Exact trusted HTTPS origin; repeat to pair another origin')
-    parser.add_argument('--port', type=int, default=8765)
-    args = parser.parse_args(argv)
-    try:
-        origins = sorted({canonical_origin(v) for v in args.allow_origin})
-        token = secrets.token_urlsafe(32)
-        app = create_app(token=token, allow_origins=origins, port=args.port)
-        show_pairing(token, origins, args.port)
-    except (ValueError, RuntimeError) as error:
-        parser.error(str(error))
-    import uvicorn
-    uvicorn.run(app, host='127.0.0.1', port=args.port, workers=1,
-                access_log=False, proxy_headers=False, server_header=False, ws='none')
