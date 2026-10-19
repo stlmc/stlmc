@@ -22,7 +22,7 @@ class ManagedYicesDiscoveryTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.library = self.root / 'yices/official-2.7.0/lib/libyices.so.2.7'
         self.library.parent.mkdir(parents=True)
         self.library.touch()

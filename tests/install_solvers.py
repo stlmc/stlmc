@@ -495,7 +495,8 @@ class OfficialReleaseInstallationTest(unittest.TestCase):
                 self.assertEqual(active.read_bytes(),b'previous')
 
     def test_unsupported_platform_fails_before_download(self):
-        with mock.patch.object(install_solvers.platform,'machine',return_value='arm64'), \
+        with mock.patch.object(install_solvers.sys,'platform','linux'), \
+                mock.patch.object(install_solvers.platform,'machine',return_value='arm64'), \
                 mock.patch.object(install_solvers.urllib.request,'urlretrieve') as download:
             with self.assertRaisesRegex(RuntimeError,'x86-64'):
                 install_solvers._install_dreal()

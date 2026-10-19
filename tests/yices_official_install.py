@@ -1,5 +1,6 @@
 """Pinned official Yices installation never modifies operating-system packages."""
 import hashlib
+import gzip
 import io
 import json
 from pathlib import Path
@@ -16,7 +17,7 @@ class OfficialYicesInstallationTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.active = self.root / 'yices' / 'active.json'
         self.active.parent.mkdir()
         self.previous = '{"library": "/previous/user/libyices.so"}'
@@ -154,10 +155,12 @@ class OfficialYicesInstallationTest(unittest.TestCase):
         self.assertFalse((self.root / 'escaped').exists())
 
     def test_tar_expansion_limit_is_checked_before_skipping_declared_huge_file(self):
-        with tarfile.open(self.archive, 'w:gz') as output:
+        # Deliberately truncated hostile archive: only its declared size is
+        # relevant. Python 3.13+ rejects addfile(nonempty, fileobj=None).
+        with gzip.open(self.archive, 'wb') as output:
             entry = tarfile.TarInfo('yices-2.7.0/huge')
             entry.size = 1024 * 1024 * 1024
-            output.addfile(entry)
+            output.write(entry.tobuf())
         destination = self.root / 'extract'
         destination.mkdir()
         with self.assertRaisesRegex(RuntimeError, 'extraction size'):

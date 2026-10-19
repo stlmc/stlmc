@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -145,7 +146,12 @@ class UninstallSafetyTest(unittest.TestCase):
         self.assertEqual(foreign_library.read_bytes(), b'owned native library')
 
     def test_visualization_uninstall_never_selects_base_numerical_dependencies(self):
-        self.execute(solvers=(), visuals=('html', 'pdf'))
+        prefix = self.root / 'venv'
+        installed = SimpleNamespace(locate_file=lambda _: prefix / 'lib/site-packages')
+        with mock.patch.object(uninstall.sys, 'prefix', str(prefix)), \
+                mock.patch.object(uninstall.sys, 'base_prefix', str(self.root / 'base')), \
+                mock.patch.object(uninstall, 'distribution', return_value=installed):
+            self.execute(solvers=(), visuals=('html', 'pdf'))
         removed = [str(value).lower() for call in self.process_mock.call_args_list
                    for value in call.args[0]]
         self.assertIn('bokeh', removed)

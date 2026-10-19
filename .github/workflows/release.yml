@@ -85,12 +85,17 @@ jobs:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ matrix.architecture }}
 
+    - name: Create an isolated test environment
+      run: |
+        python3 -m venv .tmp/ci-venv
+        echo "$PWD/.tmp/ci-venv/bin" >> "$GITHUB_PATH"
+        echo "VIRTUAL_ENV=$PWD/.tmp/ci-venv" >> "$GITHUB_ENV"
+
     - name: Install pypa/build
       run: >-
         python3 -m
         pip install
         build
-        --user
 
     - name: Ensure Rosetta is available
       if: matrix.os == 'macos-15'

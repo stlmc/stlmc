@@ -79,9 +79,19 @@ class YicesExecutionGuardTest(unittest.TestCase):
 
 
 class YicesDiscoveryTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        # macOS intentionally ignores XDG_DATA_HOME. Never inspect a real
+        # managed installation while testing discovery with fake libraries.
+        patch = mock.patch('stlmc.solver.availability.solver_data_dir',
+                           return_value=Path(temporary.name).resolve())
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def test_override_precedes_manifest_and_invalid_selection_does_not_fall_back(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             library = root/'libyices.so'
             library.touch()
             with mock.patch.dict(os.environ, {'STLMC_YICES_LIBRARY': str(library), 'XDG_DATA_HOME': tmp}):
@@ -92,11 +102,14 @@ class YicesDiscoveryTest(unittest.TestCase):
 
     def test_active_manifest_and_system_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
-            library = Path(tmp)/'native.so'
+            library = Path(tmp).resolve()/'native.so'
             library.touch()
-            manifest = Path(tmp)/'stlmc/solvers/yices/active.json'
+            data_dir = Path(tmp).resolve()/'stlmc/solvers'
+            manifest = data_dir/'yices/active.json'
             manifest.parent.mkdir(parents=True)
-            with mock.patch.dict(os.environ, {'XDG_DATA_HOME': tmp}):
+            with mock.patch.dict(os.environ, {'XDG_DATA_HOME': tmp}), \
+                    mock.patch('stlmc.solver.availability.solver_data_dir',
+                               return_value=data_dir):
                 os.environ.pop('STLMC_YICES_LIBRARY', None)
                 self.assertIsNone(selected_yices_library())
                 manifest.write_text(json.dumps({'library': str(library)}))
@@ -107,7 +120,7 @@ class YicesDiscoveryTest(unittest.TestCase):
 
     def test_bootstrap_override_is_limited_to_import(self):
         with tempfile.TemporaryDirectory() as tmp:
-            library = Path(tmp)/'native.so'
+            library = Path(tmp).resolve()/'native.so'
             library.touch()
             binding = SimpleNamespace()
             def import_binding(name):
@@ -129,7 +142,7 @@ class YicesDiscoveryTest(unittest.TestCase):
 
     def test_cannot_replace_a_live_library(self):
         with tempfile.TemporaryDirectory() as tmp:
-            library = Path(tmp)/'new.so'
+            library = Path(tmp).resolve()/'new.so'
             library.touch()
             with mock.patch.dict(os.environ, {'STLMC_YICES_LIBRARY': str(library)}), \
                     mock.patch.dict(sys.modules, {'yices': SimpleNamespace(),
