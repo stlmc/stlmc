@@ -11,16 +11,44 @@ code being tested:
 
 ```sh
 python -m pip install -e .
-stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf
-stlmc-installer check --solver z3 cvc5 yices dreal --visualize html pdf
+stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf --ui
+stlmc-installer check --solver z3 cvc5 yices dreal --visualize html pdf --ui
+python -m pip install httpx==0.28.1
 ```
 
-The full workflow requires cvc5, Z3, the Yices binding/native library, and
-dReal. The base package does not install solver bindings; the commands above
-install and check the full test prerequisites where supported. Set
-`STLMC_DREAL` to the installed dReal executable if it is not in
-the repository's `3rd_party/dReal3/` directory. Unit/integration tests also use
-real SMT libraries; they are not a solver-free installation check.
+The full workflow requires cvc5, Z3, the Yices binding/native library, dReal,
+and optional UI dependencies. HTTPX is a test-only dependency for the UI API
+tests, not an STLmc runtime requirement. UI API tests are skipped when their
+optional test dependencies are unavailable. Unit/integration tests use real
+SMT libraries; they are not a solver-free installation check.
+
+Standalone solver smoke tests additionally require the `z3` and `yices-smt2`
+executables in `PATH`. Python bindings alone do not provide this contract:
+the installer does not add managed native executable directories to `PATH`.
+Use the command-line tools from your solver installation and verify them before
+running smoke tests:
+
+```sh
+command -v z3
+command -v yices-smt2
+z3 --version
+yices-smt2 --version
+```
+
+Add your solver installation's `bin` directory to `PATH` if necessary. Its
+native dependencies must also be discoverable by the operating-system loader;
+the managed Yices Python loader's private CUDD preload does not configure an
+independently launched `yices-smt2`. See [installation](../docs/installation.md)
+for native dependency requirements.
+
+The smoke and benchmark runners use `3rd_party/dReal3/dReal` by default,
+not the CLI's automatic solver discovery. To use the installed managed dReal:
+
+```sh
+export STLMC_DREAL="$(python -c 'from stlmc.solver.availability import find_dreal; print(find_dreal() or "")')"
+```
+
+Check that this points to an executable before running the tests.
 Parallel final-Yices cases require a native library verified as thread-safe;
 see [Yices source builds](../docs/installation.md#yices-source-builds).
 
@@ -61,11 +89,13 @@ alternative.
 Run the release workflow selection: all unit/integration and smoke checks,
 cases marked `@benchmark.quick`, and a CVC5/Z3/Yices comparison sample.
 Quick benchmarks run four at a time with a 200-second timeout per case;
-the comparison sample uses 120 seconds per case. The quick selection excludes
-the polynomial battery fixtures, which are not marked `@benchmark.quick`:
+the comparison sample uses 120 seconds per case. The current quick selection
+contains 23 cases. It excludes the polynomial battery and both bouncing-ball
+fixtures, plus `tank-bounded-ode/f1`; their full/fast cases remain available.
+Selection follows the current model annotations:
 
 ```sh
-make test-quick
+make test-quick SMOKE_ARGS=--allow-known-dreal-bugs
 ```
 
 Override quick benchmark concurrency or output location when needed:
@@ -369,8 +399,10 @@ The unit/integration suites and standalone benchmark tools cover:
   changing encoding trees, hashes, or structural identifiers.
 - `auto_solver.py` checks availability-aware automatic selection, isolated
   runtime probes, selected-goal filtering, and candidate configuration overrides.
-- `dreal_runtime.py` checks bounded native capability probes and rejection of
-  builds that ignore universal conditions on zero-derivative variables.
+- `dreal_runtime.py` checks bounded native capability probes, invalid-runtime
+  rejection, and the narrowly identified official-release exception for
+  ignored universal conditions on zero-derivative variables. The exception is
+  recorded as a known limitation, not evidence of ODE correctness.
 - `scenario_minimization.py` checks that Boolean and arithmetic scenario
   literals retain their true/false polarity, concrete scenarios preserve
   arithmetic clauses, and repeated core minimization never selects a larger
@@ -393,7 +425,10 @@ The unit/integration suites and standalone benchmark tools cover:
   format-specific visualization dependencies with mocked downloads and OS
   commands. Bokeh is an optional HTML dependency; PDF uses optional Matplotlib.
   Neither renderer is needed for text output. Installer actions require an
-  explicit `install` or `check` action and component selectors.
+  explicit action; installation and removal require component selectors.
+  `installer_ui.py` covers optional UI selection, version pins, and conservative
+  removal. `ui_bridge.py` covers authenticated API access, loopback serving,
+  safe artifact access, and the package-local worker.
 - `solver_runtime.py` checks solver-free help, missing-backend installation
   hints, managed Yices library discovery, and native thread-safety/MCSAT guards.
   Capability-policy tests do not execute unsafe native calls under mocked
@@ -415,7 +450,8 @@ The unit/integration suites and standalone benchmark tools cover:
   compares each result and finishing bound with the annotation in its model.
   The [bouncing-ball benchmark](benchmarks/bouncing-ball-ode/README.md) uses
   this same model/configuration-to-result/bound comparison. All six goals have
-  registered expectations and are included in the quick and fast selections.
+  registered expectations and are included in the full and fast selections,
+  but not quick release checks.
   Shorter one-second windows keep `f1`, `f2`, `f4`, and `f5` checks fast;
   `f3` and `rebound` retain three-second windows containing the first bounce.
   Each log has a JSON manifest containing the git commit, input hashes,

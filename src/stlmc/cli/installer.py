@@ -21,7 +21,7 @@ from .dependency_policy import (
     YICES_BINARY_ARCHIVES, YICES_BINARY_RELEASE_URL, YICES_BINARY_MIN_MACOS,
     CUDD_VERSION, CUDD_RPM_URL, CUDD_RPM_SHA256, CUDD_LIBRARY_PATH,
     CUDD_LICENSE_PATH, CUDD_LIBRARY_SHA256,
-    visualization_packages,
+    visualization_packages, UI_PACKAGES,
 )
 from ..solver.availability import solver_data_dir
 from ..exceptions import SolverUnavailableError
@@ -398,25 +398,56 @@ def _probe_visualization(module, spec):
         return False, detail + "; smoke check failed: " + str(error)
 
 
-def _visualize(check=False, output_format="html"):
+def _visualize(check=False, output_format="html", status_cache=None):
     package_specs = visualization_packages(sys.version_info)
     required = ["numpy", "scipy"] + {"html": ["bokeh"], "pdf": ["matplotlib"], "text": [],
                                       "all": ["bokeh", "matplotlib"]}[output_format]
-    before = visualize_status(required)
-    packages = {name: package_specs[name] for name in required}
+    # Share results only within this dispatcher invocation: different formats
+    # use the same numerical packages, but a later CLI call must check afresh.
+    status_cache = {} if status_cache is None else status_cache
+    pending = [name for name in required if name not in status_cache]
+    before = visualize_status(pending) if pending else {}
+    packages = {name: package_specs[name] for name in pending}
+    repaired = False
     if not check:
         for module, package in packages.items():
             if not before[module][0]:
                 solvers._install_python_package(package)
-    status = visualize_status(required)
-    for name in required:
+                repaired = True
+    status = visualize_status(pending) if repaired else before
+    status_cache.update({name: status[name] for name in pending})
+    for name in pending:
         available, detail = status[name]
         print("{}: {} ({})".format(name, "available" if available else "unavailable", detail))
-    return int(any(not status[name][0] for name in required))
+    return int(any(not status_cache[name][0] for name in required))
+
+
+def _ui(check=False):
+    """Install only UI entry dependencies; constraints pin their dependency closure."""
+    failed = False
+    for module, package in UI_PACKAGES.items():
+        available, detail = solvers._python_package_status(module, module, package, "version matches policy")
+        if not check and not available:
+            solvers._install_python_package(package)
+            available, detail = solvers._python_package_status(module, module, package, "version matches policy")
+        print("{}: {} ({})".format(module, "available" if available else "unavailable", detail))
+        failed = failed or not available
+    if not failed:
+        # A fresh interpreter avoids validating modules cached before a pip repair.
+        result = subprocess.run([sys.executable, "-c",
+            "import fastapi,uvicorn,pydantic,starlette,packaging; "
+            "app=fastapi.FastAPI(); uvicorn.Config(app,host='127.0.0.1'); "
+            "print('Local UI dependency smoke check passed')"],
+            capture_output=True, text=True, timeout=30)
+        if result.returncode:
+            print("Local UI dependency smoke check failed: " + result.stderr.strip(), file=sys.stderr)
+            return 1
+        print(result.stdout, end="")
+    return int(failed)
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Install, check, or uninstall STLmc solver and visualization dependencies.")
+    parser = argparse.ArgumentParser(description="Install, check, or uninstall STLmc solver, visualization, and local web UI dependencies.")
     class UniqueSelection(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
             if getattr(namespace, self.dest, None) is not None or len(set(values)) != len(values):
@@ -431,7 +462,8 @@ def build_parser():
         }[action])
         command.add_argument("--solver", nargs="+", choices=["z3", "cvc5", "yices", "dreal"], action=UniqueSelection)
         command.add_argument("--visualize", nargs="+", choices=["html", "pdf", "text"], action=UniqueSelection)
-        command.add_argument("--all", action="count", default=0, help="select all solvers and visualization formats")
+        command.add_argument("--ui", action="count", default=0, help="select the optional local web UI dependencies")
+        command.add_argument("--all", action="count", default=0, help="select all solvers, visualization formats, and local web UI")
         if action == 'uninstall':
             command.add_argument('--dry-run', action='store_true',
                                  help='show the removal plan without changing files or running pip')
@@ -456,19 +488,22 @@ def main(argv=None):
         parser.print_help()
         return 0
     check = args.action == "check"
-    if args.all > 1:
-        parser.error("--all must not be repeated")
-    if args.all and (args.solver or args.visualize):
-        parser.error("--all cannot be combined with --solver or --visualize")
-    if not check and not (args.all or args.solver or args.visualize):
-        parser.error("{} requires --solver, --visualize, or --all".format(args.action))
-    select_all = args.all or (check and not args.solver and not args.visualize)
+    if args.all > 1 or args.ui > 1:
+        parser.error("--all and --ui must not be repeated")
+    if args.all and (args.solver or args.visualize or args.ui):
+        parser.error("--all cannot be combined with --solver, --visualize, or --ui")
+    if not check and not (args.all or args.solver or args.visualize or args.ui):
+        parser.error("{} requires --solver, --visualize, --ui, or --all".format(args.action))
+    select_all = args.all or (check and not args.solver and not args.visualize and not args.ui)
+    selected_ui = bool(select_all or args.ui)
     selected_solvers = ["z3", "cvc5", "yices", "dreal"] if select_all else (args.solver or [])
     selected_visuals = ["html", "pdf", "text"] if select_all else (args.visualize or [])
     if args.action == 'uninstall':
         from .uninstall import plan_uninstall, execute_uninstall
         try:
-            return execute_uninstall(plan_uninstall(selected_solvers, selected_visuals), args.dry_run)
+            plan = (plan_uninstall(selected_solvers, selected_visuals, ui=True) if selected_ui
+                    else plan_uninstall(selected_solvers, selected_visuals))
+            return execute_uninstall(plan, args.dry_run)
         except (OSError, ValueError, RuntimeError) as error:
             print('Uninstall could not be safely planned: ' + str(error), file=sys.stderr)
             return 1
@@ -479,12 +514,12 @@ def main(argv=None):
     prefix, source = getattr(args, "prefix", None), getattr(args, "source", None)
     if jobs is not None and jobs < 1:
         parser.error("--jobs must be positive")
-    if experimental_build and (selected_solvers != ["dreal"] or selected_visuals):
+    if experimental_build and (selected_solvers != ["dreal"] or selected_visuals or selected_ui):
         parser.error("--experimental-build requires selecting only --solver dreal")
     if build and selected_solvers == ["dreal"]:
         parser.error("dReal source builds require explicit --experimental-build; --build is for Yices")
     if any_build or prefix is not None or source is not None or jobs is not None:
-        if len(selected_solvers) != 1 or selected_solvers[0] not in {"yices", "dreal"} or selected_visuals:
+        if len(selected_solvers) != 1 or selected_solvers[0] not in {"yices", "dreal"} or selected_visuals or selected_ui:
             parser.error("source build options require selecting only --solver yices or only --solver dreal")
     if source is not None and selected_solvers == ["dreal"]:
         parser.error("--source is supported only for Yices; dReal builds use pinned sources")
@@ -492,7 +527,7 @@ def main(argv=None):
         parser.error("source build options require --build for Yices or --experimental-build for dReal")
     if (args.thread_safe or args.without_mcsat) and "yices" not in selected_solvers:
         parser.error("Yices capability options require --solver yices (or --all)")
-    if check and args.without_mcsat and (selected_solvers != ["yices"] or selected_visuals):
+    if check and args.without_mcsat and (selected_solvers != ["yices"] or selected_visuals or selected_ui):
         parser.error("--without-mcsat requires selecting only --solver yices")
     if not check and selected_visuals:
         try:
@@ -546,9 +581,17 @@ raise SystemExit(int((sys.argv[1] == '1' and not thread_safe) or (sys.argv[2] ==
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             print(str(error), file=sys.stderr)
             failed = True
+    visual_status = {}
     for output_format in selected_visuals:
         try:
-            failed = bool(_visualize(check=check, output_format=output_format)) or failed
+            failed = bool(_visualize(check=check, output_format=output_format,
+                                     status_cache=visual_status)) or failed
+        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+            print(str(error), file=sys.stderr)
+            failed = True
+    if selected_ui:
+        try:
+            failed = bool(_ui(check=check)) or failed
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             print(str(error), file=sys.stderr)
             failed = True

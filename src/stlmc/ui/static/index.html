@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STLmc Workspace</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<header><h1>STLmc <span>/ workspace</span></h1><p>Edit locally. Verify with your own installed solvers.</p></header>
+<main>
+  <section aria-labelledby="connection-title">
+    <h2 id="connection-title">Connect to your local bridge</h2>
+    <p>This page does not include a solver. Start the Python bridge on your computer, then enter its session token. Your model is sent only to that bridge.</p>
+    <form id="connect-form" class="row">
+      <label>Bridge URL<input id="bridge-url" value="http://127.0.0.1:8765" autocomplete="off" required></label>
+      <label>Session token<input id="token" type="password" autocomplete="off" spellcheck="false" required></label>
+      <button id="connect" type="submit">Connect</button><button id="disconnect" type="button">Disconnect</button>
+    </form>
+    <p id="connection-state" role="status">Disconnected. Tokens are kept in memory only.</p>
+    <p id="error" role="alert"></p>
+  </section>
+  <section aria-labelledby="editor-title">
+    <h2 id="editor-title">Model and configuration</h2>
+    <div class="row"><label>Local bridge document<select id="documents" aria-label="Local bridge document"><option value="">Choose a document</option></select></label>
+      <button id="load-document" type="button" disabled>Load</button>
+      <label>Open model file<input id="open-model" type="file" accept=".model,text/plain"></label>
+      <button id="download-model" type="button">Download model</button>
+      <label>Open configuration<input id="open-config" type="file" accept=".cfg,text/plain"></label>
+      <button id="download-config" type="button">Download configuration</button></div>
+    <div class="editors"><label>Model<textarea id="model" spellcheck="false" placeholder="Paste a complete .model file or load a local example."></textarea></label>
+      <label>Configuration (optional)<textarea id="config" spellcheck="false" placeholder="Optional .cfg contents"></textarea></label></div>
+  </section>
+  <section aria-labelledby="analysis-title">
+    <h2 id="analysis-title">Analysis</h2>
+    <form id="run-form">
+      <div class="settings">
+        <label>Goal label<input id="goal" placeholder="All goals"></label>
+        <label>Final solver<select id="solver" aria-label="Final solver"><option>z3</option><option>cvc5</option><option>yices</option><option>dreal</option></select></label>
+        <label>Bound<input id="bound" type="number" min="0" max="1000" value="5" required></label>
+        <label>Global time bound<input id="time-bound" type="number" min="0.000001" max="1000000" value="20" step="any" required></label>
+        <label>Robustness threshold<input id="threshold" type="number" min="0" max="1000000" value="0.01" step="any" required></label>
+        <label>Wall-clock timeout (seconds)<input id="timeout" type="number" min="1" max="3600" value="120" required></label>
+      </div>
+      <div class="row checks"><label><input id="two-step" type="checkbox">Two-step abstraction/refinement</label><label><input id="explicit" type="checkbox">Explicit paths</label><label><input id="reach" type="checkbox">Reachability target</label></div>
+      <p class="note">Bounds and time limits describe the bounded query, not an unbounded proof. Threshold and dReal precision are distinct. This frontend uses the bridge's existing analysis settings; parallel-worker tuning is not exposed here.</p>
+      <button id="run" type="submit" disabled>Run analysis</button><button id="stop" type="button" disabled>Stop active analysis</button>
+    </form>
+  </section>
+  <section><h2>Runs</h2><div id="history" class="row"></div><p id="run-state" role="status"></p><pre id="progress"></pre><div id="results"></div><div id="artifacts" class="row"></div><div id="plots"></div><details open><summary>Execution log</summary><pre id="log"></pre></details></section>
+</main>
+<footer>Models, saved documents, and results remain on your computer. Disconnect before leaving a shared computer.</footer>
+</body>
+</html>

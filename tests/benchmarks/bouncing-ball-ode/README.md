@@ -2,7 +2,7 @@
 
 This fixture uses the reported ODE (`g=9.81`, restitution `0.75`, initial
 height `10`, initial velocity `1`). The velocity range allows both signs.
-The same `ball.model` contains the report's original STL formulas `f1` through
+The same `ball.model` contains the five STL formulas `f1` through
 `f5` and the additional `rebound` reachability target.
 
 The common `ball.cfg` selects a three-second window, discrete bound `4`,

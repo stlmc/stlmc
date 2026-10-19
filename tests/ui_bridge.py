@@ -1,0 +1,177 @@
+"""Optional UI API security and package-local worker contracts."""
+import importlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'src'))
+
+
+class UiPackageTest(unittest.TestCase):
+    def test_gui_help_is_lazy_and_has_a_distinct_program_name(self):
+        script = '''
+import importlib.abc, sys
+class BlockUI(importlib.abc.MetaPathFinder):
+ def find_spec(self, fullname, path=None, target=None):
+  if fullname.split('.')[0] in {'fastapi','uvicorn','pydantic','nicegui'}:
+   raise RuntimeError('optional UI imported: '+fullname)
+sys.meta_path.insert(0,BlockUI())
+from stlmc.cli.ui import main
+sys.argv=['stlmc-gui','--help']
+raise SystemExit(main())
+'''
+        completed = subprocess.run([sys.executable, '-c', script],
+            env=dict(os.environ, PYTHONPATH=str(ROOT / 'src')), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=15)
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn('--ui-port', completed.stdout)
+        self.assertIn('--allow-origin', completed.stdout)
+        self.assertIn('usage: stlmc-gui', completed.stdout)
+
+    def test_ui_missing_dependencies_provide_installer_command(self):
+        script = '''
+import importlib.abc, sys
+class BlockUI(importlib.abc.MetaPathFinder):
+ def find_spec(self, fullname, path=None, target=None):
+  if fullname.split('.')[0] in {'fastapi','uvicorn','pydantic','nicegui'}:
+   raise ModuleNotFoundError(fullname)
+sys.meta_path.insert(0,BlockUI())
+from stlmc.cli.ui import main
+sys.argv=['stlmc-gui','--no-browser']
+raise SystemExit(main())
+'''
+        completed = subprocess.run([sys.executable, '-c', script],
+            env=dict(os.environ, PYTHONPATH=str(ROOT / 'src')), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=15)
+        self.assertEqual(completed.returncode, 2, completed.stdout)
+        self.assertIn('stlmc-installer install --ui', completed.stdout)
+
+    def test_worker_module_uses_the_current_interpreter_without_ui_dependencies(self):
+        completed = subprocess.run([sys.executable, '-m', 'stlmc.ui.worker', '--check-runtime'],
+            env=dict(os.environ, PYTHONPATH=str(ROOT / 'src')), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result['executable'], sys.executable)
+        self.assertIn('stlmc', result)
+
+    def test_paths_use_user_data_not_package_directory(self):
+        from stlmc.ui.paths import data_dir
+        with mock.patch.dict(os.environ, {'XDG_DATA_HOME': '/user-owned-data'}), \
+                mock.patch('stlmc.ui.paths.sys.platform', 'linux'):
+            self.assertEqual(data_dir(), Path('/user-owned-data/stlmc/ui'))
+
+    def test_examples_seed_without_overwriting_user_edits(self):
+        from stlmc.ui.paths import seed_examples
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_examples(root)
+            model = root / 'therm-tutorial.model'
+            self.assertTrue(model.is_file())
+            model.write_text('user edits')
+            seed_examples(root)
+            self.assertEqual(model.read_text(), 'user edits')
+
+    def test_plain_cli_help_does_not_import_optional_ui(self):
+        script = '''
+import importlib.abc, sys
+class BlockUI(importlib.abc.MetaPathFinder):
+ def find_spec(self, fullname, path=None, target=None):
+  if fullname.split('.')[0] in {'fastapi','uvicorn','pydantic','nicegui'}:
+   raise RuntimeError('optional UI imported: '+fullname)
+sys.meta_path.insert(0,BlockUI())
+from stlmc.cli.mc import main
+sys.argv=['stlmc','-h']
+raise SystemExit(main())
+'''
+        completed = subprocess.run([sys.executable, '-c', script],
+            env=dict(os.environ, PYTHONPATH=str(ROOT / 'src')), text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=15)
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+
+
+class UiBridgeSecurityTest(unittest.TestCase):
+    TOKEN = 'test-only-session-token-' * 3
+    ORIGIN = 'https://stlmc.github.io'
+
+    def setUp(self):
+        try:
+            from fastapi.testclient import TestClient
+            self.bridge = importlib.import_module('stlmc.ui.bridge')
+        except ImportError as error:
+            self.skipTest('Optional UI test dependencies are unavailable: ' + str(error))
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        for name, value in [('RUNS', Path(temporary.name) / 'runs'), ('JOBS', {}),
+                            ('health', lambda: {'stlmc': True})]:
+            patch = mock.patch.object(self.bridge.local, name, value)
+            patch.start(); self.addCleanup(patch.stop)
+        self.client = TestClient(self.bridge.create_app(token=self.TOKEN, allow_origins=[self.ORIGIN]),
+            base_url='http://127.0.0.1:8765',
+            headers={'Origin': self.ORIGIN, 'Authorization': 'Bearer ' + self.TOKEN})
+        self.addCleanup(self.client.close)
+
+    def test_protocol_and_authentication(self):
+        self.assertEqual(self.client.get('/api/bridge').json()['protocol'], 1)
+        for path in ['/api/bridge', '/api/health', '/api/runs', '/api/documents']:
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path, headers={'Authorization': 'Bearer wrong'}).status_code, 401)
+
+    def test_origin_host_and_url_tokens_rejected(self):
+        for origin in ['null', 'https://evil.invalid', self.ORIGIN + '.evil.invalid']:
+            self.assertEqual(self.client.get('/api/bridge', headers={'Origin': origin}).status_code, 403)
+        self.assertEqual(self.client.get('/api/bridge', headers={'Host': 'evil.invalid'}).status_code, 403)
+        self.assertEqual(self.client.get('/api/bridge?token=' + self.TOKEN).status_code, 400)
+        self.client.headers.pop('Origin')
+        self.assertEqual(self.client.get('/api/bridge').status_code, 403)
+
+    def test_preflight_and_request_size_limits(self):
+        response = self.client.options('/api/runs', headers={
+            'Access-Control-Request-Method': 'POST',
+            'Access-Control-Request-Headers': 'authorization,content-type',
+            'Access-Control-Request-Private-Network': 'true'})
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers['access-control-allow-private-network'], 'true')
+        self.assertEqual(self.client.post('/api/runs', content=b'x' * (self.bridge.MAX_BODY + 1)).status_code, 413)
+
+    def test_executable_and_output_overrides_are_disabled(self):
+        for key in ('executable-path', 'SAVE-SMT2', 'smt2-dir'):
+            with self.subTest(key=key):
+                response = self.client.post('/api/runs', json={'model': 'not executed',
+                    'config': 'common { ' + key + '="/tmp/out" }'})
+                self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.client.delete('/api/runs').status_code, 405)
+
+    def test_nonfinite_values_return_json_validation_errors_without_starting_solver(self):
+        for field in ('time_bound', 'threshold'):
+            for value in ('NaN', 'Infinity', '-Infinity'):
+                with self.subTest(field=field, value=value), \
+                        mock.patch.object(self.bridge.local, 'start') as start:
+                    response = self.client.post('/api/runs',
+                        content='{"model":"not executed","' + field + '":' + value + '}',
+                        headers={'Content-Type': 'application/json'})
+                    self.assertEqual(response.status_code, 422)
+                    self.assertTrue(response.json()['detail'])
+                    start.assert_not_called()
+
+    def test_run_and_artifact_symlinks_rejected(self):
+        root = self.bridge.local.RUNS
+        root.mkdir()
+        outside = root.parent / 'outside'; outside.mkdir()
+        (root / ('a' * 32)).symlink_to(outside, target_is_directory=True)
+        self.assertEqual(self.client.get('/api/runs/' + 'a' * 32).status_code, 404)
+        folder = root / ('b' * 32); folder.mkdir()
+        (folder / 'job.json').write_text(json.dumps({'id': folder.name, 'started': 1, 'state': 'completed'}))
+        (folder / 'secret.html').symlink_to(Path(__file__))
+        self.assertNotIn('secret.html', self.client.get('/api/runs/' + folder.name).json()['files'])
+        self.assertEqual(self.client.get('/api/runs/' + folder.name + '/files/secret.html').status_code, 404)
+
+
+if __name__ == '__main__':
+    unittest.main()

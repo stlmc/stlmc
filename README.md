@@ -89,6 +89,21 @@ stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cf
 If your result lists different filenames, use those paths instead. See
 [Visualization](#visualization) below for PDF and text output.
 
+## Browser workspace
+
+On Linux, macOS, or WSL, install the optional UI dependencies and start the
+local workspace:
+
+```sh
+stlmc-installer install --ui
+stlmc-gui
+```
+
+Keep the terminal open and enter its session token in the browser to connect.
+Models and solver runs stay on your computer. HTML plots additionally require
+`stlmc-installer install --visualize html` and an available solver.
+Use `stlmc-gui --help` for ports and trusted website origins.
+
 ## Analysis configuration
 
 An analysis requires a model, a discrete STL bound, and a global time bound.

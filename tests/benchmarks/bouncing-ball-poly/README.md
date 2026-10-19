@@ -1,6 +1,6 @@
 # Bouncing-ball polynomial benchmark
 
-This fixture retains the response model's closed-form dynamics, initial state,
+This fixture uses closed-form dynamics, the initial state,
 and five STL goals. It uses gravity `1`, initial height `10`, initial velocity
 `0`, and restitution `0.75`. It is distinct from the gravity `9.81`, initial
 velocity `1` model in `bouncing-ball-ode`.

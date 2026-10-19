@@ -1,8 +1,8 @@
 # Installation and troubleshooting
 
 Install STLmc in a virtual environment with a current pip. The package
-requires CPython 3.11 through 3.14 and provides `stlmc`, `stlmc-vis`, and
-`stlmc-installer`.
+requires CPython 3.11 through 3.14 and provides `stlmc`, `stlmc-vis`,
+`stlmc-installer`, and `stlmc-gui`.
 The default installation includes NumPy and SciPy but no Bokeh, Matplotlib,
 solver bindings, or native solvers.
 
@@ -32,8 +32,9 @@ and `--visualize` accept multiple names, for example `install --solver z3 cvc5`
 or `check --visualize html pdf text`. Running the installer without an action
 shows help and does not install anything. `stlmc-installer install --all`
 selects all components, including the official dReal binary on supported
-platforms. `stlmc-installer check` checks all solvers
-and visualization formats, including both HTML and PDF, without installing.
+platforms. `stlmc-installer check` checks all solvers, visualization formats,
+and UI dependencies without installing. Use explicit selectors to check only
+the components you need.
 Managed downloads do not invoke an OS package manager or replace system
 libraries. Python packages install into the current interpreter's environment.
 Installing missing native dependencies or build tools separately may require
@@ -80,6 +81,47 @@ Result files use versioned, gzip-compressed JSON and retain the
 `.counterexample` and `.witness` extensions. Legacy pickle files are outdated
 and unsupported. Rerun model checking with the current STLmc version to
 regenerate them; no conversion is provided.
+
+## Browser workspace
+
+The static browser workspace and local bridge are included in STLmc; NiceGUI
+and a separate web-ui checkout are not required. The GUI supports Linux,
+macOS, and WSL, not native Windows. Install the optional server dependencies
+and start the GUI:
+
+```sh
+stlmc-installer install --ui
+stlmc-installer check --ui
+stlmc-gui
+```
+
+Keep the terminal open and enter its session token in the workspace. By
+default the page is served on `http://127.0.0.1:8766` and the authenticated API
+on port 8765. Both bind only to loopback. Use `--no-browser` to avoid opening
+a browser automatically, or `--allow-origin https://stlmc.github.io` to also
+allow the homepage Workspace to connect. Do not share the token or allow an
+untrusted origin. Browser local-network permissions may also be required.
+
+Analysis form values override the loaded configuration for options shown in
+the form. A blank Goal checks all goals, and unchecked Two-step and
+Reachability controls explicitly disable those options. Options not exposed
+in the form, such as dReal precision, remain controlled by the configuration.
+Goals declared as reachability targets in the model retain that meaning.
+
+Solvers and HTML/PDF renderers are installed separately. For example:
+
+```sh
+stlmc-installer install --solver z3 --visualize html
+```
+
+Models and results are stored outside the installed package, under
+`$XDG_DATA_HOME/stlmc/ui/` on Linux (default `~/.local/share/stlmc/ui/`) or
+`~/Library/Application Support/stlmc/ui/` on macOS, in `models/` and `runs/`.
+Generated interactive plots load Bokeh JavaScript from `cdn.bokeh.org`, so
+displaying them may require internet access even with a local workspace.
+`stlmc-installer uninstall --ui` removes the optional
+server packages, not saved models or results. `install --all` includes UI
+dependencies. Use `stlmc-gui --help` for configurable ports.
 
 ## Platforms
 

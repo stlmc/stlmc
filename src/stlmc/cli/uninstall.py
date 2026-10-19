@@ -83,11 +83,15 @@ def _receipt_removals(root, receipt, kind, notes):
         return []
 
 
-def plan_uninstall(solvers, visuals):
+def plan_uninstall(solvers, visuals, ui=False):
     plan = UninstallPlan()
     packages = {'z3': 'z3-solver', 'cvc5': 'cvc5', 'yices': 'yices'}
     requested = [packages[name] for name in solvers if name in packages]
     requested += [name for output, name in (('html', 'bokeh'), ('pdf', 'matplotlib')) if output in visuals]
+    if ui:
+        from .dependency_policy import UI_UNINSTALL_PACKAGES
+        requested += list(UI_UNINSTALL_PACKAGES)
+        plan.notes.append('Retained UI models, run results, and shared dependencies, including packaging.')
     prefix = Path(sys.prefix).resolve()
     for package in requested:
         try:

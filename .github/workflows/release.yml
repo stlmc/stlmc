@@ -140,7 +140,10 @@ jobs:
         echo "DYLD_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"
 
     - name: Install external solvers through STLMC
-      run: stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf
+      run: stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf --ui
+
+    - name: Install optional UI API test client
+      run: python3 -m pip install httpx==0.28.1
 
     - name: Expose managed solver executables to CI subprocesses
       run: python3 tools/setup_ci_solvers.py

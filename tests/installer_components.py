@@ -70,14 +70,16 @@ class ComponentInstallerTest(unittest.TestCase):
                 mock.patch.object(installer, "_visualize", return_value=0) as visual:
             self.assertEqual(installer.main(["install", "--solver", "z3", "cvc5", "--visualize", "html", "pdf"]), 0)
         self.assertEqual(engine.call_args_list, [mock.call(["z3"]), mock.call(["cvc5"])])
-        self.assertEqual(visual.call_args_list, [mock.call(check=False, output_format="html"), mock.call(check=False, output_format="pdf")])
+        self.assertEqual(visual.call_args_list, [mock.call(check=False, output_format="html", status_cache=mock.ANY), mock.call(check=False, output_format="pdf", status_cache=mock.ANY)])
 
     def test_install_all_is_explicit_and_routes_every_target(self):
         with mock.patch.object(installer.solvers, "main", return_value=0) as engine, \
-                mock.patch.object(installer, "_visualize", return_value=0) as visual:
+                mock.patch.object(installer, "_visualize", return_value=0) as visual, \
+                mock.patch.object(installer, "_ui", return_value=0) as ui:
             self.assertEqual(installer.main(["install", "--all"]), 0)
         self.assertEqual(engine.call_count, 4)
         self.assertEqual(visual.call_count, 3)
+        ui.assert_called_once_with(check=False)
 
     def test_checks_continue_after_individual_failure_or_exception(self):
         with mock.patch.object(installer.solvers, "main", side_effect=[RuntimeError("missing first"), 1, 0]) as engine, \
@@ -152,10 +154,12 @@ class ComponentInstallerTest(unittest.TestCase):
     def test_global_check_checks_both_components(self):
         with mock.patch.object(installer.solvers, "main", return_value=1) as old, \
                 mock.patch.object(installer, "_visualize", return_value=0) as visual, \
+                mock.patch.object(installer, "_ui", return_value=0) as ui, \
                 mock.patch.object(installer.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")):
             self.assertEqual(installer.main(["check"]), 1)
         self.assertEqual(old.call_args_list, [mock.call([name, "--check"]) for name in ("z3", "cvc5", "yices", "dreal")])
-        self.assertEqual(visual.call_args_list, [mock.call(check=True, output_format=name) for name in ("html", "pdf", "text")])
+        self.assertEqual(visual.call_args_list, [mock.call(check=True, output_format=name, status_cache=mock.ANY) for name in ("html", "pdf", "text")])
+        ui.assert_called_once_with(check=True)
 
     def test_selected_check_cannot_install(self):
         with mock.patch.object(installer.solvers, "main", return_value=0) as old:
@@ -281,7 +285,7 @@ class ComponentInstallerTest(unittest.TestCase):
             self.assertEqual(installer.main(["check", "--solver", "yices", "z3", "--visualize", "text"]), 1)
         self.assertEqual(engine.call_args_list, [mock.call(["yices", "--check"]), mock.call(["z3", "--check"])])
         probe.assert_not_called()
-        visual.assert_called_once_with(check=True, output_format="text")
+        visual.assert_called_once_with(check=True, output_format="text", status_cache=mock.ANY)
 
     def test_yices_capability_missing_binding_has_no_traceback(self):
         real_run = subprocess.run
@@ -329,6 +333,38 @@ class ComponentInstallerTest(unittest.TestCase):
             self.assertEqual(installer.main(["check", "--visualize", "pdf"]), 1)
             self.assertEqual(installer.main(["check", "--visualize", "text"]), 0)
         pip.assert_not_called()
+
+    def test_shared_visualization_packages_checked_and_printed_once_per_invocation(self):
+        ready = {name: (True, "ok") for name in installer.VISUALIZE_PACKAGES}
+        for action in ("install", "check"):
+            with self.subTest(action=action), \
+                    mock.patch.object(installer, "visualize_status", return_value=ready) as probe, \
+                    mock.patch.object(installer.solvers, "_install_python_package") as pip, \
+                    mock.patch("sys.stdout", new=io.StringIO()) as output:
+                self.assertEqual(installer.main([action, "--visualize", "html", "pdf", "text"]), 0)
+                self.assertEqual(probe.call_args_list,
+                                 [mock.call(["numpy", "scipy", "bokeh"]), mock.call(["matplotlib"])])
+                self.assertEqual(output.getvalue().count("numpy:"), 1)
+                self.assertEqual(output.getvalue().count("scipy:"), 1)
+                pip.assert_not_called()
+
+    def test_shared_failed_visualization_check_stays_failed_without_hiding_other_formats(self):
+        status = {name: (True, "ok") for name in installer.VISUALIZE_PACKAGES}
+        status["numpy"] = (False, "unavailable")
+        with mock.patch.object(installer, "visualize_status", return_value=status) as probe, \
+                mock.patch("sys.stdout", new=io.StringIO()) as output:
+            self.assertEqual(installer.main(["check", "--visualize", "html", "pdf", "text"]), 1)
+        self.assertEqual(probe.call_count, 2)
+        self.assertIn("matplotlib: available", output.getvalue())
+        self.assertEqual(output.getvalue().count("numpy: unavailable"), 1)
+
+    def test_visualization_cache_does_not_leak_into_later_invocations(self):
+        ready = {name: (True, "ok") for name in installer.VISUALIZE_PACKAGES}
+        with mock.patch.object(installer, "visualize_status", return_value=ready) as probe, \
+                mock.patch("sys.stdout", new=io.StringIO()):
+            installer.main(["check", "--visualize", "text"])
+            installer.main(["check", "--visualize", "text"])
+        self.assertEqual(probe.call_args_list, [mock.call(["numpy", "scipy"])] * 2)
 
     def test_visualize_repairs_missing_python_packages_only(self):
         missing = {name: (False, "missing") for name in installer.VISUALIZE_PACKAGES}

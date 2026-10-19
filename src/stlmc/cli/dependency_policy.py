@@ -27,6 +27,12 @@ DREAL_KNOWN_LIMITATIONS_WARNING = (
 Z3_PACKAGE = "z3-solver==" + Z3_VERSION
 CVC5_PACKAGE = "cvc5==" + CVC5_VERSION
 YICES_PACKAGE = "yices==" + YICES_BINDING_VERSION
+UI_PACKAGES = {
+    "fastapi": "fastapi==0.146.0", "uvicorn": "uvicorn==0.54.0",
+    "pydantic": "pydantic==2.14.1", "starlette": "starlette==1.9.0",
+    "packaging": "packaging==26.3",
+}
+UI_UNINSTALL_PACKAGES = ("fastapi", "uvicorn", "pydantic", "starlette")
 YICES_SOURCE_URL = "https://github.com/SRI-CSL/yices2/archive/refs/tags/yices-{}.tar.gz".format(YICES_NATIVE_VERSION)
 YICES_SOURCE_SHA256 = "584db72abf6643927b2c3ba98ff793f602216b452b8ff2f34a8851d35904804a"
 

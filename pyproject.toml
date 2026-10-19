@@ -34,6 +34,7 @@ email = "rgyen@postech.ac.kr"
 [project.scripts]
 stlmc = "stlmc.cli.mc:main"
 stlmc-vis = "stlmc.cli.visualize:main"
+stlmc-gui = "stlmc.cli.ui:main"
 stlmc-installer = "stlmc.cli.installer:main"
 
 [project.urls]
@@ -50,4 +51,4 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-stlmc = ["default.cfg", "parser/grammars/*.lark", "cli/dependency-constraints.txt"]
+stlmc = ["default.cfg", "parser/grammars/*.lark", "cli/dependency-constraints.txt", "ui/static/*", "ui/static/**/*"]

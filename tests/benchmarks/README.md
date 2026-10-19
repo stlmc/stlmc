@@ -14,8 +14,9 @@ benchmarks/
     <model>-f3.cfg
 ```
 
-The model basename matches the model prefix in the directory name. Expected
-results are stored in each model file using this annotation:
+Configuration filenames share the `.model` basename, not necessarily the
+directory name: for example, `bouncing-ball-ode/ball.model` uses `ball.cfg`
+and `ball-f1.cfg`. Expected results are stored in each model file using this annotation:
 
 ```text
 # @benchmark.expected(f1=violated:5, f2=satisfied:10, f3=violated:4)
@@ -62,27 +63,21 @@ from `d2 >= 4` to `d2 >= 0`; `nav-ode/f1` changes the consequent to
 `rail-ode/f2` uses `vb <= 3`, and the right operand of `wat-ode/f3` is now
 `x >= 5`. The oscillator f2/f3 goals are single-G regressions over `x2 >= 2`
 and `x3 < 0.25`, respectively, rather than the original nested formulas.
-Other predicates in these revised goals are retained. Except for the
-polynomial battery correction described below, these goal revisions do not
-change the physical dynamics. The 11 revised ODE goals in navigation,
-oscillator, rail f2, thermostat, and water f3 use `time-horizon = time-bound`
-and retain maximum bound 5.
-The revised `car-poly/f1`, `rail-poly/f1`, and `rail-poly/f3` also set
-`time-horizon` equal to their global limit; their expected violations occur
-at STL bounds 0, 1, and 0, respectively.
-The revised `bat-linear/f1` and `bat-linear/f3` likewise use segment limits
-equal to their global limits (1.5 and 1) and expect violations at bound 0.
+Other predicates and physical dynamics are retained, except for the polynomial
+battery correction below. The 11 revised ODE goals in navigation, oscillator,
+rail f2, thermostat, and water f3 use `time-horizon = time-bound` and maximum
+bound 5. This segment-limit setting also applies to `car-poly/f1`,
+`rail-poly/f1`, and `rail-poly/f3` (violations at bounds 0, 1, and 0), and
+`bat-linear/f1,f3` (violations at bound 0).
 
-These revisions do not change quick/fast membership or the 71-case discovery
-set. Passing the revised cases alone is not evidence that the full suite has
-completed, nor that the original long-window goals hold. Existing polynomial
-flow-subdivision warnings are not suppressed by these changes.
+The current runner discovers 71 cases. Passing short-window cases is not
+evidence that the original long-window goals hold. Polynomial flow-subdivision
+warnings remain enabled.
 
-`car-linear/f2` keeps the original model, formula, global time window, and
-threshold, with a goal-specific maximum bound of 8 for regression testing.
-Its expected `satisfied:8` covers that reduced partition bound, not the former
-bound-20 query. Feasibility checks include the original formula's complete
-STL partition and proposition matching at bound 8.
+`car-linear/f2` keeps its original model, formula, time window, and threshold,
+but checks maximum bound 8, not the historical bound 20. Its `satisfied:8`
+expectation includes the complete STL partition and proposition matching at
+that reduced bound.
 
 `car-linear/f3` retains its goal and global time window. Its expected
 violation is now at bound 11 after correcting invariant identifiers across
@@ -110,8 +105,10 @@ an expected status. The crossing regression in `scenario_core_integration.py`
 and the shifted-endpoint regression in `temporal_reduction.py` protect these
 partition requirements.
 
-The `quick` selection follows `@benchmark.quick` annotations; release checks
-give each selected case a 200-second timeout. `fast` and `quick` are distinct
+The `quick` selection currently contains 23 cases and follows
+`@benchmark.quick` annotations; release checks give each selected case a
+200-second timeout. Both bouncing-ball fixtures and `tank-bounded-ode/f1`
+remain in full/fast selections but are excluded from quick checks. `fast` and `quick` are distinct
 selections and neither changes the expected logical result. The full and
 fast sets include research cases that may exceed the configured timeout;
 timeouts remain failures, not logical results. Parser tests separately reject

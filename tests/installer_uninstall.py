@@ -49,7 +49,7 @@ class UninstallRoutingTest(unittest.TestCase):
         with mock.patch.object(uninstall, 'plan_uninstall', return_value=uninstall.UninstallPlan()) as planning, \
                 mock.patch.object(uninstall, 'execute_uninstall', return_value=0):
             self.assertEqual(installer.main(['uninstall', '--all']), 0)
-        planning.assert_called_once_with(['z3', 'cvc5', 'yices', 'dreal'], ['html', 'pdf', 'text'])
+        planning.assert_called_once_with(['z3', 'cvc5', 'yices', 'dreal'], ['html', 'pdf', 'text'], ui=True)
         with mock.patch('sys.stderr', io.StringIO()), self.assertRaises(SystemExit):
             installer.main(['uninstall'])
 
