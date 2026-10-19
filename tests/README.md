@@ -5,6 +5,9 @@ Start with the setup and Make targets below. Detailed
 
 ## Make targets
 
+Before installing the checkout, prepare the Ruby, Bundler, and locked Jekyll
+gems described in [frontend development](../docs/architecture.md#workspace-frontend-development).
+
 Install the current checkout in editable mode before running the tests. This
 ensures that the `stlmc` command used by the benchmark runner points to the
 code being tested:

@@ -17,6 +17,8 @@ For the project website, publications, and user manual, visit
 - Sequential, batched, and parallel continuous refinement checks
 - Counterexample and reachability-witness generation
 - Counterexample and robustness visualization with `stlmc-vis`
+- Browser-based GUI for editing models and configurations, running analyses,
+  and viewing results locally
 
 ## Requirements and installation
 
@@ -89,20 +91,32 @@ stlmc-vis quickstart_b1_safety_z3.counterexample -cfg quickstart_b1_safety_z3.cf
 If your result lists different filenames, use those paths instead. See
 [Visualization](#visualization) below for PDF and text output.
 
-## Browser workspace
+## Graphical user interface (GUI)
 
-On Linux, macOS, or WSL, install the optional UI dependencies and start the
-local workspace:
+Use `stlmc-gui` to edit models and configurations, select goals, run analyses,
+and inspect results in your browser. On Linux, macOS, or WSL, activate the
+virtual environment from [installation](#requirements-and-installation), then
+copy and run these commands to install the GUI, Z3, and HTML visualization:
 
 ```sh
-stlmc-installer install --ui
+stlmc-installer install --solver z3 --visualize html --ui
+stlmc-installer check --solver z3 --visualize html --ui
 stlmc-gui
 ```
 
-Keep the terminal open and enter its session token in the browser to connect.
-Models and solver runs stay on your computer. HTML plots additionally require
-`stlmc-installer install --visualize html` and an available solver.
-Use `stlmc-gui --help` for ports and trusted website origins.
+The command opens your browser at `http://127.0.0.1:8766/`. If it does not open
+automatically, open that address yourself. Keep the terminal running, copy
+the printed session token into **Session token**, and click **Connect**.
+Click **Open model file** and choose `quickstart.model` from above. Select the
+`safety` goal and set the bound and global time bound to `2` before clicking
+**Run analysis**. This model runs
+with Z3; ODE models require dReal as described in the installation guide.
+
+Models and solver runs stay on your computer. On later visits, activate the
+same virtual environment and run `stlmc-gui` again; installation is only needed
+once. Press `Ctrl+C` in its terminal to stop the GUI. See
+[GUI connection and storage options](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#browser-workspace)
+for custom ports, authentication, and model/history folders.
 
 ## Analysis configuration
 
@@ -239,6 +253,10 @@ Legacy pickle artifacts are outdated and unsupported. Rerun model checking
 with the current STLmc version to regenerate them; no conversion is provided.
 
 ## Development and tests
+
+Source installs require Ruby, Bundler, and the locked Jekyll gems. Prepare the
+[frontend build environment](https://github.com/stlmc/stlmc/blob/main/docs/architecture.md#workspace-frontend-development)
+first; these tools are not needed when installing a wheel.
 
 To install from source, use the virtual environment created above:
 
