@@ -136,6 +136,9 @@ jobs:
     - name: Install external solvers through STLMC
       run: stlmc-installer install --solver z3 cvc5 yices dreal --visualize html pdf
 
+    - name: Expose managed solver executables to CI subprocesses
+      run: python3 tools/setup_ci_solvers.py
+
     - name: Check solver installation
       run: |
         stlmc-installer check --solver z3 cvc5 yices dreal --visualize html pdf
