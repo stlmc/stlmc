@@ -92,13 +92,15 @@ class CliHelpTest(unittest.TestCase):
         import re
         from urllib.parse import unquote
         readme = (PROJECT_ROOT / 'README.md').read_text()
-        prefix = 'https://github.com/stlmc/stlmc/blob/main/'
+        prefixes = ('https://github.com/stlmc/stlmc/blob/main/',
+                    'https://raw.githubusercontent.com/stlmc/stlmc/main/')
         for target in re.findall(r'\]\(([^)]+)\)', readme):
             with self.subTest(target=target):
                 self.assertTrue(target.startswith(('https://', '#')), target)
-                if target.startswith(prefix):
-                    relative = unquote(target[len(prefix):].split('#', 1)[0])
-                    self.assertTrue((PROJECT_ROOT / relative).is_file(), target)
+                for prefix in prefixes:
+                    if target.startswith(prefix):
+                        relative = unquote(target[len(prefix):].split('#', 1)[0])
+                        self.assertTrue((PROJECT_ROOT / relative).is_file(), target)
 
     def test_make_workflows_discover_all_unit_suites(self):
         import shutil

@@ -94,7 +94,11 @@ If your result lists different filenames, use those paths instead. See
 ## Graphical user interface (GUI)
 
 Use `stlmc-gui` to edit models and configurations, select goals, run analyses,
-and inspect results in your browser. On Linux, macOS, or WSL, activate the
+and inspect results in your browser.
+
+![STLmc GUI with editors, analysis settings, and verification results](https://raw.githubusercontent.com/stlmc/stlmc/main/docs/images/gui-workspace.png)
+
+On Linux, macOS, or WSL, activate the
 virtual environment from [installation](#requirements-and-installation), then
 copy and run these commands to install the GUI, Z3, and HTML visualization:
 
@@ -117,6 +121,8 @@ same virtual environment and run `stlmc-gui` again; installation is only needed
 once. Press `Ctrl+C` in its terminal to stop the GUI. See
 [GUI connection and storage options](https://github.com/stlmc/stlmc/blob/main/docs/installation.md#browser-workspace)
 for custom ports, authentication, and model/history folders.
+See the [GUI user guide](https://github.com/stlmc/stlmc/blob/main/docs/gui.md)
+for editing, configuration, results, and remote-server connections.
 
 ## Analysis configuration
 
