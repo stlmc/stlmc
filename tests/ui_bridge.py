@@ -82,12 +82,24 @@ raise SystemExit(main())
         from stlmc.ui.paths import seed_examples
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            seed_examples(root)
-            model = root / 'therm-tutorial.model'
-            self.assertTrue(model.is_file())
-            model.write_text('user edits')
-            seed_examples(root)
-            self.assertEqual(model.read_text(), 'user edits')
+            # Unit tests must not require generated static assets in a clean
+            # source checkout. Model the installed package's asset layout.
+            package = root / 'package'
+            examples = package / 'static' / 'examples'
+            examples.mkdir(parents=True)
+            (examples / 'example.model').write_text('original model')
+            (examples / 'example.cfg').write_text('original config')
+            (examples / 'not-an-example.txt').write_text('not copied')
+            target = root / 'models'
+            with mock.patch('stlmc.ui.paths.__file__', str(package / 'paths.py')):
+                seed_examples(target)
+                model = target / 'example.model'
+                self.assertEqual(model.read_text(), 'original model')
+                self.assertEqual((target / 'example.cfg').read_text(), 'original config')
+                self.assertFalse((target / 'not-an-example.txt').exists())
+                model.write_text('user edits')
+                seed_examples(target)
+                self.assertEqual(model.read_text(), 'user edits')
 
     def test_plain_cli_help_does_not_import_optional_ui(self):
         script = '''
