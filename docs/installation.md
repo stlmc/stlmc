@@ -88,8 +88,10 @@ The browser workspace and local bridge are included in STLmc; a separate
 web-ui checkout is not required. The GUI supports Linux,
 macOS, and WSL, not native Windows.
 
-The installed GUI does not require Ruby, Jekyll, or Node.js. Its templates
-are compiled into static assets during development and release validation.
+The GUI installed from a wheel does not require Ruby, Jekyll, or Node.js.
+Building a wheel from source requires Ruby, Bundler, and the locked Jekyll
+gems. For editable development, generate the UI with `python tools/build_ui.py`
+before starting it; see [frontend development](architecture.md#workspace-frontend-development).
 
 Install the optional server dependencies and start the GUI:
 

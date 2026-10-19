@@ -1,4 +1,4 @@
-"""Regenerate checked-in UI assets; Ruby is a development-only prerequisite."""
+"""Generate UI assets for development and wheel builds; never run at runtime."""
 import argparse
 import hashlib
 import os
@@ -107,7 +107,7 @@ def build(destination, source=SOURCE):
         result = subprocess.run(command, cwd=source, env=environment,
                                 capture_output=True, text=True, timeout=120)
     except FileNotFoundError:
-        raise RuntimeError('UI regeneration requires Ruby and Bundler. Ordinary pip installation does not. '
+        raise RuntimeError('Building STLmc from source requires Ruby and Bundler; installing a wheel does not. '
                            'Install development gems with: cd src/stlmc/ui/frontend && bundle install') from None
     if result.returncode:
         raise RuntimeError('Jekyll UI build failed. Run `cd src/stlmc/ui/frontend && bundle install` first.\n' +
@@ -117,7 +117,7 @@ def build(destination, source=SOURCE):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true',
-                        help='build into .tmp and fail on drift, without changing checked-in assets')
+                        help='build into .tmp and check existing generated assets without changing them')
     args = parser.parse_args(argv)
     try:
         names = expected_assets()

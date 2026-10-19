@@ -62,8 +62,6 @@ jobs:
         ruby-version: '3.4.4'
         working-directory: src/stlmc/ui/frontend
         bundler-cache: true
-    - name: Verify checked-in UI assets match Jekyll sources
-      run: python3 tools/build_ui.py --check
     - name: Build one universal wheel
       run: |
         python3 -m pip install build
@@ -216,6 +214,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ matrix.architecture }}
+    - name: Set up the UI builder
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4.4'
+        working-directory: src/stlmc/ui/frontend
+        bundler-cache: true
     - name: Create an isolated environment and build the wheel
       run: |
         python3 -m venv .tmp/ci-venv

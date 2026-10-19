@@ -88,11 +88,12 @@ python tools/build_ui.py
 python tools/build_ui.py --check
 ```
 
-Commit both the source changes and generated `src/stlmc/ui/static/` assets.
-Do not edit generated assets directly. CI rebuilds and checks for drift before
-building the universal wheel. Keeping the generated assets in the checkout
-also permits wheel and editable installs without Ruby or Jekyll. The release
-workflow publishes only a wheel, which excludes the Jekyll source directory.
+Commit only the frontend sources. `src/stlmc/ui/static/` is generated and
+ignored by Git; do not edit it directly. Wheel builds regenerate it with
+Jekyll automatically. For editable development, run the command above before
+starting the GUI. Building from source requires Ruby, Bundler, and the locked
+gems. The release workflow publishes only a wheel, which contains the static
+assets but excludes the Jekyll source directory.
 End users need only the optional Python UI dependencies; Node.js is not
 required for building or running this frontend.
 

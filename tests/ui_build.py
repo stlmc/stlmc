@@ -3,6 +3,7 @@ import importlib.util
 import io
 import os
 from pathlib import Path
+import runpy
 import shlex
 import subprocess
 import tempfile
@@ -16,6 +17,26 @@ SPEC.loader.exec_module(TOOL)
 
 
 class UiBuildTest(unittest.TestCase):
+    def test_wheel_build_generates_ui_before_collecting_package_data(self):
+        if importlib.util.find_spec('setuptools') is None:
+            self.skipTest('Build-hook test requires the source-build dependency setuptools')
+        with mock.patch('setuptools.setup'):
+            setup = runpy.run_path(str(ROOT / 'setup.py'))
+        events = []
+        with tempfile.TemporaryDirectory() as temporary:
+            from setuptools import Distribution
+            command = setup['BuildWithRevision'](Distribution())
+            command.build_lib = temporary
+            with mock.patch.object(setup['subprocess'], 'run',
+                                   side_effect=lambda *args, **kwargs: events.append(('generate', args, kwargs))), \
+                    mock.patch.dict(command.run.__globals__, write_build_info=mock.Mock()), \
+                    mock.patch('setuptools.command.build_py.build_py.run',
+                               side_effect=lambda: events.append(('collect',))):
+                command.run()
+        self.assertEqual([event[0] for event in events], ['generate', 'collect'])
+        self.assertEqual(events[0][1][0][1], str(ROOT / 'tools' / 'build_ui.py'))
+        self.assertTrue(events[0][2]['check'])
+
     def fixture(self, root, name, data='fixture'):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +161,7 @@ class UiBuildTest(unittest.TestCase):
             self.fixture(source, 'Gemfile')
             self.fixture(source, 'Gemfile.lock')
             with mock.patch.object(TOOL.subprocess, 'run', side_effect=FileNotFoundError), \
-                    self.assertRaisesRegex(RuntimeError, 'Ordinary pip installation does not'):
+                    self.assertRaisesRegex(RuntimeError, 'installing a wheel does not'):
                 TOOL.build(source / 'staging', source)
 
 

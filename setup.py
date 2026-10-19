@@ -2,6 +2,8 @@
 
 from pathlib import Path
 import runpy
+import subprocess
+import sys
 
 from setuptools import setup
 from setuptools.command.build_py import build_py
@@ -32,6 +34,8 @@ def write_build_info(destination):
 
 class BuildWithRevision(build_py):
     def run(self):
+        subprocess.run([sys.executable, str(ROOT / 'tools/build_ui.py')],
+                       cwd=ROOT, check=True)
         super().run()
         write_build_info(Path(self.build_lib) / "stlmc/_build_info.py")
 

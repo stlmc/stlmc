@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+/src/stlmc/ui/static/
 
 # Virtual environments and editor files
 venv/
