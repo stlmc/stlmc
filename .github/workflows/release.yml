@@ -47,9 +47,30 @@ jobs:
         python tools/release_notes.py "$RELEASE_TAG" --output /tmp/stlmc-release-notes.md
 
   build:
-    name: Build and test wheel 📦
+    name: Build platform-independent wheel 📦
     if: github.event_name != 'workflow_dispatch' || !inputs.diagnose_timeouts
     needs: validate
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Build one universal wheel
+      run: |
+        python3 -m pip install build
+        python3 -m build --wheel
+        python3 -c "from pathlib import Path; wheels=list(Path('dist').glob('*.whl')); assert len(wheels)==1 and wheels[0].name.endswith('-py3-none-any.whl'), wheels"
+    - name: Store the distribution package
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/*.whl
+        if-no-files-found: error
+
+  test:
+    name: Test installed wheel
+    needs: build
     strategy:
       # Run every environment so a failure report is available for each one.
       # The matrix job still fails if any environment fails, which blocks
@@ -97,11 +118,11 @@ jobs:
         echo "$PWD/.tmp/ci-venv/bin" >> "$GITHUB_PATH"
         echo "VIRTUAL_ENV=$PWD/.tmp/ci-venv" >> "$GITHUB_ENV"
 
-    - name: Install pypa/build
-      run: >-
-        python3 -m
-        pip install
-        build
+    - name: Download the universal wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
 
     - name: Ensure Rosetta is available
       if: matrix.os == 'macos-15'
@@ -109,17 +130,6 @@ jobs:
         if ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
           sudo softwareupdate --install-rosetta --agree-to-license
         fi
-
-    - name: Build a Linux wheel
-      if: matrix.os == 'ubuntu-latest'
-      run: python3 -m build --wheel
-
-    - name: Build an Apple Silicon wheel
-      if: matrix.os == 'macos-15'
-      env:
-        # Keep generated metadata compatible with all Apple Silicon releases.
-        MACOSX_DEPLOYMENT_TARGET: '11.0'
-      run: python3 -m build --wheel
 
     - name: Install the built wheel
       run: |
@@ -166,12 +176,6 @@ jobs:
       # The official legacy release has one precisely pinned known defect.
       # Keep it visible as XFAIL; every other smoke mismatch remains fatal.
       run: make test-quick PYTHON=python3 SMOKE_ARGS=--allow-known-dreal-bugs
-
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions-${{ matrix.os }}-${{ matrix.python-version }}
-        path: dist/
 
   diagnose-timeouts:
     name: Isolated benchmark diagnostics
@@ -243,6 +247,7 @@ jobs:
     needs:
     - validate
     - build
+    - test
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -254,9 +259,8 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
-        pattern: python-package-distributions-*
+        name: python-package-distributions
         path: dist/
-        merge-multiple: true
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
@@ -287,9 +291,8 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
-        pattern: python-package-distributions-*
+        name: python-package-distributions
         path: dist/
-        merge-multiple: true
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.4.0
       with:

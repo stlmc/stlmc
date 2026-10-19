@@ -12,6 +12,36 @@ SPEC.loader.exec_module(TOOL)
 
 
 class ReleaseNotesTest(unittest.TestCase):
+    def test_one_universal_wheel_is_shared_by_tests_and_publishers(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text()
+        workflow = '\n'.join(line for line in workflow.splitlines()
+                             if not line.lstrip().startswith('#')) + '\n'
+
+        def job(name):
+            match = re.search(r"(?ms)^  " + re.escape(name)
+                              + r":\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\Z)", workflow)
+            self.assertIsNotNone(match)
+            return match.group(1)
+
+        build = job('build')
+        tests = job('test')
+        self.assertEqual(workflow.count('python3 -m build --wheel'), 1)
+        self.assertIn('-py3-none-any.whl', build)
+        self.assertNotIn('matrix:', build)
+        self.assertIn('!inputs.diagnose_timeouts', build)
+        self.assertIn('needs: build', tests)
+        self.assertEqual(tests.count('architecture:'), 9)  # Eight matrix entries plus setup-python.
+        self.assertIn('actions/download-artifact@v4', tests)
+        self.assertNotIn('actions/upload-artifact', tests)
+        self.assertNotIn('MACOSX_DEPLOYMENT_TARGET', workflow)
+        for name in ('test', 'publish-to-pypi', 'github-release'):
+            section = job(name)
+            self.assertIn('name: python-package-distributions\n', section)
+            self.assertNotIn('merge-multiple', section)
+        publisher = job('publish-to-pypi')
+        self.assertIn('    - build\n', publisher)
+        self.assertIn('    - test\n', publisher)
+
     def test_manual_validation_cannot_publish_even_when_run_on_a_tag(self):
         workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text()
         self.assertIn("  workflow_dispatch:\n", workflow)
