@@ -1,6 +1,6 @@
 # @benchmark.expected(f1=violated:1, f2=violated:0)
 # @benchmark.fast(f1, f2)
-# @benchmark.quick(f1, f2)
+# @benchmark.quick(f2)
 # Bounded two-tank ODE from report/bug1/tank-bounded.model; exact initial set retained.
 # The inward vector field preserves [1.8,3.5]^2; see fixture README.
 [1.8, 3.5] x1;

@@ -30,7 +30,8 @@ exact trajectory certificate.
 `f2` retains its original formula but uses a shorter analysis window for the
 fast regression. Its result describes that finite query, not a claim that
 the tank never reaches the target during the original 400-second interval.
-Both goals are included in quick and fast selections. As with other
+Both goals remain in full and fast selections. Only `f2` is included in quick
+checks; `f1` can exceed the 200-second release limit on macOS. As with other
 benchmarks, the standard runner compares the result and bound with annotations:
 
 ```sh
